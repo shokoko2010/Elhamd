@@ -21,8 +21,27 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react'
-import { VehicleService, Vehicle, VehicleCategory, FuelType, TransmissionType, VehicleStatus } from '@/lib/firestore'
-import { ImageUpload } from '@/components/admin/ImageUpload'
+
+// Mock data types
+interface Vehicle {
+  id: string
+  make: string
+  model: string
+  year: number
+  price: number
+  stockNumber: string
+  vin?: string
+  description?: string
+  category: string
+  fuelType: string
+  transmission: string
+  mileage?: number
+  color?: string
+  status: string
+  featured: boolean
+  createdAt?: string
+  updatedAt?: string
+}
 
 export default function AdminModelsPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -39,11 +58,74 @@ export default function AdminModelsPage() {
   const loadVehicles = async () => {
     setLoading(true)
     try {
-      const result = await VehicleService.getVehicles()
-      setVehicles(result.vehicles)
+      // Mock data - replace with actual API call
+      const mockVehicles: Vehicle[] = [
+        {
+          id: '1',
+          make: 'تاتا',
+          model: 'نيكسون',
+          year: 2024,
+          price: 850000,
+          stockNumber: 'TN2024001',
+          vin: 'MATADUMMY123456',
+          description: 'سيارة SUV عائلية متطورة بأحدث التقنيات',
+          category: 'SUV',
+          fuelType: 'PETROL',
+          transmission: 'AUTOMATIC',
+          mileage: 0,
+          color: 'أبيض',
+          status: 'AVAILABLE',
+          featured: true,
+          createdAt: '2024-01-01',
+          updatedAt: '2024-01-01'
+        },
+        {
+          id: '2',
+          make: 'تاتا',
+          model: 'بانش',
+          year: 2024,
+          price: 650000,
+          stockNumber: 'TP2024001',
+          vin: 'MATADUMMY123457',
+          description: 'سيارة مدمجة مثالية للمدينة',
+          category: 'SUV',
+          fuelType: 'PETROL',
+          transmission: 'MANUAL',
+          mileage: 0,
+          color: 'أسود',
+          status: 'AVAILABLE',
+          featured: false,
+          createdAt: '2024-01-02',
+          updatedAt: '2024-01-02'
+        },
+        {
+          id: '3',
+          make: 'تاتا',
+          model: 'تياجو',
+          year: 2024,
+          price: 550000,
+          stockNumber: 'TT2024001',
+          vin: 'MATADUMMY123458',
+          description: 'سيارة هايتبك اقتصادية وموثوقة',
+          category: 'HATCHBACK',
+          fuelType: 'PETROL',
+          transmission: 'MANUAL',
+          mileage: 0,
+          color: 'أحمر',
+          status: 'AVAILABLE',
+          featured: true,
+          createdAt: '2024-01-03',
+          updatedAt: '2024-01-03'
+        }
+      ]
+      
+      // Simulate API delay
+      setTimeout(() => {
+        setVehicles(mockVehicles)
+        setLoading(false)
+      }, 1000)
     } catch (error) {
       console.error('Error loading vehicles:', error)
-    } finally {
       setLoading(false)
     }
   }
@@ -55,15 +137,36 @@ export default function AdminModelsPage() {
 
   const handleSaveVehicle = async (vehicleData: Partial<Vehicle>) => {
     try {
+      // Mock save operation
       if (editingVehicle?.id) {
         // Update existing vehicle
-        await VehicleService.updateVehicle(editingVehicle.id, vehicleData)
+        setVehicles(prev => prev.map(v => 
+          v.id === editingVehicle.id ? { ...v, ...vehicleData } : v
+        ))
       } else {
         // Create new vehicle
-        await VehicleService.createVehicle(vehicleData as Omit<Vehicle, 'id'>)
+        const newVehicle: Vehicle = {
+          id: Date.now().toString(),
+          make: vehicleData.make || '',
+          model: vehicleData.model || '',
+          year: vehicleData.year || new Date().getFullYear(),
+          price: vehicleData.price || 0,
+          stockNumber: vehicleData.stockNumber || '',
+          vin: vehicleData.vin || '',
+          description: vehicleData.description || '',
+          category: vehicleData.category || 'SUV',
+          fuelType: vehicleData.fuelType || 'PETROL',
+          transmission: vehicleData.transmission || 'MANUAL',
+          mileage: vehicleData.mileage || 0,
+          color: vehicleData.color || '',
+          status: vehicleData.status || 'AVAILABLE',
+          featured: vehicleData.featured || false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+        setVehicles(prev => [newVehicle, ...prev])
       }
       
-      await loadVehicles()
       setIsDialogOpen(false)
       setEditingVehicle(null)
     } catch (error) {
@@ -72,26 +175,25 @@ export default function AdminModelsPage() {
   }
 
   const handleDeleteVehicle = async (vehicleId: string) => {
-    if (confirm('Are you sure you want to delete this vehicle?')) {
+    if (confirm('هل أنت متأكد من حذف هذه السيارة؟')) {
       try {
-        await VehicleService.deleteVehicle(vehicleId)
-        await loadVehicles()
+        setVehicles(prev => prev.filter(v => v.id !== vehicleId))
       } catch (error) {
         console.error('Error deleting vehicle:', error)
       }
     }
   }
 
-  const getStatusBadge = (status: VehicleStatus) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case VehicleStatus.AVAILABLE:
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Available</Badge>
-      case VehicleStatus.SOLD:
-        return <Badge variant="destructive">Sold</Badge>
-      case VehicleStatus.RESERVED:
-        return <Badge className="bg-yellow-500">Reserved</Badge>
-      case VehicleStatus.MAINTENANCE:
-        return <Badge className="bg-blue-500">Maintenance</Badge>
+      case 'AVAILABLE':
+        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />متاح</Badge>
+      case 'SOLD':
+        return <Badge variant="destructive">مباع</Badge>
+      case 'RESERVED':
+        return <Badge className="bg-yellow-500">محجوز</Badge>
+      case 'MAINTENANCE':
+        return <Badge className="bg-blue-500">صيانة</Badge>
       default:
         return <Badge>{status}</Badge>
     }
@@ -102,23 +204,23 @@ export default function AdminModelsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Vehicle Models</h1>
-          <p className="text-gray-600">Manage your vehicle inventory</p>
+          <h1 className="text-3xl font-bold">موديلات السيارات</h1>
+          <p className="text-gray-600">إدارة مخزون السيارات</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingVehicle(null)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Vehicle
+              إضافة سيارة
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
+                {editingVehicle ? 'تعديل سيارة' : 'إضافة سيارة جديدة'}
               </DialogTitle>
               <DialogDescription>
-                {editingVehicle ? 'Update vehicle information' : 'Add a new vehicle to your inventory'}
+                {editingVehicle ? 'تحديث معلومات السيارة' : 'إضافة سيارة جديدة إلى المخزون'}
               </DialogDescription>
             </DialogHeader>
             <VehicleForm
@@ -140,7 +242,7 @@ export default function AdminModelsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search vehicles..."
+                placeholder="بحث في السيارات..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -148,13 +250,13 @@ export default function AdminModelsPage() {
             </div>
             <Select>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="All Status" />
+                <SelectValue placeholder="كل الحالات" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="available">Available</SelectItem>
-                <SelectItem value="sold">Sold</SelectItem>
-                <SelectItem value="reserved">Reserved</SelectItem>
+                <SelectItem value="all">كل الحالات</SelectItem>
+                <SelectItem value="available">متاح</SelectItem>
+                <SelectItem value="sold">مباع</SelectItem>
+                <SelectItem value="reserved">محجوز</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -164,9 +266,9 @@ export default function AdminModelsPage() {
       {/* Vehicles Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Vehicle Inventory</CardTitle>
+          <CardTitle>مخزون السيارات</CardTitle>
           <CardDescription>
-            {filteredVehicles.length} vehicles found
+            {filteredVehicles.length} سيارة تم العثور عليها
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -178,12 +280,12 @@ export default function AdminModelsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vehicle</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Featured</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>السيارة</TableHead>
+                  <TableHead>الفئة</TableHead>
+                  <TableHead>السعر</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>مميزة</TableHead>
+                  <TableHead>الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -202,7 +304,7 @@ export default function AdminModelsPage() {
                       <Badge variant="outline">{vehicle.category}</Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {new Intl.NumberFormat('en-EG', {
+                      {new Intl.NumberFormat('ar-EG', {
                         style: 'currency',
                         currency: 'EGP',
                         minimumFractionDigits: 0
@@ -213,7 +315,7 @@ export default function AdminModelsPage() {
                     </TableCell>
                     <TableCell>
                       {vehicle.featured ? (
-                        <Badge className="bg-yellow-500">Featured</Badge>
+                        <Badge className="bg-yellow-500">مميزة</Badge>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
@@ -243,7 +345,7 @@ export default function AdminModelsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteVehicle(vehicle.id!)}
+                          onClick={() => handleDeleteVehicle(vehicle.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -275,16 +377,15 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
     stockNumber: vehicle?.stockNumber || '',
     vin: vehicle?.vin || '',
     description: vehicle?.description || '',
-    category: vehicle?.category || VehicleCategory.SUV,
-    fuelType: vehicle?.fuelType || FuelType.PETROL,
-    transmission: vehicle?.transmission || TransmissionType.MANUAL,
+    category: vehicle?.category || 'SUV',
+    fuelType: vehicle?.fuelType || 'PETROL',
+    transmission: vehicle?.transmission || 'MANUAL',
     mileage: vehicle?.mileage || 0,
     color: vehicle?.color || '',
-    status: vehicle?.status || VehicleStatus.AVAILABLE,
+    status: vehicle?.status || 'AVAILABLE',
     featured: vehicle?.featured || false
   })
   const [loading, setLoading] = useState(false)
-  const [currentImages, setCurrentImages] = useState<Array<{ id: string; url: string; path: string; isPrimary: boolean; order: number }>>([])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -303,7 +404,7 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="make">Make *</Label>
+          <Label htmlFor="make">الماركة *</Label>
           <Input
             id="make"
             value={formData.make}
@@ -312,7 +413,7 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="model">Model *</Label>
+          <Label htmlFor="model">الموديل *</Label>
           <Input
             id="model"
             value={formData.model}
@@ -321,7 +422,7 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="year">Year *</Label>
+          <Label htmlFor="year">السنة *</Label>
           <Input
             id="year"
             type="number"
@@ -331,7 +432,7 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="price">Price (EGP) *</Label>
+          <Label htmlFor="price">السعر (ج.م) *</Label>
           <Input
             id="price"
             type="number"
@@ -341,7 +442,7 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="stockNumber">Stock Number *</Label>
+          <Label htmlFor="stockNumber">رقم المخزون *</Label>
           <Input
             id="stockNumber"
             value={formData.stockNumber}
@@ -350,7 +451,7 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="vin">VIN</Label>
+          <Label htmlFor="vin">رقم الشاسيه (VIN)</Label>
           <Input
             id="vin"
             value={formData.vin}
@@ -358,51 +459,51 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="category">Category *</Label>
-          <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value as VehicleCategory})}>
+          <Label htmlFor="category">الفئة *</Label>
+          <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={VehicleCategory.SEDAN}>Sedan</SelectItem>
-              <SelectItem value={VehicleCategory.SUV}>SUV</SelectItem>
-              <SelectItem value={VehicleCategory.HATCHBACK}>Hatchback</SelectItem>
-              <SelectItem value={VehicleCategory.TRUCK}>Truck</SelectItem>
-              <SelectItem value={VehicleCategory.VAN}>Van</SelectItem>
-              <SelectItem value={VehicleCategory.COMMERCIAL}>Commercial</SelectItem>
+              <SelectItem value="SEDAN">سيدان</SelectItem>
+              <SelectItem value="SUV">SUV</SelectItem>
+              <SelectItem value="HATCHBACK">هايتبك</SelectItem>
+              <SelectItem value="TRUCK">شاحنة</SelectItem>
+              <SelectItem value="VAN">فان</SelectItem>
+              <SelectItem value="COMMERCIAL">تجاري</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor="fuelType">Fuel Type *</Label>
-          <Select value={formData.fuelType} onValueChange={(value) => setFormData({...formData, fuelType: value as FuelType})}>
+          <Label htmlFor="fuelType">نوع الوقود *</Label>
+          <Select value={formData.fuelType} onValueChange={(value) => setFormData({...formData, fuelType: value})}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={FuelType.PETROL}>Petrol</SelectItem>
-              <SelectItem value={FuelType.DIESEL}>Diesel</SelectItem>
-              <SelectItem value={FuelType.ELECTRIC}>Electric</SelectItem>
-              <SelectItem value={FuelType.HYBRID}>Hybrid</SelectItem>
-              <SelectItem value={FuelType.CNG}>CNG</SelectItem>
+              <SelectItem value="PETROL">بنزين</SelectItem>
+              <SelectItem value="DIESEL">ديزل</SelectItem>
+              <SelectItem value="ELECTRIC">كهربائي</SelectItem>
+              <SelectItem value="HYBRID">هايبرد</SelectItem>
+              <SelectItem value="CNG">غاز طبيعي</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor="transmission">Transmission *</Label>
-          <Select value={formData.transmission} onValueChange={(value) => setFormData({...formData, transmission: value as TransmissionType})}>
+          <Label htmlFor="transmission">ناقل الحركة *</Label>
+          <Select value={formData.transmission} onValueChange={(value) => setFormData({...formData, transmission: value})}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={TransmissionType.MANUAL}>Manual</SelectItem>
-              <SelectItem value={TransmissionType.AUTOMATIC}>Automatic</SelectItem>
-              <SelectItem value={TransmissionType.CVT}>CVT</SelectItem>
+              <SelectItem value="MANUAL">عادي</SelectItem>
+              <SelectItem value="AUTOMATIC">أوتوماتيك</SelectItem>
+              <SelectItem value="CVT">CVT</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor="color">Color</Label>
+          <Label htmlFor="color">اللون</Label>
           <Input
             id="color"
             value={formData.color}
@@ -410,7 +511,7 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="mileage">Mileage</Label>
+          <Label htmlFor="mileage">المسافة المقطوعة (كم)</Label>
           <Input
             id="mileage"
             type="number"
@@ -419,29 +520,28 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="status">Status *</Label>
-          <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value as VehicleStatus})}>
+          <Label htmlFor="status">الحالة *</Label>
+          <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={VehicleStatus.AVAILABLE}>Available</SelectItem>
-              <SelectItem value={VehicleStatus.SOLD}>Sold</SelectItem>
-              <SelectItem value={VehicleStatus.RESERVED}>Reserved</SelectItem>
-              <SelectItem value={VehicleStatus.MAINTENANCE}>Maintenance</SelectItem>
+              <SelectItem value="AVAILABLE">متاح</SelectItem>
+              <SelectItem value="SOLD">مباع</SelectItem>
+              <SelectItem value="RESERVED">محجوز</SelectItem>
+              <SelectItem value="MAINTENANCE">صيانة</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
-
+      
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">الوصف</Label>
         <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({...formData, description: e.target.value})}
           rows={3}
-          placeholder="Vehicle description..."
         />
       </div>
 
@@ -453,28 +553,15 @@ function VehicleForm({ vehicle, onSave, onCancel }: VehicleFormProps) {
           onChange={(e) => setFormData({...formData, featured: e.target.checked})}
           className="rounded border-gray-300"
         />
-        <Label htmlFor="featured">Featured Vehicle</Label>
+        <Label htmlFor="featured">سيارة مميزة</Label>
       </div>
 
-      {/* Image Upload */}
-      {vehicle?.id && (
-        <div>
-          <Label>Vehicle Images</Label>
-          <ImageUpload
-            vehicleId={vehicle.id!}
-            currentImages={currentImages}
-            onImagesChange={setCurrentImages}
-            maxImages={8}
-          />
-        </div>
-      )}
-
-      <div className="flex justify-end space-x-2">
+      <div className="flex justify-end space-x-4">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          إلغاء
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : 'Save Vehicle'}
+          {loading ? 'جاري الحفظ...' : 'حفظ'}
         </Button>
       </div>
     </form>

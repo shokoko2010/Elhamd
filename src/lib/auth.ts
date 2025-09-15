@@ -1,5 +1,5 @@
 import { 
-  auth, 
+  Auth, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut, 
@@ -11,6 +11,7 @@ import {
 import { useState, useEffect } from 'react'
 import { UserService } from './firestore'
 import { User, UserRole } from './firestore'
+import { auth } from './firebase'
 
 export interface AuthUser {
   uid: string
@@ -26,16 +27,18 @@ class AuthService {
 
   constructor() {
     // Listen to auth state changes
-    onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        const user = await this.mapFirebaseUserToAuthUser(firebaseUser)
-        this.currentUser = user
-        this.notifyAuthStateChangedListeners(user)
-      } else {
-        this.currentUser = null
-        this.notifyAuthStateChangedListeners(null)
-      }
-    })
+    if (auth) {
+      onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+        if (firebaseUser) {
+          const user = await this.mapFirebaseUserToAuthUser(firebaseUser)
+          this.currentUser = user
+          this.notifyAuthStateChangedListeners(user)
+        } else {
+          this.currentUser = null
+          this.notifyAuthStateChangedListeners(null)
+        }
+      })
+    }
   }
 
   private async mapFirebaseUserToAuthUser(firebaseUser: FirebaseUser): Promise<AuthUser> {
@@ -73,6 +76,10 @@ class AuthService {
 
   async signUp(email: string, password: string, name: string, role: UserRole = UserRole.CUSTOMER, phone?: string): Promise<AuthUser> {
     try {
+      if (!auth) {
+        throw new Error('Firebase Auth is not initialized')
+      }
+      
       // Create Firebase auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const firebaseUser = userCredential.user
@@ -97,6 +104,10 @@ class AuthService {
 
   async signIn(email: string, password: string): Promise<AuthUser> {
     try {
+      if (!auth) {
+        throw new Error('Firebase Auth is not initialized')
+      }
+      
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const firebaseUser = userCredential.user
       
@@ -115,6 +126,10 @@ class AuthService {
 
   async signOut(): Promise<void> {
     try {
+      if (!auth) {
+        throw new Error('Firebase Auth is not initialized')
+      }
+      
       await signOut(auth)
     } catch (error) {
       console.error('Sign out error:', error)
@@ -124,6 +139,10 @@ class AuthService {
 
   async resetPassword(email: string): Promise<void> {
     try {
+      if (!auth) {
+        throw new Error('Firebase Auth is not initialized')
+      }
+      
       await sendPasswordResetEmail(auth, email)
     } catch (error) {
       console.error('Reset password error:', error)

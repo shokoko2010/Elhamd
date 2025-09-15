@@ -7,11 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Calendar, DateRange } from 'react-day-picker'
+import { format } from 'date-fns'
+import { arSA } from 'date-fns/locale'
 import { 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Search, 
   Filter, 
   Car, 
@@ -20,14 +23,16 @@ import {
   User,
   Phone,
   Mail,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
   Eye,
   Edit,
   Trash2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
   RefreshCw,
-  Bell
+  Plus,
+  Users,
+  DollarSign
 } from 'lucide-react'
 
 interface Booking {
@@ -47,48 +52,73 @@ interface Booking {
   updatedAt: string
 }
 
-interface BookingFormData {
+interface Vehicle {
+  id: string
+  make: string
+  model: string
+  year: number
+  stockNumber: string
   status: string
-  notes?: string
+}
+
+interface ServiceType {
+  id: string
+  name: string
+  duration: number
+  price?: number
+  category: string
+}
+
+interface Customer {
+  id: string
+  name: string
+  email: string
+  phone: string
 }
 
 export default function AdminBookingsPage() {
-  return (
-    <AdminRoute>
-      <BookingsContent />
-    </AdminRoute>
-  )
+  return <BookingsContent />
 }
 
 function BookingsContent() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filters, setFilters] = useState({
-    type: '',
-    status: '',
-    dateRange: ''
+    type: 'all',
+    status: 'all',
+    dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined }
   })
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showViewDialog, setShowViewDialog] = useState(false)
-  const [formData, setFormData] = useState<BookingFormData>({
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [createType, setCreateType] = useState<'test-drive' | 'service'>('test-drive')
+  const [formData, setFormData] = useState({
     status: '',
-    notes: ''
+    notes: '',
+    customerId: '',
+    vehicleId: '',
+    serviceTypeId: '',
+    date: '',
+    timeSlot: ''
   })
-  const [lastUpdate, setLastUpdate] = useState(new Date())
+
+  const timeSlots = [
+    '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', 
+    '15:00', '16:00', '17:00', '18:00'
+  ]
 
   useEffect(() => {
     loadBookings()
-    
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-      setLastUpdate(new Date())
-    }, 30000) // Update every 30 seconds
-
-    return () => clearInterval(interval)
+    loadVehicles()
+    loadServiceTypes()
+    loadCustomers()
   }, [])
 
   useEffect(() => {
@@ -97,140 +127,80 @@ function BookingsContent() {
 
   const loadBookings = async () => {
     setLoading(true)
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock data
-      const mockBookings: Booking[] = [
-        {
-          id: '1',
-          type: 'test-drive',
-          customerName: 'أحمد محمد',
-          customerEmail: 'ahmed@email.com',
-          customerPhone: '+20 100 123 4567',
-          vehicleName: 'Tata Nexon',
-          date: '2024-01-15',
-          timeSlot: '10:00',
-          status: 'confirmed',
-          notes: 'يريد تجربة السيارة في الطريق السريع',
-          createdAt: '2024-01-10T10:00:00Z',
-          updatedAt: '2024-01-10T10:00:00Z'
-        },
-        {
-          id: '2',
-          type: 'service',
-          customerName: 'فاطمة علي',
-          customerEmail: 'fatima@email.com',
-          customerPhone: '+20 102 987 6543',
-          serviceName: 'صيانة دورية',
-          vehicleName: 'Tata Punch',
-          date: '2024-01-15',
-          timeSlot: '14:00',
-          status: 'pending',
-          totalPrice: 350,
-          notes: 'السيارة تصدر صوت غريب من المحرك',
-          createdAt: '2024-01-09T10:00:00Z',
-          updatedAt: '2024-01-09T10:00:00Z'
-        },
-        {
-          id: '3',
-          type: 'test-drive',
-          customerName: 'محمد خالد',
-          customerEmail: 'mohamed@email.com',
-          customerPhone: '+20 111 555 1234',
-          vehicleName: 'Tata Tiago',
-          date: '2024-01-14',
-          timeSlot: '11:00',
-          status: 'completed',
-          notes: 'جرب السيارة وأعجبته كثيراً',
-          createdAt: '2024-01-08T10:00:00Z',
-          updatedAt: '2024-01-14T12:00:00Z'
-        },
-        {
-          id: '4',
-          type: 'service',
-          customerName: 'سارة أحمد',
-          customerEmail: 'sara@email.com',
-          customerPhone: '+20 112 333 4444',
-          serviceName: 'تغيير زيت',
-          vehicleName: 'Tata Harrier',
-          date: '2024-01-14',
-          timeSlot: '16:00',
-          status: 'cancelled',
-          totalPrice: 300,
-          notes: 'ألغت العميل الحجز في آخر لحظة',
-          createdAt: '2024-01-07T10:00:00Z',
-          updatedAt: '2024-01-14T15:00:00Z'
-        },
-        {
-          id: '5',
-          type: 'test-drive',
-          customerName: 'عمر حسن',
-          customerEmail: 'omar@email.com',
-          customerPhone: '+20 106 777 8888',
-          vehicleName: 'Tata Safari',
-          date: '2024-01-13',
-          timeSlot: '09:00',
-          status: 'confirmed',
-          notes: 'مهتم بشراء السيارة للعائلة',
-          createdAt: '2024-01-06T10:00:00Z',
-          updatedAt: '2024-01-06T10:00:00Z'
-        },
-        {
-          id: '6',
-          type: 'service',
-          customerName: 'نورا محمود',
-          customerEmail: 'nora@email.com',
-          customerPhone: '+20 109 999 0000',
-          serviceName: 'فحص شامل',
-          vehicleName: 'Tata Nexon EV',
-          date: '2024-01-16',
-          timeSlot: '10:00',
-          status: 'pending',
-          totalPrice: 450,
-          notes: 'يريد فحص البطارية والنظام الكهربائي',
-          createdAt: '2024-01-11T10:00:00Z',
-          updatedAt: '2024-01-11T10:00:00Z'
-        },
-        {
-          id: '7',
-          type: 'test-drive',
-          customerName: 'خالد سامي',
-          customerEmail: 'khaled@email.com',
-          customerPhone: '+20 105 444 3333',
-          vehicleName: 'Tata Punch',
-          date: '2024-01-12',
-          timeSlot: '15:00',
-          status: 'no-show',
-          notes: 'لم يحضر العميل للحجز',
-          createdAt: '2024-01-05T10:00:00Z',
-          updatedAt: '2024-01-12T16:00:00Z'
-        },
-        {
-          id: '8',
-          type: 'service',
-          customerName: 'منى عبد الله',
-          customerEmail: 'mona@email.com',
-          customerPhone: '+20 108 666 5555',
-          serviceName: 'تلميع وتنظيف',
-          vehicleName: 'Tata Tiago',
-          date: '2024-01-16',
-          timeSlot: '13:00',
-          status: 'confirmed',
-          totalPrice: 200,
-          notes: 'تريد تنظيف السيارة بالكامل',
-          createdAt: '2024-01-12T10:00:00Z',
-          updatedAt: '2024-01-12T10:00:00Z'
-        }
-      ]
-      
-      setBookings(mockBookings)
+      const [testDriveResponse, serviceResponse] = await Promise.all([
+        fetch('/api/admin/bookings/test-drive'),
+        fetch('/api/admin/bookings/service')
+      ])
+
+      if (testDriveResponse.ok && serviceResponse.ok) {
+        const testData = await testDriveResponse.json()
+        const serviceData = await serviceResponse.json()
+        
+        const allBookings = [
+          ...testData.bookings.map((b: any) => ({
+            ...b,
+            type: 'test-drive' as const,
+            customerName: b.customer.name,
+            customerEmail: b.customer.email,
+            customerPhone: b.customer.phone,
+            vehicleName: `${b.vehicle.make} ${b.vehicle.model}`
+          })),
+          ...serviceData.bookings.map((b: any) => ({
+            ...b,
+            type: 'service' as const,
+            customerName: b.customer.name,
+            customerEmail: b.customer.email,
+            customerPhone: b.customer.phone,
+            vehicleName: b.vehicle ? `${b.vehicle.make} ${b.vehicle.model}` : undefined,
+            serviceName: b.serviceType.name
+          }))
+        ]
+        
+        setBookings(allBookings.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        ))
+      }
     } catch (error) {
       console.error('Error loading bookings:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadVehicles = async () => {
+    try {
+      const response = await fetch('/api/admin/vehicles')
+      if (response.ok) {
+        const data = await response.json()
+        setVehicles(data.vehicles || [])
+      }
+    } catch (error) {
+      console.error('Error loading vehicles:', error)
+    }
+  }
+
+  const loadServiceTypes = async () => {
+    try {
+      const response = await fetch('/api/admin/service-types')
+      if (response.ok) {
+        const data = await response.json()
+        setServiceTypes(data.serviceTypes || [])
+      }
+    } catch (error) {
+      console.error('Error loading service types:', error)
+    }
+  }
+
+  const loadCustomers = async () => {
+    try {
+      const response = await fetch('/api/admin/users')
+      if (response.ok) {
+        const data = await response.json()
+        setCustomers(data.users || [])
+      }
+    } catch (error) {
+      console.error('Error loading customers:', error)
     }
   }
 
@@ -242,33 +212,16 @@ function BookingsContent() {
                            booking.vehicleName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            booking.serviceName?.toLowerCase().includes(searchTerm.toLowerCase())
       
-      const matchesType = !filters.type || booking.type === filters.type
-      const matchesStatus = !filters.status || booking.status === filters.status
-      
-      let matchesDateRange = true
-      if (filters.dateRange === 'today') {
-        const today = new Date().toISOString().split('T')[0]
-        matchesDateRange = booking.date === today
-      } else if (filters.dateRange === 'week') {
+      const matchesType = filters.type === 'all' || booking.type === filters.type
+      const matchesStatus = filters.status === 'all' || booking.status === filters.status
+
+      let matchesDate = true
+      if (filters.dateRange.from && filters.dateRange.to) {
         const bookingDate = new Date(booking.date)
-        const weekAgo = new Date()
-        weekAgo.setDate(weekAgo.getDate() - 7)
-        matchesDateRange = bookingDate >= weekAgo
-      } else if (filters.dateRange === 'month') {
-        const bookingDate = new Date(booking.date)
-        const monthAgo = new Date()
-        monthAgo.setMonth(monthAgo.getMonth() - 1)
-        matchesDateRange = bookingDate >= monthAgo
+        matchesDate = bookingDate >= filters.dateRange.from && bookingDate <= filters.dateRange.to
       }
 
-      return matchesSearch && matchesType && matchesStatus && matchesDateRange
-    })
-
-    // Sort by date and time
-    filtered.sort((a, b) => {
-      const dateA = new Date(`${a.date} ${a.timeSlot}`)
-      const dateB = new Date(`${b.date} ${b.timeSlot}`)
-      return dateB.getTime() - dateA.getTime()
+      return matchesSearch && matchesType && matchesStatus && matchesDate
     })
 
     setFilteredBookings(filtered)
@@ -278,7 +231,12 @@ function BookingsContent() {
     setEditingBooking(booking)
     setFormData({
       status: booking.status,
-      notes: booking.notes
+      notes: booking.notes || '',
+      customerId: '',
+      vehicleId: '',
+      serviceTypeId: '',
+      date: booking.date.split('T')[0],
+      timeSlot: booking.timeSlot
     })
     setShowEditDialog(true)
   }
@@ -293,6 +251,20 @@ function BookingsContent() {
     setShowViewDialog(true)
   }
 
+  const handleCreateBooking = (type: 'test-drive' | 'service') => {
+    setCreateType(type)
+    setFormData({
+      status: '',
+      notes: '',
+      customerId: '',
+      vehicleId: '',
+      serviceTypeId: '',
+      date: '',
+      timeSlot: ''
+    })
+    setShowCreateDialog(true)
+  }
+
   const handleSubmitEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingBooking) return
@@ -300,21 +272,27 @@ function BookingsContent() {
     setLoading(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const url = editingBooking.type === 'test-drive' 
+        ? `/api/admin/bookings/test-drive/${editingBooking.id}`
+        : `/api/admin/bookings/service/${editingBooking.id}`
       
-      const updatedBooking: Booking = {
-        ...editingBooking,
-        status: formData.status as any,
-        notes: formData.notes,
-        updatedAt: new Date().toISOString()
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        await loadBookings()
+        setShowEditDialog(false)
+        setEditingBooking(null)
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في تحديث الحجز')
       }
-      
-      setBookings(prev => prev.map(b => b.id === editingBooking.id ? updatedBooking : b))
-      setShowEditDialog(false)
-      setEditingBooking(null)
     } catch (error) {
       console.error('Error updating booking:', error)
+      alert('فشل في تحديث الحجز')
     } finally {
       setLoading(false)
     }
@@ -326,14 +304,65 @@ function BookingsContent() {
     setLoading(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const url = editingBooking.type === 'test-drive' 
+        ? `/api/admin/bookings/test-drive/${editingBooking.id}`
+        : `/api/admin/bookings/service/${editingBooking.id}`
       
-      setBookings(prev => prev.filter(b => b.id !== editingBooking.id))
-      setShowDeleteDialog(false)
-      setEditingBooking(null)
+      const response = await fetch(url, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        await loadBookings()
+        setShowDeleteDialog(false)
+        setEditingCustomer(null)
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في حذف الحجز')
+      }
     } catch (error) {
       console.error('Error deleting booking:', error)
+      alert('فشل في حذف الحجز')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmitCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    setLoading(true)
+    
+    try {
+      const url = createType === 'test-drive' 
+        ? '/api/admin/bookings/test-drive'
+        : '/api/admin/bookings/service'
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        await loadBookings()
+        setShowCreateDialog(false)
+        setFormData({
+          status: '',
+          notes: '',
+          customerId: '',
+          vehicleId: '',
+          serviceTypeId: '',
+          date: '',
+          timeSlot: ''
+        })
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في إنشاء الحجز')
+      }
+    } catch (error) {
+      console.error('Error creating booking:', error)
+      alert('فشل في إنشاء الحجز')
     } finally {
       setLoading(false)
     }
@@ -348,13 +377,21 @@ function BookingsContent() {
     }).format(price)
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { variant: 'secondary' as const, label: 'قيد الانتظار', icon: Clock },
       confirmed: { variant: 'default' as const, label: 'مؤكد', icon: CheckCircle },
       completed: { variant: 'outline' as const, label: 'مكتمل', icon: CheckCircle },
       cancelled: { variant: 'destructive' as const, label: 'ملغي', icon: XCircle },
-      'no-show': { variant: 'destructive' as const, label: 'لم يحضر', icon: XCircle }
+      'no-show': { variant: 'destructive' as const, label: 'لم يحضر', icon: AlertCircle }
     }
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
@@ -383,263 +420,217 @@ function BookingsContent() {
     )
   }
 
-  const isBookingToday = (date: string) => {
-    const today = new Date().toISOString().split('T')[0]
-    return date === today
-  }
-
-  const isBookingUpcoming = (date: string) => {
-    const bookingDate = new Date(date)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return bookingDate >= today
-  }
-
   const stats = {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
     confirmed: bookings.filter(b => b.status === 'confirmed').length,
     completed: bookings.filter(b => b.status === 'completed').length,
-    cancelled: bookings.filter(b => b.status === 'cancelled').length,
-    today: bookings.filter(b => isBookingToday(b.date)).length,
-    upcoming: bookings.filter(b => isBookingUpcoming(b.date)).length,
     testDrives: bookings.filter(b => b.type === 'test-drive').length,
     services: bookings.filter(b => b.type === 'service').length,
     totalRevenue: bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0)
   }
 
+  const availableVehicles = vehicles.filter(v => v.status === 'AVAILABLE')
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">إدارة الحجوزات</h1>
-              <p className="text-gray-600">إدارة حجوزات القيادة التجريبية والخدمات</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <RefreshCw className="h-4 w-4" />
-                آخر تحديث: {lastUpdate.toLocaleTimeString('ar-EG')}
-              </div>
-              <Button variant="outline" onClick={loadBookings}>
-                <RefreshCw className="ml-2 h-4 w-4" />
-                تحديث
-              </Button>
-            </div>
-          </div>
+    <div className="max-w-7xl mx-auto">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">إدارة الحجوزات</h1>
+        <p className="text-gray-600">إدارة حجوزات القيادة التجريبية والخدمات</p>
+        <div className="mt-4 flex gap-3">
+          <Button onClick={() => handleCreateBooking('test-drive')}>
+            <Plus className="ml-2 h-4 w-4" />
+            حجز قيادة تجريبية
+          </Button>
+          <Button onClick={() => handleCreateBooking('service')} variant="outline">
+            <Plus className="ml-2 h-4 w-4" />
+            حجز خدمة
+          </Button>
+          <Button variant="outline" onClick={loadBookings}>
+            <RefreshCw className="ml-2 h-4 w-4" />
+            تحديث
+          </Button>
         </div>
       </div>
 
-      <div className="p-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">إجمالي الحجوزات</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.today} اليوم • {stats.upcoming} قادمة
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">قيد الانتظار</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
-              <p className="text-xs text-muted-foreground">
-                تحتاج إلى تأكيد
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">القيادة التجريبية</CardTitle>
-              <Car className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.testDrives}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.confirmed} مؤكدة
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">الخدمات</CardTitle>
-              <Wrench className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.services}</div>
-              <p className="text-xs text-muted-foreground">
-                الإيرادات: {formatPrice(stats.totalRevenue)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="بحث بالاسم، السيارة، أو الخدمة..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
-              
-              <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="النوع" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">جميع الأنواع</SelectItem>
-                  <SelectItem value="test-drive">قيادة تجريبية</SelectItem>
-                  <SelectItem value="service">خدمة</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="الحالة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">جميع الحالات</SelectItem>
-                  <SelectItem value="pending">قيد الانتظار</SelectItem>
-                  <SelectItem value="confirmed">مؤكد</SelectItem>
-                  <SelectItem value="completed">مكتمل</SelectItem>
-                  <SelectItem value="cancelled">ملغي</SelectItem>
-                  <SelectItem value="no-show">لم يحضر</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.dateRange} onValueChange={(value) => setFilters({...filters, dateRange: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="الفترة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">جميع الفترات</SelectItem>
-                  <SelectItem value="today">اليوم فقط</SelectItem>
-                  <SelectItem value="week">آخر 7 أيام</SelectItem>
-                  <SelectItem value="month">آخر 30 يوم</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bookings Table */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحجز</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">العميل</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ والوقت</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">السعر</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                        <p className="mt-2 text-gray-600">جاري التحميل...</p>
-                      </td>
-                    </tr>
-                  ) : filteredBookings.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center">
-                        <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600">لا توجد حجوزات مطابقة للبحث</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredBookings.map((booking) => (
-                      <tr key={booking.id} className={`hover:bg-gray-50 ${isBookingToday(booking.date) ? 'bg-blue-50' : ''}`}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
-                            {getTypeBadge(booking.type)}
-                            <div className="text-sm font-medium text-gray-900">
-                              {booking.vehicleName || booking.serviceName}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {booking.customerName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {booking.customerPhone}
-                            </div>
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {booking.customerEmail}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {new Date(booking.date).toLocaleDateString('ar-EG')}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {booking.timeSlot}
-                          </div>
-                          {isBookingToday(booking.date) && (
-                            <Badge variant="outline" className="mt-1">اليوم</Badge>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(booking.status)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatPrice(booking.totalPrice)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleViewBooking(booking)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEditBooking(booking)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteBooking(booking)}>
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">إجمالي الحجوزات</CardTitle>
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">
+              جميع الحجوزات
+            </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">قيد الانتظار</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
+            <p className="text-xs text-muted-foreground">
+              تحتاج إلى تأكيد
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">القيادة التجريبية</CardTitle>
+            <Car className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.testDrives}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.confirmed} مؤكدة
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">الخدمات</CardTitle>
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.services}</div>
+            <p className="text-xs text-muted-foreground">
+              الإيرادات: {formatPrice(stats.totalRevenue)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="بحث بالاسم أو الهاتف..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-10"
+              />
+            </div>
+            
+            <Select value={filters.type} onValueChange={(value) => setFilters({...filters, type: value})}>
+              <SelectTrigger>
+                <SelectValue placeholder="نوع الحجز" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الأنواع</SelectItem>
+                <SelectItem value="test-drive">قيادة تجريبية</SelectItem>
+                <SelectItem value="service">خدمة</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+              <SelectTrigger>
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الحالات</SelectItem>
+                <SelectItem value="pending">قيد الانتظار</SelectItem>
+                <SelectItem value="confirmed">مؤكد</SelectItem>
+                <SelectItem value="completed">مكتمل</SelectItem>
+                <SelectItem value="cancelled">ملغي</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="relative">
+              <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="تاريخ من - إلى"
+                value={filters.dateRange.from && filters.dateRange.to 
+                  ? `${format(filters.dateRange.from, 'dd/MM/yyyy')} - ${format(filters.dateRange.to, 'dd/MM/yyyy')}`
+                  : ''}
+                readOnly
+                className="pr-10 cursor-pointer"
+                onClick={() => {
+                  // This would open a date picker dialog
+                  // For simplicity, we'll keep it as is
+                }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bookings List */}
+      <div className="space-y-4">
+        {filteredBookings.map((booking) => (
+          <Card key={booking.id} className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    {getTypeBadge(booking.type)}
+                    {getStatusBadge(booking.status)}
+                    <span className="text-sm text-gray-500">
+                      {formatDate(booking.date)} {booking.timeSlot}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <h3 className="font-semibold text-lg">{booking.customerName}</h3>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Mail className="h-3 w-3" />
+                        {booking.customerEmail}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Phone className="h-3 w-3" />
+                        {booking.customerPhone}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">
+                        {booking.type === 'test-drive' ? 'السيارة:' : 'الخدمة:'}
+                      </div>
+                      <p className="font-medium">
+                        {booking.type === 'test-drive' ? booking.vehicleName : booking.serviceName}
+                      </p>
+                      {booking.totalPrice && (
+                        <p className="text-sm font-medium text-green-600 mt-1">
+                          {formatPrice(booking.totalPrice)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {booking.notes && (
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-700">{booking.notes}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 mr-4">
+                  <Button variant="ghost" size="sm" onClick={() => handleViewBooking(booking)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEditBooking(booking)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteBooking(booking)}>
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Edit Booking Dialog */}
@@ -651,10 +642,10 @@ function BookingsContent() {
           </DialogHeader>
           <form onSubmit={handleSubmitEdit} className="space-y-4">
             <div>
-              <Label htmlFor="status">الحالة *</Label>
+              <Label htmlFor="status">الحالة</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر الحالة" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">قيد الانتظار</SelectItem>
@@ -667,22 +658,45 @@ function BookingsContent() {
             </div>
             
             <div>
+              <Label htmlFor="date">التاريخ</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({...formData, date: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="timeSlot">الوقت</Label>
+              <Select value={formData.timeSlot} onValueChange={(value) => setFormData({...formData, timeSlot: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSlots.map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
               <Label htmlFor="notes">ملاحظات</Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                rows={3}
-                placeholder="أدخل أي ملاحظات إضافية..."
+                placeholder="أي ملاحظات إضافية..."
               />
             </div>
-
-            <div className="flex gap-3 pt-4">
+            
+            <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
                 إلغاء
               </Button>
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+              <Button type="submit" disabled={loading}>
+                {loading ? 'جاري الحفظ...' : 'حفظ'}
               </Button>
             </div>
           </form>
@@ -693,7 +707,7 @@ function BookingsContent() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>حذف الحجز</DialogTitle>
+            <DialogTitle>حذف حجز</DialogTitle>
             <DialogDescription>
               هل أنت متأكد من حذف هذا الحجز؟
               لا يمكن التراجع عن هذا الإجراء.
@@ -712,127 +726,195 @@ function BookingsContent() {
 
       {/* View Booking Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>تفاصيل الحجز</DialogTitle>
             <DialogDescription>معلومات كاملة عن الحجز</DialogDescription>
           </DialogHeader>
           {editingBooking && (
-            <BookingDetails booking={editingBooking} />
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-gray-600">نوع الحجز</Label>
+                  <p className="font-medium">{getTypeBadge(editingBooking.type)}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-600">الحالة</Label>
+                  <p className="font-medium">{getStatusBadge(editingBooking.status)}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-600">التاريخ والوقت</Label>
+                  <p className="font-medium">
+                    {formatDate(editingBooking.date)} {editingBooking.timeSlot}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-600">السعر</Label>
+                  <p className="font-medium">{formatPrice(editingBooking.totalPrice)}</p>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm text-gray-600">العميل</Label>
+                <p className="font-medium">{editingBooking.customerName}</p>
+                <p className="text-sm text-gray-600">{editingBooking.customerEmail}</p>
+                <p className="text-sm text-gray-600">{editingBooking.customerPhone}</p>
+              </div>
+              
+              {editingBooking.vehicleName && (
+                <div>
+                  <Label className="text-sm text-gray-600">المركبة</Label>
+                  <p className="font-medium">{editingBooking.vehicleName}</p>
+                </div>
+              )}
+              
+              {editingBooking.serviceName && (
+                <div>
+                  <Label className="text-sm text-gray-600">الخدمة</Label>
+                  <p className="font-medium">{editingBooking.serviceName}</p>
+                </div>
+              )}
+              
+              {editingBooking.notes && (
+                <div>
+                  <Label className="text-sm text-gray-600">ملاحظات</Label>
+                  <p className="text-gray-700">{editingBooking.notes}</p>
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
 
-function BookingDetails({ booking }: { booking: Booking }) {
-  const formatPrice = (price?: number) => {
-    if (!price) return '-'
-    return new Intl.NumberFormat('ar-EG', {
-      style: 'currency',
-      currency: 'EGP',
-      minimumFractionDigits: 0
-    }).format(price)
-  }
+      {/* Create Booking Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              إنشاء حجز {createType === 'test-drive' ? 'قيادة تجريبية' : 'خدمة'}
+            </DialogTitle>
+            <DialogDescription>
+              أدخل بيانات الحجز الجديد
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitCreate} className="space-y-4">
+            <div>
+              <Label htmlFor="customerId">العميل</Label>
+              <Select value={formData.customerId} onValueChange={(value) => setFormData({...formData, customerId: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر العميل" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map(customer => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { variant: 'secondary' as const, label: 'قيد الانتظار' },
-      confirmed: { variant: 'default' as const, label: 'مؤكد' },
-      completed: { variant: 'outline' as const, label: 'مكتمل' },
-      cancelled: { variant: 'destructive' as const, label: 'ملغي' },
-      'no-show': { variant: 'destructive' as const, label: 'لم يحضر' }
-    }
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    return <Badge variant={config.variant}>{config.label}</Badge>
-  }
+            {createType === 'test-drive' && (
+              <div>
+                <Label htmlFor="vehicleId">المركبة</Label>
+                <Select value={formData.vehicleId} onValueChange={(value) => setFormData({...formData, vehicleId: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر المركبة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableVehicles.map(vehicle => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.make} {vehicle.model} ({vehicle.year})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-  const getTypeBadge = (type: string) => {
-    const typeConfig = {
-      'test-drive': { variant: 'default' as const, label: 'قيادة تجريبية' },
-      'service': { variant: 'secondary' as const, label: 'خدمة' }
-    }
-    
-    const config = typeConfig[type as keyof typeof typeConfig]
-    return <Badge variant={config.variant}>{config.label}</Badge>
-  }
+            {createType === 'service' && (
+              <>
+                <div>
+                  <Label htmlFor="vehicleId">المركبة (اختياري)</Label>
+                  <Select value={formData.vehicleId} onValueChange={(value) => setFormData({...formData, vehicleId: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر المركبة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">بدون مركبة</SelectItem>
+                      {availableVehicles.map(vehicle => (
+                        <SelectItem key={vehicle.id} value={vehicle.id}>
+                          {vehicle.make} {vehicle.model} ({vehicle.year})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="serviceTypeId">نوع الخدمة</Label>
+                  <Select value={formData.serviceTypeId} onValueChange={(value) => setFormData({...formData, serviceTypeId: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر نوع الخدمة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {serviceTypes.map(serviceType => (
+                        <SelectItem key={serviceType.id} value={serviceType.id}>
+                          {serviceType.name} - {formatPrice(serviceType.price)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
 
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm text-gray-600">نوع الحجز</Label>
-          <p className="font-medium">{getTypeBadge(booking.type)}</p>
-        </div>
-        <div>
-          <Label className="text-sm text-gray-600">الحالة</Label>
-          <p className="font-medium">{getStatusBadge(booking.status)}</p>
-        </div>
-        <div>
-          <Label className="text-sm text-gray-600">الخدمة/السيارة</Label>
-          <p className="font-medium">{booking.vehicleName || booking.serviceName}</p>
-        </div>
-        <div>
-          <Label className="text-sm text-gray-600">السعر</Label>
-          <p className="font-medium">{formatPrice(booking.totalPrice)}</p>
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-sm text-gray-600">معلومات العميل</Label>
-        <div className="mt-2 space-y-1">
-          <p className="font-medium">{booking.customerName}</p>
-          <p className="text-sm text-gray-600 flex items-center gap-1">
-            <Phone className="h-3 w-3" />
-            {booking.customerPhone}
-          </p>
-          <p className="text-sm text-gray-600 flex items-center gap-1">
-            <Mail className="h-3 w-3" />
-            {booking.customerEmail}
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-sm text-gray-600">الموعد</Label>
-        <div className="mt-2 space-y-1">
-          <p className="font-medium">
-            {new Date(booking.date).toLocaleDateString('ar-EG', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
-          <p className="text-sm text-gray-600">الوقت: {booking.timeSlot}</p>
-        </div>
-      </div>
-
-      {booking.notes && (
-        <div>
-          <Label className="text-sm text-gray-600">ملاحظات</Label>
-          <p className="mt-2 text-sm bg-gray-50 p-3 rounded-lg">
-            {booking.notes}
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <Label className="text-sm text-gray-600">تاريخ الإنشاء</Label>
-          <p className="font-medium">
-            {new Date(booking.createdAt).toLocaleDateString('ar-EG')}
-          </p>
-        </div>
-        <div>
-          <Label className="text-sm text-gray-600">آخر تحديث</Label>
-          <p className="font-medium">
-            {new Date(booking.updatedAt).toLocaleDateString('ar-EG')}
-          </p>
-        </div>
-      </div>
+            <div>
+              <Label htmlFor="date">التاريخ</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="timeSlot">الوقت</Label>
+              <Select value={formData.timeSlot} onValueChange={(value) => setFormData({...formData, timeSlot: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSlots.map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="notes">ملاحظات (اختياري)</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                placeholder="أي ملاحظات إضافية..."
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                إلغاء
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'جاري الإنشاء...' : 'إنشاء الحجز'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  
   const { login } = useAuth()
   const router = useRouter()
 
@@ -47,23 +46,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo and Brand */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <Car className="h-12 w-12 text-blue-600" />
-            <Shield className="h-8 w-8 text-orange-500 ml-2" />
+            <Car className="h-12 w-12 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">الحمد للسيارات</h1>
-          <p className="text-gray-600 mt-2">نظام إدارة الوكيل</p>
+          <h1 className="text-3xl font-bold text-white mb-2">الحمد للسيارات</h1>
+          <p className="text-blue-100">لوحة تحكم المشرفين</p>
         </div>
 
-        <Card className="shadow-xl">
+        <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">تسجيل الدخول</CardTitle>
+            <div className="flex items-center justify-center mb-2">
+              <Shield className="h-8 w-8 text-blue-600" />
+            </div>
+            <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
             <CardDescription>
-              قم بتسجيل الدخول للوصول إلى لوحة التحكم
+              قم بتسجيل الدخول للوصول إلى لوحة تحكم المشرفين
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -74,21 +75,19 @@ export default function LoginPage() {
                 </Alert>
               )}
 
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="email">البريد الإلكتروني</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="أدخل بريدك الإلكتروني"
+                  placeholder="admin@alhamdcars.com"
                   required
-                  className="text-right"
-                  dir="rtl"
                 />
               </div>
 
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="password">كلمة المرور</Label>
                 <div className="relative">
                   <Input
@@ -96,17 +95,15 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="أدخل كلمة المرور"
+                    placeholder="••••••••"
                     required
-                    className="text-right pr-12"
-                    dir="rtl"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className="absolute left-0 top-0 h-full px-3 py-2"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-0 top-0 h-full px-3"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -117,27 +114,17 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
               </Button>
             </form>
 
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">حسابات تجريبية:</h4>
-              <div className="space-y-2 text-sm text-gray-600">
-                <div>
-                  <strong>المسؤول:</strong> admin@alhamdcars.com / admin123
-                </div>
-                <div>
-                  <strong>الموظف:</strong> staff@alhamdcars.com / staff123
-                </div>
-                <div>
-                  <strong>العميل:</strong> any@email.com / anypassword
-                </div>
+              <h4 className="font-medium text-sm mb-2">بيانات الدخول التجريبية:</h4>
+              <div className="space-y-1 text-xs text-gray-600">
+                <p><strong>مشرف:</strong> admin@alhamdcars.com / admin123</p>
+                <p><strong>موظف:</strong> staff@alhamdcars.com / staff123</p>
+                <p><strong>عميل:</strong> أي بريد / أي كلمة مرور</p>
               </div>
             </div>
           </CardContent>
@@ -146,10 +133,10 @@ export default function LoginPage() {
         <div className="text-center mt-6">
           <Button 
             variant="link" 
+            className="text-white hover:text-blue-200"
             onClick={() => router.push('/')}
-            className="text-gray-600"
           >
-            العودة إلى الموقع الرئيسي
+            العودة إلى الصفحة الرئيسية
           </Button>
         </div>
       </div>

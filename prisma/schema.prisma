@@ -19,12 +19,15 @@ model User {
   name      String?
   role      UserRole @default(CUSTOMER)
   phone     String?
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
   testDriveBookings TestDriveBooking[]
   serviceBookings   ServiceBooking[]
+  permissions      UserPermission[]
   
   @@map("users")
 }
@@ -127,11 +130,54 @@ model ServiceBooking {
   @@map("service_bookings")
 }
 
+model Permission {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  category    PermissionCategory
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  userPermissions UserPermission[]
+  
+  @@map("permissions")
+}
+
+model UserPermission {
+  id           String   @id @default(cuid())
+  userId       String
+  permissionId String
+  grantedBy    String?
+  grantedAt    DateTime @default(now())
+  expiresAt    DateTime?
+  
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, permissionId], name: "userId_permissionId")
+  @@map("user_permissions")
+}
+
 // Enums
 enum UserRole {
   CUSTOMER
   ADMIN
   STAFF
+  MANAGER
+  SUPER_ADMIN
+}
+
+enum PermissionCategory {
+  USER_MANAGEMENT
+  VEHICLE_MANAGEMENT
+  BOOKING_MANAGEMENT
+  SERVICE_MANAGEMENT
+  REPORTING
+  SYSTEM_SETTINGS
+  FINANCIAL
 }
 
 enum VehicleCategory {

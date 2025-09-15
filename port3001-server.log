@@ -1,0 +1,6 @@
+> Ready on http://0.0.0.0:3000
+> Socket.IO server running at ws://0.0.0.0:3000/api/socketio
+ ○ Compiling /admin/dashboard ...
+ ✓ Compiled /admin/dashboard in 7.7s (1190 modules)
+ GET /admin/dashboard 200 in 8665ms
+ ✓ Compiled in 952ms (488 modules)

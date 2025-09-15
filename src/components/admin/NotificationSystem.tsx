@@ -38,37 +38,65 @@ export default function NotificationSystem() {
   const { user } = useAuth()
 
   useEffect(() => {
-    if (user) {
+    if (user && typeof window !== 'undefined') {
       // Initialize socket connection
-      const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000')
-      setSocket(newSocket)
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
+      console.log('Connecting to socket:', socketUrl)
+      
+      try {
+        const newSocket = io(socketUrl, {
+          transports: ['websocket', 'polling'],
+          timeout: 5000,
+          retries: 3
+        })
+        
+        newSocket.on('connect', () => {
+          console.log('Socket connected:', newSocket.id)
+          setSocket(newSocket)
 
-      // Join appropriate room based on user role
-      if (user.role === 'ADMIN') {
-        newSocket.emit('join-room', 'admin')
-      } else if (user.role === 'STAFF') {
-        newSocket.emit('join-room', 'staff')
-      } else {
-        newSocket.emit('join-room', `customer-${user.email}`)
-      }
+          // Join appropriate room based on user role
+          if (user.role === 'ADMIN') {
+            newSocket.emit('join-room', 'admin')
+          } else if (user.role === 'STAFF') {
+            newSocket.emit('join-room', 'staff')
+          } else {
+            newSocket.emit('join-room', `customer-${user.email}`)
+          }
+        })
 
-      // Listen for notifications
-      newSocket.on('notification', (payload: any) => {
-        const newNotification: Notification = {
-          id: `notification-${Date.now()}-${Math.random()}`,
-          type: payload.type,
-          action: payload.action,
-          data: payload.data,
-          timestamp: payload.timestamp,
-          read: false
+        newSocket.on('connect_error', (error) => {
+          console.error('Socket connection error:', error)
+        })
+
+        // Listen for notifications
+        newSocket.on('notification', (payload: any) => {
+          console.log('Received notification:', payload)
+          if (payload && typeof payload === 'object') {
+            const newNotification: Notification = {
+              id: `notification-${Date.now()}-${Math.random()}`,
+              type: payload.type || 'system',
+              action: payload.action || 'created',
+              data: payload.data || {},
+              timestamp: payload.timestamp || new Date().toISOString(),
+              read: false
+            }
+
+            setNotifications(prev => [newNotification, ...prev])
+            setUnreadCount(prev => prev + 1)
+          }
+        })
+
+        newSocket.on('disconnect', (reason) => {
+          console.log('Socket disconnected:', reason)
+        })
+
+        return () => {
+          if (newSocket) {
+            newSocket.disconnect()
+          }
         }
-
-        setNotifications(prev => [newNotification, ...prev])
-        setUnreadCount(prev => prev + 1)
-      })
-
-      return () => {
-        newSocket.disconnect()
+      } catch (error) {
+        console.error('Failed to initialize socket:', error)
       }
     }
   }, [user])
@@ -142,31 +170,31 @@ export default function NotificationSystem() {
       case 'booking':
         if (action === 'created') {
           if (data.bookingType === 'test-drive') {
-            return `New test drive booking for ${data.vehicleName}`
+            return `حجز قيادة تجريبية جديد لـ ${data.vehicleName}`
           } else {
-            return `New service booking: ${data.serviceName}`
+            return `حجز خدمة جديد: ${data.serviceName}`
           }
         } else if (action === 'status_changed') {
-          return `Booking status updated to ${data.status}`
+          return `تم تحديث حالة الحجز إلى ${data.status}`
         }
         break
       case 'vehicle':
         if (action === 'created') {
-          return `New vehicle added: ${data.make} ${data.model}`
+          return `سيارة جديدة مضافة: ${data.make} ${data.model}`
         } else if (action === 'updated') {
-          return `Vehicle updated: ${data.make} ${data.model}`
+          return `سيارة محدثة: ${data.make} ${data.model}`
         }
         break
       case 'customer':
         if (action === 'created') {
-          return `New customer registered: ${data.name}`
+          return `عميل جديد مسجل: ${data.name}`
         }
         break
       case 'system':
-        return data.message || 'System notification'
+        return data.message || 'إشعار نظام'
     }
 
-    return 'New notification'
+    return 'إشعار جديد'
   }
 
   const formatTime = (timestamp: string) => {
@@ -175,14 +203,14 @@ export default function NotificationSystem() {
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
 
     if (diffInMinutes < 1) {
-      return 'Just now'
+      return 'الآن فقط'
     } else if (diffInMinutes < 60) {
-      return `${diffInMinutes}m ago`
+      return `منذ ${diffInMinutes} دقيقة`
     } else if (diffInMinutes < 1440) {
       const hours = Math.floor(diffInMinutes / 60)
-      return `${hours}h ago`
+      return `منذ ${hours} ساعة`
     } else {
-      return date.toLocaleDateString()
+      return date.toLocaleDateString('ar-EG')
     }
   }
 
@@ -211,7 +239,7 @@ export default function NotificationSystem() {
         <Card className="absolute right-0 top-full mt-2 w-80 z-50 shadow-lg">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Notifications</CardTitle>
+              <CardTitle className="text-lg">الإشعارات</CardTitle>
               <div className="flex gap-2">
                 {unreadCount > 0 && (
                   <Button
@@ -220,7 +248,7 @@ export default function NotificationSystem() {
                     onClick={markAllAsRead}
                     className="text-xs"
                   >
-                    Mark all read
+                    تعليم الكل كمقروء
                   </Button>
                 )}
                 {notifications.length > 0 && (
@@ -230,7 +258,7 @@ export default function NotificationSystem() {
                     onClick={clearAllNotifications}
                     className="text-xs"
                   >
-                    Clear all
+                    مسح الكل
                   </Button>
                 )}
               </div>
@@ -241,7 +269,7 @@ export default function NotificationSystem() {
               {notifications.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
                   <Bell className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p>No notifications</p>
+                  <p>لا توجد إشعارات</p>
                 </div>
               ) : (
                 <div className="space-y-1">

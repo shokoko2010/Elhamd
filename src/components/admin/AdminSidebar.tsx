@@ -14,7 +14,9 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Menu
+  Menu,
+  ImageIcon,
+  FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
@@ -22,32 +24,52 @@ import { useRouter } from 'next/navigation'
 
 const sidebarItems = [
   {
-    title: 'Dashboard',
+    title: 'لوحة التحكم',
     href: '/admin/dashboard',
     icon: LayoutDashboard,
   },
   {
-    title: 'Vehicle Models',
+    title: 'الصفحة الرئيسية',
+    href: '/admin/homepage',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'الوسائط',
+    href: '/admin/media',
+    icon: ImageIcon,
+  },
+  {
+    title: 'المحتوى',
+    href: '/admin/content',
+    icon: FileText,
+  },
+  {
+    title: 'موديلات السيارات',
     href: '/admin/models',
     icon: Car,
   },
   {
-    title: 'Appointments',
+    title: 'المركبات',
+    href: '/admin/vehicles',
+    icon: Car,
+  },
+  {
+    title: 'المواعيد',
     href: '/admin/appointments',
     icon: Calendar,
   },
   {
-    title: 'Service Bookings',
-    href: '/admin/service-bookings',
+    title: 'حجوزات الخدمة',
+    href: '/admin/bookings',
     icon: Wrench,
   },
   {
-    title: 'Customers',
+    title: 'العملاء',
     href: '/admin/customers',
     icon: Users,
   },
   {
-    title: 'Settings',
+    title: 'الإعدادات',
     href: '/admin/settings',
     icon: Settings,
   },
@@ -56,11 +78,11 @@ const sidebarItems = [
 export function AdminSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
-  const { user, signOut } = useAuth()
+  const { user, logout } = useAuth()
   const router = useRouter()
 
   const handleSignOut = async () => {
-    await signOut()
+    await logout()
     router.push('/')
   }
 
@@ -75,7 +97,7 @@ export function AdminSidebar() {
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
               <Car className="h-6 w-6 text-blue-600" />
-              <span className="font-semibold">Admin Panel</span>
+              <span className="font-semibold">لوحة التحكم</span>
             </div>
           )}
           <Button
@@ -116,7 +138,7 @@ export function AdminSidebar() {
         <div className="p-4 border-t">
           {!isCollapsed && user && (
             <div className="mb-3">
-              <p className="text-sm font-medium text-gray-900">{user.displayName}</p>
+              <p className="text-sm font-medium text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-500">{user.email}</p>
               <p className="text-xs text-blue-600 capitalize">{user.role}</p>
             </div>
@@ -131,7 +153,7 @@ export function AdminSidebar() {
             )}
           >
             <LogOut className="h-4 w-4" />
-            {!isCollapsed && <span className="ml-2">Sign Out</span>}
+            {!isCollapsed && <span className="ml-2">تسجيل الخروج</span>}
           </Button>
         </div>
       </div>

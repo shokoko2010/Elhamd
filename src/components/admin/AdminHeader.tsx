@@ -47,7 +47,7 @@ export function AdminHeader() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 type="text"
-                placeholder="Search vehicles, customers, bookings..."
+                placeholder="ابحث عن سيارات، عملاء، حجوزات..."
                 className="pl-10"
               />
             </div>
@@ -68,7 +68,7 @@ export function AdminHeader() {
                     </div>
                     {!isMobileMenuOpen && (
                       <div className="hidden md:block text-left">
-                        <p className="text-sm font-medium">{user?.name || 'Admin User'}</p>
+                        <p className="text-sm font-medium">{user?.name || 'مستخدم المشرف'}</p>
                         <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
                       </div>
                     )}
@@ -76,17 +76,17 @@ export function AdminHeader() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>حسابي</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/admin/settings')}>
-                  Settings
+                  الإعدادات
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/')}>
-                  Customer View
+                  عرض العميل
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
-                  Sign out
+                  تسجيل الخروج
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -100,7 +100,7 @@ export function AdminHeader() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 type="text"
-                placeholder="Search vehicles, customers, bookings..."
+                placeholder="ابحث عن سيارات، عملاء، حجوزات..."
                 className="pl-10"
               />
             </div>

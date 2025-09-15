@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  allowedDevOrigins: ["preview-chat-f6e4eea8-f4ab-44ee-ab1a-e37e835aa059.space.z.ai"],
+  allowedDevOrigins: ["preview-chat-6b323351-ce1b-4e1b-b225-cc99f0ec3948.space.z.ai"],
 };
 
 export default nextConfig;
