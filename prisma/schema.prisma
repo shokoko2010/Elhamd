@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(CUSTOMER)
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  testDriveBookings TestDriveBooking[]
+  serviceBookings   ServiceBooking[]
+  
+  @@map("users")
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  make        String
+  model       String
+  year        Int
+  price       Float
+  stockNumber String   @unique
+  vin         String?  @unique
+  description String?
+  category    VehicleCategory
+  fuelType    FuelType
+  transmission TransmissionType
+  mileage     Int?
+  color       String?
+  status      VehicleStatus @default(AVAILABLE)
+  featured    Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  images      VehicleImage[]
+  testDriveBookings TestDriveBooking[]
+  serviceBookings   ServiceBooking[]
+  
+  @@map("vehicles")
+}
+
+model VehicleImage {
+  id        String @id @default(cuid())
+  vehicleId String
+  imageUrl  String
+  altText   String?
+  isPrimary Boolean @default(false)
+  order     Int    @default(0)
+  createdAt DateTime @default(now())
+
+  // Relations
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  
+  @@map("vehicle_images")
+}
+
+model TestDriveBooking {
+  id          String           @id @default(cuid())
+  customerId  String
+  vehicleId   String
+  date        DateTime
+  timeSlot    String
+  status      BookingStatus    @default(PENDING)
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  customer    User             @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle          @relation(fields: [vehicleId], references: [id])
+  
+  @@map("test_drive_bookings")
+}
+
+model ServiceType {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  duration    Int      // in minutes
+  price       Float?
+  category    ServiceCategory
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  serviceBookings ServiceBooking[]
+  
+  @@map("service_types")
+}
+
+model ServiceBooking {
+  id          String        @id @default(cuid())
+  customerId  String
+  vehicleId   String?
+  serviceTypeId String
+  date        DateTime
+  timeSlot    String
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  totalPrice  Float?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  customer    User          @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle?      @relation(fields: [vehicleId], references: [id])
+  serviceType ServiceType   @relation(fields: [serviceTypeId], references: [id])
+  
+  @@map("service_bookings")
+}
+
+// Enums
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  STAFF
+}
+
+enum VehicleCategory {
+  SEDAN
+  SUV
+  HATCHBACK
+  TRUCK
+  VAN
+  COMMERCIAL
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+  CNG
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATIC
+  CVT
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  SOLD
+  RESERVED
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ServiceCategory {
+  MAINTENANCE
+  REPAIR
+  INSPECTION
+  DETAILING
+  CUSTOM
+}
