@@ -28,7 +28,7 @@ export default function AdminSiteSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   
   const [loading, setLoading] = useState(true)
 
@@ -40,14 +40,14 @@ export default function AdminSiteSettingsPage() {
 
     if (status === 'authenticated') {
       // Check if user is admin
-      if (!user?.isAdmin()) {
+      if (!isAdmin()) {
         router.push('/dashboard')
         return
       }
       
       setLoading(false)
     }
-  }, [status, router, user])
+  }, [status, router, user, isAdmin])
 
   if (loading) {
     return (

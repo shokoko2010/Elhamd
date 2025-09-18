@@ -40,11 +40,11 @@ export default function NotificationSystem() {
   useEffect(() => {
     if (user && typeof window !== 'undefined') {
       // Initialize socket connection
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
-      console.log('Connecting to socket:', socketUrl)
+      console.log('Connecting to socket')
       
       try {
-        const newSocket = io(socketUrl, {
+        const newSocket = io({
+          path: '/api/socketio',
           transports: ['websocket', 'polling'],
           timeout: 5000,
           retries: 3

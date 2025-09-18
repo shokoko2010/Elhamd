@@ -41,7 +41,7 @@ export class SecurityService {
         enabled: true,
         origins: process.env.NODE_ENV === 'production' 
           ? ['https://elhamd-cars.com'] 
-          : ['http://localhost:3000', 'http://localhost:3001'],
+          : ['http://localhost:3000'],
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         headers: ['Content-Type', 'Authorization']
       },
@@ -129,7 +129,7 @@ export class SecurityService {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
         "font-src 'self' data:",
-        "connect-src 'self'",
+        "connect-src 'self' ws: wss:",
         "frame-src 'none'",
         "object-src 'none'",
         "base-uri 'self'",

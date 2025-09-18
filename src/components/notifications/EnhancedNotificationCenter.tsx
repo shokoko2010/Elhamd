@@ -93,7 +93,8 @@ export default function EnhancedNotificationCenter({
 
   useEffect(() => {
     // Initialize socket connection
-    const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
+    const socketInstance = io({
+      path: '/api/socketio',
       auth: {
         userId,
         role: userRole
