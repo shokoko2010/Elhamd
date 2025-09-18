@@ -11,19 +11,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/use-auth'
+import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import NotificationSystem from './NotificationSystem'
 
 export function AdminHeader() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const handleSignOut = async () => {
-    logout()
-    router.push('/')
+    signOut({ callbackUrl: '/' })
   }
 
   return (

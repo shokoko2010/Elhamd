@@ -180,166 +180,37 @@ function VehiclesContent() {
   })
 
   useEffect(() => {
-    // Enhanced mock data with complete vehicle information
-    const mockVehicles: Vehicle[] = [
-      {
-        id: '1',
-        make: 'Tata',
-        model: 'Nexon',
-        year: 2024,
-        price: 850000,
-        stockNumber: 'TN2024001',
-        vin: 'MATETATA123456789',
-        description: 'سيارة SUV مدمجة بمحرك توربو وميزات أمان متقدمة',
-        category: 'SUV',
-        fuelType: 'PETROL',
-        transmission: 'AUTOMATIC',
-        mileage: 0,
-        color: 'أبيض',
-        status: 'AVAILABLE',
-        featured: true,
-        isActive: true,
-        createdAt: '2024-01-10T10:00:00Z',
-        updatedAt: '2024-01-10T10:00:00Z',
-        images: [
-          {
-            id: '1',
-            imageUrl: '/api/placeholder/800/600',
-            thumbnailUrl: '/api/placeholder/300/200',
-            altText: 'تاتا نيكسون أمامية',
-            isPrimary: true,
-            order: 0
-          },
-          {
-            id: '2',
-            imageUrl: '/api/placeholder/800/600',
-            thumbnailUrl: '/api/placeholder/300/200',
-            altText: 'تاتا نيكسون جانبية',
-            isPrimary: false,
-            order: 1
-          }
-        ],
-        specifications: [
-          { key: 'engine', label: 'المحرك', value: '1.2L توربو', category: 'engine' },
-          { key: 'power', label: 'القوة', value: '110 حصان', category: 'engine' },
-          { key: 'seats', label: 'الركاب', value: '5', category: 'interior' },
-          { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'safety' }
-        ],
-        pricing: {
-          basePrice: 850000,
-          taxes: 85000,
-          fees: 15000,
-          totalPrice: 950000,
-          currency: 'EGP',
-          hasDiscount: false
-        },
-        location: {
-          branch: 'الفرع الرئيسي',
-          address: 'شارع التحرير، مصر الجديدة',
-          city: 'القاهرة'
-        },
-        contactInfo: {
-          salesPerson: 'أحمد محمد',
-          phone: '01234567890',
-          email: 'ahmed@elhamd.com',
-          department: 'المبيعات'
+    const fetchVehicles = async () => {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams()
+        if (searchTerm) params.append('search', searchTerm)
+        if (filters.category !== 'all') params.append('category', filters.category)
+        if (filters.status !== 'all') params.append('status', filters.status)
+        if (filters.featured !== 'all') params.append('featured', filters.featured)
+        params.append('sortBy', sortBy)
+        params.append('sortOrder', sortOrder)
+        
+        const response = await fetch(`/api/admin/vehicles?${params.toString()}`)
+        if (!response.ok) {
+          throw new Error('فشل في جلب المركبات')
         }
-      },
-      {
-        id: '2',
-        make: 'Tata',
-        model: 'Punch',
-        year: 2024,
-        price: 650000,
-        stockNumber: 'TP2024002',
-        vin: 'MATETATA987654321',
-        description: 'سيارة SUV مدمجة مثالية للقيادة في المدينة',
-        category: 'SUV',
-        fuelType: 'PETROL',
-        transmission: 'MANUAL',
-        mileage: 0,
-        color: 'أحمر',
-        status: 'AVAILABLE',
-        featured: true,
-        isActive: true,
-        createdAt: '2024-01-09T10:00:00Z',
-        updatedAt: '2024-01-09T10:00:00Z',
-        images: [
-          {
-            id: '3',
-            imageUrl: '/api/placeholder/800/600',
-            thumbnailUrl: '/api/placeholder/300/200',
-            altText: 'تاتا بانش أمامية',
-            isPrimary: true,
-            order: 0
-          }
-        ],
-        specifications: [
-          { key: 'engine', label: 'المحرك', value: '1.2L', category: 'engine' },
-          { key: 'power', label: 'القوة', value: '85 حصان', category: 'engine' },
-          { key: 'seats', label: 'الركاب', value: '5', category: 'interior' }
-        ],
-        pricing: {
-          basePrice: 650000,
-          discountPrice: 620000,
-          discountPercentage: 5,
-          taxes: 65000,
-          fees: 10000,
-          totalPrice: 695000,
-          currency: 'EGP',
-          hasDiscount: true,
-          discountExpires: '2024-02-01'
-        }
-      },
-      {
-        id: '3',
-        make: 'Tata',
-        model: 'Tiago',
-        year: 2024,
-        price: 550000,
-        stockNumber: 'TT2024003',
-        vin: 'MATETATA456789123',
-        description: 'سيارة هاتشباك اقتصادية باستهلاك وقود منخفض',
-        category: 'HATCHBACK',
-        fuelType: 'PETROL',
-        transmission: 'MANUAL',
-        mileage: 0,
-        color: 'أزرق',
-        status: 'AVAILABLE',
-        featured: false,
-        isActive: true,
-        createdAt: '2024-01-08T10:00:00Z',
-        updatedAt: '2024-01-08T10:00:00Z',
-        images: [
-          {
-            id: '4',
-            imageUrl: '/api/placeholder/800/600',
-            thumbnailUrl: '/api/placeholder/300/200',
-            altText: 'تاتا تياجو أمامية',
-            isPrimary: true,
-            order: 0
-          }
-        ],
-        specifications: [
-          { key: 'engine', label: 'المحرك', value: '1.1L', category: 'engine' },
-          { key: 'power', label: 'القوة', value: '70 حصان', category: 'engine' },
-          { key: 'seats', label: 'الركاب', value: '5', category: 'interior' }
-        ],
-        pricing: {
-          basePrice: 550000,
-          taxes: 55000,
-          fees: 8000,
-          totalPrice: 613000,
-          currency: 'EGP',
-          hasDiscount: false
-        }
+        
+        const data = await response.json()
+        setVehicles(data.vehicles)
+        setFilteredVehicles(data.vehicles)
+      } catch (error) {
+        console.error('Error fetching vehicles:', error)
+        // Fallback to empty array on error
+        setVehicles([])
+        setFilteredVehicles([])
+      } finally {
+        setLoading(false)
       }
-    ]
+    }
     
-    setVehicles(mockVehicles)
-    setFilteredVehicles(mockVehicles)
-    setLoading(false)
-  }, [])
+    fetchVehicles()
+  }, [searchTerm, filters, sortBy, sortOrder])
 
   useEffect(() => {
     let filtered = vehicles.filter(vehicle => {
@@ -508,18 +379,25 @@ function VehiclesContent() {
     setLoading(true)
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const newVehicle: Vehicle = {
-        id: Date.now().toString(),
-        ...formData,
-        createdAt: new Date().toISOString()
+      const response = await fetch('/api/admin/vehicles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في إضافة المركبة')
       }
-      
+
+      const newVehicle = await response.json()
       setVehicles(prev => [...prev, newVehicle])
       setShowAddDialog(false)
     } catch (error) {
       console.error('Error adding vehicle:', error)
+      alert(error instanceof Error ? error.message : 'فشل في إضافة المركبة')
     } finally {
       setLoading(false)
     }
@@ -532,18 +410,26 @@ function VehiclesContent() {
     setLoading(true)
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const updatedVehicle: Vehicle = {
-        ...editingVehicle,
-        ...formData
+      const response = await fetch(`/api/admin/vehicles/${editingVehicle.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في تحديث المركبة')
       }
-      
+
+      const updatedVehicle = await response.json()
       setVehicles(prev => prev.map(v => v.id === editingVehicle.id ? updatedVehicle : v))
       setShowEditDialog(false)
       setEditingVehicle(null)
     } catch (error) {
       console.error('Error updating vehicle:', error)
+      alert(error instanceof Error ? error.message : 'فشل في تحديث المركبة')
     } finally {
       setLoading(false)
     }
@@ -555,13 +441,21 @@ function VehiclesContent() {
     setLoading(true)
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      const response = await fetch(`/api/admin/vehicles/${editingVehicle.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في حذف المركبة')
+      }
+
       setVehicles(prev => prev.filter(v => v.id !== editingVehicle.id))
       setShowDeleteDialog(false)
       setEditingVehicle(null)
     } catch (error) {
       console.error('Error deleting vehicle:', error)
+      alert(error instanceof Error ? error.message : 'فشل في حذف المركبة')
     } finally {
       setLoading(false)
     }

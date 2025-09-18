@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import Image from 'next/image'
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -26,7 +27,8 @@ import {
   FileImage,
   Folder,
   Tag,
-  Copy
+  Copy,
+  AlertCircle
 } from 'lucide-react'
 
 interface MediaFile {
@@ -92,6 +94,7 @@ function MediaContent() {
     tags: '',
     category: ''
   })
+  const [error, setError] = useState('')
 
   useEffect(() => {
     loadMediaData()
@@ -99,15 +102,41 @@ function MediaContent() {
 
   const loadMediaData = async () => {
     setLoading(true)
+    setError('')
     try {
-      // Mock data - will be replaced with API calls
+      // Fetch media files from API
+      const response = await fetch('/api/media')
+      if (!response.ok) {
+        throw new Error('Failed to fetch media')
+      }
+      const data = await response.json()
+      setMediaFiles(data.data.files)
+
+      // Fetch media stats
+      const statsResponse = await fetch('/api/media/stats')
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        // Update folders based on categories
+        const categoryFolders = Object.entries(statsData.data.byCategory).map(([category, info]: [string, any]) => ({
+          id: category,
+          name: categories.find(c => c.value === category)?.label || category,
+          path: `/${category}`,
+          fileCount: info.count,
+          createdAt: new Date().toISOString()
+        }))
+        setFolders(categoryFolders)
+      }
+    } catch (error) {
+      console.error('Error loading media data:', error)
+      setError('فشل في تحميل بيانات الوسائط')
+      // Fallback to mock data
       const mockMediaFiles: MediaFile[] = [
         {
           id: '1',
           name: 'tata-nexon-hero.jpg',
           originalName: 'tata-nexon-hero.jpg',
-          url: '/api/placeholder/1200/600',
-          thumbnailUrl: '/api/placeholder/300/200',
+          url: '/uploads/vehicles/1/nexon-front.webp',
+          thumbnailUrl: '/uploads/vehicles/1/nexon-front.webp',
           size: 1024000,
           type: 'image',
           mimeType: 'image/jpeg',
@@ -124,8 +153,8 @@ function MediaContent() {
           id: '2',
           name: 'showroom-exterior.jpg',
           originalName: 'showroom-exterior.jpg',
-          url: '/api/placeholder/1200/600',
-          thumbnailUrl: '/api/placeholder/300/200',
+          url: '/uploads/showroom-luxury.jpg',
+          thumbnailUrl: '/uploads/showroom-luxury.jpg',
           size: 2048000,
           type: 'image',
           mimeType: 'image/jpeg',
@@ -142,8 +171,8 @@ function MediaContent() {
           id: '3',
           name: 'service-center.jpg',
           originalName: 'service-center.jpg',
-          url: '/api/placeholder/1200/600',
-          thumbnailUrl: '/api/placeholder/300/200',
+          url: '/uploads/dealership-exterior.jpg',
+          thumbnailUrl: '/uploads/dealership-exterior.jpg',
           size: 1536000,
           type: 'image',
           mimeType: 'image/jpeg',
@@ -184,8 +213,6 @@ function MediaContent() {
 
       setMediaFiles(mockMediaFiles)
       setFolders(mockFolders)
-    } catch (error) {
-      console.error('Error loading media data:', error)
     } finally {
       setLoading(false)
     }
@@ -232,24 +259,49 @@ function MediaContent() {
     if (!uploadFiles || uploadFiles.length === 0) return
 
     setUploading(true)
+    setError('')
     try {
-      // Simulate upload
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const uploadPromises = Array.from(uploadFiles).map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('options', JSON.stringify({
+          category: 'other',
+          generateThumbnails: true,
+          optimizeFormats: ['webp']
+        }))
+
+        const response = await fetch('/api/media', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`)
+        }
+
+        return response.json()
+      })
+
+      const results = await Promise.all(uploadPromises)
       
       // Add new files to the list
-      const newFiles: MediaFile[] = Array.from(uploadFiles).map((file, index) => ({
-        id: Date.now().toString() + index,
-        name: file.name,
-        originalName: file.name,
-        url: URL.createObjectURL(file),
-        thumbnailUrl: URL.createObjectURL(file),
-        size: file.size,
-        type: file.type.startsWith('image/') ? 'image' : 'document',
-        mimeType: file.type,
-        uploadedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        uploadedBy: 'admin',
-        tags: [],
+      const newFiles: MediaFile[] = results.map(result => ({
+        id: result.data.id,
+        name: result.data.filename,
+        originalName: result.data.originalFilename,
+        url: result.data.url,
+        thumbnailUrl: result.data.thumbnailUrl || result.data.url,
+        size: result.data.size,
+        type: result.data.mimeType.startsWith('image/') ? 'image' : 'document',
+        mimeType: result.data.mimeType,
+        altText: result.data.altText,
+        title: result.data.title,
+        description: result.data.description,
+        tags: result.data.tags,
+        category: result.data.category,
+        uploadedAt: result.data.createdAt,
+        updatedAt: result.data.updatedAt,
+        uploadedBy: result.data.createdBy
       }))
 
       setMediaFiles(prev => [...prev, ...newFiles])
@@ -257,6 +309,7 @@ function MediaContent() {
       setUploadFiles(null)
     } catch (error) {
       console.error('Error uploading files:', error)
+      setError('فشل في رفع الملفات')
     } finally {
       setUploading(false)
     }
@@ -278,23 +331,43 @@ function MediaContent() {
     if (!editingFile) return
 
     try {
-      const updatedFile: MediaFile = {
-        ...editingFile,
-        title: editForm.title,
-        altText: editForm.altText,
-        description: editForm.description,
-        tags: editForm.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        category: editForm.category,
-        updatedAt: new Date().toISOString()
+      const response = await fetch(`/api/media?id=${editingFile.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: editForm.title,
+          altText: editForm.altText,
+          description: editForm.description,
+          tags: editForm.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+          category: editForm.category
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update file')
       }
 
+      const result = await response.json()
+      const updatedFile = result.data
+
       setMediaFiles(prev => prev.map(file => 
-        file.id === editingFile.id ? updatedFile : file
+        file.id === editingFile.id ? {
+          ...file,
+          title: updatedFile.title,
+          altText: updatedFile.altText,
+          description: updatedFile.description,
+          tags: updatedFile.tags,
+          category: updatedFile.category,
+          updatedAt: updatedFile.updatedAt
+        } : file
       ))
       setShowEditDialog(false)
       setEditingFile(null)
     } catch (error) {
       console.error('Error saving file:', error)
+      setError('فشل في حفظ التغييرات')
     }
   }
 
@@ -303,10 +376,16 @@ function MediaContent() {
     if (!confirm(`هل أنت متأكد من حذف ${selectedFiles.length} ملف؟`)) return
 
     try {
+      const deletePromises = selectedFiles.map(fileId => 
+        fetch(`/api/media?id=${fileId}`, { method: 'DELETE' })
+      )
+
+      await Promise.all(deletePromises)
       setMediaFiles(prev => prev.filter(file => !selectedFiles.includes(file.id)))
       setSelectedFiles([])
     } catch (error) {
       console.error('Error deleting files:', error)
+      setError('فشل في حذف الملفات')
     }
   }
 
@@ -357,6 +436,25 @@ function MediaContent() {
           )}
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="text-red-600">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div className="mr-3">
+                <h3 className="text-sm font-medium text-red-800">خطأ</h3>
+                <div className="mt-1 text-sm text-red-700">
+                  {error}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
@@ -505,11 +603,15 @@ function MediaContent() {
                         />
                         
                         {file.type === 'image' ? (
-                          <img
-                            src={file.thumbnailUrl}
-                            alt={file.altText || file.name}
-                            className="w-full h-32 object-cover"
-                          />
+                          <div className="w-full h-32 relative">
+                            <Image
+                              src={file.thumbnailUrl}
+                              alt={file.altText || file.name}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, 33vw"
+                            />
+                          </div>
                         ) : (
                           <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
                             <FileImage className="h-8 w-8 text-gray-400" />
@@ -559,11 +661,15 @@ function MediaContent() {
                           />
                           
                           {file.type === 'image' ? (
-                            <img
-                              src={file.thumbnailUrl}
-                              alt={file.altText || file.name}
-                              className="w-16 h-16 object-cover rounded"
-                            />
+                            <div className="w-16 h-16 relative">
+                              <Image
+                                src={file.thumbnailUrl}
+                                alt={file.altText || file.name}
+                                fill
+                                className="object-cover rounded"
+                                sizes="64px"
+                              />
+                            </div>
                           ) : (
                             <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
                               <FileImage className="h-6 w-6 text-gray-400" />
@@ -592,7 +698,19 @@ function MediaContent() {
                             <Button variant="ghost" size="sm" onClick={() => handleEditFile(file)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(file.url)}>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              try {
+                                navigator.clipboard.writeText(file.url)
+                              } catch (err) {
+                                // Fallback for browsers that don't support clipboard API
+                                const textArea = document.createElement('textarea')
+                                textArea.value = file.url
+                                document.body.appendChild(textArea)
+                                textArea.select()
+                                document.execCommand('copy')
+                                document.body.removeChild(textArea)
+                              }
+                            }}>
                               <Copy className="h-4 w-4" />
                             </Button>
                           </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,12 +15,8 @@ import {
   BarChart3, 
   Settings,
   Bell,
-  Search,
-  LogOut,
-  Menu,
-  X
+  Search
 } from 'lucide-react'
-import Link from 'next/link'
 
 interface DashboardStats {
   totalVehicles: number
@@ -63,111 +59,45 @@ export default function AdminDashboard() {
 }
 
 function DashboardContent() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const [loading, setLoading] = useState(true)
+  const [dashboardData, setDashboardData] = useState<any>(null)
 
-  // Mock data - will be replaced with API calls
-  const stats: DashboardStats = {
-    totalVehicles: 45,
-    availableVehicles: 32,
-    soldVehicles: 8,
-    totalCustomers: 156,
-    todayBookings: 12,
-    pendingBookings: 5,
-    totalRevenue: 28500000,
-    monthlyRevenue: 3200000
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await fetch('/api/admin/dashboard-data')
+      const data = await response.json()
+      setDashboardData(data)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const recentBookings: RecentBooking[] = [
-    {
-      id: '1',
-      customerName: 'أحمد محمد',
-      vehicleName: 'Tata Nexon',
-      type: 'test-drive',
-      date: '2024-01-15',
-      time: '10:00',
-      status: 'confirmed'
-    },
-    {
-      id: '2',
-      customerName: 'فاطمة علي',
-      vehicleName: 'Tata Punch',
-      type: 'service',
-      date: '2024-01-15',
-      time: '14:00',
-      status: 'pending'
-    },
-    {
-      id: '3',
-      customerName: 'محمد خالد',
-      vehicleName: 'Tata Tiago',
-      type: 'test-drive',
-      date: '2024-01-14',
-      time: '11:00',
-      status: 'completed'
-    },
-    {
-      id: '4',
-      customerName: 'سارة أحمد',
-      vehicleName: 'Tata Harrier',
-      type: 'service',
-      date: '2024-01-14',
-      time: '16:00',
-      status: 'cancelled'
-    },
-    {
-      id: '5',
-      customerName: 'عمر حسن',
-      vehicleName: 'Tata Safari',
-      type: 'test-drive',
-      date: '2024-01-13',
-      time: '09:00',
-      status: 'confirmed'
-    }
-  ]
+  const stats = dashboardData?.stats || {
+    totalVehicles: 0,
+    availableVehicles: 0,
+    soldVehicles: 0,
+    totalCustomers: 0,
+    todayBookings: 0,
+    pendingBookings: 0,
+    totalRevenue: 0,
+    monthlyRevenue: 0,
+    testDriveBookings: 0,
+    serviceBookings: 0,
+    completedBookings: 0,
+    cancelledBookings: 0
+  }
 
-  const recentVehicles: RecentVehicle[] = [
-    {
-      id: '1',
-      make: 'Tata',
-      model: 'Nexon EV',
-      year: 2024,
-      price: 1400000,
-      status: 'AVAILABLE',
-      category: 'SUV',
-      createdAt: '2024-01-10'
-    },
-    {
-      id: '2',
-      make: 'Tata',
-      model: 'Punch',
-      year: 2024,
-      price: 650000,
-      status: 'SOLD',
-      category: 'SUV',
-      createdAt: '2024-01-09'
-    },
-    {
-      id: '3',
-      make: 'Tata',
-      model: 'Tiago',
-      year: 2024,
-      price: 550000,
-      status: 'AVAILABLE',
-      category: 'HATCHBACK',
-      createdAt: '2024-01-08'
-    },
-    {
-      id: '4',
-      make: 'Tata',
-      model: 'Harrier',
-      year: 2024,
-      price: 1200000,
-      status: 'AVAILABLE',
-      category: 'SUV',
-      createdAt: '2024-01-07'
-    }
-  ]
+  const recentBookings = dashboardData?.recentBookings || []
+  const recentVehicles = dashboardData?.recentVehicles || []
+  const systemHealth = dashboardData?.systemHealth || {}
+  const quickActions = dashboardData?.quickActions || {}
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -176,10 +106,18 @@ function DashboardContent() {
       completed: { variant: 'outline' as const, label: 'مكتمل' },
       cancelled: { variant: 'destructive' as const, label: 'ملغي' },
       available: { variant: 'default' as const, label: 'متاح' },
-      sold: { variant: 'secondary' as const, label: 'مباع' }
+      sold: { variant: 'secondary' as const, label: 'مباع' },
+      AVAILABLE: { variant: 'default' as const, label: 'متاح' },
+      SOLD: { variant: 'secondary' as const, label: 'مباع' },
+      RESERVED: { variant: 'outline' as const, label: 'محجوز' },
+      MAINTENANCE: { variant: 'destructive' as const, label: 'للصيانة' },
+      PENDING: { variant: 'secondary' as const, label: 'قيد الانتظار' },
+      CONFIRMED: { variant: 'default' as const, label: 'مؤكد' },
+      COMPLETED: { variant: 'outline' as const, label: 'مكتمل' },
+      CANCELLED: { variant: 'destructive' as const, label: 'ملغي' }
     }
     
-    const config = statusConfig[status.toLowerCase() as keyof typeof statusConfig] || statusConfig.pending
+    const config = statusConfig[status.toUpperCase() as keyof typeof statusConfig] || statusConfig.pending
     return <Badge variant={config.variant}>{config.label}</Badge>
   }
 
@@ -195,330 +133,280 @@ function DashboardContent() {
     return new Intl.NumberFormat('ar-EG').format(num)
   }
 
-  const Sidebar = () => (
-    <div className={`bg-gray-900 text-white w-64 min-h-screen fixed lg:static inset-y-0 right-0 z-50 transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out`}>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-xl font-bold">لوحة التحكم</h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden text-white hover:bg-gray-800"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        
-        <nav className="space-y-2">
-          <Link href="/admin" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-            <LayoutDashboard className="h-5 w-5" />
-            <span>الرئيسية</span>
-          </Link>
-          
-          <Link href="/admin/vehicles" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-            <Car className="h-5 w-5" />
-            <span>إدارة المركبات</span>
-          </Link>
-          
-          <Link href="/admin/customers" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-            <Users className="h-5 w-5" />
-            <span>إدارة العملاء</span>
-          </Link>
-          
-          <Link href="/admin/bookings" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-            <Calendar className="h-5 w-5" />
-            <span>إدارة الحجوزات</span>
-          </Link>
-          
-          <Link href="/admin/services" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-            <Wrench className="h-5 w-5" />
-            <span>إدارة الخدمات</span>
-          </Link>
-          
-          <Link href="/admin/analytics" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-            <BarChart3 className="h-5 w-5" />
-            <span>التحليلات والتقارير</span>
-          </Link>
-          
-          <Link href="/admin/settings" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-            <Settings className="h-5 w-5" />
-            <span>الإعدادات</span>
-          </Link>
-        </nav>
-        
-        <div className="absolute bottom-6 left-6 right-6">
-          <Button variant="ghost" className="w-full justify-start text-white hover:bg-gray-800">
-            <LogOut className="h-5 w-5 mr-3" />
-            <span>تسجيل الخروج</span>
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
+  const formatDate = (date: Date | string) => {
+    const d = new Date(date)
+    return d.toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="lg:hidden bg-white shadow-sm border-b px-4 py-3">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-semibold">لوحة تحكم الهامد للسيارات</h1>
-          <div className="w-8"></div>
-        </div>
-      </div>
-
-      <div className="flex">
-        <Sidebar />
-        
-        {/* Main Content */}
-        <div className="flex-1 lg:mr-64">
-          {/* Top Header */}
-          <div className="bg-white shadow-sm border-b px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">لوحة التحكم</h1>
-                <p className="text-gray-600">مرحباً بك في نظام إدارة الهامد للسيارات</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="بحث..."
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                </Button>
-              </div>
-            </div>
+    <div className="space-y-6">
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">جاري تحميل البيانات...</p>
           </div>
+        </div>
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
+            <TabsTrigger value="vehicles">المركبات</TabsTrigger>
+            <TabsTrigger value="bookings">الحجوزات</TabsTrigger>
+            <TabsTrigger value="analytics">التحليلات</TabsTrigger>
+          </TabsList>
 
-          {/* Dashboard Content */}
-          <div className="p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
-                <TabsTrigger value="vehicles">المركبات</TabsTrigger>
-                <TabsTrigger value="bookings">الحجوزات</TabsTrigger>
-                <TabsTrigger value="analytics">التحليلات</TabsTrigger>
-              </TabsList>
+          <TabsContent value="overview" className="space-y-6">
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-blue-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-blue-600">حجوزات قيد الانتظار</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">{formatNumber(quickActions.pendingBookings || 0)}</div>
+                  <p className="text-xs text-muted-foreground">تحتاج إلى مراجعة</p>
+                </CardContent>
+              </Card>
 
-              <TabsContent value="overview" className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">إجمالي المركبات</CardTitle>
-                      <Car className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{formatNumber(stats.totalVehicles)}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatNumber(stats.availableVehicles)} متاح للعرض
-                      </p>
-                    </CardContent>
-                  </Card>
+              <Card className="border-blue-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-blue-600">مركبات متاحة</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">{formatNumber(quickActions.lowStockVehicles || 0)}</div>
+                  <p className="text-xs text-muted-foreground">جاهزة للعرض</p>
+                </CardContent>
+              </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">العملاء</CardTitle>
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{formatNumber(stats.totalCustomers)}</div>
-                      <p className="text-xs text-muted-foreground">
-                        عملاء مسجلين
-                      </p>
-                    </CardContent>
-                  </Card>
+              <Card className="border-red-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-red-600">مدفوعات متأخرة</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">{formatNumber(quickActions.overduePayments || 0)}</div>
+                  <p className="text-xs text-muted-foreground">تحتاج إلى متابعة</p>
+                </CardContent>
+              </Card>
+            </div>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">حجوزات اليوم</CardTitle>
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{formatNumber(stats.todayBookings)}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {formatNumber(stats.pendingBookings)} قيد الانتظار
-                      </p>
-                    </CardContent>
-                  </Card>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">إجمالي المركبات</CardTitle>
+                  <Car className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatNumber(stats.totalVehicles)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatNumber(stats.availableVehicles)} متاح للعرض
+                  </p>
+                </CardContent>
+              </Card>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">الإيرادات</CardTitle>
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{formatPrice(stats.monthlyRevenue)}</div>
-                      <p className="text-xs text-muted-foreground">
-                        إيرادات هذا الشهر
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">العملاء</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatNumber(stats.totalCustomers)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatNumber(systemHealth.activeUsers || 0)} نشطون
+                  </p>
+                </CardContent>
+              </Card>
 
-                {/* Recent Bookings and Vehicles */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Recent Bookings */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>أحدث الحجوزات</CardTitle>
-                      <CardDescription>آخر 5 حجوزات في النظام</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {recentBookings.map((booking) => (
-                          <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">حجوزات اليوم</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatNumber(stats.todayBookings)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatNumber(stats.pendingBookings)} قيد الانتظار
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">الإيرادات</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatPrice(stats.monthlyRevenue)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    إيرادات هذا الشهر
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Bookings and Vehicles */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Bookings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>أحدث الحجوزات</CardTitle>
+                  <CardDescription>آخر 5 حجوزات في النظام</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentBookings.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8">لا توجد حجوزات حديثة</p>
+                    ) : (
+                      recentBookings.slice(0, 5).map((booking: any) => (
+                        <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              {booking.type === 'test-drive' ? (
+                                <Car className="h-5 w-5 text-blue-600" />
+                              ) : (
+                                <Wrench className="h-5 w-5 text-blue-600" />
+                              )}
+                            </div>
                             <div>
                               <p className="font-medium">{booking.customerName}</p>
-                              <p className="text-sm text-gray-600">{booking.vehicleName}</p>
-                              <p className="text-xs text-gray-500">
-                                {booking.date} - {booking.time}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              {getStatusBadge(booking.status)}
-                              <p className="text-xs text-gray-500 mt-1">
-                                {booking.type === 'test-drive' ? 'قيادة تجريبية' : 'خدمة'}
+                              <p className="text-sm text-gray-600">
+                                {booking.vehicleName || booking.serviceName}
                               </p>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                      <Button variant="outline" className="w-full mt-4">
-                        عرض جميع الحجوزات
-                      </Button>
-                    </CardContent>
-                  </Card>
+                          <div className="text-right">
+                            <div className="mb-1">{getStatusBadge(booking.status)}</div>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(booking.date)} {booking.timeSlot}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-                  {/* Recent Vehicles */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>أحدث المركبات</CardTitle>
-                      <CardDescription>آخر 4 مركبات مضافة</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {recentVehicles.map((vehicle) => (
-                          <div key={vehicle.id} className="flex items-center justify-between p-3 border rounded-lg">
+              {/* Recent Vehicles */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>أحدث المركبات</CardTitle>
+                  <CardDescription>آخر 4 مركبات مضافة</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentVehicles.length === 0 ? (
+                      <p className="text-center text-gray-500 py-8">لا توجد مركبات حديثة</p>
+                    ) : (
+                      recentVehicles.slice(0, 4).map((vehicle: any) => (
+                        <div key={vehicle.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <Car className="h-5 w-5 text-gray-600" />
+                            </div>
                             <div>
                               <p className="font-medium">{vehicle.make} {vehicle.model}</p>
                               <p className="text-sm text-gray-600">{vehicle.year} • {vehicle.category}</p>
-                              <p className="text-xs text-gray-500">
-                                {formatPrice(vehicle.price)}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              {getStatusBadge(vehicle.status)}
-                              <p className="text-xs text-gray-500 mt-1">
-                                {vehicle.createdAt}
-                              </p>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                      <Button variant="outline" className="w-full mt-4">
-                        عرض جميع المركبات
-                      </Button>
-                    </CardContent>
-                  </Card>
+                          <div className="text-right">
+                            <div className="mb-1">{getStatusBadge(vehicle.status)}</div>
+                            <p className="text-sm font-medium">{formatPrice(vehicle.price)}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="vehicles" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>إدارة المركبات</CardTitle>
+                    <CardDescription>عرض وإدارة جميع المركبات في النظام</CardDescription>
+                  </div>
+                  <Button>
+                    <Car className="mr-2 h-4 w-4" />
+                    إضافة مركبة
+                  </Button>
                 </div>
-              </TabsContent>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Car className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">إدارة المركبات</h3>
+                  <p className="text-gray-600 mb-4">
+                    قم بإدارة مركبات الشركة من هنا - إضافة، تعديل، حذف
+                  </p>
+                  <Button>
+                    الذهاب إلى إدارة المركبات
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              <TabsContent value="vehicles" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>إدارة المركبات</CardTitle>
-                        <CardDescription>إضافة وتعديل وحذف المركبات</CardDescription>
-                      </div>
-                      <Button>
-                        <Car className="mr-2 h-4 w-4" />
-                        إضافة مركبة جديدة
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12">
-                      <Car className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">إدارة المركبات</h3>
-                      <p className="text-gray-600 mb-4">
-                        قم بإدارة مركباتك من هنا - إضافة وتعديل وحذف المركبات
-                      </p>
-                      <Button>
-                        الذهاب إلى إدارة المركبات
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+          <TabsContent value="bookings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>إدارة الحجوزات</CardTitle>
+                    <CardDescription>عرض وإدارة جميع الحجوزات</CardDescription>
+                  </div>
+                  <Button>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    حجز جديد
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">إدارة الحجوزات</h3>
+                  <p className="text-gray-600 mb-4">
+                    قم بإدارة حجوزات القيادة التجريبية والخدمات من هنا
+                  </p>
+                  <Button>
+                    الذهاب إلى إدارة الحجوزات
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              <TabsContent value="bookings" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>إدارة الحجوزات</CardTitle>
-                        <CardDescription>عرض وإدارة جميع الحجوزات</CardDescription>
-                      </div>
-                      <Button>
-                        <Calendar className="mr-2 h-4 w-4" />
-                        حجز جديد
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12">
-                      <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">إدارة الحجوزات</h3>
-                      <p className="text-gray-600 mb-4">
-                        قم بإدارة حجوزات القيادة التجريبية والخدمات من هنا
-                      </p>
-                      <Button>
-                        الذهاب إلى إدارة الحجوزات
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="analytics" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>التحليلات والتقارير</CardTitle>
-                    <CardDescription>عرض الإحصائيات والتقارير المفصلة</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12">
-                      <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">التحليلات والتقارير</h3>
-                      <p className="text-gray-600 mb-4">
-                        عرض تقارير المبيعات والإيرادات وتحليلات الأداء
-                      </p>
-                      <Button>
-                        عرض التحليلات
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-      </div>
+          <TabsContent value="analytics" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>التحليلات والتقارير</CardTitle>
+                <CardDescription>عرض الإحصائيات والتقارير المفصلة</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">التحليلات والتقارير</h3>
+                  <p className="text-gray-600 mb-4">
+                    عرض تقارير المبيعات والإيرادات وتحليلات الأداء
+                  </p>
+                  <Button>
+                    عرض التحليلات
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   )
 }

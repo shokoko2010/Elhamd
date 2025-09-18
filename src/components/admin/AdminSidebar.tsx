@@ -19,7 +19,8 @@ import {
   FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/use-auth'
+import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 const sidebarItems = [
@@ -31,6 +32,21 @@ const sidebarItems = [
   {
     title: 'الصفحة الرئيسية',
     href: '/admin/homepage',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'الهيدر',
+    href: '/admin/header',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'الفوتر',
+    href: '/admin/footer',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'إعدادات الموقع',
+    href: '/admin/site-settings',
     icon: LayoutDashboard,
   },
   {
@@ -59,6 +75,11 @@ const sidebarItems = [
     icon: Calendar,
   },
   {
+    title: 'التقويم',
+    href: '/admin/calendar',
+    icon: Calendar,
+  },
+  {
     title: 'حجوزات الخدمة',
     href: '/admin/bookings',
     icon: Wrench,
@@ -78,12 +99,11 @@ const sidebarItems = [
 export function AdminSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
 
   const handleSignOut = async () => {
-    await logout()
-    router.push('/')
+    signOut({ callbackUrl: '/' })
   }
 
   return (

@@ -19,7 +19,7 @@ import {
   Eye
 } from 'lucide-react'
 import { io, Socket } from 'socket.io-client'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Notification {
   id: string

@@ -25,14 +25,17 @@ import {
   Wrench,
   MapPin
 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useSession, signOut } from 'next-auth/react'
 
 // Create a safe wrapper component to handle auth state
 function AuthAwareNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
-  const { user, isAuthenticated, logout, loading } = useAuth()
+  const { data: session, status } = useSession()
+  const user = session?.user
+  const isAuthenticated = !!session
+  const loading = status === 'loading'
 
   useEffect(() => {
     setIsMounted(true)
@@ -47,7 +50,7 @@ function AuthAwareNavbar() {
   ]
 
   const handleLogout = () => {
-    logout()
+    signOut({ callbackUrl: '/' })
     setIsMenuOpen(false)
   }
 

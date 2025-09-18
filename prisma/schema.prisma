@@ -13,21 +13,48 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SecurityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  ipAddress   String?
+  userAgent   String?
+  details     Json?
+  severity    LogSeverity @default(INFO)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  @@map("security_logs")
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      UserRole @default(CUSTOMER)
-  phone     String?
-  isActive  Boolean  @default(true)
-  lastLogin DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String?
+  name            String?
+  role            UserRole @default(CUSTOMER)
+  phone           String?
+  isActive        Boolean  @default(true)
+  emailVerified   Boolean  @default(false)
+  lastLoginAt     DateTime?
+  securitySettings Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
   testDriveBookings TestDriveBooking[]
   serviceBookings   ServiceBooking[]
   permissions      UserPermission[]
+  securityLogs     SecurityLog[]
+  assignedTasks    Task[] @relation("TaskAssignee")
+  createdTasks     Task[] @relation("TaskAssigner")
+  customerTasks    Task[] @relation("TaskCustomer")
+  taskComments     TaskComment[]
+  bookings         Booking[]
+  performanceMetrics PerformanceMetric[]
+  organizedEvents  CalendarEvent[]
   
   @@map("users")
 }
@@ -55,6 +82,7 @@ model Vehicle {
   images      VehicleImage[]
   testDriveBookings TestDriveBooking[]
   serviceBookings   ServiceBooking[]
+  bookings     Booking[]
   
   @@map("vehicles")
 }
@@ -105,6 +133,7 @@ model ServiceType {
 
   // Relations
   serviceBookings ServiceBooking[]
+  bookings       Booking[]
   
   @@map("service_types")
 }
@@ -114,11 +143,15 @@ model ServiceBooking {
   customerId  String
   vehicleId   String?
   serviceTypeId String
+  timeSlotId  String?
   date        DateTime
   timeSlot    String
   status      BookingStatus @default(PENDING)
   notes       String?
   totalPrice  Float?
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentId   String?
+  reminderSent Boolean      @default(false)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -126,6 +159,8 @@ model ServiceBooking {
   customer    User          @relation(fields: [customerId], references: [id])
   vehicle     Vehicle?      @relation(fields: [vehicleId], references: [id])
   serviceType ServiceType   @relation(fields: [serviceTypeId], references: [id])
+  slot        TimeSlot?     @relation(fields: [timeSlotId], references: [id])
+  payments    Payment[]
   
   @@map("service_bookings")
 }
@@ -161,7 +196,458 @@ model UserPermission {
   @@map("user_permissions")
 }
 
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String
+  bookingType   BookingType
+  amount        Float
+  currency      String        @default("EGP")
+  status        PaymentStatus @default(PENDING)
+  paymentMethod PaymentMethod
+  transactionId String?
+  receiptUrl    String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  serviceBooking ServiceBooking? @relation(fields: [bookingId], references: [id])
+  
+  @@map("payments")
+}
+
+model TimeSlot {
+  id          String   @id @default(cuid())
+  dayOfWeek   Int      // 0-6 (Sunday-Saturday)
+  startTime   String   // HH:MM format
+  endTime     String   // HH:MM format
+  maxBookings Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  bookings ServiceBooking[]
+  
+  @@map("time_slots")
+}
+
+model Holiday {
+  id          String   @id @default(cuid())
+  date        DateTime
+  name        String
+  description String?
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("holidays")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String?
+  type        NotificationType
+  title       String
+  message     String
+  status      NotificationStatus @default(PENDING)
+  channel     NotificationChannel
+  recipient   String
+  sentAt      DateTime?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("notifications")
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  subject     String
+  content     String
+  type        EmailTemplateType
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+model Task {
+  id            String     @id @default(cuid())
+  title         String
+  description   String?
+  priority      TaskPriority @default(MEDIUM)
+  status        TaskStatus   @default(PENDING)
+  dueDate       DateTime?
+  assignedTo    String
+  assignedBy    String?
+  customerId    String?
+  bookingId     String?
+  notes         String?
+  estimatedHours Int        @default(0)
+  actualHours   Int        @default(0)
+  tags          Json?
+  attachments   Json?
+  completedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  assignee      User       @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  assigner      User?      @relation("TaskAssigner", fields: [assignedBy], references: [id])
+  customer      User?      @relation("TaskCustomer", fields: [customerId], references: [id])
+  booking       Booking?   @relation(fields: [bookingId], references: [id])
+  comments      TaskComment[]
+  calendarEvents CalendarEvent[]
+  
+  @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  @@map("task_comments")
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  type        BookingType
+  customerId  String
+  vehicleId   String?
+  serviceTypeId String?
+  date        DateTime
+  timeSlot    String
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  totalPrice  Float?
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentId   String?
+  reminderSent Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  customer    User          @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle?      @relation(fields: [vehicleId], references: [id])
+  serviceType ServiceType?   @relation(fields: [serviceTypeId], references: [id])
+  tasks       Task[]
+  calendarEvents CalendarEvent[]
+  
+  @@map("bookings")
+}
+
+model CalendarEvent {
+  id              String        @id @default(cuid())
+  title           String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  type            CalendarEventType
+  status          EventStatus   @default(SCHEDULED)
+  location        String?
+  attendees       Json          // Array of user IDs
+  bookingId       String?
+  taskId          String?
+  notes           String?
+  isRecurring     Boolean       @default(false)
+  recurringPattern String?
+  meetingLink     String?
+  attachments     Json?
+  reminders       Json?
+  organizerId     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  booking         Booking?      @relation(fields: [bookingId], references: [id])
+  task            Task?         @relation(fields: [taskId], references: [id])
+  organizer       User?         @relation(fields: [organizerId], references: [id])
+  
+  @@map("calendar_events")
+}
+
+model PerformanceMetric {
+  id          String              @id @default(cuid())
+  employeeId  String
+  period      PerformancePeriod
+  bookingsHandled Int
+  averageHandlingTime Float // in minutes
+  customerRating Float
+  conversionRate Float
+  revenueGenerated Float
+  tasksCompleted Int
+  customerSatisfaction Float
+  responseTime Float // in minutes
+  followUpRate Float // percentage
+  upsellSuccess Float // percentage
+  notes       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relations
+  employee    User                @relation(fields: [employeeId], references: [id])
+  
+  @@unique([employeeId, period])
+  @@map("performance_metrics")
+}
+
+model SiteSettings {
+  id          String   @id @default(cuid())
+  logoUrl     String?
+  faviconUrl  String?
+  primaryColor String  @default("#3B82F6")
+  secondaryColor String @default("#10B981")
+  accentColor String  @default("#F59E0B")
+  fontFamily  String   @default("Inter")
+  siteTitle   String
+  siteDescription String
+  contactEmail String
+  contactPhone String?
+  contactAddress String?
+  workingHours String?
+  socialLinks Json?    // Object with social media links
+  seoSettings Json?    // Object with SEO settings
+  headerSettings Json? // Object with header configuration
+  footerSettings Json? // Object with footer configuration
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+model FooterContent {
+  id            String   @id @default(cuid())
+  logoUrl       String?
+  logoText      String?
+  tagline       String?
+  primaryPhone  String?
+  secondaryPhone String?
+  primaryEmail  String?
+  secondaryEmail String?
+  address       String?
+  workingHours  String?
+  copyrightText String?
+  newsletterText String?
+  backToTopText String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("footer_content")
+}
+
+model FooterSocial {
+  id        String   @id @default(cuid())
+  facebook  String?
+  twitter   String?
+  instagram String?
+  linkedin  String?
+  youtube   String?
+  tiktok    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("footer_social")
+}
+
+model FooterColumn {
+  id        String       @id @default(cuid())
+  title     String
+  content   String
+  order     Int
+  isVisible Boolean      @default(true)
+  type      FooterColumnType
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("footer_columns")
+}
+
+model HeaderContent {
+  id            String   @id @default(cuid())
+  logoUrl       String?
+  logoText      String?
+  tagline       String?
+  primaryPhone  String?
+  secondaryPhone String?
+  primaryEmail  String?
+  secondaryEmail String?
+  address       String?
+  workingHours  String?
+  ctaButton     Json?    // Object with CTA button configuration
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("header_content")
+}
+
+model HeaderSocial {
+  id        String   @id @default(cuid())
+  facebook  String?
+  twitter   String?
+  instagram String?
+  linkedin  String?
+  youtube   String?
+  tiktok    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("header_social")
+}
+
+model HeaderNavigation {
+  id        String   @id @default(cuid())
+  label     String
+  href      String
+  order     Int
+  isVisible Boolean  @default(true)
+  parentId  String?
+  children  Json?   // Array of child navigation items
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("header_navigation")
+}
+
+model Slider {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?
+  description String?
+  imageUrl    String
+  ctaText     String?
+  ctaLink     String?
+  badge       String?
+  badgeColor  String?  @default("bg-blue-500")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("sliders")
+}
+
+model CompanyInfo {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?
+  description String?
+  imageUrl    String?
+  features    Json?    // Array of features
+  ctaButtons  Json?    // Array of CTA buttons with text, link, variant
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("company_info")
+}
+
+model ServiceItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  icon        String?  // Icon name
+  link        String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("service_items")
+}
+
+model TimelineEvent {
+  id          String   @id @default(cuid())
+  year        String
+  title       String
+  description String?
+  icon        String?  // Icon name
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("timeline_events")
+}
+
+model CompanyValue {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  icon        String?  // Icon name
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("company_values")
+}
+
+model CompanyStat {
+  id          String   @id @default(cuid())
+  number      String
+  label       String
+  icon        String?  // Icon name
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("company_stats")
+}
+
+model CompanyFeature {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  icon        String?  // Icon name
+  color       String?  // Color theme (blue, orange, green, etc.)
+  features    Json?    // Array of detailed features/bullet points
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("company_features")
+}
+
+model ContactInfo {
+  id            String   @id @default(cuid())
+  primaryPhone  String?
+  secondaryPhone String?
+  primaryEmail  String?
+  secondaryEmail String?
+  address       String?
+  mapLat        Float?   // Latitude for map
+  mapLng        Float?   // Longitude for map
+  workingHours  Json?    // Array of working hours
+  departments   Json?    // Array of departments with info
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("contact_info")
+}
+
 // Enums
+enum LogSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
 enum UserRole {
   CUSTOMER
   ADMIN
@@ -224,4 +710,102 @@ enum ServiceCategory {
   INSPECTION
   DETAILING
   CUSTOM
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  MOBILE_WALLET
+}
+
+enum BookingType {
+  SERVICE
+  TEST_DRIVE
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  BOOKING_REMINDER
+  BOOKING_CANCELLATION
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  PROMOTION
+  SYSTEM
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum EmailTemplateType {
+  BOOKING_CONFIRMATION
+  BOOKING_REMINDER
+  BOOKING_CANCELLATION
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  WELCOME
+  PROMOTION
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CalendarEventType {
+  APPOINTMENT
+  MEETING
+  TASK_DEADLINE
+  REMINDER
+  AVAILABILITY
+}
+
+enum EventStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PerformancePeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum FooterColumnType {
+  LINKS
+  TEXT
+  CONTACT
+  SOCIAL
 }

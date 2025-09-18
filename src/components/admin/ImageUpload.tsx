@@ -14,7 +14,8 @@ import {
   Trash2,
   AlertCircle
 } from 'lucide-react'
-import { StorageService } from '@/lib/storage'
+import { LocalStorageService } from '@/lib/local-storage'
+import Image from 'next/image'
 
 interface ImageUploadProps {
   vehicleId: string
@@ -69,13 +70,11 @@ export function ImageUpload({
     }
 
     const file = files[0]
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file')
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      setError('File size must be less than 5MB')
+    
+    // Validate image
+    const validation = LocalStorageService.validateImage(file)
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid file')
       return
     }
 
@@ -94,9 +93,12 @@ export function ImageUpload({
         })
       }, 100)
 
+      // Compress image
+      const compressedFile = await LocalStorageService.compressImage(file, 0.8)
+
       // Upload image
-      const result = await StorageService.uploadVehicleImage(
-        file,
+      const result = await LocalStorageService.uploadVehicleImage(
+        compressedFile,
         vehicleId,
         currentImages.length === 0, // First image is primary
         currentImages.length
@@ -123,7 +125,7 @@ export function ImageUpload({
 
   const removeImage = async (imageId: string, imagePath: string) => {
     try {
-      await StorageService.deleteVehicleImage(imagePath)
+      await LocalStorageService.deleteVehicleImage(imagePath)
       const updatedImages = currentImages
         .filter(img => img.id !== imageId)
         .map((img, index) => ({
@@ -219,10 +221,12 @@ export function ImageUpload({
               <Card key={image.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="relative group">
-                    <img
+                    <Image
                       src={image.url}
                       alt="Vehicle"
-                      className="w-full h-32 object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 50vw, 25vw"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="absolute inset-0 flex items-center justify-center space-x-2">

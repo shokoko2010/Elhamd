@@ -144,7 +144,7 @@ export default function AdminAppointmentsPage() {
       case BookingStatus.CANCELLED:
         return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>
       case BookingStatus.NO_SHOW:
-        return <Badge className="bg-orange-500"><AlertCircle className="h-3 w-3 mr-1" />No Show</Badge>
+        return <Badge className="bg-blue-600"><AlertCircle className="h-3 w-3 mr-1" />No Show</Badge>
       default:
         return <Badge>{status}</Badge>
     }

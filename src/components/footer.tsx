@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { 
   Car, 
@@ -10,144 +11,203 @@ import {
   Twitter, 
   Instagram, 
   Youtube,
-  Clock
+  Clock,
+  Loader
 } from 'lucide-react'
 
+interface FooterContent {
+  id: string
+  logoUrl?: string
+  logoText?: string
+  tagline?: string
+  primaryPhone?: string
+  secondaryPhone?: string
+  primaryEmail?: string
+  secondaryEmail?: string
+  address?: string
+  workingHours?: string
+  copyrightText?: string
+  newsletterText?: string
+  backToTopText?: string
+  isActive: boolean
+}
+
+interface FooterColumn {
+  id: string
+  title: string
+  content: string
+  order: number
+  isVisible: boolean
+  type: string
+}
+
+interface FooterSocial {
+  id: string
+  facebook?: string
+  twitter?: string
+  instagram?: string
+  linkedin?: string
+  youtube?: string
+  tiktok?: string
+}
+
 export default function Footer() {
+  const [footerContent, setFooterContent] = useState<FooterContent | null>(null)
+  const [footerColumns, setFooterColumns] = useState<FooterColumn[]>([])
+  const [footerSocial, setFooterSocial] = useState<FooterSocial | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchFooterData = async () => {
+      try {
+        // Fetch footer content
+        const contentResponse = await fetch('/api/footer/content')
+        if (contentResponse.ok) {
+          const contentData = await contentResponse.json()
+          setFooterContent(contentData)
+        }
+
+        // Fetch footer columns
+        const columnsResponse = await fetch('/api/footer/columns')
+        if (columnsResponse.ok) {
+          const columnsData = await columnsResponse.json()
+          setFooterColumns(columnsData)
+        }
+
+        // Fetch footer social links
+        const socialResponse = await fetch('/api/footer/social')
+        if (socialResponse.ok) {
+          const socialData = await socialResponse.json()
+          setFooterSocial(socialData)
+        }
+      } catch (error) {
+        console.error('Error fetching footer data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFooterData()
+  }, [])
+
+  const parseContent = (content: string) => {
+    return content.split('\n').filter(line => line.trim())
+  }
+
+  const generateLinkHref = (item: string) => {
+    // Map Arabic text to appropriate routes
+    const linkMap: { [key: string]: string } = {
+      'الرئيسية': '/',
+      'السيارات': '/vehicles',
+      'الخدمات': '/services',
+      'من نحن': '/about',
+      'اتصل بنا': '/contact',
+      'بيع السيارات': '/vehicles',
+      'قيادة تجريبية': '/test-drive',
+      'حجز الخدمة': '/service-booking',
+      'التمويل': '/financing',
+      'الصيانة': '/maintenance'
+    }
+    
+    return linkMap[item] || `/${item.toLowerCase().replace(/\s+/g, '-')}`
+  }
+
+  const getSocialIcon = (platform: string, url: string) => {
+    const iconMap: { [key: string]: any } = {
+      facebook: Facebook,
+      twitter: Twitter,
+      instagram: Instagram,
+      youtube: Youtube,
+      linkedin: Facebook, // Using Facebook as fallback for LinkedIn
+      tiktok: Instagram // Using Instagram as fallback for TikTok
+    }
+
+    const IconComponent = iconMap[platform.toLowerCase()] || Facebook
+    
+    return (
+      <a 
+        key={platform}
+        href={url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="text-gray-400 hover:text-white transition-colors"
+      >
+        <IconComponent className="h-5 w-5" />
+      </a>
+    )
+  }
+
+  if (loading) {
+    return (
+      <footer className="bg-gray-900 text-white">
+        <div className="container mx-auto px-4 py-12">
+          <div className="text-center">
+            <Loader className="h-8 w-8 animate-spin mx-auto" />
+            <p className="mt-2 text-gray-400">جاري تحميل الفوتر...</p>
+          </div>
+        </div>
+      </footer>
+    )
+  }
+
   return (
     <footer className="bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-8">
           {/* Company Info */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <Car className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold">Al-Hamd Cars</span>
+              <span className="text-xl font-bold">{footerContent?.logoText || 'الحمد للسيارات'}</span>
             </div>
             <p className="text-gray-300 mb-4">
-              الوكيل الرسمي لشركة تاتا موتورز في مصر. نقدم أفضل السيارات والخدمات لعملائنا الكرام.
+              {footerContent?.tagline || 'الوكيل الرسمي لشركة تاتا موتورز في مصر. نقدم أفضل السيارات والخدمات لعملائنا الكرام.'}
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Youtube className="h-5 w-5" />
-              </a>
+              {footerSocial && (
+                <>
+                  {footerSocial.facebook && getSocialIcon('facebook', footerSocial.facebook)}
+                  {footerSocial.twitter && getSocialIcon('twitter', footerSocial.twitter)}
+                  {footerSocial.instagram && getSocialIcon('instagram', footerSocial.instagram)}
+                  {footerSocial.youtube && getSocialIcon('youtube', footerSocial.youtube)}
+                  {footerSocial.linkedin && getSocialIcon('linkedin', footerSocial.linkedin)}
+                  {footerSocial.tiktok && getSocialIcon('tiktok', footerSocial.tiktok)}
+                </>
+              )}
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">روابط سريعة</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/" className="text-gray-300 hover:text-white transition-colors">
-                  الرئيسية
-                </Link>
-              </li>
-              <li>
-                <Link href="/vehicles" className="text-gray-300 hover:text-white transition-colors">
-                  السيارات
-                </Link>
-              </li>
-              <li>
-                <Link href="/test-drive" className="text-gray-300 hover:text-white transition-colors">
-                  قيادة تجريبية
-                </Link>
-              </li>
-              <li>
-                <Link href="/service-booking" className="text-gray-300 hover:text-white transition-colors">
-                  حجز خدمة
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
-                  اتصل بنا
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Services */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">خدماتنا</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/vehicles" className="text-gray-300 hover:text-white transition-colors">
-                  بيع سيارات جديدة
-                </Link>
-              </li>
-              <li>
-                <Link href="/test-drive" className="text-gray-300 hover:text-white transition-colors">
-                  قيادة تجريبية
-                </Link>
-              </li>
-              <li>
-                <Link href="/service-booking" className="text-gray-300 hover:text-white transition-colors">
-                  صيانة واصلاح
-                </Link>
-              </li>
-              <li>
-                <Link href="/service-booking" className="text-gray-300 hover:text-white transition-colors">
-                  قطع غيار أصلية
-                </Link>
-              </li>
-              <li>
-                <Link href="/service-booking" className="text-gray-300 hover:text-white transition-colors">
-                  خدمات ما بعد البيع
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">معلومات الاتصال</h3>
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3">
-                <MapPin className="h-5 w-5 text-blue-400 mt-0.5" />
-                <div>
-                  <p className="text-gray-300">العنوان</p>
-                  <p className="text-sm text-gray-400">القاهرة، مصر</p>
-                </div>
+          {/* Dynamic Columns */}
+          {footerColumns
+            .filter(column => column.isVisible)
+            .sort((a, b) => a.order - b.order)
+            .map((column) => (
+              <div key={column.id}>
+                <h3 className="text-lg font-semibold mb-4">{column.title}</h3>
+                <ul className="space-y-2">
+                  {parseContent(column.content).map((item, index) => (
+                    <li key={index}>
+                      {column.type === 'links' ? (
+                        <Link 
+                          href={generateLinkHref(item)} 
+                          className="text-gray-300 hover:text-white transition-colors"
+                        >
+                          {item}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-300">{item}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="h-5 w-5 text-blue-400" />
-                <div>
-                  <p className="text-gray-300">الهاتف</p>
-                  <p className="text-sm text-gray-400">+20 2 1234 5678</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Mail className="h-5 w-5 text-blue-400" />
-                <div>
-                  <p className="text-gray-300">البريد الإلكتروني</p>
-                  <p className="text-sm text-gray-400">info@alhamdcars.com</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Clock className="h-5 w-5 text-blue-400" />
-                <div>
-                  <p className="text-gray-300">ساعات العمل</p>
-                  <p className="text-sm text-gray-400">السبت - الخميس: 9:00 ص - 8:00 م</p>
-                  <p className="text-sm text-gray-400">الجمعة: 2:00 م - 8:00 م</p>
-                </div>
-              </div>
-            </div>
-          </div>
+            ))}
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © 2024 Al-Hamd Cars. جميع الحقوق محفوظة.
+              {footerContent?.copyrightText || '© 2024 الحمد للسيارات. جميع الحقوق محفوظة.'}
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
@@ -156,8 +216,8 @@ export default function Footer() {
               <Link href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
                 الشروط والأحكام
               </Link>
-              <Link href="/about" className="text-gray-400 hover:text-white text-sm transition-colors">
-                من نحن
+              <Link href="/contact" className="text-gray-400 hover:text-white text-sm transition-colors">
+                اتصل بنا
               </Link>
             </div>
           </div>

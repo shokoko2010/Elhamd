@@ -1,43 +1,44 @@
 'use client'
 
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/use-auth'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, Shield } from 'lucide-react'
+import { UserRole } from '@prisma/client'
 
 interface AdminRouteProps {
   children: React.ReactNode
-  requiredRoles?: string[]
+  requiredRoles?: UserRole[]
   redirectTo?: string
 }
 
 export function AdminRoute({ 
   children, 
-  requiredRoles = ['ADMIN', 'STAFF'], 
+  requiredRoles = [UserRole.ADMIN, UserRole.STAFF], 
   redirectTo = '/login' 
 }: AdminRouteProps) {
-  const { user, login, logout, isLoading } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!loading) {
       // Check if user is authenticated
-      if (!user) {
+      if (!authenticated || !user) {
         router.push(redirectTo)
         return
       }
 
       // Check if user has required role
-      if (!user.role || !requiredRoles.includes(user.role)) {
+      if (!requiredRoles.includes(user.role)) {
         router.push('/')
         return
       }
     }
-  }, [user, isLoading, requiredRoles, redirectTo, router])
+  }, [user, loading, authenticated, requiredRoles, redirectTo, router])
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -48,7 +49,7 @@ export function AdminRoute({
     )
   }
 
-  if (!user || !user.role || !requiredRoles.includes(user.role)) {
+  if (!authenticated || !user || !requiredRoles.includes(user.role)) {
     return null // Will redirect in useEffect
   }
 

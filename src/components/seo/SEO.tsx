@@ -1,5 +1,4 @@
-import Head from 'next/head'
-import { useRouter } from 'next/router'
+import { Metadata } from 'next'
 
 interface SEOProps {
   title?: string
@@ -12,7 +11,7 @@ interface SEOProps {
   structuredData?: any
 }
 
-export default function SEO({
+export function generateMetadata({
   title = 'Al-Hamd Cars | TATA Motors Authorized Dealer in Egypt',
   description = 'Al-Hamd Cars is your authorized TATA Motors dealer in Egypt. Explore our wide range of TATA vehicles, book test drives, and get expert service and maintenance.',
   keywords = 'TATA Motors Egypt, Al-Hamd Cars, TATA dealer Egypt, new cars Egypt, car dealership, TATA Nexon, TATA Punch, TATA Tiago, car service Egypt',
@@ -21,9 +20,8 @@ export default function SEO({
   canonicalUrl,
   noIndex = false,
   structuredData
-}: SEOProps) {
-  const router = useRouter()
-  const currentUrl = ogUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com'}${router.asPath}`
+}: SEOProps = {}): Metadata {
+  const currentUrl = ogUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com'}`
   const canonical = canonicalUrl || currentUrl
 
   const defaultStructuredData = {
@@ -46,59 +44,74 @@ export default function SEO({
 
   const finalStructuredData = structuredData || defaultStructuredData
 
-  return (
-    <Head>
-      {/* Basic Meta Tags */}
-      <title>{title}</title>
-      <meta name="description" content={description} />
-      <meta name="keywords" content={keywords} />
-      <meta name="author" content="Al-Hamd Cars" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <meta name="robots" content={noIndex ? 'noindex,nofollow' : 'index,follow'} />
-      
-      {/* Open Graph Tags */}
-      <meta property="og:type" content="website" />
-      <meta property="og:title" content={title} />
-      <meta property="og:description" content={description} />
-      <meta property="og:image" content={ogImage} />
-      <meta property="og:url" content={currentUrl} />
-      <meta property="og:site_name" content="Al-Hamd Cars" />
-      <meta property="og:locale" content="en_EG" />
-      
-      {/* Twitter Card Tags */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={ogImage} />
-      
-      {/* Canonical URL */}
-      <link rel="canonical" href={canonical} />
-      
-      {/* Favicon */}
-      <link rel="icon" href="/favicon.ico" />
-      <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-      <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-      <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-      
-      {/* Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(finalStructuredData)
-        }}
-      />
-      
-      {/* Additional SEO Tags */}
-      <meta name="theme-color" content="#1e40af" />
-      <meta name="msapplication-TileColor" content="#1e40af" />
-      
-      {/* Geo Tags */}
-      <meta name="geo.region" content="EG-C" />
-      <meta name="geo.placename" content="Cairo" />
-      <meta name="geo.position" content="30.0444;31.2357" />
-      <meta name="ICBM" content="30.0444, 31.2357" />
-    </Head>
-  )
+  return {
+    title,
+    description,
+    keywords,
+    authors: [{ name: 'Al-Hamd Cars' }],
+    robots: noIndex ? 'noindex,nofollow' : 'index,follow',
+    openGraph: {
+      type: 'website',
+      title,
+      description,
+      images: [ogImage],
+      url: currentUrl,
+      siteName: 'Al-Hamd Cars',
+      locale: 'en_EG',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
+    alternates: {
+      canonical,
+    },
+    icons: {
+      icon: '/favicon.ico',
+      apple: '/apple-touch-icon.png',
+    },
+    other: {
+      'theme-color': '#1e40af',
+      'msapplication-TileColor': '#1e40af',
+      'geo.region': 'EG-C',
+      'geo.placename': 'Cairo',
+      'geo.position': '30.0444;31.2357',
+      'ICBM': '30.0444, 31.2357',
+    },
+  }
+}
+
+export function generateStructuredData({
+  title = 'Al-Hamd Cars | TATA Motors Authorized Dealer in Egypt',
+  description = 'Al-Hamd Cars is your authorized TATA Motors dealer in Egypt. Explore our wide range of TATA vehicles, book test drives, and get expert service and maintenance.',
+  structuredData
+}: {
+  title?: string
+  description?: string
+  structuredData?: any
+} = {}): string {
+  const defaultStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "AutomotiveBusiness",
+    "name": "Al-Hamd Cars",
+    "description": description,
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "telephone": "+20 2 1234 5678",
+    "email": "info@alhamdcars.com",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Tahrir Street",
+      "addressLocality": "Cairo",
+      "addressCountry": "EG"
+    },
+    "openingHours": "Mo-Fr 09:00-20:00 Sa 10:00-18:00",
+    "priceRange": "$$$"
+  }
+
+  const finalStructuredData = structuredData || defaultStructuredData
+  return JSON.stringify(finalStructuredData)
 }
 
 // Specialized SEO components for different pages
@@ -151,14 +164,15 @@ export function HomepageSEO() {
     }
   }
 
-  return (
-    <SEO
-      title="Al-Hamd Cars | TATA Motors Authorized Dealer in Egypt"
-      description="Discover the perfect TATA vehicle at Al-Hamd Cars, Egypt's authorized TATA Motors dealer. Explore new cars, book test drives, and get expert service."
-      keywords="TATA Motors Egypt, Al-Hamd Cars, TATA dealer Egypt, new cars Egypt, car dealership, TATA Nexon, TATA Punch, TATA Tiago"
-      structuredData={structuredData}
-    />
-  )
+  return {
+    metadata: generateMetadata({
+      title: "Al-Hamd Cars | TATA Motors Authorized Dealer in Egypt",
+      description: "Discover the perfect TATA vehicle at Al-Hamd Cars, Egypt's authorized TATA Motors dealer. Explore new cars, book test drives, and get expert service.",
+      keywords: "TATA Motors Egypt, Al-Hamd Cars, TATA dealer Egypt, new cars Egypt, car dealership, TATA Nexon, TATA Punch, TATA Tiago",
+      structuredData
+    }),
+    structuredData: generateStructuredData({ structuredData })
+  }
 }
 
 export function VehicleSEO({ make, model, year, price }: { make: string; model: string; year: number; price: number }) {
@@ -193,14 +207,15 @@ export function VehicleSEO({ make, model, year, price }: { make: string; model: 
     }
   }
 
-  return (
-    <SEO
-      title={title}
-      description={description}
-      keywords={`${make} ${model}, ${make} Egypt, ${model} price, TATA ${model}, buy ${make} ${model}, ${make} dealer Egypt`}
-      structuredData={structuredData}
-    />
-  )
+  return {
+    metadata: generateMetadata({
+      title,
+      description,
+      keywords: `${make} ${model}, ${make} Egypt, ${model} price, TATA ${model}, buy ${make} ${model}, ${make} dealer Egypt`,
+      structuredData
+    }),
+    structuredData: generateStructuredData({ structuredData })
+  }
 }
 
 export function ServiceSEO() {
@@ -225,14 +240,15 @@ export function ServiceSEO() {
     }
   }
 
-  return (
-    <SEO
-      title={title}
-      description={description}
-      keywords="car service Egypt, car maintenance Egypt, TATA service center, vehicle repair Egypt, car servicing, TATA maintenance"
-      structuredData={structuredData}
-    />
-  )
+  return {
+    metadata: generateMetadata({
+      title,
+      description,
+      keywords: "car service Egypt, car maintenance Egypt, TATA service center, vehicle repair Egypt, car servicing, TATA maintenance",
+      structuredData
+    }),
+    structuredData: generateStructuredData({ structuredData })
+  }
 }
 
 export function ContactSEO() {
@@ -262,12 +278,114 @@ export function ContactSEO() {
     }
   }
 
-  return (
-    <SEO
-      title={title}
-      description={description}
-      keywords="contact TATA dealer Egypt, Al-Hamd Cars contact, car dealership Egypt, TATA Motors Egypt contact, visit showroom"
-      structuredData={structuredData}
-    />
-  )
+  return {
+    metadata: generateMetadata({
+      title,
+      description,
+      keywords: "contact TATA dealer Egypt, Al-Hamd Cars contact, car dealership Egypt, TATA Motors Egypt contact, visit showroom",
+      structuredData
+    }),
+    structuredData: generateStructuredData({ structuredData })
+  }
+}
+
+export function VehiclesSEO() {
+  const title = "TATA Vehicles for Sale | Al-Hamd Cars Egypt"
+  const description = "Browse our complete range of TATA vehicles for sale in Egypt. Find the perfect TATA car, SUV, or commercial vehicle for your needs."
+  
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "AutomotiveBusiness",
+    "name": "Al-Hamd Cars",
+    "description": "Authorized TATA Motors dealer with complete vehicle inventory",
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "telephone": "+20 2 1234 5678",
+    "email": "info@alhamdcars.com",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Tahrir Street",
+      "addressLocality": "Cairo",
+      "addressCountry": "EG"
+    },
+    "openingHours": "Mo-Fr 09:00-20:00 Sa 10:00-18:00",
+    "makesAvailable": [
+      {
+        "@type": "Vehicle",
+        "name": "TATA Nexon",
+        "vehicleType": "SUV"
+      },
+      {
+        "@type": "Vehicle",
+        "name": "TATA Punch",
+        "vehicleType": "SUV"
+      },
+      {
+        "@type": "Vehicle",
+        "name": "TATA Tiago",
+        "vehicleType": "Hatchback"
+      },
+      {
+        "@type": "Vehicle",
+        "name": "TATA Tigor",
+        "vehicleType": "Sedan"
+      },
+      {
+        "@type": "Vehicle",
+        "name": "TATA Altroz",
+        "vehicleType": "Hatchback"
+      },
+      {
+        "@type": "Vehicle",
+        "name": "TATA Harrier",
+        "vehicleType": "SUV"
+      }
+    ]
+  }
+
+  return {
+    metadata: generateMetadata({
+      title,
+      description,
+      keywords: "TATA vehicles Egypt, TATA cars for sale, buy TATA car Egypt, TATA SUV Egypt, TATA dealer inventory, new TATA vehicles",
+      structuredData
+    }),
+    structuredData: generateStructuredData({ structuredData })
+  }
+}
+
+export function TestDriveSEO() {
+  const title = "Book a Test Drive | Al-Hamd Cars Egypt"
+  const description = "Schedule a test drive for any TATA vehicle at Al-Hamd Cars. Experience the performance and comfort of TATA cars firsthand."
+  
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "AutomotiveBusiness",
+    "name": "Al-Hamd Cars",
+    "description": "Authorized TATA Motors dealer offering test drives",
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "telephone": "+20 2 1234 5678",
+    "email": "info@alhamdcars.com",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Tahrir Street",
+      "addressLocality": "Cairo",
+      "addressCountry": "EG"
+    },
+    "openingHours": "Mo-Fr 09:00-20:00 Sa 10:00-18:00",
+    "service": {
+      "@type": "Service",
+      "name": "Test Drive Service",
+      "description": "Schedule test drives for TATA vehicles"
+    }
+  }
+
+  return {
+    metadata: generateMetadata({
+      title,
+      description,
+      keywords: "TATA test drive Egypt, book test drive, TATA car test drive, schedule test drive, TATA driving experience",
+      structuredData
+    }),
+    structuredData: generateStructuredData({ structuredData })
+  }
 }

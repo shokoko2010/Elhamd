@@ -27,6 +27,7 @@ import {
   Eye,
   Upload
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { ImageUpload } from '@/components/admin/ImageUpload'
 
 interface SliderItem {
@@ -67,6 +68,17 @@ interface ServiceItem {
   isActive: boolean
 }
 
+interface CompanyFeature {
+  id: string
+  title: string
+  description: string
+  icon: string
+  color: string
+  features: string[]
+  order: number
+  isActive: boolean
+}
+
 interface HomepageSettings {
   showHeroSlider: boolean
   autoPlaySlider: boolean
@@ -86,6 +98,7 @@ function HomepageContent() {
   const [sliderItems, setSliderItems] = useState<SliderItem[]>([])
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null)
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([])
+  const [companyFeatures, setCompanyFeatures] = useState<CompanyFeature[]>([])
   const [settings, setSettings] = useState<HomepageSettings>({
     showHeroSlider: true,
     autoPlaySlider: true,
@@ -103,6 +116,7 @@ function HomepageContent() {
   const [showSliderDialog, setShowSliderDialog] = useState(false)
   const [showCompanyDialog, setShowCompanyDialog] = useState(false)
   const [showServiceDialog, setShowServiceDialog] = useState(false)
+  const [showFeaturesDialog, setShowFeaturesDialog] = useState(false)
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
 
   // Form states
@@ -118,80 +132,41 @@ function HomepageContent() {
   const loadHomepageData = async () => {
     setLoading(true)
     try {
-      // Mock data - will be replaced with API calls
-      const mockSliderItems: SliderItem[] = [
-        {
-          id: '1',
-          title: 'تاتا نيكسون 2024',
-          subtitle: 'سيارة SUV عائلية متطورة',
-          description: 'تجربة القيادة المثالية مع أحدث تقنيات السلامة والراحة',
-          imageUrl: '/api/placeholder/1200/600',
-          ctaText: 'اكتشف المزيد',
-          ctaLink: '/vehicles',
-          badge: 'جديد',
-          badgeColor: 'bg-green-500',
-          order: 0,
-          isActive: true
-        },
-        {
-          id: '2',
-          title: 'عرض خاص على تاتا بانش',
-          subtitle: 'خصم 15% على جميع الفئات',
-          description: 'فرصة محدودة للحصول على سيارتك المفضلة بأفضل سعر',
-          imageUrl: '/api/placeholder/1200/600',
-          ctaText: 'اطلب العرض الآن',
-          ctaLink: '/vehicles',
-          badge: 'عرض خاص',
-          badgeColor: 'bg-red-500',
-          order: 1,
-          isActive: true
-        }
-      ]
-
-      const mockCompanyInfo: CompanyInfo = {
-        id: '1',
-        title: 'مرحباً بك في الحمد للسيارات',
-        subtitle: 'الوكيل الرسمي المعتمد لسيارات تاتا في مصر',
-        description: 'نحن فخورون بتمثيل علامة تاتا التجارية في مصر، حيث نقدم لكم أحدث الموديلات مع ضمان الجودة الأصلي وخدمة ما بعد البيع المتميزة.',
-        imageUrl: 'https://source.unsplash.com/800x600/?tata,showroom',
-        features: [
-          'أحدث موديلات تاتا 2024',
-          'ضمان المصنع لمدة 3 سنوات',
-          'خدمة صيانة على مدار الساعة',
-          'تمويل سيارات بأفضل الأسعار'
-        ],
-        ctaButtons: [
-          { text: 'استعرض السيارات', link: '/vehicles', variant: 'primary' },
-          { text: 'قيادة تجريبية', link: '/test-drive', variant: 'secondary' }
-        ]
+      // Fetch sliders from API
+      const slidersResponse = await fetch('/api/sliders')
+      if (slidersResponse.ok) {
+        const slidersData = await slidersResponse.json()
+        setSliderItems(slidersData.sliders)
+      } else {
+        console.error('Failed to fetch sliders')
+        // Use empty array on error
+        setSliderItems([])
       }
 
-      const mockServiceItems: ServiceItem[] = [
-        {
-          id: '1',
-          title: 'بيع سيارات جديدة',
-          description: 'أحدث موديلات تاتا مع ضمان المصنع الكامل',
-          icon: 'Car',
-          link: '/vehicles',
-          order: 0,
-          isActive: true
-        },
-        {
-          id: '2',
-          title: 'خدمة الصيانة',
-          description: 'صيانة احترافية بأسعار تنافسية',
-          icon: 'Wrench',
-          link: '/maintenance',
-          order: 1,
-          isActive: true
-        }
-      ]
+      // Fetch company info from API
+      const companyInfoResponse = await fetch('/api/company-info')
+      if (companyInfoResponse.ok) {
+        const companyInfoData = await companyInfoResponse.json()
+        setCompanyInfo(companyInfoData)
+      }
 
-      setSliderItems(mockSliderItems)
-      setCompanyInfo(mockCompanyInfo)
-      setServiceItems(mockServiceItems)
+      // Fetch service items from API
+      const serviceItemsResponse = await fetch('/api/service-items')
+      if (serviceItemsResponse.ok) {
+        const serviceItemsData = await serviceItemsResponse.json()
+        setServiceItems(serviceItemsData)
+      }
+
+      // Fetch company features from API
+      const featuresResponse = await fetch('/api/about/features')
+      if (featuresResponse.ok) {
+        const featuresData = await featuresResponse.json()
+        setCompanyFeatures(featuresData)
+      }
     } catch (error) {
       console.error('Error loading homepage data:', error)
+      // Set empty arrays on error
+      setSliderItems([])
     } finally {
       setLoading(false)
     }
@@ -222,50 +197,162 @@ function HomepageContent() {
 
   const handleSaveSlider = async () => {
     try {
-      if (editingSlider) {
-        // Update existing slider
-        setSliderItems(prev => prev.map(item => 
-          item.id === editingSlider.id ? { ...item, ...sliderForm } as SliderItem : item
-        ))
-      } else {
-        // Add new slider
-        const newSlider: SliderItem = {
-          id: Date.now().toString(),
-          ...sliderForm,
-          order: sliderItems.length,
-          isActive: true
-        } as SliderItem
-        setSliderItems(prev => [...prev, newSlider])
+      const response = await fetch(editingSlider ? `/api/sliders/${editingSlider.id}` : '/api/sliders', {
+        method: editingSlider ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sliderForm),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في حفظ السلايدر')
       }
+
+      const data = await response.json()
+      
+      // Refresh the sliders list
+      await loadHomepageData()
+      
       setShowSliderDialog(false)
       setSliderForm({})
       setEditingSlider(null)
     } catch (error) {
       console.error('Error saving slider:', error)
+      alert(error instanceof Error ? error.message : 'فشل في حفظ السلايدر')
     }
   }
 
   const handleDeleteSlider = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا العنصر؟')) {
-      setSliderItems(prev => prev.filter(item => item.id !== id))
+      try {
+        const response = await fetch(`/api/sliders/${id}`, {
+          method: 'DELETE',
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'فشل في حذف السلايدر')
+        }
+
+        // Refresh the sliders list
+        await loadHomepageData()
+      } catch (error) {
+        console.error('Error deleting slider:', error)
+        alert(error instanceof Error ? error.message : 'فشل في حذف السلايدر')
+      }
     }
   }
 
-  const moveSliderItem = (id: string, direction: 'up' | 'down') => {
-    setSliderItems(prev => {
-      const items = [...prev]
-      const index = items.findIndex(item => item.id === id)
-      if (index === -1) return items
+  const moveSliderItem = async (id: string, direction: 'up' | 'down') => {
+    try {
+      const currentIndex = sliderItems.findIndex(item => item.id === id)
+      if (currentIndex === -1) return
 
-      const newIndex = direction === 'up' ? index - 1 : index + 1
-      if (newIndex < 0 || newIndex >= items.length) return items
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+      if (newIndex < 0 || newIndex >= sliderItems.length) return
 
+      // Create new order array
+      const newOrder = [...sliderItems]
       // Swap items
-      [items[index], items[newIndex]] = [items[newIndex], items[index]]
+      [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]]
       
-      // Update order
-      return items.map((item, i) => ({ ...item, order: i }))
-    })
+      // Get the IDs in the new order
+      const sliderIds = newOrder.map(item => item.id)
+
+      // Call reorder API
+      const response = await fetch('/api/sliders/reorder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sliderIds }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في إعادة ترتيب السلايدرات')
+      }
+
+      // Refresh the sliders list
+      await loadHomepageData()
+    } catch (error) {
+      console.error('Error moving slider item:', error)
+      alert(error instanceof Error ? error.message : 'فشل في إعادة ترتيب السلايدرات')
+    }
+  }
+
+  const handleSaveCompany = async () => {
+    try {
+      const response = await fetch('/api/company-info', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(companyInfo),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في حفظ معلومات الشركة')
+      }
+
+      const data = await response.json()
+      setShowCompanyDialog(false)
+      toast.success('تم حفظ معلومات الشركة بنجاح')
+    } catch (error) {
+      console.error('Error saving company info:', error)
+      alert(error instanceof Error ? error.message : 'فشل في حفظ معلومات الشركة')
+    }
+  }
+
+  const handleSaveService = async () => {
+    try {
+      const response = await fetch('/api/service-items', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(serviceItems),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في حفظ الخدمات')
+      }
+
+      const data = await response.json()
+      setShowServiceDialog(false)
+      toast.success('تم حفظ الخدمات بنجاح')
+    } catch (error) {
+      console.error('Error saving service items:', error)
+      alert(error instanceof Error ? error.message : 'فشل في حفظ الخدمات')
+    }
+  }
+
+  const handleSaveFeatures = async () => {
+    try {
+      const response = await fetch('/api/about/features', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(companyFeatures),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في حفظ المميزات')
+      }
+
+      const data = await response.json()
+      setShowFeaturesDialog(false)
+      toast.success('تم حفظ المميزات بنجاح')
+    } catch (error) {
+      console.error('Error saving company features:', error)
+      alert(error instanceof Error ? error.message : 'فشل في حفظ المميزات')
+    }
   }
 
   const handleSaveSettings = async () => {
@@ -282,7 +369,7 @@ function HomepageContent() {
     { value: 'bg-blue-500', label: 'أزرق' },
     { value: 'bg-green-500', label: 'أخضر' },
     { value: 'bg-red-500', label: 'أحمر' },
-    { value: 'bg-orange-500', label: 'برتقالي' },
+    { value: 'bg-blue-600', label: 'أزرق' },
     { value: 'bg-purple-500', label: 'بنفسجي' }
   ]
 
@@ -305,10 +392,11 @@ function HomepageContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="slider">السلايدر الرئيسي</TabsTrigger>
           <TabsTrigger value="company">معلومات الشركة</TabsTrigger>
           <TabsTrigger value="services">الخدمات</TabsTrigger>
+          <TabsTrigger value="features">مميزاتنا</TabsTrigger>
           <TabsTrigger value="content">المحتوى</TabsTrigger>
         </TabsList>
 
@@ -486,6 +574,57 @@ function HomepageContent() {
                         </Button>
                       </div>
                     </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Features Management */}
+        <TabsContent value="features" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>مميزات الشركة</CardTitle>
+                  <CardDescription>
+                    تحكم في قسم "لماذا تختار الحمد للسيارات"
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowFeaturesDialog(true)}>
+                  <Edit className="ml-2 h-4 w-4" />
+                  تعديل المميزات
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {companyFeatures.map((feature) => (
+                  <Card key={feature.id} className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold">{feature.title}</h3>
+                      <Badge variant={feature.isActive ? 'default' : 'secondary'}>
+                        {feature.isActive ? 'نشط' : 'معطل'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{feature.description}</p>
+                    <div className="text-xs text-gray-500 mb-2">
+                      اللون: {feature.color} • الأيقونة: {feature.icon}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      الترتيب: {feature.order + 1}
+                    </div>
+                    {feature.features && feature.features.length > 0 && (
+                      <div className="mt-2">
+                        <div className="text-xs font-medium text-gray-700 mb-1">المميزات:</div>
+                        <ul className="text-xs text-gray-600 space-y-1">
+                          {feature.features.map((feat, index) => (
+                            <li key={index}>• {feat}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>
@@ -733,6 +872,162 @@ function HomepageContent() {
             <Button onClick={handleSaveSettings}>
               <Save className="ml-2 h-4 w-4" />
               حفظ الإعدادات
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Features Dialog */}
+      <Dialog open={showFeaturesDialog} onOpenChange={setShowFeaturesDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>تعديل مميزات الشركة</DialogTitle>
+            <DialogDescription>
+              تحكم في قسم "لماذا تختار الحمد للسيارات"
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {companyFeatures.map((feature, index) => (
+              <Card key={feature.id} className="p-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`title-${feature.id}`}>العنوان *</Label>
+                      <Input
+                        id={`title-${feature.id}`}
+                        value={feature.title}
+                        onChange={(e) => {
+                          const newFeatures = [...companyFeatures]
+                          newFeatures[index].title = e.target.value
+                          setCompanyFeatures(newFeatures)
+                        }}
+                        placeholder="أدخل العنوان"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`icon-${feature.id}`}>الأيقونة *</Label>
+                      <Select
+                        value={feature.icon}
+                        onValueChange={(value) => {
+                          const newFeatures = [...companyFeatures]
+                          newFeatures[index].icon = value
+                          setCompanyFeatures(newFeatures)
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر الأيقونة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Car">سيارة</SelectItem>
+                          <SelectItem value="Wrench">مفتاح ربط</SelectItem>
+                          <SelectItem value="Star">نجمة</SelectItem>
+                          <SelectItem value="Calendar">تقويم</SelectItem>
+                          <SelectItem value="Users">مستخدمون</SelectItem>
+                          <SelectItem value="Shield">درع</SelectItem>
+                          <SelectItem value="Heart">قلب</SelectItem>
+                          <SelectItem value="Lightbulb">لمبة</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`color-${feature.id}`}>اللون *</Label>
+                      <Select
+                        value={feature.color}
+                        onValueChange={(value) => {
+                          const newFeatures = [...companyFeatures]
+                          newFeatures[index].color = value
+                          setCompanyFeatures(newFeatures)
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر اللون" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="blue">أزرق</SelectItem>
+                          <SelectItem value="orange">برتقالي</SelectItem>
+                          <SelectItem value="green">أخضر</SelectItem>
+                          <SelectItem value="red">أحمر</SelectItem>
+                          <SelectItem value="purple">بنفسجي</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`order-${feature.id}`}>الترتيب</Label>
+                      <Input
+                        id={`order-${feature.id}`}
+                        type="number"
+                        value={feature.order}
+                        onChange={(e) => {
+                          const newFeatures = [...companyFeatures]
+                          newFeatures[index].order = parseInt(e.target.value)
+                          setCompanyFeatures(newFeatures)
+                        }}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor={`description-${feature.id}`}>الوصف *</Label>
+                    <Textarea
+                      id={`description-${feature.id}`}
+                      value={feature.description}
+                      onChange={(e) => {
+                        const newFeatures = [...companyFeatures]
+                        newFeatures[index].description = e.target.value
+                        setCompanyFeatures(newFeatures)
+                      }}
+                      placeholder="أدخل الوصف"
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor={`features-${feature.id}`}>المميزات التفصيلية</Label>
+                    <Textarea
+                      id={`features-${feature.id}`}
+                      value={feature.features ? feature.features.join('\n') : ''}
+                      onChange={(e) => {
+                        const newFeatures = [...companyFeatures]
+                        newFeatures[index].features = e.target.value.split('\n').filter(f => f.trim())
+                        setCompanyFeatures(newFeatures)
+                      }}
+                      placeholder="أدخل المميزات التفصيلية (سطر لكل ميزة)"
+                      rows={4}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">أدخل كل ميزة في سطر منفصل</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`active-${feature.id}`}
+                      checked={feature.isActive}
+                      onCheckedChange={(checked) => {
+                        const newFeatures = [...companyFeatures]
+                        newFeatures[index].isActive = checked
+                        setCompanyFeatures(newFeatures)
+                      }}
+                    />
+                    <Label htmlFor={`active-${feature.id}`}>نشط</Label>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+          
+          <div className="flex gap-3 mt-6">
+            <Button variant="outline" onClick={() => setShowFeaturesDialog(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleSaveFeatures}>
+              <Save className="ml-2 h-4 w-4" />
+              حفظ المميزات
             </Button>
           </div>
         </DialogContent>

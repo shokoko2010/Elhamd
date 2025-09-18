@@ -1,0 +1,42 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { getAuthUser } from '@/lib/auth-server'
+
+export async function POST(request: NextRequest) {
+  try {
+    // Check authentication and authorization
+    const user = await getAuthUser()
+    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+      return NextResponse.json(
+        { error: 'غير مصرح لك بالوصول' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { sliderIds } = body
+
+    if (!Array.isArray(sliderIds) || sliderIds.length === 0) {
+      return NextResponse.json(
+        { error: 'قائمة السلايدرات غير صالحة' },
+        { status: 400 }
+      )
+    }
+
+    // Update order for each slider
+    for (let i = 0; i < sliderIds.length; i++) {
+      await db.slider.update({
+        where: { id: sliderIds[i] },
+        data: { order: i }
+      })
+    }
+
+    return NextResponse.json({ message: 'تم إعادة ترتيب السلايدرات بنجاح' })
+  } catch (error) {
+    console.error('Error reordering sliders:', error)
+    return NextResponse.json(
+      { error: 'فشل في إعادة ترتيب السلايدرات' },
+      { status: 500 }
+    )
+  }
+}

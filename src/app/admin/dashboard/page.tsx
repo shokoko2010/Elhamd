@@ -267,7 +267,7 @@ export default function AdminDashboard() {
                       {booking.type === 'test-drive' ? (
                         <Car className="h-5 w-5 text-blue-600" />
                       ) : (
-                        <Wrench className="h-5 w-5 text-orange-600" />
+                        <Wrench className="h-5 w-5 text-blue-600" />
                       )}
                     </div>
                     <div>
