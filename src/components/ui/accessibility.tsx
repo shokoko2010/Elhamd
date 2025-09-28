@@ -127,12 +127,12 @@ export function useFocusTrap(isActive: boolean) {
       if (e.key !== 'Tab') return
 
       if (e.shiftKey) {
-        if (document.activeElement === firstElement) {
+        if (typeof document !== 'undefined' && document.activeElement === firstElement) {
           lastElement?.focus()
           e.preventDefault()
         }
       } else {
-        if (document.activeElement === lastElement) {
+        if (typeof document !== 'undefined' && document.activeElement === lastElement) {
           firstElement?.focus()
           e.preventDefault()
         }
@@ -145,15 +145,19 @@ export function useFocusTrap(isActive: boolean) {
       }
     }
 
-    document.addEventListener('keydown', handleTab)
-    document.addEventListener('keydown', handleEscape)
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', handleTab)
+      document.addEventListener('keydown', handleEscape)
+    }
 
     // Focus first element when trap is activated
     firstElement?.focus()
 
     return () => {
-      document.removeEventListener('keydown', handleTab)
-      document.removeEventListener('keydown', handleEscape)
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', handleTab)
+        document.removeEventListener('keydown', handleEscape)
+      }
     }
   }, [isActive])
 
@@ -210,10 +214,12 @@ export function HighContrastToggle() {
   const [isHighContrast, setIsHighContrast] = useState(false)
 
   useEffect(() => {
-    if (isHighContrast) {
-      document.documentElement.classList.add('high-contrast')
-    } else {
-      document.documentElement.classList.remove('high-contrast')
+    if (typeof document !== 'undefined') {
+      if (isHighContrast) {
+        document.documentElement.classList.add('high-contrast')
+      } else {
+        document.documentElement.classList.remove('high-contrast')
+      }
     }
   }, [isHighContrast])
 
@@ -234,8 +240,10 @@ export function TextSizeControls() {
   const [textSize, setTextSize] = useState<'sm' | 'md' | 'lg'>('md')
 
   useEffect(() => {
-    document.documentElement.classList.remove('text-sm', 'text-md', 'text-lg')
-    document.documentElement.classList.add(`text-${textSize}`)
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('text-sm', 'text-md', 'text-lg')
+      document.documentElement.classList.add(`text-${textSize}`)
+    }
   }, [textSize])
 
   return (
@@ -377,10 +385,12 @@ export function AccessibilityToolbar() {
   const [isScreenReader, setIsScreenReader] = useState(false)
 
   useEffect(() => {
-    if (isReducedMotion) {
-      document.documentElement.classList.add('reduce-motion')
-    } else {
-      document.documentElement.classList.remove('reduce-motion')
+    if (typeof document !== 'undefined') {
+      if (isReducedMotion) {
+        document.documentElement.classList.add('reduce-motion')
+      } else {
+        document.documentElement.classList.remove('reduce-motion')
+      }
     }
   }, [isReducedMotion])
 

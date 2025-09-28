@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +49,10 @@ interface MediaFile {
   uploadedAt: string
   updatedAt: string
   uploadedBy: string
+  width?: number
+  height?: number
+  isPublic?: boolean
+  isFeatured?: boolean
 }
 
 interface MediaFolder {
@@ -64,6 +69,7 @@ export default function AdminMediaPage() {
 }
 
 function MediaContent() {
+  const { user, loading: authLoading } = useAuth()
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [folders, setFolders] = useState<MediaFolder[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,145 +103,115 @@ function MediaContent() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadMediaData()
-  }, [])
+    if (!authLoading && user) {
+      loadMediaData()
+    }
+  }, [authLoading, user])
 
   const loadMediaData = async () => {
     setLoading(true)
     setError('')
     try {
-      // Fetch media files from API
-      const response = await fetch('/api/media')
+      // Fetch media files from API using direct fetch - get all files without limit
+      const response = await fetch('/api/media?limit=1000', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for authentication
+      })
       if (!response.ok) {
         throw new Error('Failed to fetch media')
       }
       const data = await response.json()
-      setMediaFiles(data.data.files)
+      
+      // Ensure data structure is valid
+      if (data && data.data && data.data.files && Array.isArray(data.data.files)) {
+        // Map the media files to match the interface
+        const mappedFiles = data.data.files.map((file: any) => ({
+          id: file.id,
+          name: file.filename || file.name || 'Unnamed',
+          originalName: file.originalName || file.originalFilename || file.name || 'Unnamed',
+          url: file.url,
+          thumbnailUrl: file.thumbnailUrl || file.url,
+          size: file.size || 0,
+          type: file.mimeType?.startsWith('image/') ? 'image' : 'document',
+          mimeType: file.mimeType || 'application/octet-stream',
+          altText: file.altText || '',
+          title: file.title || '',
+          description: file.description || '',
+          tags: Array.isArray(file.tags) ? file.tags : (typeof file.tags === 'string' ? JSON.parse(file.tags) : []),
+          category: file.category || 'other',
+          uploadedAt: file.createdAt || file.uploadedAt || new Date().toISOString(),
+          updatedAt: file.updatedAt || file.uploadedAt || new Date().toISOString(),
+          uploadedBy: file.createdBy || file.uploadedBy || 'unknown',
+          width: file.width,
+          height: file.height,
+          isPublic: file.isPublic,
+          isFeatured: file.isFeatured
+        }))
+        setMediaFiles(mappedFiles)
+      } else {
+        throw new Error('Invalid media data structure')
+      }
 
-      // Fetch media stats
-      const statsResponse = await fetch('/api/media/stats')
+      // Fetch media stats using direct fetch
+      const statsResponse = await fetch('/api/media/stats', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
       if (statsResponse.ok) {
         const statsData = await statsResponse.json()
         // Update folders based on categories
-        const categoryFolders = Object.entries(statsData.data.byCategory).map(([category, info]: [string, any]) => ({
-          id: category,
-          name: categories.find(c => c.value === category)?.label || category,
-          path: `/${category}`,
-          fileCount: info.count,
-          createdAt: new Date().toISOString()
-        }))
-        setFolders(categoryFolders)
+        if (statsData && statsData.data && statsData.data.byCategory && typeof statsData.data.byCategory === 'object' && statsData.data.byCategory !== null) {
+          const categoryFolders = Object.entries(statsData.data.byCategory).map(([category, info]: [string, any]) => ({
+            id: category,
+            name: categories.find(c => c.value === category)?.label || category,
+            path: `/${category}`,
+            fileCount: info.count || 0,
+            createdAt: new Date().toISOString()
+          }))
+          setFolders(categoryFolders)
+        }
       }
     } catch (error) {
       console.error('Error loading media data:', error)
       setError('فشل في تحميل بيانات الوسائط')
-      // Fallback to mock data
-      const mockMediaFiles: MediaFile[] = [
-        {
-          id: '1',
-          name: 'tata-nexon-hero.jpg',
-          originalName: 'tata-nexon-hero.jpg',
-          url: '/uploads/vehicles/1/nexon-front.webp',
-          thumbnailUrl: '/uploads/vehicles/1/nexon-front.webp',
-          size: 1024000,
-          type: 'image',
-          mimeType: 'image/jpeg',
-          altText: 'تاتا نيكسون سيارة SUV',
-          title: 'تاتا نيكسون',
-          description: 'صورة رئيسية لتاتا نيكسون',
-          tags: ['تاتا', 'نيكسون', 'SUV', 'سيارة'],
-          category: 'vehicles',
-          uploadedAt: '2024-01-15T10:00:00Z',
-          updatedAt: '2024-01-15T10:00:00Z',
-          uploadedBy: 'admin'
-        },
-        {
-          id: '2',
-          name: 'showroom-exterior.jpg',
-          originalName: 'showroom-exterior.jpg',
-          url: '/uploads/showroom-luxury.jpg',
-          thumbnailUrl: '/uploads/showroom-luxury.jpg',
-          size: 2048000,
-          type: 'image',
-          mimeType: 'image/jpeg',
-          altText: 'واجهة معرض الحمد للسيارات',
-          title: 'المعرض الرئيسي',
-          description: 'صورة خارجية للمعرض الرئيسي',
-          tags: ['معرض', 'الحمد', 'تاتا', 'سيارات'],
-          category: 'company',
-          uploadedAt: '2024-01-14T15:30:00Z',
-          updatedAt: '2024-01-14T15:30:00Z',
-          uploadedBy: 'admin'
-        },
-        {
-          id: '3',
-          name: 'service-center.jpg',
-          originalName: 'service-center.jpg',
-          url: '/uploads/dealership-exterior.jpg',
-          thumbnailUrl: '/uploads/dealership-exterior.jpg',
-          size: 1536000,
-          type: 'image',
-          mimeType: 'image/jpeg',
-          altText: 'مركز صيانة الحمد للسيارات',
-          title: 'مركز الصيانة',
-          description: 'صورة لمركز الصيانة المتطور',
-          tags: ['صيانة', 'خدمة', 'تاتا', 'مركز'],
-          category: 'services',
-          uploadedAt: '2024-01-13T09:00:00Z',
-          updatedAt: '2024-01-13T09:00:00Z',
-          uploadedBy: 'admin'
-        }
-      ]
-
-      const mockFolders: MediaFolder[] = [
-        {
-          id: '1',
-          name: 'المركبات',
-          path: '/vehicles',
-          fileCount: 25,
-          createdAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: '2',
-          name: 'الشركة',
-          path: '/company',
-          fileCount: 12,
-          createdAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: '3',
-          name: 'الخدمات',
-          path: '/services',
-          fileCount: 8,
-          createdAt: '2024-01-01T00:00:00Z'
-        }
-      ]
-
-      setMediaFiles(mockMediaFiles)
-      setFolders(mockFolders)
+      // Don't use mock data - show empty state instead
+      setMediaFiles([])
+      setFolders([])
     } finally {
       setLoading(false)
     }
   }
 
   const filteredFiles = mediaFiles.filter(file => {
-    const matchesSearch = file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         file.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         file.altText?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         file.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    if (!file) return false
+    
+    const matchesSearch = (file.name && file.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (file.title && file.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (file.altText && file.altText.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (Array.isArray(file.tags) && file.tags.some(tag => tag && tag.toLowerCase().includes(searchTerm.toLowerCase())))
     
     const matchesType = filterType === 'all' || file.type === filterType
     const matchesCategory = filterCategory === 'all' || file.category === filterCategory
 
     return matchesSearch && matchesType && matchesCategory
   }).sort((a, b) => {
+    if (!a || !b) return 0
+    
     const modifier = sortOrder === 'asc' ? 1 : -1
     if (sortBy === 'name') {
-      return a.name.localeCompare(b.name) * modifier
+      return ((a.name || '').localeCompare(b.name || '')) * modifier
     } else if (sortBy === 'size') {
-      return (a.size - b.size) * modifier
+      return (((a.size || 0) - (b.size || 0))) * modifier
     } else {
-      return (new Date(a[sortBy]).getTime() - new Date(b[sortBy]).getTime()) * modifier
+      const dateA = new Date(a[sortBy] || a.createdAt || Date.now()).getTime()
+      const dateB = new Date(b[sortBy] || b.createdAt || Date.now()).getTime()
+      return (dateA - dateB) * modifier
     }
   })
 
@@ -272,6 +248,10 @@ function MediaContent() {
 
         const response = await fetch('/api/media', {
           method: 'POST',
+          headers: {
+            // Don't set Content-Type for FormData, let the browser set it with boundary
+          },
+          credentials: 'include',
           body: formData
         })
 
@@ -287,21 +267,25 @@ function MediaContent() {
       // Add new files to the list
       const newFiles: MediaFile[] = results.map(result => ({
         id: result.data.id,
-        name: result.data.filename,
-        originalName: result.data.originalFilename,
+        name: result.data.filename || result.data.name || 'Unnamed',
+        originalName: result.data.originalFilename || result.data.originalName || result.data.name || 'Unnamed',
         url: result.data.url,
         thumbnailUrl: result.data.thumbnailUrl || result.data.url,
-        size: result.data.size,
-        type: result.data.mimeType.startsWith('image/') ? 'image' : 'document',
-        mimeType: result.data.mimeType,
-        altText: result.data.altText,
-        title: result.data.title,
-        description: result.data.description,
-        tags: result.data.tags,
-        category: result.data.category,
-        uploadedAt: result.data.createdAt,
-        updatedAt: result.data.updatedAt,
-        uploadedBy: result.data.createdBy
+        size: result.data.size || 0,
+        type: result.data.mimeType?.startsWith('image/') ? 'image' : 'document',
+        mimeType: result.data.mimeType || 'application/octet-stream',
+        altText: result.data.altText || '',
+        title: result.data.title || '',
+        description: result.data.description || '',
+        tags: Array.isArray(result.data.tags) ? result.data.tags : [],
+        category: result.data.category || 'other',
+        uploadedAt: result.data.createdAt || result.data.uploadedAt || new Date().toISOString(),
+        updatedAt: result.data.updatedAt || result.data.uploadedAt || new Date().toISOString(),
+        uploadedBy: result.data.createdBy || result.data.uploadedBy || 'unknown',
+        width: result.data.width,
+        height: result.data.height,
+        isPublic: result.data.isPublic,
+        isFeatured: result.data.isFeatured
       }))
 
       setMediaFiles(prev => [...prev, ...newFiles])
@@ -334,8 +318,9 @@ function MediaContent() {
       const response = await fetch(`/api/media?id=${editingFile.id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           title: editForm.title,
           altText: editForm.altText,
@@ -355,12 +340,12 @@ function MediaContent() {
       setMediaFiles(prev => prev.map(file => 
         file.id === editingFile.id ? {
           ...file,
-          title: updatedFile.title,
-          altText: updatedFile.altText,
-          description: updatedFile.description,
-          tags: updatedFile.tags,
-          category: updatedFile.category,
-          updatedAt: updatedFile.updatedAt
+          title: updatedFile.title || file.title,
+          altText: updatedFile.altText || file.altText,
+          description: updatedFile.description || file.description,
+          tags: Array.isArray(updatedFile.tags) ? updatedFile.tags : file.tags,
+          category: updatedFile.category || file.category,
+          updatedAt: updatedFile.updatedAt || file.updatedAt
         } : file
       ))
       setShowEditDialog(false)
@@ -377,7 +362,13 @@ function MediaContent() {
 
     try {
       const deletePromises = selectedFiles.map(fileId => 
-        fetch(`/api/media?id=${fileId}`, { method: 'DELETE' })
+        fetch(`/api/media?id=${fileId}`, { 
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        })
       )
 
       await Promise.all(deletePromises)
@@ -410,7 +401,8 @@ function MediaContent() {
     { value: 'company', label: 'الشركة' },
     { value: 'services', label: 'الخدمات' },
     { value: 'blog', label: 'المدونة' },
-    { value: 'gallery', label: 'معرض الصور' }
+    { value: 'gallery', label: 'معرض الصور' },
+    { value: 'banner', label: 'اللافتات' }
   ]
 
   return (
@@ -569,6 +561,11 @@ function MediaContent() {
             </Card>
           ) : (
             <div className="space-y-4">
+              {/* File count display */}
+              <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                إجمالي الملفات في قاعدة البيانات: {mediaFiles.length} | المعروضة: {filteredFiles.length}
+              </div>
+              
               {/* Selection Controls */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">

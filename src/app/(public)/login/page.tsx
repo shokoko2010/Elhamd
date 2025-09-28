@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useAuth } from '@/hooks/use-auth'
 import { Car, Shield, Eye, EyeOff } from 'lucide-react'
 import { UserRole } from '@prisma/client'
 
@@ -18,7 +16,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { update } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,32 +24,34 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false
+      const response = await fetch('/api/simple-auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
       })
       
-      if (result?.error) {
-        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-      } else {
-        // Update session and redirect based on user role
-        await update()
+      if (response.ok) {
+        const data = await response.json()
         
-        // Wait a bit for session to be updated
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Get user session to determine role
-        const response = await fetch('/api/auth/session')
-        const session = await response.json()
-        
-        if (session.user?.role === UserRole.ADMIN || session.user?.role === UserRole.STAFF) {
+        // Redirect based on role
+        if (data.user.role === UserRole.ADMIN || data.user.role === UserRole.SUPER_ADMIN) {
           router.push('/admin')
+        } else if (data.user.role === UserRole.STAFF || data.user.role === UserRole.BRANCH_MANAGER) {
+          router.push('/employee/dashboard')
         } else {
-          router.push('/')
+          router.push('/dashboard')
         }
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || 'البريد الإلكتروني أو كلمة المرور غير صحيحة')
       }
     } catch (err) {
+      console.error('Login error:', err)
       setError('حدث خطأ أثناء تسجيل الدخول')
     } finally {
       setIsLoading(false)
@@ -78,7 +77,7 @@ export default function LoginPage() {
             </div>
             <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
             <CardDescription>
-              قم بتسجيل الدخول للوصول إلى لوحة تحكم المشرفين
+              قم بتسجيل الدخول للوصول إلى حسابك
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -96,7 +95,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@alhamdcars.com"
+                  placeholder="admin@example.com"
                   required
                 />
               </div>
@@ -136,9 +135,10 @@ export default function LoginPage() {
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h4 className="font-medium text-sm mb-2">بيانات الدخول التجريبية:</h4>
               <div className="space-y-1 text-xs text-gray-600">
-                <p><strong>مشرف:</strong> admin@alhamdcars.com / admin123</p>
-                <p><strong>موظف:</strong> staff@alhamdcars.com / staff123</p>
-                <p><strong>عميل:</strong> customer@alhamdcars.com / customer123</p>
+                <p><strong>مشرف:</strong> admin@example.com / admin123</p>
+                <p><strong>مشرف الحمد:</strong> admin@alhamdcars.com / admin123</p>
+                <p><strong>موظف:</strong> staff@example.com / staff123</p>
+                <p><strong>عميل:</strong> customer@example.com / customer123</p>
               </div>
             </div>
           </CardContent>

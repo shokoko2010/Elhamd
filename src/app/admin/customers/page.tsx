@@ -44,7 +44,7 @@ interface Customer {
   isActive: boolean
   address?: string
   licenseNumber?: string
-  lastLogin?: string
+  lastLoginAt?: string
   createdAt: string
   totalBookings: number
   totalSpent: number
@@ -342,7 +342,7 @@ function CustomersContent() {
       CUSTOMER: { variant: 'default' as const, label: 'عميل' },
       ADMIN: { variant: 'secondary' as const, label: 'مشرف' },
       STAFF: { variant: 'outline' as const, label: 'موظف' },
-      MANAGER: { variant: 'default' as const, label: 'مدير' },
+      BRANCH_MANAGER: { variant: 'default' as const, label: 'مدير فرع' },
       SUPER_ADMIN: { variant: 'destructive' as const, label: 'سوبر مشرف' }
     }
     
@@ -490,7 +490,7 @@ function CustomersContent() {
                 <SelectItem value="CUSTOMER">عميل</SelectItem>
                 <SelectItem value="STAFF">موظف</SelectItem>
                 <SelectItem value="ADMIN">مشرف</SelectItem>
-                <SelectItem value="MANAGER">مدير</SelectItem>
+                <SelectItem value="BRANCH_MANAGER">مدير فرع</SelectItem>
                 <SelectItem value="SUPER_ADMIN">سوبر مشرف</SelectItem>
               </SelectContent>
             </Select>
@@ -805,7 +805,7 @@ function CustomerForm({
     { value: 'CUSTOMER', label: 'عميل' },
     { value: 'STAFF', label: 'موظف' },
     { value: 'ADMIN', label: 'مشرف' },
-    { value: 'MANAGER', label: 'مدير' },
+    { value: 'BRANCH_MANAGER', label: 'مدير فرع' },
     { value: 'SUPER_ADMIN', label: 'سوبر مشرف' }
   ]
 

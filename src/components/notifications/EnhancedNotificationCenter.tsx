@@ -565,30 +565,32 @@ export default function EnhancedNotificationCenter({
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm">قنوات الإشعارات</h4>
                         <div className="space-y-2">
-                          {Object.entries(preferences).filter(([key]) => 
+                          {preferences && Object.entries(preferences).filter(([key]) => 
                             ['email', 'sms', 'push', 'whatsapp'].includes(key)
                           ).map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {key === 'email' && <Mail className="h-4 w-4" />}
-                                {key === 'sms' && <MessageSquare className="h-4 w-4" />}
-                                {key === 'push' && <Smartphone className="h-4 w-4" />}
-                                {key === 'whatsapp' && <MessageSquare className="h-4 w-4" />}
-                                <Label htmlFor={key} className="text-sm capitalize">
-                                  {key === 'email' && 'البريد الإلكتروني'}
-                                  {key === 'sms' && 'الرسائل النصية'}
-                                  {key === 'push' && 'الإشعارات الفورية'}
-                                  {key === 'whatsapp' && 'واتساب'}
-                                </Label>
+                            value !== undefined && (
+                              <div key={key} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {key === 'email' && <Mail className="h-4 w-4" />}
+                                  {key === 'sms' && <MessageSquare className="h-4 w-4" />}
+                                  {key === 'push' && <Smartphone className="h-4 w-4" />}
+                                  {key === 'whatsapp' && <MessageSquare className="h-4 w-4" />}
+                                  <Label htmlFor={key} className="text-sm capitalize">
+                                    {key === 'email' && 'البريد الإلكتروني'}
+                                    {key === 'sms' && 'الرسائل النصية'}
+                                    {key === 'push' && 'الإشعارات الفورية'}
+                                    {key === 'whatsapp' && 'واتساب'}
+                                  </Label>
+                                </div>
+                                <Switch
+                                  id={key}
+                                  checked={value}
+                                  onCheckedChange={(checked) => 
+                                    handlePreferenceChange(key as keyof NotificationPreferences, checked)
+                                  }
+                                />
                               </div>
-                              <Switch
-                                id={key}
-                                checked={value}
-                                onCheckedChange={(checked) => 
-                                  handlePreferenceChange(key as keyof NotificationPreferences, checked)
-                                }
-                              />
-                            </div>
+                            )
                           ))}
                         </div>
                       </div>
@@ -596,24 +598,26 @@ export default function EnhancedNotificationCenter({
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm">أنواع الإشعارات</h4>
                         <div className="space-y-2">
-                          {Object.entries(preferences).filter(([key]) => 
+                          {preferences && Object.entries(preferences).filter(([key]) => 
                             ['marketingEmails', 'bookingReminders', 'paymentConfirmations', 'promotionalOffers'].includes(key)
                           ).map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between">
-                              <Label htmlFor={key} className="text-sm">
-                                {key === 'marketingEmails' && 'الرسائل التسويقية'}
-                                {key === 'bookingReminders' && 'تذكيرات الحجوزات'}
-                                {key === 'paymentConfirmations' && 'تأكيدات الدفع'}
-                                {key === 'promotionalOffers' && 'العروض الترويجية'}
-                              </Label>
-                              <Switch
-                                id={key}
-                                checked={value}
-                                onCheckedChange={(checked) => 
-                                  handlePreferenceChange(key as keyof NotificationPreferences, checked)
-                                }
-                              />
-                            </div>
+                            value !== undefined && (
+                              <div key={key} className="flex items-center justify-between">
+                                <Label htmlFor={key} className="text-sm">
+                                  {key === 'marketingEmails' && 'الرسائل التسويقية'}
+                                  {key === 'bookingReminders' && 'تذكيرات الحجوزات'}
+                                  {key === 'paymentConfirmations' && 'تأكيدات الدفع'}
+                                  {key === 'promotionalOffers' && 'العروض الترويجية'}
+                                </Label>
+                                <Switch
+                                  id={key}
+                                  checked={value}
+                                  onCheckedChange={(checked) => 
+                                    handlePreferenceChange(key as keyof NotificationPreferences, checked)
+                                  }
+                                />
+                              </div>
+                            )
                           ))}
                         </div>
                       </div>
@@ -655,15 +659,17 @@ export default function EnhancedNotificationCenter({
                       <div>
                         <h4 className="font-medium text-sm mb-2">حسب القناة</h4>
                         <div className="space-y-2">
-                          {Object.entries(stats.byChannel).map(([channel, data]) => (
-                            <div key={channel} className="flex items-center justify-between text-sm">
-                              <span className="capitalize">{channel}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-green-600">{data.sent}</span>
-                                <span className="text-red-600">{data.failed}</span>
-                                <span className="text-gray-500">({data.total})</span>
+                          {stats?.byChannel && Object.entries(stats.byChannel).map(([channel, data]) => (
+                            data && (
+                              <div key={channel} className="flex items-center justify-between text-sm">
+                                <span className="capitalize">{channel}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-600">{data.sent || 0}</span>
+                                  <span className="text-red-600">{data.failed || 0}</span>
+                                  <span className="text-gray-500">({data.total || 0})</span>
+                                </div>
                               </div>
-                            </div>
+                            )
                           ))}
                         </div>
                       </div>
@@ -672,15 +678,17 @@ export default function EnhancedNotificationCenter({
                       <div>
                         <h4 className="font-medium text-sm mb-2">حسب الأولوية</h4>
                         <div className="space-y-2">
-                          {Object.entries(stats.byPriority).map(([priority, data]) => (
-                            <div key={priority} className="flex items-center justify-between text-sm">
-                              <span className="capitalize">{priority}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-green-600">{data.sent}</span>
-                                <span className="text-red-600">{data.failed}</span>
-                                <span className="text-gray-500">({data.total})</span>
+                          {stats?.byPriority && Object.entries(stats.byPriority).map(([priority, data]) => (
+                            data && (
+                              <div key={priority} className="flex items-center justify-between text-sm">
+                                <span className="capitalize">{priority}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-600">{data.sent || 0}</span>
+                                  <span className="text-red-600">{data.failed || 0}</span>
+                                  <span className="text-gray-500">({data.total || 0})</span>
+                                </div>
                               </div>
-                            </div>
+                            )
                           ))}
                         </div>
                       </div>

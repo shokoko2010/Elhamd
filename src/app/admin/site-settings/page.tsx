@@ -112,6 +112,24 @@ export default function AdminSiteSettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Header & Footer Settings */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle>Header & Footer Settings</CardTitle>
+          <CardDescription>Quick access to header and footer management</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/admin/header')}>
+            <Layout className="w-4 h-4 mr-2" />
+            Header Management
+          </Button>
+          <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/admin/footer')}>
+            <Layout className="w-4 h-4 mr-2" />
+            Footer Management
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

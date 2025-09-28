@@ -132,43 +132,9 @@ export default function TestDrivePage() {
         }
       } catch (error) {
         console.error('Error fetching vehicles:', error)
-        // Fallback to mock data
-        const mockVehicles: Vehicle[] = [
-          {
-            id: '1',
-            make: 'تاتا',
-            model: 'نيكسون',
-            year: 2024,
-            category: 'SUV',
-            fuelType: 'بنزين',
-            transmission: 'أوتوماتيك',
-            color: 'أبيض',
-            images: [{ imageUrl: '/uploads/vehicles/1/nexon-front-new.jpg', isPrimary: true }]
-          },
-          {
-            id: '2',
-            make: 'تاتا',
-            model: 'بانش',
-            year: 2024,
-            category: 'SUV',
-            fuelType: 'بنزين',
-            transmission: 'يدوي',
-            color: 'أحمر',
-            images: [{ imageUrl: '/uploads/vehicles/1/nexon-front-new.jpg', isPrimary: true }]
-          },
-          {
-            id: '3',
-            make: 'تاتا',
-            model: 'تياجو',
-            year: 2024,
-            category: 'هاتشباك',
-            fuelType: 'بنزين',
-            transmission: 'يدوي',
-            color: 'أزرق',
-            images: [{ imageUrl: '/uploads/vehicles/1/nexon-front-new.jpg', isPrimary: true }]
-          }
-        ]
-        setVehicles(mockVehicles)
+        // Show error message instead of using mock data
+        toast.error('فشل في تحميل المركبات. يرجى المحاولة مرة أخرى لاحقاً.')
+        setVehicles([])
       }
     }
     
@@ -196,18 +162,9 @@ export default function TestDrivePage() {
           }
         } catch (error) {
           console.error('Error fetching time slots:', error)
-          // Fallback to mock time slots
-          const mockTimeSlots: TimeSlot[] = [
-            { time: '09:00', available: true },
-            { time: '10:00', available: true },
-            { time: '11:00', available: false },
-            { time: '12:00', available: true },
-            { time: '14:00', available: true },
-            { time: '15:00', available: false },
-            { time: '16:00', available: true },
-            { time: '17:00', available: true }
-          ]
-          setAvailableTimeSlots(mockTimeSlots)
+          // Show error message instead of using mock data
+          toast.error('فشل في تحميل الأوقات المتاحة. يرجى المحاولة مرة أخرى.')
+          setAvailableTimeSlots([])
         }
       }
       
@@ -303,8 +260,8 @@ export default function TestDrivePage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex items-center justify-center flex-wrap gap-2 sm:gap-0">
               {[1, 2, 3, 4, 5].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -312,7 +269,7 @@ export default function TestDrivePage() {
                   }`}>
                     {stepNumber}
                   </div>
-                  <span className={`ml-2 text-sm ${
+                  <span className={`ml-1 sm:ml-2 text-xs sm:text-sm ${
                     step >= stepNumber ? 'text-blue-600 font-medium' : 'text-gray-500'
                   }`}>
                     {stepNumber === 1 && 'المركبة'}
@@ -322,7 +279,7 @@ export default function TestDrivePage() {
                     {stepNumber === 5 && 'تأكيد'}
                   </span>
                   {stepNumber < 5 && (
-                    <div className={`w-16 h-1 mx-4 ${
+                    <div className={`w-8 sm:w-16 h-1 mx-1 sm:mx-4 ${
                       step > stepNumber ? 'bg-blue-600' : 'bg-gray-200'
                     }`}></div>
                   )}

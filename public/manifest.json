@@ -1,0 +1,110 @@
+{
+  "name": "Elhamd Imports - وكالة تاتا المعتمدة",
+  "short_name": "Elhamd Imports",
+  "description": "وكالة تاتا المعتمدة في مصر - سيارات جديدة وخدمات ما بعد البيع",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["automotive", "business", "shopping"],
+  "screenshots": [
+    {
+      "src": "/images/screenshots/desktop-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/images/screenshots/mobile-narrow.png", 
+      "sizes": "375x812",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96", 
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png", 
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "تصفح السيارات",
+      "short_name": "السيارات",
+      "description": "استعرض جميع السيارات المتاحة",
+      "url": "/vehicles",
+      "icons": [{ "src": "/icons/shortcut-cars.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "حجز اختبار قيادة",
+      "short_name": "اختبار قيادة", 
+      "description": "احجز اختبار قيادة للسيارة التي تريدها",
+      "url": "/test-drive",
+      "icons": [{ "src": "/icons/shortcut-test-drive.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "خدمات الصيانة",
+      "short_name": "الصيانة",
+      "description": "احجز موعد صيانة لسيارتك", 
+      "url": "/service",
+      "icons": [{ "src": "/icons/shortcut-service.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "اتصل بنا",
+      "short_name": "اتصال",
+      "description": "معلومات الاتصال وفرعنا",
+      "url": "/contact",
+      "icons": [{ "src": "/icons/shortcut-contact.png", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": []
+}

@@ -11,15 +11,17 @@ import { UserRole } from '@prisma/client'
 interface AdminRouteProps {
   children: React.ReactNode
   requiredRoles?: UserRole[]
+  requiredPermissions?: string[]
   redirectTo?: string
 }
 
 export function AdminRoute({ 
   children, 
-  requiredRoles = [UserRole.ADMIN, UserRole.STAFF], 
+  requiredRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN], 
+  requiredPermissions = [],
   redirectTo = '/login' 
 }: AdminRouteProps) {
-  const { user, loading, authenticated } = useAuth()
+  const { user, loading, authenticated, hasAnyRole, hasAnyPermission } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -31,12 +33,18 @@ export function AdminRoute({
       }
 
       // Check if user has required role
-      if (!requiredRoles.includes(user.role)) {
+      if (!hasAnyRole(requiredRoles)) {
+        router.push('/')
+        return
+      }
+
+      // Check if user has required permissions (if specified)
+      if (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any)) {
         router.push('/')
         return
       }
     }
-  }, [user, loading, authenticated, requiredRoles, redirectTo, router])
+  }, [user, loading, authenticated, requiredRoles, requiredPermissions, redirectTo, router, hasAnyRole, hasAnyPermission])
 
   if (loading) {
     return (
@@ -49,7 +57,8 @@ export function AdminRoute({
     )
   }
 
-  if (!authenticated || !user || !requiredRoles.includes(user.role)) {
+  if (!authenticated || !user || !hasAnyRole(requiredRoles) || 
+      (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any))) {
     return null // Will redirect in useEffect
   }
 

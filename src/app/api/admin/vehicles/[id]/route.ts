@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER].includes(user.role))) {
+    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
@@ -44,6 +44,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         images: {
           orderBy: { order: 'asc' }
         },
+        specifications: {
+          orderBy: { category: 'asc' }
+        },
+        pricing: true,
         testDriveBookings: {
           select: { id: true, date: true, timeSlot: true, status: true }
         },
@@ -75,7 +79,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER].includes(user.role))) {
+    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
@@ -131,7 +135,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       include: {
         images: {
           orderBy: { order: 'asc' }
-        }
+        },
+        specifications: {
+          orderBy: { category: 'asc' }
+        },
+        pricing: true
       }
     })
 
@@ -158,7 +166,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.MANAGER].includes(user.role))) {
+    if (!user || !([UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -25,25 +24,11 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
+    const auth = await authHandler(request)
     
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    // Check if user is admin
-    const user = await db.user.findUnique({
-      where: { id: session.user.id }
-    })
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+    if (auth.error) {
+      return auth.error
     }
 
     const data = await request.json()

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
@@ -130,7 +130,11 @@ interface VehicleFormData {
 }
 
 export default function AdminVehiclesPage() {
-  return <VehiclesContent />
+  return (
+    <AdminRoute>
+      <VehiclesContent />
+    </AdminRoute>
+  )
 }
 
 function VehiclesContent() {
@@ -243,8 +247,8 @@ function VehiclesContent() {
       let bValue: any = b[sortBy as keyof Vehicle]
       
       if (sortBy === 'price') {
-        aValue = a.pricing.totalPrice
-        bValue = b.pricing.totalPrice
+        aValue = a.pricing?.totalPrice ?? a.price
+        bValue = b.pricing?.totalPrice ?? b.price
       }
       
       if (typeof aValue === 'string') {
@@ -734,7 +738,7 @@ function VehiclesContent() {
                     
                     {vehicle.images.length > 0 ? (
                       <img
-                        src={vehicle.images[0].thumbnailUrl}
+                        src={vehicle.images[0].imageUrl}
                         alt={vehicle.images[0].altText || `${vehicle.make} ${vehicle.model}`}
                         className="w-full h-48 object-cover"
                       />
@@ -792,11 +796,11 @@ function VehiclesContent() {
                     <div className="flex justify-between items-center mb-3">
                       <div>
                         <div className="text-lg font-bold text-green-600">
-                          {formatPrice(vehicle.pricing.totalPrice)}
+                          {formatPrice(vehicle.pricing?.totalPrice ?? vehicle.price)}
                         </div>
-                        {vehicle.pricing.hasDiscount && (
+                        {vehicle.pricing?.hasDiscount && (
                           <div className="text-xs text-red-600 line-through">
-                            {formatPrice(vehicle.pricing.basePrice)}
+                            {formatPrice(vehicle.pricing?.basePrice ?? vehicle.price)}
                           </div>
                         )}
                       </div>
@@ -844,7 +848,7 @@ function VehiclesContent() {
                       
                       {vehicle.images.length > 0 ? (
                         <img
-                          src={vehicle.images[0].thumbnailUrl}
+                          src={vehicle.images[0].imageUrl}
                           alt={vehicle.images[0].altText || `${vehicle.make} ${vehicle.model}`}
                           className="w-24 h-24 object-cover rounded-lg"
                         />
@@ -900,11 +904,11 @@ function VehiclesContent() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="text-lg font-bold text-green-600">
-                              {formatPrice(vehicle.pricing.totalPrice)}
+                              {formatPrice(vehicle.pricing?.totalPrice ?? vehicle.price)}
                             </div>
-                            {vehicle.pricing.hasDiscount && (
+                            {vehicle.pricing?.hasDiscount && (
                               <div className="text-xs text-red-600 line-through">
-                                {formatPrice(vehicle.pricing.basePrice)}
+                                {formatPrice(vehicle.pricing?.basePrice ?? vehicle.price)}
                               </div>
                             )}
                           </div>
@@ -1001,11 +1005,11 @@ function VehiclesContent() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="font-medium text-green-600">
-                              {formatPrice(vehicle.pricing.totalPrice)}
+                              {formatPrice(vehicle.pricing?.totalPrice ?? vehicle.price)}
                             </div>
-                            {vehicle.pricing.hasDiscount && (
+                            {vehicle.pricing?.hasDiscount && (
                               <div className="text-xs text-red-600 line-through">
-                                {formatPrice(vehicle.pricing.basePrice)}
+                                {formatPrice(vehicle.pricing?.basePrice ?? vehicle.price)}
                               </div>
                             )}
                           </td>
@@ -1090,6 +1094,27 @@ function VehiclesContent() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Images Management Dialog */}
+      <ImagesManagementDialog
+        vehicle={editingVehicle}
+        open={showImagesDialog}
+        onOpenChange={setShowImagesDialog}
+      />
+      
+      {/* Specifications Management Dialog */}
+      <SpecsManagementDialog
+        vehicle={editingVehicle}
+        open={showSpecsDialog}
+        onOpenChange={setShowSpecsDialog}
+      />
+      
+      {/* Pricing Management Dialog */}
+      <PricingManagementDialog
+        vehicle={editingVehicle}
+        open={showPricingDialog}
+        onOpenChange={setShowPricingDialog}
+      />
     </div>
   )
 }
@@ -1286,5 +1311,659 @@ function VehicleForm({
         </Button>
       </div>
     </form>
+  )
+}
+
+// Images Management Dialog
+const ImagesManagementDialog = ({ 
+  vehicle, 
+  open, 
+  onOpenChange 
+}: { 
+  vehicle: Vehicle | null
+  open: boolean
+  onOpenChange: (open: boolean) => void 
+}) => {
+  const [loading, setLoading] = useState(false)
+  const [images, setImages] = useState<VehicleImage[]>([])
+  const [uploading, setUploading] = useState(false)
+
+  useEffect(() => {
+    if (open && vehicle?.id) {
+      fetchImages()
+    }
+  }, [open, vehicle?.id])
+
+  const fetchImages = async () => {
+    if (!vehicle?.id) return
+    
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/vehicles/${vehicle.id}/images`)
+      if (response.ok) {
+        const imagesData = await response.json()
+        setImages(imagesData)
+      } else {
+        console.error('Failed to fetch images')
+        setImages([])
+      }
+    } catch (error) {
+      console.error('Error fetching images:', error)
+      setImages([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSetPrimary = async (imageId: string) => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/vehicles/${vehicle?.id}/images/${imageId}/primary`, {
+        method: 'PUT'
+      })
+      
+      if (response.ok) {
+        setImages(prev => prev.map(img => ({
+          ...img,
+          isPrimary: img.id === imageId
+        })))
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في تعيين الصورة كأساسية')
+      }
+    } catch (error) {
+      console.error('Error setting primary image:', error)
+      alert('فشل في تعيين الصورة كأساسية')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteImage = async (imageId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الصورة؟')) return
+    
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/vehicles/${vehicle?.id}/images/${imageId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        setImages(prev => prev.filter(img => img.id !== imageId))
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في حذف الصورة')
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error)
+      alert('فشل في حذف الصورة')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      // In a real app, you would upload the file to a storage service
+      // For now, we'll create a placeholder URL
+      const imageUrl = URL.createObjectURL(file)
+      
+      const response = await fetch(`/api/admin/vehicles/${vehicle?.id}/images`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl,
+          altText: `${vehicle?.make} ${vehicle?.model}`,
+          isPrimary: images.length === 0
+        })
+      })
+      
+      if (response.ok) {
+        const newImage = await response.json()
+        setImages(prev => [...prev, newImage])
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في إضافة الصورة')
+      }
+    } catch (error) {
+      console.error('Error adding image:', error)
+      alert('فشل في إضافة الصورة')
+    } finally {
+      setUploading(false)
+      // Reset file input
+      event.target.value = ''
+    }
+  }
+
+  if (!vehicle) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>إدارة الصور - {vehicle.make} {vehicle.model}</DialogTitle>
+          <DialogDescription>
+            إدارة صور المركبة وتحديثها
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Upload Section */}
+          <div>
+            <Label htmlFor="imageUpload">رفع صور جديدة</Label>
+            <Input
+              id="imageUpload"
+              type="file"
+              accept="image/*"
+              onChange={handleAddImage}
+              disabled={uploading}
+            />
+          </div>
+
+          {/* Images Grid */}
+          {images.length === 0 ? (
+            <div className="text-center py-8">
+              <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">لا توجد صور لهذه المركبة</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              {images.map((image) => (
+                <Card key={image.id} className="relative">
+                  <CardContent className="p-0">
+                    <img
+                      src={image.imageUrl}
+                      alt={image.altText || `${vehicle.make} ${vehicle.model}`}
+                      className="w-full h-32 object-cover rounded-t-lg"
+                    />
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        {image.isPrimary && (
+                          <Badge className="bg-yellow-500">أساسية</Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteImage(image.id)}
+                          disabled={loading}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                      {!image.isPrimary && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSetPrimary(image.id)}
+                          disabled={loading}
+                          className="w-full"
+                        >
+                          تعيين كصورة أساسية
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            إغلاق
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Specifications Management Dialog
+const SpecsManagementDialog = ({ 
+  vehicle, 
+  open, 
+  onOpenChange 
+}: { 
+  vehicle: Vehicle | null
+  open: boolean
+  onOpenChange: (open: boolean) => void 
+}) => {
+  const [loading, setLoading] = useState(false)
+  const [specs, setSpecs] = useState<VehicleSpecification[]>([])
+
+  useEffect(() => {
+    if (open && vehicle?.id) {
+      fetchSpecs()
+    }
+  }, [open, vehicle?.id])
+
+  const fetchSpecs = async () => {
+    if (!vehicle?.id) return
+    
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/vehicles/${vehicle.id}/specs`)
+      if (response.ok) {
+        const specsData = await response.json()
+        setSpecs(specsData)
+      } else {
+        console.error('Failed to fetch specifications')
+        setSpecs([])
+      }
+    } catch (error) {
+      console.error('Error fetching specifications:', error)
+      setSpecs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveSpecs = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/vehicles/${vehicle?.id}/specs`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ specifications: specs })
+      })
+      
+      if (response.ok) {
+        onOpenChange(false)
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في حفظ المواصفات')
+      }
+    } catch (error) {
+      console.error('Error saving specs:', error)
+      alert('فشل في حفظ المواصفات')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddSpec = () => {
+    setSpecs(prev => [
+      ...prev,
+      {
+        key: '',
+        label: '',
+        value: '',
+        category: 'engine' as const
+      }
+    ])
+  }
+
+  const handleRemoveSpec = (index: number) => {
+    setSpecs(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleUpdateSpec = (index: number, field: keyof VehicleSpecification, value: any) => {
+    setSpecs(prev => prev.map((spec, i) => 
+      i === index ? { ...spec, [field]: value } : spec
+    ))
+  }
+
+  if (!vehicle) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>إدارة المواصفات - {vehicle.make} {vehicle.model}</DialogTitle>
+          <DialogDescription>
+            تحديث مواصفات المركبة الفنية
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {specs.length === 0 ? (
+            <div className="text-center py-8">
+              <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">لا توجد مواصفات لهذه المركبة</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {specs.map((spec, index) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="text-sm font-medium">المواصفة #{index + 1}</div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSpec(index)}
+                          disabled={specs.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                      
+                      <div>
+                        <Label>المفتاح</Label>
+                        <Input
+                          value={spec.key}
+                          onChange={(e) => handleUpdateSpec(index, 'key', e.target.value)}
+                          placeholder="مثال: engine_power"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label>العلامة</Label>
+                        <Input
+                          value={spec.label}
+                          onChange={(e) => handleUpdateSpec(index, 'label', e.target.value)}
+                          placeholder="مثال: قوة المحرك"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label>القيمة</Label>
+                        <Input
+                          value={spec.value}
+                          onChange={(e) => handleUpdateSpec(index, 'value', e.target.value)}
+                          placeholder="مثال: 200 حصان"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label>الفئة</Label>
+                        <Select
+                          value={spec.category}
+                          onValueChange={(value) => handleUpdateSpec(index, 'category', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="engine">المحرك</SelectItem>
+                            <SelectItem value="exterior">الخارج</SelectItem>
+                            <SelectItem value="interior">الداخل</SelectItem>
+                            <SelectItem value="safety">السلامة</SelectItem>
+                            <SelectItem value="technology">التكنولوجيا</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          
+          <Button
+            variant="outline"
+            onClick={handleAddSpec}
+            className="w-full"
+          >
+            <Plus className="ml-2 h-4 w-4" />
+            إضافة مواصفة جديدة
+          </Button>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            إلغاء
+          </Button>
+          <Button onClick={handleSaveSpecs} disabled={loading}>
+            {loading ? 'جاري الحفظ...' : 'حفظ المواصفات'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Pricing Management Dialog
+const PricingManagementDialog = ({ 
+  vehicle, 
+  open, 
+  onOpenChange 
+}: { 
+  vehicle: Vehicle | null
+  open: boolean
+  onOpenChange: (open: boolean) => void 
+}) => {
+  const [loading, setLoading] = useState(false)
+  const [pricing, setPricing] = useState<VehiclePricing>({
+    basePrice: vehicle?.price || 0,
+    discountPrice: undefined,
+    discountPercentage: undefined,
+    taxes: 0,
+    fees: 0,
+    totalPrice: vehicle?.price || 0,
+    currency: 'EGP',
+    hasDiscount: false,
+    discountExpires: undefined
+  })
+
+  useEffect(() => {
+    if (open && vehicle?.id) {
+      fetchPricing()
+    }
+  }, [open, vehicle?.id])
+
+  const fetchPricing = async () => {
+    if (!vehicle?.id) return
+    
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/vehicles/${vehicle.id}/pricing`)
+      if (response.ok) {
+        const pricingData = await response.json()
+        setPricing(pricingData)
+      } else {
+        console.error('Failed to fetch pricing')
+        // Keep default pricing
+      }
+    } catch (error) {
+      console.error('Error fetching pricing:', error)
+      // Keep default pricing
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSavePricing = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/vehicles/${vehicle?.id}/pricing`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pricing)
+      })
+      
+      if (response.ok) {
+        const updatedPricing = await response.json()
+        setPricing(updatedPricing)
+        onOpenChange(false)
+      } else {
+        const error = await response.json()
+        alert(error.error || 'فشل في حفظ التسعير')
+      }
+    } catch (error) {
+      console.error('Error saving pricing:', error)
+      alert('فشل في حفظ التسعير')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const calculateDiscountPrice = () => {
+    if (!pricing.hasDiscount) return null
+    if (pricing.discountPrice) return pricing.discountPrice
+    if (pricing.discountPercentage) {
+      return pricing.basePrice - (pricing.basePrice * pricing.discountPercentage / 100)
+    }
+    return null
+  }
+
+  const discountPrice = calculateDiscountPrice()
+  const finalPrice = discountPrice ? discountPrice + pricing.taxes + pricing.fees : pricing.basePrice + pricing.taxes + pricing.fees
+
+  if (!vehicle) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>إدارة التسعير - {vehicle.make} {vehicle.model}</DialogTitle>
+          <DialogDescription>
+            تحديث أسعار المركبة وخيارات التمويل
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="basePrice">السعر الأساسي *</Label>
+              <Input
+                id="basePrice"
+                type="number"
+                value={pricing.basePrice}
+                onChange={(e) => setPricing({...pricing, basePrice: Number(e.target.value)})}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <Label htmlFor="currency">العملة</Label>
+              <Select
+                value={pricing.currency}
+                onValueChange={(value) => setPricing({...pricing, currency: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EGP">جنيه مصري (EGP)</SelectItem>
+                  <SelectItem value="SAR">ريال سعودي (SAR)</SelectItem>
+                  <SelectItem value="USD">دولار أمريكي (USD)</SelectItem>
+                  <SelectItem value="EUR">يورو (EUR)</SelectItem>
+                  <SelectItem value="AED">درهم إماراتي (AED)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="taxes">الضرائب</Label>
+              <Input
+                id="taxes"
+                type="number"
+                value={pricing.taxes}
+                onChange={(e) => setPricing({...pricing, taxes: Number(e.target.value)})}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <Label htmlFor="fees">الرسوم</Label>
+              <Input
+                id="fees"
+                type="number"
+                value={pricing.fees}
+                onChange={(e) => setPricing({...pricing, fees: Number(e.target.value)})}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="hasDiscount"
+              checked={pricing.hasDiscount}
+              onChange={(e) => setPricing({...pricing, hasDiscount: e.target.checked})}
+            />
+            <Label htmlFor="hasDiscount">تطبيق خصم</Label>
+          </div>
+          
+          {pricing.hasDiscount && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="discountPrice">السعر بعد الخصم</Label>
+                  <Input
+                    id="discountPrice"
+                    type="number"
+                    value={pricing.discountPrice || ''}
+                    onChange={(e) => setPricing({
+                      ...pricing, 
+                      discountPrice: e.target.value ? Number(e.target.value) : undefined,
+                      discountPercentage: undefined
+                    })}
+                    placeholder="اختياري"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discountPercentage">نسبة الخصم (%)</Label>
+                  <Input
+                    id="discountPercentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={pricing.discountPercentage || ''}
+                    onChange={(e) => setPricing({
+                      ...pricing, 
+                      discountPercentage: e.target.value ? Number(e.target.value) : undefined,
+                      discountPrice: undefined
+                    })}
+                    placeholder="اختياري"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="discountExpires">تاريخ انتهاء الخصم</Label>
+                <Input
+                  id="discountExpires"
+                  type="date"
+                  value={pricing.discountExpires || ''}
+                  onChange={(e) => setPricing({...pricing, discountExpires: e.target.value || undefined})}
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="border-t pt-4">
+            <div className="space-y-2">
+              <div className="text-lg font-semibold">
+                السعر الإجمالي: {new Intl.NumberFormat('ar-EG', {
+                  style: 'currency',
+                  currency: pricing.currency,
+                  minimumFractionDigits: 0
+                }).format(finalPrice)}
+              </div>
+              {pricing.hasDiscount && discountPrice && (
+                <div className="text-sm text-green-600">
+                  وفرت: {new Intl.NumberFormat('ar-EG', {
+                    style: 'currency',
+                    currency: pricing.currency,
+                    minimumFractionDigits: 0
+                  }).format(pricing.basePrice - discountPrice + pricing.taxes + pricing.fees)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            إلغاء
+          </Button>
+          <Button onClick={handleSavePricing} disabled={loading}>
+            {loading ? 'جاري الحفظ...' : 'حفظ التسعير'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

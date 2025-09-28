@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import Image from 'next/image'
+import nextImage from 'next/image'
 import { Loader2, AlertCircle, Image as ImageIcon } from 'lucide-react'
 
 interface EnhancedImageProps {
@@ -153,7 +153,7 @@ export function EnhancedImage({
     <div ref={containerRef} className={containerClasses}>
       {isInView && !hasError ? (
         <>
-          <Image
+          <nextImage
             ref={imgRef}
             src={imageSrc}
             alt={alt}

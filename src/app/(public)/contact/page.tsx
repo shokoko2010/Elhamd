@@ -88,10 +88,13 @@ export default function ContactPage() {
     lng: contactInfo?.mapLng || 31.2357,
   }
 
-  const { isLoaded } = useJsApiLoader({
+  const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
   })
+
+  // Don't attempt to load Google Maps if API key is not available
+  const shouldShowMap = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && isLoaded && !loadError
 
   const handleInputChange = (field: keyof ContactFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -423,7 +426,7 @@ export default function ContactPage() {
             </Card>
 
             {/* Map */}
-            {isLoaded ? (
+            {shouldShowMap ? (
               <Card>
                 <CardContent className="p-0">
                   <GoogleMap
@@ -441,6 +444,26 @@ export default function ContactPage() {
                           featureType: 'water',
                           elementType: 'geometry',
                           stylers: [{ color: '#e9e9e9' }]
+                        },
+                        {
+                          featureType: 'landscape.man_made',
+                          elementType: 'geometry',
+                          stylers: [{ color: '#d7d7d7' }]
+                        },
+                        {
+                          featureType: 'road',
+                          elementType: 'geometry.stroke',
+                          stylers: [{ color: '#ffffff' }]
+                        },
+                        {
+                          featureType: 'road',
+                          elementType: 'geometry.fill',
+                          stylers: [{ color: '#f2f2f2' }]
+                        },
+                        {
+                          featureType: 'poi',
+                          elementType: 'geometry.fill',
+                          stylers: [{ color: '#e5e5e5' }]
                         }
                       ]
                     }}
@@ -453,8 +476,15 @@ export default function ContactPage() {
               <Card>
                 <CardContent className="p-8">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">جاري تحميل الخريطة...</p>
+                    <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">الخريطة غير متاحة</h3>
+                    <p className="text-gray-600 mb-4">لا يمكن تحميل الخريطة حالياً</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={openInGoogleMaps}
+                    >
+                      فتح في خرائط جوجل
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

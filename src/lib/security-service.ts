@@ -1,60 +1,95 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
+import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
+import speakeasy from 'speakeasy' // For TOTP
+import qrcode from 'qrcode' // For QR code generation
 
-export interface SecurityConfig {
-  rateLimiting: {
-    enabled: boolean
-    windowMs: number
-    maxRequests: number
+// Types for security features
+export interface TwoFactorSetup {
+  secret: string
+  qrCodeUrl: string
+  backupCodes: string[]
+}
+
+export interface SecurityEvent {
+  id: string
+  userId: string
+  eventType: 'LOGIN' | 'LOGOUT' | 'PASSWORD_CHANGE' | '2FA_ENABLED' | '2FA_DISABLED' | 'SECURITY_SETTINGS_CHANGE' | 'DATA_ACCESS' | 'PERMISSION_CHANGE' | 'FAILED_LOGIN' | 'ACCOUNT_LOCKED' | 'SESSION_EXPIRED'
+  eventDescription: string
+  ipAddress: string
+  userAgent: string
+  location?: string
+  device?: string
+  timestamp: Date
+  severity: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
+  metadata?: Record<string, any>
+}
+
+export interface AuditLog {
+  id: string
+  userId: string
+  action: string
+  entityType: string
+  entityId: string
+  changes: {
+    before: Record<string, any>
+    after: Record<string, any>
   }
-  cors: {
-    enabled: boolean
-    origins: string[]
-    methods: string[]
-    headers: string[]
-  }
-  security: {
-    helmet: boolean
-    xssProtection: boolean
-    contentSecurityPolicy: boolean
-    referrerPolicy: boolean
-  }
-  validation: {
-    enabled: boolean
-    strict: boolean
-  }
+  ipAddress: string
+  userAgent: string
+  timestamp: Date
+  status: 'SUCCESS' | 'FAILED' | 'PENDING'
+  errorMessage?: string
+}
+
+export interface SecuritySettings {
+  userId: string
+  twoFactorEnabled: boolean
+  twoFactorMethod: 'TOTP' | 'SMS' | 'EMAIL' | 'NONE'
+  passwordLastChanged: Date
+  sessionTimeout: number
+  loginAttempts: number
+  accountLocked: boolean
+  lockUntil?: Date
+  backupCodes: string[]
+  securityQuestions: Array<{
+    question: string
+    answer: string
+  }>
+  trustedDevices: Array<{
+    deviceId: string
+    deviceName: string
+    lastUsed: Date
+    trusted: boolean
+  }>
+}
+
+export interface PasswordPolicy {
+  minLength: number
+  requireUppercase: boolean
+  requireLowercase: boolean
+  requireNumbers: boolean
+  requireSpecialChars: boolean
+  preventReusedPasswords: number
+  passwordExpiryDays: number
+  accountLockoutThreshold: number
+  accountLockoutDuration: number // in minutes
 }
 
 export class SecurityService {
   private static instance: SecurityService
-  private config: SecurityConfig
-  private rateLimitStore: Map<string, { count: number; resetTime: number }> = new Map()
+  private passwordPolicy: PasswordPolicy
 
   private constructor() {
-    this.config = {
-      rateLimiting: {
-        enabled: true,
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        maxRequests: 100
-      },
-      cors: {
-        enabled: true,
-        origins: process.env.NODE_ENV === 'production' 
-          ? ['https://elhamd-cars.com'] 
-          : ['http://localhost:3000'],
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        headers: ['Content-Type', 'Authorization']
-      },
-      security: {
-        helmet: true,
-        xssProtection: true,
-        contentSecurityPolicy: true,
-        referrerPolicy: true
-      },
-      validation: {
-        enabled: true,
-        strict: true
-      }
+    this.passwordPolicy = {
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: true,
+      preventReusedPasswords: 5,
+      passwordExpiryDays: 90,
+      accountLockoutThreshold: 5,
+      accountLockoutDuration: 30
     }
   }
 
@@ -65,344 +100,532 @@ export class SecurityService {
     return SecurityService.instance
   }
 
-  // Rate limiting middleware
-  async rateLimit(request: NextRequest, identifier: string = 'default'): Promise<{
-    allowed: boolean
-    remaining: number
-    resetTime: number
-  }> {
-    if (!this.config.rateLimiting.enabled) {
-      return { allowed: true, remaining: Infinity, resetTime: 0 }
+  // Two-Factor Authentication Methods
+
+  // Generate TOTP secret and setup QR code
+  async setupTwoFactorAuth(userId: string): Promise<TwoFactorSetup> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user) {
+      throw new Error('User not found')
     }
 
-    const now = Date.now()
-    const key = `${identifier}:${request.ip || 'unknown'}`
-    const record = this.rateLimitStore.get(key)
+    // Generate secret key
+    const secret = speakeasy.generateSecret({
+      name: `Al-Hamd Cars (${user.email})`,
+      issuer: 'Al-Hamd Cars',
+      length: 32
+    })
 
-    if (!record || now > record.resetTime) {
-      // New window
-      this.rateLimitStore.set(key, {
-        count: 1,
-        resetTime: now + this.config.rateLimiting.windowMs
-      })
-      return { allowed: true, remaining: this.config.rateLimiting.maxRequests - 1, resetTime: now + this.config.rateLimiting.windowMs }
-    }
+    // Generate QR code URL
+    const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url)
 
-    if (record.count >= this.config.rateLimiting.maxRequests) {
-      return { allowed: false, remaining: 0, resetTime: record.resetTime }
-    }
+    // Generate backup codes
+    const backupCodes = this.generateBackupCodes()
 
-    record.count++
-    return { allowed: true, remaining: this.config.rateLimiting.maxRequests - record.count, resetTime: record.resetTime }
-  }
+    // Store secret and backup codes (in real implementation, encrypt the secret)
+    await this.updateUserSecuritySettings(userId, {
+      twoFactorSecret: secret.base32,
+      backupCodes: backupCodes
+    })
 
-  // CORS middleware
-  handleCors(request: NextRequest, response: NextResponse): NextResponse {
-    if (!this.config.cors.enabled) {
-      return response
-    }
-
-    const origin = request.headers.get('origin')
-    
-    if (origin && this.config.cors.origins.includes(origin)) {
-      response.headers.set('Access-Control-Allow-Origin', origin)
-    }
-
-    response.headers.set('Access-Control-Allow-Methods', this.config.cors.methods.join(', '))
-    response.headers.set('Access-Control-Allow-Headers', this.config.cors.headers.join(', '))
-    response.headers.set('Access-Control-Max-Age', '86400') // 24 hours
-
-    return response
-  }
-
-  // Security headers middleware
-  addSecurityHeaders(response: NextResponse): NextResponse {
-    if (!this.config.security.helmet) {
-      return response
-    }
-
-    // Content Security Policy
-    if (this.config.security.contentSecurityPolicy) {
-      const csp = [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: https:",
-        "font-src 'self' data:",
-        "connect-src 'self' ws: wss:",
-        "frame-src 'none'",
-        "object-src 'none'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-        "block-all-mixed-content",
-        "upgrade-insecure-requests"
-      ].join('; ')
-
-      response.headers.set('Content-Security-Policy', csp)
-    }
-
-    // XSS Protection
-    if (this.config.security.xssProtection) {
-      response.headers.set('X-XSS-Protection', '1; mode=block')
-    }
-
-    // Referrer Policy
-    if (this.config.security.referrerPolicy) {
-      response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-    }
-
-    // Other security headers
-    response.headers.set('X-Content-Type-Options', 'nosniff')
-    response.headers.set('X-Frame-Options', 'DENY')
-    response.headers.set('X-Content-Type-Options', 'nosniff')
-    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-
-    return response
-  }
-
-  // Input validation and sanitization
-  validateInput<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; errors: string[] } {
-    if (!this.config.validation.enabled) {
-      return { success: true, data: data as T }
-    }
-
-    try {
-      const validatedData = schema.parse(data)
-      return { success: true, data: validatedData }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const errors = error.errors.map(err => err.message)
-        return { success: false, errors }
-      }
-      return { success: false, errors: ['Validation failed'] }
-    }
-  }
-
-  // Sanitize user input
-  sanitizeInput(input: string): string {
-    if (!this.config.validation.enabled) {
-      return input
-    }
-
-    return input
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/javascript:/gi, '')
-      .replace(/on\w+\s*=/gi, '')
-      .trim()
-  }
-
-  // SQL Injection prevention
-  preventSqlInjection(input: string): boolean {
-    const sqlPatterns = [
-      /(\s|^)(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|EXEC|UNION|ALL)(\s|$)/i,
-      /(\s|^)(FROM|INTO|VALUES|SET|WHERE)(\s|$)/i,
-      /(\s|^)(OR|AND)(\s+\d+\s*=\s*\d+)/i,
-      /(\s|^)(--|\/\*|\*\/|;)(\s|$)/i,
-      /(\s|^)(xp_|sp_)(\s|$)/i
-    ]
-
-    return !sqlPatterns.some(pattern => pattern.test(input))
-  }
-
-  // XSS prevention
-  preventXss(input: string): string {
-    if (!this.config.validation.enabled) {
-      return input
-    }
-
-    return input
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;')
-      .replace(/\//g, '&#x2F;')
-  }
-
-  // File upload security
-  validateFileUpload(file: File): { valid: boolean; error?: string } {
-    const maxSize = 10 * 1024 * 1024 // 10MB
-    const allowedTypes = [
-      'image/jpeg',
-      'image/jpg', 
-      'image/png',
-      'image/webp',
-      'application/pdf'
-    ]
-
-    if (file.size > maxSize) {
-      return { valid: false, error: 'File size exceeds maximum limit of 10MB' }
-    }
-
-    if (!allowedTypes.includes(file.type)) {
-      return { valid: false, error: 'File type not allowed' }
-    }
-
-    // Check file extension
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
-    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
-    if (!allowedExtensions.includes(fileExtension)) {
-      return { valid: false, error: 'File extension not allowed' }
-    }
-
-    return { valid: true }
-  }
-
-  // Authentication security
-  validatePasswordStrength(password: string): { score: number; feedback: string[] } {
-    const feedback = []
-    let score = 0
-
-    if (password.length < 8) {
-      feedback.push('Password must be at least 8 characters long')
-    } else {
-      score += 1
-    }
-
-    if (!/[a-z]/.test(password)) {
-      feedback.push('Password must contain at least one lowercase letter')
-    } else {
-      score += 1
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      feedback.push('Password must contain at least one uppercase letter')
-    } else {
-      score += 1
-    }
-
-    if (!/\d/.test(password)) {
-      feedback.push('Password must contain at least one number')
-    } else {
-      score += 1
-    }
-
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      feedback.push('Password must contain at least one special character')
-    } else {
-      score += 1
-    }
-
-    return { score, feedback }
-  }
-
-  // API security middleware
-  async secureApiHandler(
-    request: NextRequest,
-    handler: (req: NextRequest) => Promise<NextResponse>
-  ): Promise<NextResponse> {
-    try {
-      // Rate limiting
-      const rateLimitResult = await this.rateLimit(request)
-      if (!rateLimitResult.allowed) {
-        return NextResponse.json(
-          { error: 'Too many requests' },
-          { 
-            status: 429,
-            headers: {
-              'X-RateLimit-Limit': this.config.rateLimiting.maxRequests.toString(),
-              'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': rateLimitResult.resetTime.toString()
-            }
-          }
-        )
-      }
-
-      // Add security headers
-      let response = await handler(request)
-      response = this.addSecurityHeaders(response)
-      response = this.handleCors(request, response)
-
-      // Add rate limit headers
-      response.headers.set('X-RateLimit-Limit', this.config.rateLimiting.maxRequests.toString())
-      response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString())
-      response.headers.set('X-RateLimit-Reset', rateLimitResult.resetTime.toString())
-
-      return response
-    } catch (error) {
-      console.error('Security middleware error:', error)
-      return NextResponse.json(
-        { error: 'Internal server error' },
-        { status: 500 }
-      )
-    }
-  }
-
-  // Clean up expired rate limit records
-  cleanupRateLimitStore(): void {
-    const now = Date.now()
-    for (const [key, record] of this.rateLimitStore.entries()) {
-      if (now > record.resetTime) {
-        this.rateLimitStore.delete(key)
-      }
-    }
-  }
-
-  // Get security metrics
-  getSecurityMetrics(): {
-    rateLimitEntries: number
-    config: SecurityConfig
-  } {
     return {
-      rateLimitEntries: this.rateLimitStore.size,
-      config: this.config
+      secret: secret.base32,
+      qrCodeUrl,
+      backupCodes
     }
   }
-}
 
-// Common validation schemas
-export const securitySchemas = {
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  phone: z.string().regex(/^01[0-2,5]\d{8}$/, 'Invalid Egyptian phone number'),
-  name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name too long'),
-  id: z.string().min(1, 'ID is required'),
-  amount: z.number().positive('Amount must be positive'),
-  date: z.date().min(new Date(), 'Date must be in the future'),
-  url: z.string().url('Invalid URL'),
-  boolean: z.boolean(),
-  string: z.string().min(1, 'Field is required'),
-  optionalString: z.string().optional(),
-  number: z.number(),
-  positiveNumber: z.number().positive('Number must be positive')
-}
+  // Verify TOTP token
+  async verifyTwoFactorToken(userId: string, token: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
 
-// Utility functions
-export const securityUtils = {
-  generateSecureToken(length: number = 32): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = ''
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
+    if (!user || !user.securitySettings) {
+      return false
     }
-    return result
-  },
 
-  hashPassword: async (password: string): Promise<string> => {
-    // In production, use bcrypt or argon2
-    const encoder = new TextEncoder()
-    const data = encoder.encode(password)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  },
+    const securitySettings = user.securitySettings as any
+    const secret = securitySettings.twoFactorSecret
 
-  comparePassword: async (password: string, hash: string): Promise<boolean> => {
-    const hashedPassword = await securityUtils.hashPassword(password)
-    return hashedPassword === hash
-  },
+    if (!secret) {
+      return false
+    }
 
-  encryptData: (data: string, key: string): string => {
-    // Simple encryption for demo purposes
-    // In production, use proper encryption libraries
-    return Buffer.from(data).toString('base64')
-  },
+    const verified = speakeasy.totp.verify({
+      secret: secret,
+      encoding: 'base32',
+      token: token,
+      window: 2 // Allow 2 steps before/after for clock drift
+    })
 
-  decryptData: (encryptedData: string, key: string): string => {
-    // Simple decryption for demo purposes
-    // In production, use proper decryption libraries
-    return Buffer.from(encryptedData, 'base64').toString()
+    return verified
+  }
+
+  // Verify backup code
+  async verifyBackupCode(userId: string, code: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.securitySettings) {
+      return false
+    }
+
+    const securitySettings = user.securitySettings as any
+    const backupCodes = securitySettings.backupCodes || []
+
+    const codeIndex = backupCodes.indexOf(code)
+    if (codeIndex === -1) {
+      return false
+    }
+
+    // Remove used backup code
+    backupCodes.splice(codeIndex, 1)
+    await this.updateUserSecuritySettings(userId, { backupCodes })
+
+    return true
+  }
+
+  // Enable 2FA for user
+  async enableTwoFactorAuth(userId: string, method: 'TOTP' | 'SMS' | 'EMAIL', token: string): Promise<boolean> {
+    const isValid = await this.verifyTwoFactorToken(userId, token)
+    
+    if (!isValid) {
+      return false
+    }
+
+    await this.updateUserSecuritySettings(userId, {
+      twoFactorEnabled: true,
+      twoFactorMethod: method
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: '2FA_ENABLED',
+      eventDescription: `Two-factor authentication enabled using ${method}`,
+      severity: 'INFO'
+    })
+
+    return true
+  }
+
+  // Disable 2FA for user
+  async disableTwoFactorAuth(userId: string, password: string): Promise<boolean> {
+    // Verify password before disabling 2FA
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.password) {
+      return false
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    if (!isPasswordValid) {
+      return false
+    }
+
+    await this.updateUserSecuritySettings(userId, {
+      twoFactorEnabled: false,
+      twoFactorMethod: 'NONE'
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: '2FA_DISABLED',
+      eventDescription: 'Two-factor authentication disabled',
+      severity: 'WARNING'
+    })
+
+    return true
+  }
+
+  // Generate backup codes
+  private generateBackupCodes(): string[] {
+    const codes = []
+    for (let i = 0; i < 10; i++) {
+      codes.push(Math.random().toString(36).substring(2, 15).toUpperCase())
+    }
+    return codes
+  }
+
+  // Password Management
+
+  // Validate password against policy
+  validatePassword(password: string): { isValid: boolean; errors: string[] } {
+    const errors: string[] = []
+
+    if (password.length < this.passwordPolicy.minLength) {
+      errors.push(`Password must be at least ${this.passwordPolicy.minLength} characters long`)
+    }
+
+    if (this.passwordPolicy.requireUppercase && !/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter')
+    }
+
+    if (this.passwordPolicy.requireLowercase && !/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter')
+    }
+
+    if (this.passwordPolicy.requireNumbers && !/\d/.test(password)) {
+      errors.push('Password must contain at least one number')
+    }
+
+    if (this.passwordPolicy.requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      errors.push('Password must contain at least one special character')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Hash password
+  async hashPassword(password: string): Promise<string> {
+    const saltRounds = 12
+    return bcrypt.hash(password, saltRounds)
+  }
+
+  // Verify password
+  async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword)
+  }
+
+  // Change password
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.password) {
+      return false
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await this.verifyPassword(currentPassword, user.password)
+    if (!isCurrentPasswordValid) {
+      return false
+    }
+
+    // Validate new password
+    const validation = this.validatePassword(newPassword)
+    if (!validation.isValid) {
+      throw new Error(`Password validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Check if password was used before
+    if (await this.isPasswordReused(userId, newPassword)) {
+      throw new Error('This password has been used recently. Please choose a different password.')
+    }
+
+    // Hash new password
+    const hashedNewPassword = await this.hashPassword(newPassword)
+
+    // Update password
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedNewPassword,
+        updatedAt: new Date()
+      }
+    })
+
+    // Update security settings
+    await this.updateUserSecuritySettings(userId, {
+      passwordLastChanged: new Date()
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'PASSWORD_CHANGE',
+      eventDescription: 'Password changed successfully',
+      severity: 'INFO'
+    })
+
+    return true
+  }
+
+  // Check if password was reused
+  private async isPasswordReused(userId: string, newPassword: string): Promise<boolean> {
+    // This would check against previous passwords
+    // For now, return false
+    return false
+  }
+
+  // Account Lockout Management
+
+  // Record failed login attempt
+  async recordFailedLogin(userId: string, ipAddress: string): Promise<void> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user) {
+      return
+    }
+
+    const securitySettings = (user.securitySettings as any) || {}
+    const loginAttempts = (securitySettings.loginAttempts || 0) + 1
+
+    await this.updateUserSecuritySettings(userId, {
+      loginAttempts
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'FAILED_LOGIN',
+      eventDescription: `Failed login attempt (${loginAttempts}/${this.passwordPolicy.accountLockoutThreshold})`,
+      severity: 'WARNING',
+      metadata: { attemptNumber: loginAttempts }
+    })
+
+    // Check if account should be locked
+    if (loginAttempts >= this.passwordPolicy.accountLockoutThreshold) {
+      const lockUntil = new Date(Date.now() + this.passwordPolicy.accountLockoutDuration * 60000)
+      
+      await this.updateUserSecuritySettings(userId, {
+        accountLocked: true,
+        lockUntil
+      })
+
+      // Log security event
+      await this.logSecurityEvent({
+        userId,
+        eventType: 'ACCOUNT_LOCKED',
+        eventDescription: `Account locked due to too many failed login attempts`,
+        severity: 'ERROR'
+      })
+    }
+  }
+
+  // Reset failed login attempts
+  async resetFailedLoginAttempts(userId: string): Promise<void> {
+    await this.updateUserSecuritySettings(userId, {
+      loginAttempts: 0,
+      accountLocked: false,
+      lockUntil: null
+    })
+  }
+
+  // Check if account is locked
+  async isAccountLocked(userId: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.securitySettings) {
+      return false
+    }
+
+    const securitySettings = user.securitySettings as any
+    
+    if (!securitySettings.accountLocked) {
+      return false
+    }
+
+    // Check if lock has expired
+    if (securitySettings.lockUntil && new Date() > new Date(securitySettings.lockUntil)) {
+      await this.updateUserSecuritySettings(userId, {
+        accountLocked: false,
+        lockUntil: null
+      })
+      return false
+    }
+
+    return true
+  }
+
+  // Audit Trail Management
+
+  // Log audit event
+  async logAuditEvent(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
+    // This would save to database
+    console.log('Audit Event:', auditLog)
+  }
+
+  // Get audit logs for user
+  async getUserAuditLogs(userId: string, limit: number = 100): Promise<AuditLog[]> {
+    // This would fetch from database
+    return []
+  }
+
+  // Get system audit logs
+  async getSystemAuditLogs(filters: {
+    userId?: string
+    eventType?: string
+    dateFrom?: Date
+    dateTo?: Date
+    limit?: number
+  }): Promise<AuditLog[]> {
+    // This would fetch from database with filters
+    return []
+  }
+
+  // Security Event Logging
+
+  // Log security event
+  async logSecurityEvent(event: Omit<SecurityEvent, 'id' | 'timestamp'>): Promise<void> {
+    const securityEvent: SecurityEvent = {
+      ...event,
+      id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date()
+    }
+
+    // This would save to database
+    console.log('Security Event:', securityEvent)
+
+    // Check for critical events that need immediate attention
+    if (event.severity === 'CRITICAL') {
+      await this.handleCriticalSecurityEvent(securityEvent)
+    }
+  }
+
+  // Get security events for user
+  async getUserSecurityEvents(userId: string, limit: number = 100): Promise<SecurityEvent[]> {
+    // This would fetch from database
+    return []
+  }
+
+  // Get system security events
+  async getSystemSecurityEvents(filters: {
+    userId?: string
+    eventType?: string
+    severity?: string
+    dateFrom?: Date
+    dateTo?: Date
+    limit?: number
+  }): Promise<SecurityEvent[]> {
+    // This would fetch from database with filters
+    return []
+  }
+
+  // Handle critical security events
+  private async handleCriticalSecurityEvent(event: SecurityEvent): Promise<void> {
+    // This would trigger alerts, notifications, or automatic responses
+    console.error('CRITICAL SECURITY EVENT:', event)
+    
+    // Examples of automatic responses:
+    // - Lock user account
+    // - Force logout of all sessions
+    // - Send security alerts to administrators
+    // - Enable additional monitoring
+  }
+
+  // Session Management
+
+  // Create secure session
+  async createSession(userId: string, deviceInfo: any): Promise<string> {
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // This would create session in database
+    console.log('Session created:', { userId, sessionId, deviceInfo })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'LOGIN',
+      eventDescription: 'User logged in successfully',
+      severity: 'INFO',
+      metadata: { sessionId, deviceInfo }
+    })
+
+    return sessionId
+  }
+
+  // Validate session
+  async validateSession(sessionId: string): Promise<boolean> {
+    // This would validate session in database
+    return true
+  }
+
+  // Invalidate session (logout)
+  async invalidateSession(sessionId: string, userId: string): Promise<void> {
+    // This would remove session from database
+    console.log('Session invalidated:', { sessionId, userId })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'LOGOUT',
+      eventDescription: 'User logged out',
+      severity: 'INFO',
+      metadata: { sessionId }
+    })
+  }
+
+  // Get user sessions
+  async getUserSessions(userId: string): Promise<any[]> {
+    // This would fetch user sessions from database
+    return []
+  }
+
+  // Device Management
+
+  // Register trusted device
+  async registerTrustedDevice(userId: string, deviceInfo: any): Promise<void> {
+    const deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // This would save to user's security settings
+    console.log('Trusted device registered:', { userId, deviceId, deviceInfo })
+  }
+
+  // Remove trusted device
+  async removeTrustedDevice(userId: string, deviceId: string): Promise<void> {
+    // This would remove from user's security settings
+    console.log('Trusted device removed:', { userId, deviceId })
+  }
+
+  // Helper methods
+
+  // Update user security settings
+  private async updateUserSecuritySettings(userId: string, updates: any): Promise<void> {
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        securitySettings: updates,
+        updatedAt: new Date()
+      }
+    })
+  }
+
+  // Get password policy
+  getPasswordPolicy(): PasswordPolicy {
+    return { ...this.passwordPolicy }
+  }
+
+  // Update password policy
+  updatePasswordPolicy(newPolicy: Partial<PasswordPolicy>): void {
+    this.passwordPolicy = { ...this.passwordPolicy, ...newPolicy }
+  }
+
+  // Security health check
+  async getSecurityHealthCheck(): Promise<{
+    overallHealth: 'GOOD' | 'WARNING' | 'CRITICAL'
+    checks: {
+      accountLockouts: { status: 'OK' | 'WARNING'; count: number }
+      failedLogins: { status: 'OK' | 'WARNING'; count: number }
+      securityEvents: { status: 'OK' | 'WARNING'; criticalCount: number }
+      passwordExpiry: { status: 'OK' | 'WARNING'; expiredCount: number }
+    }
+  }> {
+    // This would perform comprehensive security health check
+    return {
+      overallHealth: 'GOOD',
+      checks: {
+        accountLockouts: { status: 'OK', count: 0 },
+        failedLogins: { status: 'OK', count: 0 },
+        securityEvents: { status: 'OK', criticalCount: 0 },
+        passwordExpiry: { status: 'OK', expiredCount: 0 }
+      }
+    }
   }
 }

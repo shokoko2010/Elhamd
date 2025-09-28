@@ -37,7 +37,13 @@ async function createCustomServer() {
       cors: {
         origin: "*",
         methods: ["GET", "POST"]
-      }
+      },
+      transports: ['polling'],
+      pingTimeout: 60000,
+      pingInterval: 25000,
+      connectTimeout: 45000,
+      maxHttpBufferSize: 1e8,
+      allowUpgrades: false
     });
 
     setupSocket(io);

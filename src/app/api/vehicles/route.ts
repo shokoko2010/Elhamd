@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '12')
     const page = parseInt(searchParams.get('page') || '1')
     const search = searchParams.get('search') || ''
+    const fuelType = searchParams.get('fuelType') || ''
+    const transmission = searchParams.get('transmission') || ''
 
     const skip = (page - 1) * limit
 
@@ -20,6 +22,14 @@ export async function GET(request: NextRequest) {
 
     if (category && category !== 'all') {
       where.category = category as VehicleCategory
+    }
+
+    if (fuelType && fuelType !== 'all') {
+      where.fuelType = fuelType
+    }
+
+    if (transmission && transmission !== 'all') {
+      where.transmission = transmission
     }
 
     if (featured) {

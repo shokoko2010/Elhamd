@@ -369,12 +369,22 @@ export function EnhancedButtonLoading({ text = 'جاري المعالجة...' }:
   )
 }
 
-// Add custom animation for wave effect
-const style = document.createElement('style')
-style.textContent = `
-  @keyframes wave {
-    0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(0.3); }
-  }
-`
-document.head.appendChild(style)
+// Add custom animation for wave effect (client-side only)
+export function useWaveAnimation() {
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const style = document.createElement('style')
+      style.textContent = `
+        @keyframes wave {
+          0%, 100% { transform: scaleY(1); }
+          50% { transform: scaleY(0.3); }
+        }
+      `
+      document.head.appendChild(style)
+      
+      return () => {
+        document.head.removeChild(style)
+      }
+    }
+  }, [])
+}

@@ -134,9 +134,14 @@ export function useFilterState({
   }, [persistToLocalStorage, syncWithUrl, storageKey])
 
   const setFilters = useCallback((newFilters: Filters) => {
-    setFiltersState(newFilters)
-    saveFilters(newFilters)
-  }, [saveFilters])
+    // Only update if filters actually changed to prevent infinite loops
+    const filtersString = JSON.stringify(filters)
+    const newFiltersString = JSON.stringify(newFilters)
+    if (filtersString !== newFiltersString) {
+      setFiltersState(newFilters)
+      saveFilters(newFilters)
+    }
+  }, [filters, saveFilters])
 
   const updateFilter = useCallback((key: keyof Filters, value: string | string[]) => {
     const newFilters = {

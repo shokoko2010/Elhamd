@@ -100,41 +100,69 @@ export default function ProfilePage() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-      return
+    if (status === 'unauthenticated' && !apiUser) {
+      // Check if we have a token in localStorage
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+          // Redirect to reauth page instead of login
+          router.push('/reauth')
+          return
+        }
+      } else {
+        router.push('/reauth')
+        return
+      }
     }
 
-    if (status === 'authenticated') {
+    if (status === 'authenticated' || apiUser) {
       fetchProfileData()
     }
-  }, [status, router])
+  }, [status, apiUser, router])
 
   const fetchProfileData = async () => {
     try {
       setLoading(true)
       
-      const response = await fetch('/api/dashboard/profile')
+      // Try to get token from localStorage (for API auth)
+      let token = null
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('auth_token')
+      }
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
+      const response = await fetch('/api/dashboard/profile', {
+        credentials: 'include',
+        headers
+      })
+      
       if (response.ok) {
         const profileData = await response.json()
-        setProfile(profileData)
+        setProfile(profileData.profile)
         
         // Set form data
         setPersonalInfo({
-          name: profileData.name || '',
-          email: profileData.email,
-          phone: profileData.phone || ''
+          name: profileData.profile.name || '',
+          email: profileData.profile.email,
+          phone: profileData.profile.phone || ''
         })
         
         setSecuritySettings({
-          twoFactorEnabled: profileData.securitySettings?.twoFactorEnabled || false,
-          loginNotifications: profileData.securitySettings?.loginNotifications || true,
-          emailNotifications: profileData.securitySettings?.emailNotifications || true
+          twoFactorEnabled: profileData.profile.securitySettings?.twoFactorEnabled || false,
+          loginNotifications: profileData.profile.securitySettings?.loginNotifications || true,
+          emailNotifications: profileData.profile.securitySettings?.emailNotifications || true
         })
         
-        setNotificationPreferences(profileData.notificationPreferences || [])
-        setAddresses(profileData.addresses || [])
-        setPaymentMethods(profileData.paymentMethods || [])
+        setNotificationPreferences(profileData.profile.notificationPreferences || [])
+        setAddresses(profileData.profile.addresses || [])
+        setPaymentMethods(profileData.profile.paymentMethods || [])
       } else {
         throw new Error('Failed to fetch profile data')
       }
@@ -153,11 +181,24 @@ export default function ProfilePage() {
     try {
       setSaving(true)
       
+      // Try to get token from localStorage
+      let token = null
+      if (typeof window !== 'undefined') {
+        token = localStorage.getItem('auth_token')
+      }
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
       const response = await fetch('/api/dashboard/profile', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        credentials: 'include',
+        headers,
         body: JSON.stringify(personalInfo)
       })
 
@@ -188,6 +229,7 @@ export default function ProfilePage() {
       
       const response = await fetch('/api/dashboard/profile/security', {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -220,6 +262,7 @@ export default function ProfilePage() {
       
       const response = await fetch('/api/dashboard/profile/notifications', {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },

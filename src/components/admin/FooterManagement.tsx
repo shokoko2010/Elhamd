@@ -178,11 +178,20 @@ export default function FooterManagement() {
 
   const fetchFooterData = async () => {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const [settingsResponse, contentResponse, socialResponse, columnsResponse] = await Promise.all([
-        fetch('/api/site-settings'),
-        fetch('/api/footer/content'),
-        fetch('/api/footer/social'),
-        fetch('/api/footer/columns')
+        fetch('/api/site-settings', { method: 'GET', headers }),
+        fetch('/api/footer/content', { method: 'GET', headers }),
+        fetch('/api/footer/social', { method: 'GET', headers }),
+        fetch('/api/footer/columns', { method: 'GET', headers })
       ])
 
       if (settingsResponse.ok) {
@@ -214,11 +223,18 @@ export default function FooterManagement() {
   const handleSaveSettings = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/site-settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({ footerSettings: settings })
       })
 
@@ -242,11 +258,18 @@ export default function FooterManagement() {
   const handleSaveContent = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/footer/content', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(content)
       })
 
@@ -270,11 +293,18 @@ export default function FooterManagement() {
   const handleSaveSocial = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/footer/social', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(socialLinks)
       })
 
@@ -298,11 +328,18 @@ export default function FooterManagement() {
   const handleSaveColumns = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/footer/columns', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(columns)
       })
 
@@ -373,8 +410,16 @@ export default function FooterManagement() {
     formData.append('image', file)
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {}
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/upload/image', {
         method: 'POST',
+        headers,
         body: formData
       })
 
@@ -403,6 +448,10 @@ export default function FooterManagement() {
           <p className="text-gray-600">Customize your website footer appearance and content</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => window.open('/admin/site-settings', '_self')}>
+            <Settings className="w-4 h-4 mr-2" />
+            Back to Site Settings
+          </Button>
           <Button variant="outline" onClick={() => window.open('/', '_blank')}>
             <Eye className="w-4 h-4 mr-2" />
             Preview
@@ -447,7 +496,7 @@ export default function FooterManagement() {
                     <Label htmlFor="showLogo">Show Logo</Label>
                     <Switch
                       id="showLogo"
-                      checked={settings.showLogo}
+                      checked={settings.showLogo ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showLogo: checked }))}
                     />
                   </div>
@@ -456,7 +505,7 @@ export default function FooterManagement() {
                     <Label htmlFor="showNavigation">Show Navigation</Label>
                     <Switch
                       id="showNavigation"
-                      checked={settings.showNavigation}
+                      checked={settings.showNavigation ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showNavigation: checked }))}
                     />
                   </div>
@@ -465,7 +514,7 @@ export default function FooterManagement() {
                     <Label htmlFor="showContactInfo">Show Contact Info</Label>
                     <Switch
                       id="showContactInfo"
-                      checked={settings.showContactInfo}
+                      checked={settings.showContactInfo ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showContactInfo: checked }))}
                     />
                   </div>
@@ -474,7 +523,7 @@ export default function FooterManagement() {
                     <Label htmlFor="showSocialLinks">Show Social Links</Label>
                     <Switch
                       id="showSocialLinks"
-                      checked={settings.showSocialLinks}
+                      checked={settings.showSocialLinks ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showSocialLinks: checked }))}
                     />
                   </div>
@@ -487,7 +536,7 @@ export default function FooterManagement() {
                     <Label htmlFor="showNewsletter">Show Newsletter</Label>
                     <Switch
                       id="showNewsletter"
-                      checked={settings.showNewsletter}
+                      checked={settings.showNewsletter ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showNewsletter: checked }))}
                     />
                   </div>
@@ -496,7 +545,7 @@ export default function FooterManagement() {
                     <Label htmlFor="showCopyright">Show Copyright</Label>
                     <Switch
                       id="showCopyright"
-                      checked={settings.showCopyright}
+                      checked={settings.showCopyright ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showCopyright: checked }))}
                     />
                   </div>
@@ -505,7 +554,7 @@ export default function FooterManagement() {
                     <Label htmlFor="showBackToTop">Show Back to Top</Label>
                     <Switch
                       id="showBackToTop"
-                      checked={settings.showBackToTop}
+                      checked={settings.showBackToTop ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showBackToTop: checked }))}
                     />
                   </div>
@@ -517,11 +566,11 @@ export default function FooterManagement() {
                   <div className="space-y-2">
                     <Label htmlFor="columns">Number of Columns</Label>
                     <Select 
-                      value={settings.columns.toString()} 
+                      value={settings.columns?.toString() || '6'} 
                       onValueChange={(value) => setSettings(prev => ({ ...prev, columns: parseInt(value) }))}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select number of columns" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">1 Column</SelectItem>
@@ -537,11 +586,11 @@ export default function FooterManagement() {
                   <div className="space-y-2">
                     <Label htmlFor="layout">Layout Style</Label>
                     <Select 
-                      value={settings.layout} 
+                      value={settings.layout ?? 'standard'} 
                       onValueChange={(value: any) => setSettings(prev => ({ ...prev, layout: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select number of columns" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="standard">Standard</SelectItem>

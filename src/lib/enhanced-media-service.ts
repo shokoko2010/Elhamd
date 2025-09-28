@@ -334,41 +334,80 @@ export class EnhancedMediaService {
     total: number
     hasMore: boolean
   }> {
-    // In production, this would query the database
-    // For now, return mock data
-    const mockFiles: MediaFile[] = [
-      {
-        id: '1',
-        filename: 'nexon_front.webp',
-        originalFilename: 'nexon_front.jpg',
-        path: '/uploads/vehicles/optimized/nexon_front.webp',
-        url: '/uploads/vehicles/optimized/nexon_front.webp',
-        thumbnailUrl: '/uploads/thumbnails/1_thumbnail.webp',
-        mimeType: 'image/webp',
-        size: 150000,
-        width: 1920,
-        height: 1080,
-        altText: 'Tata Nexon front view',
-        title: 'Tata Nexon',
-        description: 'Front view of Tata Nexon',
-        tags: ['tata', 'nexon', 'suv', 'front'],
-        category: 'vehicle',
-        entityId: '1',
-        isPublic: true,
-        isFeatured: true,
-        order: 0,
-        metadata: {},
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: 'admin',
-        optimizedFiles: []
+    try {
+      // Build where clause
+      const where: any = {}
+      
+      if (filter.category) {
+        where.category = filter.category
       }
-    ]
-
-    return {
-      files: mockFiles,
-      total: mockFiles.length,
-      hasMore: false
+      
+      if (filter.entityId) {
+        where.entityId = filter.entityId
+      }
+      
+      if (filter.mimeType) {
+        where.mimeType = { startsWith: filter.mimeType }
+      }
+      
+      if (filter.isPublic !== undefined) {
+        where.isPublic = filter.isPublic
+      }
+      
+      if (filter.isFeatured !== undefined) {
+        where.isFeatured = filter.isFeatured
+      }
+      
+      if (filter.createdBy) {
+        where.createdBy = filter.createdBy
+      }
+      
+      if (filter.search) {
+        where.OR = [
+          { filename: { contains: filter.search, mode: 'insensitive' } },
+          { originalName: { contains: filter.search, mode: 'insensitive' } },
+          { title: { contains: filter.search, mode: 'insensitive' } },
+          { altText: { contains: filter.search, mode: 'insensitive' } }
+        ]
+      }
+      
+      if (filter.dateFrom || filter.dateTo) {
+        where.createdAt = {}
+        if (filter.dateFrom) {
+          where.createdAt.gte = new Date(filter.dateFrom)
+        }
+        if (filter.dateTo) {
+          where.createdAt.lte = new Date(filter.dateTo)
+        }
+      }
+      
+      // Get total count
+      const total = await db.media.count({ where })
+      
+      // Get files with pagination - get all files if no limit specified
+      const limit = filter.limit || undefined // Remove default limit
+      const files = await db.media.findMany({
+        where,
+        orderBy: [
+          { [filter.sortBy || 'createdAt']: filter.sortOrder || 'desc' }
+        ],
+        skip: filter.offset || 0,
+        take: limit // Will be undefined if no limit specified, returning all files
+      })
+      
+      return {
+        files: files.map(file => this.mapDbMediaToMediaFile(file)),
+        total,
+        hasMore: (filter.offset || 0) + (filter.limit || 20) < total
+      }
+    } catch (error) {
+      console.error('Error fetching media from database:', error)
+      // Fallback to empty array
+      return {
+        files: [],
+        total: 0,
+        hasMore: false
+      }
     }
   }
 
@@ -376,84 +415,138 @@ export class EnhancedMediaService {
     mediaId: string,
     updates: Partial<MediaFile>
   ): Promise<MediaFile> {
-    // In production, update database record
-    const mockFile: MediaFile = {
-      id: mediaId,
-      filename: 'updated.webp',
-      originalFilename: 'original.jpg',
-      path: '/uploads/vehicles/optimized/updated.webp',
-      url: '/uploads/vehicles/optimized/updated.webp',
-      mimeType: 'image/webp',
-      size: 150000,
-      width: 1920,
-      height: 1080,
-      altText: updates.altText || 'Updated alt text',
-      title: updates.title || 'Updated title',
-      description: updates.description,
-      tags: updates.tags || [],
-      category: updates.category || 'vehicle',
-      isPublic: updates.isPublic ?? true,
-      isFeatured: updates.isFeatured ?? false,
-      order: updates.order || 0,
-      metadata: {},
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'admin',
-      optimizedFiles: []
+    try {
+      const updateData: any = {}
+      
+      if (updates.altText !== undefined) updateData.altText = updates.altText
+      if (updates.title !== undefined) updateData.title = updates.title
+      if (updates.description !== undefined) updateData.description = updates.description
+      if (updates.tags !== undefined) updateData.tags = JSON.stringify(updates.tags)
+      if (updates.category !== undefined) updateData.category = updates.category
+      if (updates.isPublic !== undefined) updateData.isPublic = updates.isPublic
+      if (updates.isFeatured !== undefined) updateData.isFeatured = updates.isFeatured
+      if (updates.order !== undefined) updateData.order = updates.order
+      
+      const updatedMedia = await db.media.update({
+        where: { id: mediaId },
+        data: updateData
+      })
+      
+      return this.mapDbMediaToMediaFile(updatedMedia)
+    } catch (error) {
+      console.error('Error updating media in database:', error)
+      throw new Error('Failed to update media')
     }
-
-    return mockFile
   }
 
   async deleteMedia(mediaId: string): Promise<void> {
-    // In production, get media from database first
-    const media = await this.getMediaById(mediaId)
-
-    // Delete all associated files
-    const filesToDelete = [
-      media.path,
-      media.thumbnailUrl,
-      ...media.optimizedFiles.map(f => f.path)
-    ].filter(Boolean)
-
-    for (const filePath of filesToDelete) {
-      try {
-        if (filePath && existsSync(join(process.cwd(), 'public', filePath))) {
-          unlinkSync(join(process.cwd(), 'public', filePath))
-        }
-      } catch (error) {
-        console.error(`Failed to delete file ${filePath}:`, error)
+    try {
+      // Get media from database first
+      const media = await db.media.findUnique({
+        where: { id: mediaId }
+      })
+      
+      if (!media) {
+        throw new Error('Media not found')
       }
+      
+      // Delete all associated files
+      const filesToDelete = [
+        media.path,
+        media.thumbnailUrl
+      ].filter(Boolean)
+      
+      for (const filePath of filesToDelete) {
+        try {
+          if (filePath) {
+            const fullPath = join(process.cwd(), 'public', filePath)
+            if (existsSync(fullPath)) {
+              unlinkSync(fullPath)
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to delete file ${filePath}:`, error)
+        }
+      }
+      
+      // Delete from database
+      await db.media.delete({
+        where: { id: mediaId }
+      })
+    } catch (error) {
+      console.error('Error deleting media from database:', error)
+      throw new Error('Failed to delete media')
     }
-
-    // Delete from database
-    // await db.media.delete({ where: { id: mediaId } })
   }
 
   async getMediaStats(): Promise<MediaStats> {
-    // In production, calculate from database
-    return {
-      totalFiles: 150,
-      totalSize: 500 * 1024 * 1024, // 500MB
-      byCategory: {
-        vehicle: { count: 80, size: 300 * 1024 * 1024 },
-        service: { count: 30, size: 100 * 1024 * 1024 },
-        banner: { count: 20, size: 50 * 1024 * 1024 },
-        gallery: { count: 20, size: 50 * 1024 * 1024 }
-      },
-      byMimeType: {
-        'image/webp': { count: 100, size: 300 * 1024 * 1024 },
-        'image/jpeg': { count: 30, size: 150 * 1024 * 1024 },
-        'image/png': { count: 20, size: 50 * 1024 * 1024 }
-      },
-      byMonth: {
-        '2024-01': { count: 50, size: 200 * 1024 * 1024 },
-        '2024-02': { count: 100, size: 300 * 1024 * 1024 }
-      },
-      storageUsage: {
-        used: 500 * 1024 * 1024,
-        available: 524 * 1024 * 1024, // ~524MB remaining
-        total: 1024 * 1024 * 1024 // 1GB
+    try {
+      // Get all media files
+      const allMedia = await db.media.findMany()
+      
+      // Calculate statistics
+      const totalFiles = allMedia.length
+      const totalSize = allMedia.reduce((sum, media) => sum + media.size, 0)
+      
+      // Group by category
+      const byCategory: Record<string, { count: number; size: number }> = {}
+      allMedia.forEach(media => {
+        const category = media.category || 'other'
+        if (!byCategory[category]) {
+          byCategory[category] = { count: 0, size: 0 }
+        }
+        byCategory[category].count++
+        byCategory[category].size += media.size
+      })
+      
+      // Group by MIME type
+      const byMimeType: Record<string, { count: number; size: number }> = {}
+      allMedia.forEach(media => {
+        const mimeType = media.mimeType.split('/')[0] || 'unknown'
+        if (!byMimeType[mimeType]) {
+          byMimeType[mimeType] = { count: 0, size: 0 }
+        }
+        byMimeType[mimeType].count++
+        byMimeType[mimeType].size += media.size
+      })
+      
+      // Group by month
+      const byMonth: Record<string, { count: number; size: number }> = {}
+      allMedia.forEach(media => {
+        const month = new Date(media.createdAt).toISOString().substring(0, 7) // YYYY-MM
+        if (!byMonth[month]) {
+          byMonth[month] = { count: 0, size: 0 }
+        }
+        byMonth[month].count++
+        byMonth[month].size += media.size
+      })
+      
+      return {
+        totalFiles,
+        totalSize,
+        byCategory,
+        byMimeType,
+        byMonth,
+        storageUsage: {
+          used: totalSize,
+          available: Math.max(0, this.storageQuota - totalSize),
+          total: this.storageQuota
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating media stats:', error)
+      // Return empty stats
+      return {
+        totalFiles: 0,
+        totalSize: 0,
+        byCategory: {},
+        byMimeType: {},
+        byMonth: {},
+        storageUsage: {
+          used: 0,
+          available: this.storageQuota,
+          total: this.storageQuota
+        }
       }
     }
   }
@@ -637,13 +730,77 @@ export class EnhancedMediaService {
   }
 
   private async saveMediaToDatabase(mediaFile: MediaFile): Promise<void> {
-    // In production, save to database using Prisma
-    console.log('Saving media to database:', mediaFile.id)
+    try {
+      await db.media.create({
+        data: {
+          id: mediaFile.id,
+          filename: mediaFile.filename,
+          originalName: mediaFile.originalFilename,
+          path: mediaFile.path,
+          url: mediaFile.url,
+          thumbnailUrl: mediaFile.thumbnailUrl,
+          mimeType: mediaFile.mimeType,
+          size: mediaFile.size,
+          width: mediaFile.width,
+          height: mediaFile.height,
+          altText: mediaFile.altText,
+          title: mediaFile.title,
+          description: mediaFile.description,
+          tags: JSON.stringify(mediaFile.tags),
+          category: mediaFile.category,
+          entityId: mediaFile.entityId,
+          isPublic: mediaFile.isPublic,
+          isFeatured: mediaFile.isFeatured,
+          order: mediaFile.order,
+          metadata: JSON.stringify(mediaFile.metadata),
+          createdBy: mediaFile.createdBy
+        }
+      })
+    } catch (error) {
+      console.error('Error saving media to database:', error)
+      throw new Error('Failed to save media to database')
+    }
   }
 
   private async getMediaById(mediaId: string): Promise<MediaFile> {
-    // In production, fetch from database
-    throw new Error('Not implemented')
+    const media = await db.media.findUnique({
+      where: { id: mediaId }
+    })
+
+    if (!media) {
+      throw new Error('Media not found')
+    }
+
+    return this.mapDbMediaToMediaFile(media)
+  }
+
+  private mapDbMediaToMediaFile(dbMedia: any): MediaFile {
+    return {
+      id: dbMedia.id,
+      filename: dbMedia.filename,
+      originalFilename: dbMedia.originalName,
+      path: dbMedia.path,
+      url: dbMedia.url,
+      thumbnailUrl: dbMedia.thumbnailUrl,
+      mimeType: dbMedia.mimeType,
+      size: dbMedia.size,
+      width: dbMedia.width,
+      height: dbMedia.height,
+      altText: dbMedia.altText,
+      title: dbMedia.title,
+      description: dbMedia.description,
+      tags: dbMedia.tags ? JSON.parse(dbMedia.tags) : [],
+      category: dbMedia.category,
+      entityId: dbMedia.entityId,
+      isPublic: dbMedia.isPublic,
+      isFeatured: dbMedia.isFeatured,
+      order: dbMedia.order,
+      metadata: dbMedia.metadata ? JSON.parse(dbMedia.metadata) : {},
+      createdAt: dbMedia.createdAt.toISOString(),
+      updatedAt: dbMedia.updatedAt.toISOString(),
+      createdBy: dbMedia.createdBy,
+      optimizedFiles: []
+    }
   }
 }
 

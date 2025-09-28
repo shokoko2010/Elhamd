@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { signOut } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -26,11 +27,24 @@ import {
   MapPin,
   BarChart3,
   Activity,
-  ClipboardList
+  ClipboardList,
+  Package,
+  ShoppingCart,
+  FileText,
+  UserPlus,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Filter
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
 import TaskManagement from '@/components/employee/EnhancedTaskManagement'
+import CarManagement from '@/components/employee/CarManagement'
+import OrderManagement from '@/components/employee/OrderManagement'
+import InvoiceManagement from '@/components/employee/InvoiceManagement'
+import UserManagement from '@/components/employee/UserManagement'
 
 interface EmployeeStats {
   totalBookings: number
@@ -39,6 +53,14 @@ interface EmployeeStats {
   pendingBookings: number
   customerSatisfaction: number
   averageResponseTime: number
+  totalCars: number
+  availableCars: number
+  totalOrders: number
+  pendingOrders: number
+  totalInvoices: number
+  paidInvoices: number
+  totalUsers: number
+  activeUsers: number
 }
 
 interface Task {
@@ -91,6 +113,72 @@ interface PerformanceMetrics {
   tasksCompleted: number
 }
 
+interface Car {
+  id: string
+  make: string
+  model: string
+  year: number
+  price: number
+  type: 'new' | 'used'
+  status: 'available' | 'sold' | 'reserved'
+  mileage?: number
+  fuelType: string
+  transmission: string
+  description: string
+  images: string[]
+  features: string[]
+}
+
+interface Order {
+  id: string
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  carId: string
+  carDetails: {
+    make: string
+    model: string
+    year: number
+    price: number
+  }
+  status: 'pending' | 'confirmed' | 'processing' | 'completed' | 'cancelled'
+  orderDate: string
+  totalAmount: number
+  paymentStatus: 'pending' | 'paid' | 'failed'
+  notes?: string
+}
+
+interface Invoice {
+  id: string
+  orderId: string
+  customerName: string
+  customerEmail: string
+  items: {
+    description: string
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+  }[]
+  subtotal: number
+  tax: number
+  total: number
+  status: 'draft' | 'sent' | 'paid' | 'overdue'
+  issueDate: string
+  dueDate: string
+  paidDate?: string
+}
+
+interface User {
+  id: string
+  name: string
+  email: string
+  phone: string
+  role: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN'
+  status: 'active' | 'inactive' | 'suspended'
+  createdAt: string
+  lastLogin?: string
+}
+
 export default function EmployeeDashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -103,7 +191,15 @@ export default function EmployeeDashboardPage() {
     completedBookings: 0,
     pendingBookings: 0,
     customerSatisfaction: 0,
-    averageResponseTime: 0
+    averageResponseTime: 0,
+    totalCars: 0,
+    availableCars: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    totalInvoices: 0,
+    paidInvoices: 0,
+    totalUsers: 0,
+    activeUsers: 0
   })
   
   const [tasks, setTasks] = useState<Task[]>([])
@@ -116,7 +212,11 @@ export default function EmployeeDashboardPage() {
     revenueGenerated: 0,
     tasksCompleted: 0
   })
-  const [loading, setLoading] = useState(true)
+  const [cars, setCars] = useState<Car[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [dataLoading, setDataLoading] = useState(status === 'loading')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -124,20 +224,20 @@ export default function EmployeeDashboardPage() {
       return
     }
 
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && user) {
       // Check if user is staff or admin
-      if (!user?.isStaff()) {
+      if (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
         router.push('/dashboard')
         return
       }
       
       fetchDashboardData()
     }
-  }, [status, router, user])
+  }, [status, user, router])
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true)
+      setDataLoading(true)
       
       // Fetch employee stats
       const statsResponse = await fetch('/api/employee/dashboard/stats')
@@ -166,6 +266,34 @@ export default function EmployeeDashboardPage() {
         const performanceData = await performanceResponse.json()
         setPerformance(performanceData)
       }
+
+      // Fetch cars
+      const carsResponse = await fetch('/api/employee/cars')
+      if (carsResponse.ok) {
+        const carsData = await carsResponse.json()
+        setCars(carsData)
+      }
+
+      // Fetch orders
+      const ordersResponse = await fetch('/api/employee/orders')
+      if (ordersResponse.ok) {
+        const ordersData = await ordersResponse.json()
+        setOrders(ordersData)
+      }
+
+      // Fetch invoices
+      const invoicesResponse = await fetch('/api/employee/invoices')
+      if (invoicesResponse.ok) {
+        const invoicesData = await invoicesResponse.json()
+        setInvoices(invoicesData)
+      }
+
+      // Fetch users
+      const usersResponse = await fetch('/api/employee/users')
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json()
+        setUsers(usersData)
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -173,7 +301,7 @@ export default function EmployeeDashboardPage() {
         variant: 'destructive'
       })
     } finally {
-      setLoading(false)
+      setDataLoading(false)
     }
   }
 
@@ -276,7 +404,7 @@ export default function EmployeeDashboardPage() {
     }
   }
 
-  if (loading) {
+  if (status === 'loading' || dataLoading || !user) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-6">
@@ -286,6 +414,20 @@ export default function EmployeeDashboardPage() {
               <div key={i} className="h-32 bg-gray-200 rounded"></div>
             ))}
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'unauthenticated' || !user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Authentication Error</h1>
+          <p className="text-gray-600 mb-4">Please login to access this page</p>
+          <Button onClick={() => router.push('/login')}>
+            Return to Login
+          </Button>
         </div>
       </div>
     )
@@ -306,62 +448,108 @@ export default function EmployeeDashboardPage() {
             <p className="text-gray-600">Welcome back, {user?.name || 'Employee'}!</p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => router.push('/employee/settings')}>
-          <Settings className="w-4 h-4 mr-2" />
-          Settings
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => window.location.href = '/'}>
+            Back to Home
+          </Button>
+          <Button variant="outline" onClick={() => signOut({ callbackUrl: '/' })}>
+            Logout
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Bookings</CardTitle>
+            <CardTitle className="text-sm font-medium">مواعيد اليوم</CardTitle>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.todayBookings}</div>
             <p className="text-xs text-muted-foreground">
-              Total: {stats.totalBookings}
+              الإجمالي: {stats.totalBookings}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium">السيارات المتاحة</CardTitle>
+            <Car className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.availableCars}</div>
+            <p className="text-xs text-muted-foreground">
+              الإجمالي: {stats.totalCars}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">الطلبات المعلقة</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+            <p className="text-xs text-muted-foreground">
+              الإجمالي: {stats.totalOrders}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">الفواتير المدفوعة</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.paidInvoices}</div>
+            <p className="text-xs text-muted-foreground">
+              الإجمالي: {stats.totalInvoices}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">المستخدمين النشطين</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activeUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              الإجمالي: {stats.totalUsers}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">مكتمل</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.completedBookings}</div>
             <p className="text-xs text-muted-foreground">
-              Successfully completed
+              تم إنجازه بنجاح
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium">معلق</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.pendingBookings}</div>
             <p className="text-xs text-muted-foreground">
-              Awaiting action
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Satisfaction</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.customerSatisfaction}%</div>
-            <p className="text-xs text-muted-foreground">
-              Customer rating
+              في انتظار الإجراء
             </p>
           </CardContent>
         </Card>
@@ -395,19 +583,23 @@ export default function EmployeeDashboardPage() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="appointments" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="appointments">Today's Appointments</TabsTrigger>
-          <TabsTrigger value="tasks">My Tasks</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="appointments">المواعيد</TabsTrigger>
+          <TabsTrigger value="tasks">المهام</TabsTrigger>
+          <TabsTrigger value="cars">السيارات</TabsTrigger>
+          <TabsTrigger value="orders">الطلبات</TabsTrigger>
+          <TabsTrigger value="invoices">الفواتير</TabsTrigger>
+          <TabsTrigger value="users">المستخدمون</TabsTrigger>
+          <TabsTrigger value="performance">الأداء</TabsTrigger>
+          <TabsTrigger value="analytics">التحليلات</TabsTrigger>
         </TabsList>
 
         <TabsContent value="appointments" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Today's Appointments</CardTitle>
+              <CardTitle>مواعيد اليوم</CardTitle>
               <CardDescription>
-                Your scheduled appointments for today
+                المواعيد المجدولة لليوم
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -513,35 +705,51 @@ export default function EmployeeDashboardPage() {
           <TaskManagement />
         </TabsContent>
 
+        <TabsContent value="cars" className="space-y-4">
+          <CarManagement />
+        </TabsContent>
+
+        <TabsContent value="orders" className="space-y-4">
+          <OrderManagement />
+        </TabsContent>
+
+        <TabsContent value="invoices" className="space-y-4">
+          <InvoiceManagement />
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-4">
+          <UserManagement />
+        </TabsContent>
+
         <TabsContent value="performance" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Performance Metrics</CardTitle>
+                <CardTitle>مقاييس الأداء</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span>Bookings Handled</span>
+                  <span>الطلبات المجهزة</span>
                   <span className="font-semibold">{performance.bookingsHandled}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Average Handling Time</span>
-                  <span className="font-semibold">{performance.averageHandlingTime} min</span>
+                  <span>متوسط وقت المعالجة</span>
+                  <span className="font-semibold">{performance.averageHandlingTime} دقيقة</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Customer Rating</span>
+                  <span>تقييم العملاء</span>
                   <span className="font-semibold">{performance.customerRating}%</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Conversion Rate</span>
+                  <span>معدل التحويل</span>
                   <span className="font-semibold">{performance.conversionRate}%</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Revenue Generated</span>
-                  <span className="font-semibold">EGP {performance.revenueGenerated.toLocaleString()}</span>
+                  <span>الإيرادات المولدة</span>
+                  <span className="font-semibold">جنيه {performance.revenueGenerated.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Tasks Completed</span>
+                  <span>المهام المكتملة</span>
                   <span className="font-semibold">{performance.tasksCompleted}</span>
                 </div>
               </CardContent>
@@ -549,24 +757,24 @@ export default function EmployeeDashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle>إجراءات سريعة</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button className="w-full justify-start" onClick={() => router.push('/employee/bookings')}>
                   <Car className="w-4 h-4 mr-2" />
-                  Manage Bookings
+                  إدارة الحجوزات
                 </Button>
                 <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/employee/tasks')}>
                   <ClipboardList className="w-4 h-4 mr-2" />
-                  View All Tasks
+                  عرض جميع المهام
                 </Button>
                 <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/employee/calendar')}>
                   <CalendarDays className="w-4 h-4 mr-2" />
-                  View Calendar
+                  عرض التقويم
                 </Button>
                 <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/employee/customers')}>
                   <Users className="w-4 h-4 mr-2" />
-                  Customer Management
+                  إدارة العملاء
                 </Button>
               </CardContent>
             </Card>
@@ -576,17 +784,17 @@ export default function EmployeeDashboardPage() {
         <TabsContent value="analytics" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Performance Analytics</CardTitle>
+              <CardTitle>تحليلات الأداء</CardTitle>
               <CardDescription>
-                Detailed performance analysis and insights
+                تحليل مفصل للأداء والرؤى
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">
                 <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">View detailed analytics and reports</p>
+                <p className="text-gray-600 mb-4">عرض التحليلات والتقارير المفصلة</p>
                 <Button onClick={() => router.push('/employee/performance')}>
-                  View Full Analytics Dashboard
+                  عرض لوحة التحليلات الكاملة
                 </Button>
               </div>
             </CardContent>

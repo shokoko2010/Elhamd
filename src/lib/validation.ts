@@ -236,7 +236,7 @@ export const adminSchemas = {
     name: commonSchemas.name,
     email: commonSchemas.email,
     phone: commonSchemas.phone,
-    role: z.enum(['ADMIN', 'MANAGER', 'STAFF'], {
+    role: z.enum(['ADMIN', 'BRANCH_MANAGER', 'STAFF'], {
       errorMap: () => ({ message: 'الدور غير صالح' })
     }),
     permissions: z.array(z.string()).optional()

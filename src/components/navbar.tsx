@@ -23,9 +23,11 @@ import {
   Settings,
   Calendar,
   Wrench,
-  MapPin
+  MapPin,
+  Search
 } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
+import { useSiteSettings } from '@/components/SiteSettingsProvider'
 
 // Create a safe wrapper component to handle auth state
 function AuthAwareNavbar() {
@@ -33,6 +35,7 @@ function AuthAwareNavbar() {
   const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
   const { data: session, status } = useSession()
+  const { settings } = useSiteSettings()
   const user = session?.user
   const isAuthenticated = !!session
   const loading = status === 'loading'
@@ -44,8 +47,10 @@ function AuthAwareNavbar() {
   const navigation = [
     { name: 'الرئيسية', href: '/', icon: Car },
     { name: 'السيارات', href: '/vehicles', icon: Car },
+    { name: 'بحث', href: '/search', icon: Search },
     { name: 'قيادة تجريبية', href: '/test-drive', icon: Calendar },
     { name: 'حجز خدمة', href: '/service-booking', icon: Wrench },
+    { name: 'استشارة', href: '/consultation', icon: Phone },
     { name: 'اتصل بنا', href: '/contact', icon: Phone },
   ]
 
@@ -86,8 +91,14 @@ function AuthAwareNavbar() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <Car className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">Al-Hamd Cars</span>
+              {settings.logoUrl ? (
+                <img src={settings.logoUrl} alt={settings.siteTitle} className="h-8 w-auto" />
+              ) : (
+                <Car className="h-8 w-8" style={{ color: settings.primaryColor }} />
+              )}
+              <span className="text-xl font-bold" style={{ color: settings.primaryColor }}>
+                {settings.siteTitle}
+              </span>
             </Link>
           </div>
 
@@ -114,14 +125,18 @@ function AuthAwareNavbar() {
 
           {/* Contact Info */}
           <div className="hidden lg:flex items-center space-x-4 text-sm text-gray-600">
-            <div className="flex items-center space-x-1">
-              <Phone className="h-4 w-4" />
-              <span>+20 2 1234 5678</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Mail className="h-4 w-4" />
-              <span>info@alhamdcars.com</span>
-            </div>
+            {settings.contactPhone && (
+              <div className="flex items-center space-x-1">
+                <Phone className="h-4 w-4" />
+                <span>{settings.contactPhone}</span>
+              </div>
+            )}
+            {settings.contactEmail && (
+              <div className="flex items-center space-x-1">
+                <Mail className="h-4 w-4" />
+                <span>{settings.contactEmail}</span>
+              </div>
+            )}
           </div>
 
           {/* Authentication */}
@@ -147,24 +162,35 @@ function AuthAwareNavbar() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center">
+                    <Link href="/dashboard/profile" className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
                       <span>الملف الشخصي</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/bookings" className="flex items-center">
+                    <Link href="/dashboard/bookings" className="flex items-center">
                       <Calendar className="mr-2 h-4 w-4" />
                       <span>حجوزاتي</span>
                     </Link>
                   </DropdownMenuItem>
-                  {user.role === 'ADMIN' && (
+                  {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link href="/admin" className="flex items-center">
                           <Settings className="mr-2 h-4 w-4" />
                           <span>لوحة التحكم</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {user.role === 'STAFF' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/employee/dashboard" className="flex items-center">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>لوحة الموظفين</span>
                         </Link>
                       </DropdownMenuItem>
                     </>
@@ -232,18 +258,24 @@ function AuthAwareNavbar() {
                   معلومات الاتصال
                 </div>
                 <div className="px-3 py-2 space-y-2">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Phone className="h-4 w-4" />
-                    <span>+20 2 1234 5678</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Mail className="h-4 w-4" />
-                    <span>info@alhamdcars.com</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4" />
-                    <span>القاهرة، مصر</span>
-                  </div>
+                  {settings.contactPhone && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <Phone className="h-4 w-4" />
+                      <span>{settings.contactPhone}</span>
+                    </div>
+                  )}
+                  {settings.contactEmail && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <Mail className="h-4 w-4" />
+                      <span>{settings.contactEmail}</span>
+                    </div>
+                  )}
+                  {settings.contactAddress && (
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <MapPin className="h-4 w-4" />
+                      <span>{settings.contactAddress}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -268,7 +300,7 @@ function AuthAwareNavbar() {
                     </div>
                     <div className="space-y-1">
                       <Link
-                        href="/profile"
+                        href="/dashboard/profile"
                         className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -276,14 +308,14 @@ function AuthAwareNavbar() {
                         <span>الملف الشخصي</span>
                       </Link>
                       <Link
-                        href="/bookings"
+                        href="/dashboard/bookings"
                         className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         <Calendar className="h-4 w-4" />
                         <span>حجوزاتي</span>
                       </Link>
-                      {user.role === 'ADMIN' && (
+                      {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
                         <Link
                           href="/admin"
                           className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
@@ -291,6 +323,16 @@ function AuthAwareNavbar() {
                         >
                           <Settings className="h-4 w-4" />
                           <span>لوحة التحكم</span>
+                        </Link>
+                      )}
+                      {user.role === 'STAFF' && (
+                        <Link
+                          href="/employee/dashboard"
+                          className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Settings className="h-4 w-4" />
+                          <span>لوحة الموظفين</span>
                         </Link>
                       )}
                       <button

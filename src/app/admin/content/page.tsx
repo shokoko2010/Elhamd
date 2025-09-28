@@ -33,7 +33,9 @@ import {
   Type,
   Image as ImageIcon,
   Palette,
-  LayoutTemplate
+  LayoutTemplate,
+  Layout,
+  Columns
 } from 'lucide-react'
 
 interface ContentPage {
@@ -386,11 +388,15 @@ function ContentContent() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">إدارة المحتوى</h1>
-        <p className="text-gray-600">تحكم في صفحات الموقع والقوائم والإعدادات العامة</p>
+        <p className="text-gray-600">تحكم في صفحات الموقع والقوالب والقوائم</p>
         <div className="mt-4 flex gap-3">
           <Button onClick={() => setShowSettingsDialog(true)}>
             <Settings className="ml-2 h-4 w-4" />
             إعدادات الموقع
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/admin/site-settings')}>
+            <Palette className="ml-2 h-4 w-4" />
+            المظهر والإعدادات المتقدمة
           </Button>
         </div>
       </div>
@@ -399,7 +405,7 @@ function ContentContent() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pages">الصفحات</TabsTrigger>
           <TabsTrigger value="navigation">القائمة</TabsTrigger>
-          <TabsTrigger value="appearance">المظهر</TabsTrigger>
+          <TabsTrigger value="templates">القوالب</TabsTrigger>
         </TabsList>
 
         {/* Pages Management */}
@@ -521,183 +527,162 @@ function ContentContent() {
           </Card>
         </TabsContent>
 
-        {/* Appearance Settings */}
-        <TabsContent value="appearance" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5" />
-                  الألوان والعلامة التجارية
-                </CardTitle>
-                <CardDescription>
-                  تخصيص ألوان وشعار الموقع
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        {/* Templates Management */}
+        <TabsContent value="templates" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="siteName">اسم الموقع</Label>
-                  <Input
-                    id="siteName"
-                    value={settings?.siteName || ''}
-                    onChange={(e) => setSettings(prev => prev ? {...prev, siteName: e.target.value} : null)}
-                  />
+                  <CardTitle>إدارة القوالب</CardTitle>
+                  <CardDescription>
+                    تحكم في قوالب الصفحات وتصميمات المحتوى
+                  </CardDescription>
                 </div>
-                <div>
-                  <Label htmlFor="primaryColor">اللون الأساسي</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      id="primaryColor"
-                      type="color"
-                      value={settings?.primaryColor || '#2563eb'}
-                      onChange={(e) => setSettings(prev => prev ? {...prev, primaryColor: e.target.value} : null)}
-                      className="w-16 h-10 p-1"
-                    />
-                    <Input
-                      value={settings?.primaryColor || '#2563eb'}
-                      onChange={(e) => setSettings(prev => prev ? {...prev, primaryColor: e.target.value} : null)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="secondaryColor">اللون الثانوي</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      id="secondaryColor"
-                      type="color"
-                      value={settings?.secondaryColor || '#dc2626'}
-                      onChange={(e) => setSettings(prev => prev ? {...prev, secondaryColor: e.target.value} : null)}
-                      className="w-16 h-10 p-1"
-                    />
-                    <Input
-                      value={settings?.secondaryColor || '#dc2626'}
-                      onChange={(e) => setSettings(prev => prev ? {...prev, secondaryColor: e.target.value} : null)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
-                  معلومات الاتصال
-                </CardTitle>
-                <CardDescription>
-                  تحديث معلومات الاتصال بالموقع
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="contactEmail">البريد الإلكتروني</Label>
-                  <Input
-                    id="contactEmail"
-                    type="email"
-                    value={settings?.contactEmail || ''}
-                    onChange={(e) => setSettings(prev => prev ? {...prev, contactEmail: e.target.value} : null)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="contactPhone">رقم الهاتف</Label>
-                  <Input
-                    id="contactPhone"
-                    value={settings?.contactPhone || ''}
-                    onChange={(e) => setSettings(prev => prev ? {...prev, contactPhone: e.target.value} : null)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="contactAddress">العنوان</Label>
-                  <Textarea
-                    id="contactAddress"
-                    value={settings?.contactAddress || ''}
-                    onChange={(e) => setSettings(prev => prev ? {...prev, contactAddress: e.target.value} : null)}
-                    rows={3}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  الشعار والأيقونة
-                </CardTitle>
-                <CardDescription>
-                  تحميل شعار وأيقونة الموقع
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="logo">شعار الموقع</Label>
-                  <div className="mt-2 flex items-center gap-4">
-                    <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center">
-                      {settings?.logo ? (
-                        <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded" />
-                      ) : (
-                        <LayoutTemplate className="h-8 w-8 text-gray-400" />
-                      )}
+                <Button>
+                  <Plus className="ml-2 h-4 w-4" />
+                  قالب جديد
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="aspect-video bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                      <LayoutTemplate className="h-12 w-12 text-gray-400" />
                     </div>
-                    <Button variant="outline" size="sm">
-                      تغيير الشعار
-                    </Button>
+                    <h3 className="font-semibold mb-2">قالب افتراضي</h3>
+                    <p className="text-sm text-gray-600 mb-4">قالب أساسي للصفحات العامة</p>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary">نشط</Badge>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="aspect-video bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                      <Smartphone className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <h3 className="font-semibold mb-2">قالب الاتصال</h3>
+                    <p className="text-sm text-gray-600 mb-4">قالب مخصص لصفحة الاتصال</p>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary">نشط</Badge>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="aspect-video bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                      <Monitor className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <h3 className="font-semibold mb-2">قالب عرض كامل</h3>
+                    <p className="text-sm text-gray-600 mb-4">قالب بدون جانب للعرض الكامل</p>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline">غير نشط</Badge>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>إعدادات التخطيط</CardTitle>
+              <CardDescription>
+                تحكم في تخطيط الصفحات وهيكلة المحتوى
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-medium">تخطيط الصفحة الرئيسية</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                          <Layout className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">تخطيط قياسي</div>
+                          <div className="text-sm text-gray-600">رأس، جانب، رئيسي، تذييل</div>
+                        </div>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                          <Columns className="h-4 w-4 text-gray-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">تخطيط عريض</div>
+                          <div className="text-sm text-gray-600">بدون جانب، عرض كامل</div>
+                        </div>
+                      </div>
+                      <Switch />
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  SEO وتحسين محركات البحث
-                </CardTitle>
-                <CardDescription>
-                  إعدادات تحسين محركات البحث الافتراضية
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="metaTitle">العنوان الافتراضي</Label>
-                  <Input
-                    id="metaTitle"
-                    value={settings?.seo?.metaTitle || ''}
-                    onChange={(e) => setSettings(prev => prev ? {
-                      ...prev, 
-                      seo: {...prev.seo, metaTitle: e.target.value}
-                    } : null)}
-                  />
+                <div className="space-y-4">
+                  <h4 className="font-medium">عرض المحتوى</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
+                          <Type className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">نص عادي</div>
+                          <div className="text-sm text-gray-600">عرض النصوص بشكل عادي</div>
+                        </div>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-100 rounded flex items-center justify-center">
+                          <ImageIcon className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">عرض البطاقات</div>
+                          <div className="text-sm text-gray-600">عرض المحتوى كبطاقات</div>
+                        </div>
+                      </div>
+                      <Switch />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="metaDescription">الوصف الافتراضي</Label>
-                  <Textarea
-                    id="metaDescription"
-                    value={settings?.seo?.metaDescription || ''}
-                    onChange={(e) => setSettings(prev => prev ? {
-                      ...prev, 
-                      seo: {...prev.seo, metaDescription: e.target.value}
-                    } : null)}
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="metaKeywords">الكلمات المفتاحية</Label>
-                  <Input
-                    id="metaKeywords"
-                    value={settings?.seo?.metaKeywords || ''}
-                    onChange={(e) => setSettings(prev => prev ? {
-                      ...prev, 
-                      seo: {...prev.seo, metaKeywords: e.target.value}
-                    } : null)}
-                    placeholder="كلمة1, كلمة2, كلمة3"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

@@ -1,9 +1,56 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { SecurityService } from '@/lib/security-service'
+import { getToken } from 'next-auth/jwt'
 
 export async function middleware(request: NextRequest) {
   const securityService = SecurityService.getInstance()
+  
+  // Handle employee dashboard authentication
+  if (request.nextUrl.pathname.startsWith('/employee')) {
+    try {
+      const token = await getToken({ req: request })
+      
+      if (!token) {
+        // Redirect to main login if not authenticated
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+      
+      // Check if user has appropriate role (STAFF, ADMIN, or SUPER_ADMIN)
+      const userRole = token.role
+      if (userRole !== 'STAFF' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+        // Redirect to login if not authorized
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+      
+      // Add user info to headers for the page to use
+      const requestHeaders = new Headers(request.headers)
+      requestHeaders.set('x-user-id', token.sub!)
+      requestHeaders.set('x-user-email', token.email!)
+      requestHeaders.set('x-user-role', userRole)
+      requestHeaders.set('x-user-name', token.name || '')
+      
+      const response = NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      })
+      
+      // Apply security headers to the response
+      return securityService.addSecurityHeaders(response)
+    } catch (error) {
+      // If there's any error with token decryption, clear cookies and redirect to login
+      console.error('Middleware auth error:', error)
+      
+      // Clear NextAuth cookies
+      const response = NextResponse.redirect(new URL('/login', request.url))
+      response.cookies.delete('next-auth.session-token')
+      response.cookies.delete('next-auth.csrf-token')
+      response.cookies.delete('next-auth.callback-url')
+      
+      return response
+    }
+  }
   
   // Apply security measures to API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
@@ -48,10 +95,20 @@ export async function middleware(request: NextRequest) {
     // Add CORS headers
     const corsResponse = securityService.handleCors(request, securedResponse)
     
-    // Add rate limit headers for all API responses
-    corsResponse.headers.set('X-RateLimit-Limit', '100')
-    corsResponse.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString())
-    corsResponse.headers.set('X-RateLimit-Reset', rateLimitResult.resetTime.toString())
+    // Add CORS headers for NextAuth
+    if (request.nextUrl.pathname.startsWith('/api/auth')) {
+      corsResponse.headers.set('Access-Control-Allow-Credentials', 'true')
+      corsResponse.headers.set('Access-Control-Allow-Origin', '*')
+      corsResponse.headers.set('Access-Control-Allow-Methods', 'GET,DELETE,PATCH,POST,PUT')
+      corsResponse.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version')
+    }
+    
+    // Add rate limit headers for all API responses (only if rate limiting was applied)
+    if (!isPublicEndpoint && rateLimitResult) {
+      corsResponse.headers.set('X-RateLimit-Limit', '100')
+      corsResponse.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString())
+      corsResponse.headers.set('X-RateLimit-Reset', rateLimitResult.resetTime.toString())
+    }
     
     return corsResponse
   }

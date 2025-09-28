@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { requireUnifiedAnyRole } from '@/lib/unified-auth-server'
+import { UserRole } from '@prisma/client'
 
-// GET all sliders
+// GET all sliders (public)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -13,7 +14,24 @@ export async function GET(request: NextRequest) {
       orderBy: { order: 'asc' }
     })
 
-    return NextResponse.json({ sliders })
+    // Remove duplicate sliders based on title and imageUrl
+    // Keep the slider with the lowest order value for each unique content
+    const uniqueSliders = sliders.reduce((acc, current) => {
+      // Create a unique key based on title and imageUrl
+      const uniqueKey = `${current.title}-${current.imageUrl}`
+      
+      // If we haven't seen this content before, or if the current slider has a lower order
+      if (!acc[uniqueKey] || current.order < acc[uniqueKey].order) {
+        acc[uniqueKey] = current
+      }
+      
+      return acc
+    }, {} as Record<string, typeof sliders[0]>)
+
+    // Convert back to array and sort by order
+    const deduplicatedSliders = Object.values(uniqueSliders).sort((a, b) => a.order - b.order)
+
+    return NextResponse.json({ sliders: deduplicatedSliders })
   } catch (error) {
     console.error('Error fetching sliders:', error)
     return NextResponse.json(
@@ -27,13 +45,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getAuthUser()
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
-      return NextResponse.json(
-        { error: 'غير مصرح لك بالوصول' },
-        { status: 401 }
-      )
-    }
+    const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
 
     const body = await request.json()
     const {
@@ -84,6 +96,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ slider }, { status: 201 })
   } catch (error) {
     console.error('Error creating slider:', error)
+    if (error.message.includes('Access denied') || error.message.includes('Authentication required')) {
+      return NextResponse.json(
+        { error: 'غير مصرح لك بالوصول' },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: 'فشل في إنشاء السلايدر' },
       { status: 500 }

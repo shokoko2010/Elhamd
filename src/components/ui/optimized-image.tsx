@@ -46,6 +46,24 @@ export default function OptimizedImage({
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
+  // Determine loading strategy based on priority and viewport
+  const getLoadingStrategy = () => {
+    if (priority) return 'eager'
+    
+    // Use eager loading for above-the-fold images in viewport
+    if (typeof window !== 'undefined') {
+      const viewportHeight = window.innerHeight
+      const imageHeight = height || 300
+      
+      // If image is likely in viewport, use eager loading
+      if (imageHeight > viewportHeight * 0.5) {
+        return 'eager'
+      }
+    }
+    
+    return loading
+  }
+
   const handleLoad = () => {
     setIsLoading(false)
     setHasError(false)
@@ -98,7 +116,7 @@ export default function OptimizedImage({
       className
     ),
     priority,
-    loading,
+    loading: getLoadingStrategy(),
     placeholder,
     blurDataURL,
     sizes: generateSizes(),

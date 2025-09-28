@@ -2,23 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { VehicleCardSkeleton, PageHeaderSkeleton } from '@/components/ui/skeleton'
-import { MobileFilters } from '@/components/ui/mobile-filters'
-import { EnhancedSearch } from '@/components/ui/enhanced-search'
-import { EnhancedFilters } from '@/components/ui/enhanced-filters'
-import { LoadingState, SkeletonCard } from '@/components/ui/enhanced-loading'
-import { EnhancedErrorComponent, useErrorHandler } from '@/components/ui/enhanced-error-handling'
-import { EnhancedImage, useImagePreloader } from '@/components/ui/enhanced-image'
-import { useFilterState } from '@/hooks/use-filter-state'
-import { useRetry } from '@/hooks/use-retry'
-import { Search, Filter, Car, Calendar, Share2 } from 'lucide-react'
+import { Car, Search, Filter } from 'lucide-react'
 import Link from 'next/link'
-import CarComparison from '@/components/vehicle/CarComparison'
-import { useComparison } from '@/hooks/use-comparison'
 
 interface Vehicle {
   id: string
@@ -31,7 +20,6 @@ interface Vehicle {
   transmission: string
   mileage?: number
   color?: string
-  description?: string
   status: string
   images: { imageUrl: string; isPrimary: boolean }[]
 }
@@ -41,13 +29,6 @@ interface Filters {
   category: string
   fuelType: string
   transmission: string
-  minPrice: string
-  maxPrice: string
-  minYear: string
-  maxYear: string
-  minMileage: string
-  maxMileage: string
-  colors: string[]
   sortBy: string
 }
 
@@ -55,121 +36,57 @@ export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const vehiclesPerPage = 9
-
-  const { filters, setFilters, clearFilters, hasActiveFilters, getActiveFiltersCount, shareFilters } = useFilterState({
-    persistToLocalStorage: true,
-    syncWithUrl: true,
-    storageKey: 'vehicle-filters'
-  })
-
-  const { handleError, clearError } = useErrorHandler()
-  const { preloadImages, isImageLoaded } = useImagePreloader()
-  const { 
-    comparisonVehicles, 
-    addToComparison, 
-    removeFromComparison, 
-    isInComparison,
-    getComparisonCount 
-  } = useComparison()
-
-  const fetchVehicles = async (searchFilters: typeof filters) => {
-    const params = new URLSearchParams()
-    if (searchFilters.search) params.append('search', searchFilters.search)
-    if (searchFilters.category && searchFilters.category !== 'all') params.append('category', searchFilters.category)
-    if (searchFilters.fuelType && searchFilters.fuelType !== 'all') params.append('fuelType', searchFilters.fuelType)
-    if (searchFilters.transmission && searchFilters.transmission !== 'all') params.append('transmission', searchFilters.transmission)
-    
-    const response = await fetch(`/api/vehicles?${params.toString()}`)
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`)
-    }
-    
-    const data = await response.json()
-    return data.vehicles
-  }
-
-  const { execute: fetchVehiclesWithRetry, isRetrying } = useRetry(fetchVehicles, {
-    maxAttempts: 3,
-    delay: 1000,
-    backoffFactor: 2,
-    jitter: true,
-    onRetry: (attempt, error) => {
-      console.log(`Retry attempt ${attempt}:`, error.message)
-    },
-    onSuccess: (attempt) => {
-      console.log(`Success on attempt ${attempt}`)
-    },
-    onFailure: (error) => {
-      console.error('All retry attempts failed:', error)
-    }
+  const [filters, setFilters] = useState<Filters>({
+    search: '',
+    category: 'all',
+    fuelType: 'all',
+    transmission: 'all',
+    sortBy: 'featured'
   })
 
   useEffect(() => {
     const loadVehicles = async () => {
       setLoading(true)
-      setError(null)
-      clearError()
-      
       try {
-        const vehicleData = await fetchVehiclesWithRetry(filters)
-        setVehicles(vehicleData)
-        
-        // Preload images for better performance
-        const imageUrls = vehicleData
-          .flatMap(vehicle => vehicle.images.map(img => img.imageUrl))
-          .slice(0, 12) // Limit to first 12 images
-        
-        if (imageUrls.length > 0) {
-          preloadImages(imageUrls).catch(console.error)
+        const response = await fetch('/api/vehicles')
+        if (response.ok) {
+          const data = await response.json()
+          setVehicles(data.vehicles)
         }
       } catch (error) {
         console.error('Error fetching vehicles:', error)
-        handleError(error as Error)
-        setError(error as Error)
-        setVehicles([])
       } finally {
         setLoading(false)
       }
     }
 
     loadVehicles()
-  }, [filters.search, filters.category, filters.fuelType, filters.transmission, fetchVehiclesWithRetry, handleError, clearError, preloadImages])
+  }, [])
 
   useEffect(() => {
     let filtered = [...vehicles]
-    
-    // Apply price filtering
-    if (filters.minPrice || filters.maxPrice) {
-      const minPrice = filters.minPrice ? parseFloat(filters.minPrice) : 0
-      const maxPrice = filters.maxPrice ? parseFloat(filters.maxPrice) : Infinity
-      filtered = filtered.filter(vehicle => vehicle.price >= minPrice && vehicle.price <= maxPrice)
-    }
 
-    // Apply year filtering
-    if (filters.minYear || filters.maxYear) {
-      const minYear = filters.minYear ? parseInt(filters.minYear) : 0
-      const maxYear = filters.maxYear ? parseInt(filters.maxYear) : Infinity
-      filtered = filtered.filter(vehicle => vehicle.year >= minYear && vehicle.year <= maxYear)
-    }
-
-    // Apply mileage filtering
-    if (filters.minMileage || filters.maxMileage) {
-      const minMileage = filters.minMileage ? parseInt(filters.minMileage) : 0
-      const maxMileage = filters.maxMileage ? parseInt(filters.maxMileage) : Infinity
-      filtered = filtered.filter(vehicle => 
-        vehicle.mileage && vehicle.mileage >= minMileage && vehicle.mileage <= maxMileage
+    // Apply search filter
+    if (filters.search) {
+      filtered = filtered.filter(vehicle =>
+        vehicle.make.toLowerCase().includes(filters.search.toLowerCase()) ||
+        vehicle.model.toLowerCase().includes(filters.search.toLowerCase())
       )
     }
 
-    // Apply color filtering
-    if (filters.colors && filters.colors.length > 0) {
-      filtered = filtered.filter(vehicle => 
-        vehicle.color && filters.colors.includes(vehicle.color)
-      )
+    // Apply category filter
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(vehicle => vehicle.category === filters.category)
+    }
+
+    // Apply fuel type filter
+    if (filters.fuelType !== 'all') {
+      filtered = filtered.filter(vehicle => vehicle.fuelType === filters.fuelType)
+    }
+
+    // Apply transmission filter
+    if (filters.transmission !== 'all') {
+      filtered = filtered.filter(vehicle => vehicle.transmission === filters.transmission)
     }
 
     // Sort vehicles
@@ -183,16 +100,7 @@ export default function VehiclesPage() {
           return b.year - a.year
         case 'year-asc':
           return a.year - b.year
-        case 'mileage-asc':
-          return (a.mileage || 0) - (b.mileage || 0)
-        case 'mileage-desc':
-          return (b.mileage || 0) - (a.mileage || 0)
-        case 'name-asc':
-          return `${a.make} ${a.model}`.localeCompare(`${b.make} ${b.model}`)
-        case 'name-desc':
-          return `${b.make} ${b.model}`.localeCompare(`${a.make} ${a.model}`)
         case 'featured':
-          // Assuming featured vehicles have a specific status or flag
           return (b.status === 'FEATURED' ? 1 : 0) - (a.status === 'FEATURED' ? 1 : 0)
         default:
           return 0
@@ -200,8 +108,7 @@ export default function VehiclesPage() {
     })
 
     setFilteredVehicles(filtered)
-    setCurrentPage(1)
-  }, [vehicles, filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear, filters.minMileage, filters.maxMileage, filters.colors, filters.sortBy])
+  }, [vehicles, filters])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', {
@@ -211,29 +118,31 @@ export default function VehiclesPage() {
     }).format(price)
   }
 
-  const indexOfLastVehicle = currentPage * vehiclesPerPage
-  const indexOfFirstVehicle = indexOfLastVehicle - vehiclesPerPage
-  const currentVehicles = filteredVehicles.slice(indexOfFirstVehicle, indexOfLastVehicle)
-  const totalPages = Math.ceil(filteredVehicles.length / vehiclesPerPage)
+  const updateFilter = (key: keyof Filters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
 
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber)
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      category: 'all',
+      fuelType: 'all',
+      transmission: 'all',
+      sortBy: 'featured'
+    })
+  }
 
-  const retryFetch = async () => {
-    setLoading(true)
-    setError(null)
-    clearError()
-    
-    try {
-      const vehicleData = await fetchVehiclesWithRetry(filters)
-      setVehicles(vehicleData)
-    } catch (error) {
-      console.error('Error fetching vehicles:', error)
-      handleError(error as Error)
-      setError(error as Error)
-      setVehicles([])
-    } finally {
-      setLoading(false)
-    }
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">جاري تحميل المركبات...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -249,79 +158,144 @@ export default function VehiclesPage() {
             <div className="mt-4 md:mt-0">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <span>تم العثور على {filteredVehicles.length} مركبة</span>
-                {hasActiveFilters() && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={shareFilters}
-                    className="h-8 px-2"
-                  >
-                    <Share2 className="h-4 w-4 ml-1" />
-                    مشاركة
-                  </Button>
-                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Filters */}
-      <MobileFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        onClearFilters={clearFilters}
-        resultCount={filteredVehicles.length}
-      />
+      {/* Search and Filters */}
+      <div className="bg-white border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="ابحث عن مركبة..."
+                  value={filters.search}
+                  onChange={(e) => updateFilter('search', e.target.value)}
+                  className="pr-10"
+                />
+              </div>
+            </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Filters Sidebar - Hidden on Mobile */}
-          <div className="hidden lg:block lg:w-1/4">
-            <EnhancedFilters
-              filters={filters}
-              onFiltersChange={setFilters}
-              onClearFilters={clearFilters}
-              resultCount={filteredVehicles.length}
-            />
-          </div>
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              <Select value={filters.category} onValueChange={(value) => updateFilter('category', value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="SEDAN">سيدان</SelectItem>
+                  <SelectItem value="SUV">SUV</SelectItem>
+                  <SelectItem value="HATCHBACK">هاتشباك</SelectItem>
+                </SelectContent>
+              </Select>
 
-          {/* Vehicle Grid */}
-          <div className="lg:w-3/4">
-            <LoadingState
-              isLoading={loading || isRetrying}
-              error={error}
-              retry={retryFetch}
-              type="card"
-              count={6}
-              loadingMessage={isRetrying ? "جاري إعادة المحاولة..." : "جاري تحميل المركبات..."}
-              errorMessage="فشل في تحميل المركبات. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى."
-            >
-              <>
-                {filteredVehicles.length === 0 && !loading && !error ? (
-                  <div className="text-center py-12">
-                    <Car className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد مركبات</h3>
-                    <p className="text-gray-600 mb-4">لم يتم العثور على مركبات تطابق معايير البحث الخاصة بك</p>
-                    <Button onClick={clearFilters} variant="outline">
-                      مسح الفلاتر
-                    </Button>
-                  </div>
-                ) : (
-                  <CarComparison
-                    vehicles={currentVehicles}
-                    comparisonVehicles={comparisonVehicles}
-                    onAddToComparison={addToComparison}
-                    onRemoveFromComparison={removeFromComparison}
-                    totalPages={totalPages}
-                    currentPage={currentPage}
-                    onPageChange={paginate}
-                  />
-                )}
-              </>
-            </LoadingState>
+              <Select value={filters.fuelType} onValueChange={(value) => updateFilter('fuelType', value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="PETROL">بنزين</SelectItem>
+                  <SelectItem value="DIESEL">ديزل</SelectItem>
+                  <SelectItem value="ELECTRIC">كهربائي</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.transmission} onValueChange={(value) => updateFilter('transmission', value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="MANUAL">يدوي</SelectItem>
+                  <SelectItem value="AUTOMATIC">أوتوماتيك</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="featured">المميزة</SelectItem>
+                  <SelectItem value="price-asc">السعر: الأقل</SelectItem>
+                  <SelectItem value="price-desc">السعر: الأعلى</SelectItem>
+                  <SelectItem value="year-desc">الأحدث</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" onClick={clearFilters}>
+                مسح الفلاتر
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Vehicle Grid */}
+      <div className="container mx-auto px-4 py-8">
+        {filteredVehicles.length === 0 ? (
+          <div className="text-center py-12">
+            <Car className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد مركبات</h3>
+            <p className="text-gray-600 mb-4">لم يتم العثور على مركبات تطابق معايير البحث الخاصة بك</p>
+            <Button onClick={clearFilters} variant="outline">
+              مسح الفلاتر
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredVehicles.map((vehicle) => (
+              <Card key={vehicle.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="h-48 bg-gray-200 relative">
+                  <img
+                    src={vehicle.images[0]?.imageUrl || '/uploads/vehicles/1/nexon-front-new.jpg'}
+                    alt={`${vehicle.make} ${vehicle.model}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <Badge className={`absolute top-2 right-2 text-xs z-10 ${
+                    vehicle.status === 'AVAILABLE' ? 'bg-green-500' : 
+                    vehicle.status === 'SOLD' ? 'bg-red-500' : 'bg-yellow-500'
+                  }`}>
+                    {vehicle.status === 'AVAILABLE' ? 'متاحة' : vehicle.status === 'SOLD' ? 'مباعة' : 'محجوزة'}
+                  </Badge>
+                </div>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="text-lg font-semibold">{vehicle.make} {vehicle.model}</h3>
+                      <p className="text-sm text-gray-600">{vehicle.year}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">{vehicle.category}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    <Badge variant="secondary" className="text-xs">{vehicle.fuelType}</Badge>
+                    <Badge variant="secondary" className="text-xs">{vehicle.transmission}</Badge>
+                    {vehicle.color && (
+                      <Badge variant="secondary" className="text-xs">{vehicle.color}</Badge>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xl font-bold text-blue-900">
+                      {formatPrice(vehicle.price)}
+                    </span>
+                  </div>
+                  <Link href={`/vehicles/${vehicle.id}`}>
+                    <Button className="w-full">
+                      التفاصيل
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

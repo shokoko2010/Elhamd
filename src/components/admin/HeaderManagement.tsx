@@ -143,11 +143,20 @@ export default function HeaderManagement() {
 
   const fetchHeaderData = async () => {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const [settingsResponse, contentResponse, socialResponse, navigationResponse] = await Promise.all([
-        fetch('/api/site-settings'),
-        fetch('/api/header/content'),
-        fetch('/api/header/social'),
-        fetch('/api/header/navigation')
+        fetch('/api/site-settings', { method: 'GET', headers }),
+        fetch('/api/header/content', { method: 'GET', headers }),
+        fetch('/api/header/social', { method: 'GET', headers }),
+        fetch('/api/header/navigation', { method: 'GET', headers })
       ])
 
       if (settingsResponse.ok) {
@@ -179,11 +188,18 @@ export default function HeaderManagement() {
   const handleSaveSettings = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/site-settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({ headerSettings: settings })
       })
 
@@ -207,11 +223,18 @@ export default function HeaderManagement() {
   const handleSaveContent = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/header/content', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(content)
       })
 
@@ -235,11 +258,18 @@ export default function HeaderManagement() {
   const handleSaveSocial = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/header/social', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(socialLinks)
       })
 
@@ -263,11 +293,18 @@ export default function HeaderManagement() {
   const handleSaveNavigation = async () => {
     setLoading(true)
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/header/navigation', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(navigation)
       })
 
@@ -337,8 +374,16 @@ export default function HeaderManagement() {
     formData.append('image', file)
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {}
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/upload/image', {
         method: 'POST',
+        headers,
         body: formData
       })
 
@@ -367,6 +412,10 @@ export default function HeaderManagement() {
           <p className="text-gray-600">Customize your website header appearance and content</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => window.open('/admin/site-settings', '_self')}>
+            <Settings className="w-4 h-4 mr-2" />
+            Back to Site Settings
+          </Button>
           <Button variant="outline" onClick={() => window.open('/', '_blank')}>
             <Eye className="w-4 h-4 mr-2" />
             Preview
@@ -411,7 +460,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="showLogo">Show Logo</Label>
                     <Switch
                       id="showLogo"
-                      checked={settings.showLogo}
+                      checked={settings.showLogo ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showLogo: checked }))}
                     />
                   </div>
@@ -420,7 +469,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="showNavigation">Show Navigation</Label>
                     <Switch
                       id="showNavigation"
-                      checked={settings.showNavigation}
+                      checked={settings.showNavigation ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showNavigation: checked }))}
                     />
                   </div>
@@ -429,7 +478,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="showContactInfo">Show Contact Info</Label>
                     <Switch
                       id="showContactInfo"
-                      checked={settings.showContactInfo}
+                      checked={settings.showContactInfo ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showContactInfo: checked }))}
                     />
                   </div>
@@ -438,7 +487,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="showSocialLinks">Show Social Links</Label>
                     <Switch
                       id="showSocialLinks"
-                      checked={settings.showSocialLinks}
+                      checked={settings.showSocialLinks ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showSocialLinks: checked }))}
                     />
                   </div>
@@ -451,7 +500,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="stickyHeader">Sticky Header</Label>
                     <Switch
                       id="stickyHeader"
-                      checked={settings.stickyHeader}
+                      checked={settings.stickyHeader ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, stickyHeader: checked }))}
                     />
                   </div>
@@ -460,7 +509,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="transparentHeader">Transparent Header</Label>
                     <Switch
                       id="transparentHeader"
-                      checked={settings.transparentHeader}
+                      checked={settings.transparentHeader ?? false}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, transparentHeader: checked }))}
                     />
                   </div>
@@ -469,7 +518,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="showSearch">Show Search</Label>
                     <Switch
                       id="showSearch"
-                      checked={settings.showSearch}
+                      checked={settings.showSearch ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showSearch: checked }))}
                     />
                   </div>
@@ -478,7 +527,7 @@ export default function HeaderManagement() {
                     <Label htmlFor="showUserMenu">Show User Menu</Label>
                     <Switch
                       id="showUserMenu"
-                      checked={settings.showUserMenu}
+                      checked={settings.showUserMenu ?? true}
                       onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showUserMenu: checked }))}
                     />
                   </div>
@@ -490,11 +539,11 @@ export default function HeaderManagement() {
                   <div className="space-y-2">
                     <Label htmlFor="mobileMenuStyle">Mobile Menu Style</Label>
                     <Select 
-                      value={settings.mobileMenuStyle} 
+                      value={settings.mobileMenuStyle ?? 'overlay'} 
                       onValueChange={(value: any) => setSettings(prev => ({ ...prev, mobileMenuStyle: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select mobile menu style" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="overlay">Overlay</SelectItem>
@@ -507,11 +556,11 @@ export default function HeaderManagement() {
                   <div className="space-y-2">
                     <Label htmlFor="navigationStyle">Navigation Style</Label>
                     <Select 
-                      value={settings.navigationStyle} 
+                      value={settings.navigationStyle ?? 'horizontal'} 
                       onValueChange={(value: any) => setSettings(prev => ({ ...prev, navigationStyle: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select mobile menu style" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="horizontal">Horizontal</SelectItem>

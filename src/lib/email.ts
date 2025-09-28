@@ -57,10 +57,12 @@ class EmailService {
     let content = template.content
 
     // Replace template variables
-    Object.entries(variables).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, 'g')
-      content = content.replace(regex, String(value))
-    })
+    if (variables && typeof variables === 'object') {
+      Object.entries(variables).forEach(([key, value]) => {
+        const regex = new RegExp(`{{${key}}}`, 'g')
+        content = content.replace(regex, String(value ?? ''))
+      })
+    }
 
     return content
   }

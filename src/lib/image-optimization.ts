@@ -113,20 +113,22 @@ export class ImageOptimizationService {
 
     const thumbnails: { [key: string]: string } = {}
 
-    for (const [size, dimensions] of Object.entries(thumbnailSizes)) {
-      const optimizedBuffer = await this.optimizeImage(buffer, {
-        ...dimensions,
-        quality: 70,
-        format: 'webp'
-      })
+    if (thumbnailSizes && typeof thumbnailSizes === 'object') {
+      for (const [size, dimensions] of Object.entries(thumbnailSizes)) {
+        const optimizedBuffer = await this.optimizeImage(buffer, {
+          ...dimensions,
+          quality: 70,
+          format: 'webp'
+        })
 
-      const filename = `${imageId}_${size}.webp`
-      const filepath = join(this.uploadDir, 'thumbnails', filename)
-      
-      await this.ensureDirectory(dirname(filepath))
-      await writeFile(filepath, optimizedBuffer)
-      
-      thumbnails[size] = `/uploads/thumbnails/${filename}`
+        const filename = `${imageId}_${size}.webp`
+        const filepath = join(this.uploadDir, 'thumbnails', filename)
+        
+        await this.ensureDirectory(dirname(filepath))
+        await writeFile(filepath, optimizedBuffer)
+        
+        thumbnails[size] = `/uploads/thumbnails/${filename}`
+      }
     }
 
     return thumbnails

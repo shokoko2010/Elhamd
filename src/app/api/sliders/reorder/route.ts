@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { requireUnifiedAnyRole } from '@/lib/unified-auth-server'
+import { UserRole } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getAuthUser()
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
-      return NextResponse.json(
-        { error: 'غير مصرح لك بالوصول' },
-        { status: 401 }
-      )
-    }
+    const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
 
     const body = await request.json()
     const { sliderIds } = body
@@ -34,6 +29,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'تم إعادة ترتيب السلايدرات بنجاح' })
   } catch (error) {
     console.error('Error reordering sliders:', error)
+    if (error.message.includes('Access denied') || error.message.includes('Authentication required')) {
+      return NextResponse.json(
+        { error: 'غير مصرح لك بالوصول' },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: 'فشل في إعادة ترتيب السلايدرات' },
       { status: 500 }

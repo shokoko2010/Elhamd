@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           role: true,
           phone: true,
           isActive: true,
-          lastLogin: true,
+          lastLoginAt: true,
           createdAt: true,
           updatedAt: true,
           _count: {
@@ -50,6 +50,11 @@ export async function GET(request: NextRequest) {
               testDriveBookings: true,
               serviceBookings: true,
               permissions: true
+            }
+          },
+          permissions: {
+            include: {
+              permission: true
             }
           }
         },
@@ -60,8 +65,15 @@ export async function GET(request: NextRequest) {
       db.user.count({ where })
     ])
 
+    // Calculate additional fields for the frontend
+    const usersWithStats = users.map(user => ({
+      ...user,
+      totalBookings: (user._count.testDriveBookings || 0) + (user._count.serviceBookings || 0),
+      totalSpent: 0 // TODO: Calculate from bookings/invoices when implemented
+    }))
+
     return NextResponse.json({
-      users,
+      users: usersWithStats,
       pagination: {
         total,
         page,

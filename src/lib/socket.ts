@@ -8,6 +8,9 @@ interface NotificationPayload {
 }
 
 export const setupSocket = (io: Server) => {
+  // Track client connections to prevent welcome message spam
+  const clientConnections = new Map<string, { lastWelcome: number, welcomeCount: number }>()
+  
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
     
@@ -127,17 +130,33 @@ export const setupSocket = (io: Server) => {
     // Handle disconnect
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
+      // Clean up client connection tracking
+      clientConnections.delete(socket.id);
     });
 
-    // Send welcome message
-    socket.emit('notification', {
-      type: 'system',
-      action: 'created',
-      data: {
-        message: 'Connected to Al-Hamd Cars real-time notifications'
-      },
-      timestamp: new Date().toISOString()
-    });
+    // Send welcome message with rate limiting
+    const now = Date.now();
+    const clientInfo = clientConnections.get(socket.id) || { lastWelcome: 0, welcomeCount: 0 };
+    
+    // Only send welcome message if:
+    // 1. It's been more than 30 seconds since the last welcome message
+    // 2. The client hasn't received more than 3 welcome messages in this session
+    if (now - clientInfo.lastWelcome > 30000 && clientInfo.welcomeCount < 3) {
+      socket.emit('notification', {
+        type: 'system',
+        action: 'created',
+        data: {
+          message: 'Connected to Al-Hamd Cars real-time notifications'
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+      // Update client tracking
+      clientConnections.set(socket.id, {
+        lastWelcome: now,
+        welcomeCount: clientInfo.welcomeCount + 1
+      });
+    }
   });
 };
 

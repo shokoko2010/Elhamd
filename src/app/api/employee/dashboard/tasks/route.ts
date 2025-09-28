@@ -1,85 +1,88 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { requireStaffRole } from '@/lib/server-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const user = await requireStaffRole()
 
-    const userId = session.user.id
-
-    // Check if user is staff or admin
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { role: true }
+    // Fetch real tasks from the database
+    const tasks = await db.task.findMany({
+      where: {
+        OR: [
+          { assignedToId: user.id },
+          { createdById: user.id }
+        ]
+      },
+      include: {
+        assignedTo: {
+          select: {
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        createdBy: {
+          select: {
+            name: true
+          }
+        },
+        customer: {
+          select: {
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        booking: {
+          select: {
+            id: true,
+            type: true,
+            date: true,
+            timeSlot: true
+          }
+        }
+      },
+      orderBy: [
+        { priority: 'desc' },
+        { dueDate: 'asc' }
+      ]
     })
 
-    if (!user || !['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
+    // Format tasks for the frontend
+    const formattedTasks = tasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate.toISOString(),
+      assignedBy: task.createdBy?.name || 'System',
+      customer: task.customer ? {
+        name: task.customer.name,
+        email: task.customer.email,
+        phone: task.customer.phone
+      } : undefined,
+      booking: task.booking ? {
+        id: task.booking.id,
+        type: task.booking.type,
+        date: task.booking.date.toISOString(),
+        timeSlot: task.booking.timeSlot
+      } : undefined
+    }))
 
-    // For now, return mock tasks since we don't have a tasks table in the schema
-    // In a real implementation, you would fetch from a tasks table
-    const mockTasks = [
-      {
-        id: '1',
-        title: 'Follow up with customer about test drive',
-        description: 'Contact the customer who took a test drive yesterday to get their feedback',
-        priority: 'high' as const,
-        status: 'pending' as const,
-        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        assignedBy: 'System',
-        customer: {
-          name: 'John Doe',
-          email: 'john@example.com',
-          phone: '+1234567890'
-        },
-        booking: {
-          id: 'td-001',
-          type: 'test_drive',
-          date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          timeSlot: '10:00 AM'
-        }
-      },
-      {
-        id: '2',
-        title: 'Prepare service quote for customer',
-        description: 'Create a detailed service quote for the customer\'s vehicle maintenance',
-        priority: 'medium' as const,
-        status: 'in_progress' as const,
-        dueDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-        assignedBy: 'Service Manager',
-        customer: {
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          phone: '+1234567891'
-        },
-        booking: {
-          id: 'svc-001',
-          type: 'service',
-          date: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
-          timeSlot: '2:00 PM'
-        }
-      },
-      {
-        id: '3',
-        title: 'Update vehicle inventory',
-        description: 'Update the vehicle inventory with new stock information',
-        priority: 'low' as const,
-        status: 'pending' as const,
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        assignedBy: 'Inventory Manager'
-      }
-    ]
-
-    return NextResponse.json(mockTasks)
+    return NextResponse.json(formattedTasks)
   } catch (error) {
     console.error('Error fetching employee tasks:', error)
+    
+    if (error.message === 'Authentication required') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

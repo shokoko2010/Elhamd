@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -75,17 +75,54 @@ export default function AdminSettings() {
 
   const [loading, setLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
+  const [initialLoading, setInitialLoading] = useState(true)
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/admin/settings')
+      if (response.ok) {
+        const data = await response.json()
+        setCompanySettings(data.company)
+        setNotificationSettings(data.notifications)
+        setSystemSettings(data.system)
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+    } finally {
+      setInitialLoading(false)
+    }
+  }
 
   const handleSaveSettings = async () => {
     setLoading(true)
     setSaveStatus('saving')
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      setSaveStatus('success')
-      setTimeout(() => setSaveStatus('idle'), 3000)
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company: companySettings,
+          notifications: notificationSettings,
+          system: systemSettings
+        })
+      })
+
+      if (response.ok) {
+        setSaveStatus('success')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      } else {
+        setSaveStatus('error')
+        setTimeout(() => setSaveStatus('idle'), 3000)
+      }
     } catch (error) {
+      console.error('Error saving settings:', error)
       setSaveStatus('error')
       setTimeout(() => setSaveStatus('idle'), 3000)
     } finally {
@@ -104,6 +141,14 @@ export default function AdminSettings() {
       default:
         return null
     }
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   return (

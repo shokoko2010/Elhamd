@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, AlertCircle, RefreshCw } from 'lucide-react'
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, parseISO } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CalendarService, CalendarEvent, CalendarDay, TimeSlot } from '@/lib/calendar-service'
+import { ClientCalendarService, CalendarEvent, CalendarDay, TimeSlot } from '@/lib/client-calendar-service'
 import { cn } from '@/lib/utils'
 
 interface InteractiveCalendarProps {
@@ -25,7 +25,7 @@ interface InteractiveCalendarProps {
   height?: string
 }
 
-export default function InteractiveCalendar({
+const InteractiveCalendar = memo(({
   onDateSelect,
   onEventSelect,
   onTimeSlotSelect,
@@ -38,7 +38,7 @@ export default function InteractiveCalendar({
   showHolidays = true,
   filterTypes = ['booking', 'holiday'],
   height = '600px'
-}: InteractiveCalendarProps) {
+}: InteractiveCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarData, setCalendarData] = useState<{
     days: CalendarDay[]
@@ -55,15 +55,19 @@ export default function InteractiveCalendar({
   const [view, setView] = useState<'month' | 'week' | 'day'>('month')
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([])
   const [error, setError] = useState('')
+  const [manualRefresh, setManualRefresh] = useState(0) // For manual refresh trigger
 
-  const calendarService = CalendarService.getInstance()
+  const calendarService = ClientCalendarService.getInstance()
+  
+  // Memoize calendar service to prevent recreation
+  const memoizedCalendarService = useMemo(() => calendarService, [])
 
   const loadCalendarData = useCallback(async () => {
     setLoading(true)
     setError('')
     
     try {
-      const data = await calendarService.getCalendarData({
+      const data = await memoizedCalendarService.getCalendarData({
         view,
         currentDate,
         showHolidays,
@@ -78,27 +82,50 @@ export default function InteractiveCalendar({
     } finally {
       setLoading(false)
     }
-  }, [view, currentDate, showHolidays, filterTypes])
+  }, [view, currentDate, showHolidays, filterTypes.join(','), memoizedCalendarService]) // Use join(',') to stabilize array dependency
 
   useEffect(() => {
     loadCalendarData()
-  }, [loadCalendarData])
+  }, [loadCalendarData, manualRefresh])
+
+  // Prevent infinite loading by adding a timeout check
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        setLoading(false)
+        setError('استغرق التحميل وقتاً طويلاً جداً')
+      }, 10000) // 10 second timeout
+      
+      return () => clearTimeout(timeout)
+    }
+  }, [loading])
 
   useEffect(() => {
     if (selectedDate && showTimeSlots) {
       loadAvailableTimeSlots(selectedDate)
     }
-  }, [selectedDate, showTimeSlots])
+  }, [selectedDate, showTimeSlots, loadAvailableTimeSlots])
 
-  const loadAvailableTimeSlots = async (date: Date) => {
+  // Prevent infinite loading for time slots
+  useEffect(() => {
+    if (loading && selectedDate && showTimeSlots) {
+      const timeout = setTimeout(() => {
+        setAvailableTimeSlots([])
+      }, 5000) // 5 second timeout for time slots
+      
+      return () => clearTimeout(timeout)
+    }
+  }, [loading, selectedDate, showTimeSlots])
+
+  const loadAvailableTimeSlots = useCallback(async (date: Date) => {
     try {
-      const slots = await calendarService.getAvailableTimeSlots(date)
+      const slots = await memoizedCalendarService.getAvailableTimeSlots(date)
       setAvailableTimeSlots(slots)
     } catch (err) {
       console.error('Error loading time slots:', err)
       setAvailableTimeSlots([])
     }
-  }
+  }, [memoizedCalendarService]) // Use memoized service
 
   const handlePreviousMonth = () => {
     setCurrentDate(prev => subMonths(prev, 1))
@@ -266,6 +293,9 @@ export default function InteractiveCalendar({
             </CardTitle>
             
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setManualRefresh(prev => prev + 1)} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
               <Button variant="outline" size="sm" onClick={handleToday}>
                 اليوم
               </Button>
@@ -392,4 +422,8 @@ export default function InteractiveCalendar({
       )}
     </div>
   )
-}
+})
+
+InteractiveCalendar.displayName = 'InteractiveCalendar'
+
+export default InteractiveCalendar

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 interface NavigationItem {
@@ -14,10 +13,11 @@ interface NavigationItem {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
+    const auth = await authHandler(request)
     
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (auth.error) {
+      return auth.error
     }
 
     // Get navigation from site settings
@@ -47,10 +47,11 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
+    const auth = await authHandler(request)
     
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (auth.error) {
+      return auth.error
     }
 
     const body = await request.json()

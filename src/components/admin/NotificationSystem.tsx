@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -36,67 +36,171 @@ export default function NotificationSystem() {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [showNotifications, setShowNotifications] = useState(false)
   const { user } = useAuth()
+  const socketRef = useRef<Socket | null>(null)
+  const isMountedRef = useRef(true)
+  const welcomeReceivedRef = useRef(false)
+  const userIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (user && typeof window !== 'undefined') {
-      // Initialize socket connection
-      console.log('Connecting to socket')
-      
-      try {
-        const newSocket = io({
-          path: '/api/socketio',
-          transports: ['websocket', 'polling'],
-          timeout: 5000,
-          retries: 3
-        })
-        
-        newSocket.on('connect', () => {
-          console.log('Socket connected:', newSocket.id)
-          setSocket(newSocket)
-
-          // Join appropriate room based on user role
-          if (user.role === 'ADMIN') {
-            newSocket.emit('join-room', 'admin')
-          } else if (user.role === 'STAFF') {
-            newSocket.emit('join-room', 'staff')
-          } else {
-            newSocket.emit('join-room', `customer-${user.email}`)
-          }
-        })
-
-        newSocket.on('connect_error', (error) => {
-          console.error('Socket connection error:', error)
-        })
-
-        // Listen for notifications
-        newSocket.on('notification', (payload: any) => {
-          console.log('Received notification:', payload)
-          if (payload && typeof payload === 'object') {
-            const newNotification: Notification = {
-              id: `notification-${Date.now()}-${Math.random()}`,
-              type: payload.type || 'system',
-              action: payload.action || 'created',
-              data: payload.data || {},
-              timestamp: payload.timestamp || new Date().toISOString(),
-              read: false
-            }
-
-            setNotifications(prev => [newNotification, ...prev])
-            setUnreadCount(prev => prev + 1)
-          }
-        })
-
-        newSocket.on('disconnect', (reason) => {
-          console.log('Socket disconnected:', reason)
-        })
-
-        return () => {
-          if (newSocket) {
-            newSocket.disconnect()
-          }
+      // Only reconnect if user has changed
+      if (userIdRef.current !== user.id) {
+        // Clean up previous connection
+        if (socketRef.current) {
+          socketRef.current.disconnect()
+          socketRef.current.removeAllListeners()
+          socketRef.current = null
         }
-      } catch (error) {
-        console.error('Failed to initialize socket:', error)
+        
+        userIdRef.current = user.id
+        welcomeReceivedRef.current = false
+        
+        // Initialize socket connection
+        console.log('Initializing socket connection for user:', user.id)
+        
+        try {
+          const newSocket = io({
+            path: '/api/socketio',
+            transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+            timeout: 30000,
+            forceNew: false,
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 5000,
+            reconnectionDelayMax: 30000,
+            autoConnect: false, // Don't auto-connect, we'll connect manually
+            // Add additional options for better connection handling
+            upgrade: true,
+            rememberUpgrade: true,
+          })
+          
+          socketRef.current = newSocket
+          
+          // Add connection state tracking
+          let connectionAttempts = 0
+          let lastConnectionTime = 0
+          
+          const connectSocket = () => {
+            const now = Date.now()
+            if (now - lastConnectionTime < 2000) {
+              console.log('Throttling connection attempts')
+              return
+            }
+            lastConnectionTime = now
+            connectionAttempts++
+            console.log(`Connection attempt ${connectionAttempts}`)
+            newSocket.connect()
+          }
+          
+          newSocket.on('connect', () => {
+            if (!isMountedRef.current) return
+            console.log('Socket connected:', newSocket.id, 'after', connectionAttempts, 'attempts')
+            setSocket(newSocket)
+            connectionAttempts = 0 // Reset attempts on successful connection
+
+            // Join appropriate room based on user role
+            if (user.role === 'ADMIN') {
+              newSocket.emit('join-room', 'admin')
+            } else if (user.role === 'STAFF') {
+              newSocket.emit('join-room', 'staff')
+            } else {
+              newSocket.emit('join-room', `customer-${user.email}`)
+            }
+          })
+
+          newSocket.on('connect_error', (error) => {
+            if (!isMountedRef.current) return
+            console.log('Socket connection error:', error.message, 'attempts:', connectionAttempts)
+          })
+
+          // Listen for notifications
+          newSocket.on('notification', (payload: any) => {
+            if (!isMountedRef.current) return
+            // Only log important notifications, not system messages
+            if (payload.type !== 'system' || !payload.data?.message?.includes('Connected to Al-Hamd Cars')) {
+              console.log('Received notification:', payload)
+            }
+            
+            // Skip welcome messages after the first one
+            if (payload.type === 'system' && payload.data?.message?.includes('Connected to Al-Hamd Cars')) {
+              if (welcomeReceivedRef.current) {
+                return
+              }
+              welcomeReceivedRef.current = true
+            }
+            
+            if (payload && typeof payload === 'object') {
+              const newNotification: Notification = {
+                id: `notification-${Date.now()}-${Math.random()}`,
+                type: payload.type || 'system',
+                action: payload.action || 'created',
+                data: payload.data || {},
+                timestamp: payload.timestamp || new Date().toISOString(),
+                read: false
+              }
+
+              setNotifications(prev => {
+                // Avoid duplicate notifications
+                const isDuplicate = prev.some(notif => 
+                  notif.type === newNotification.type && 
+                  notif.action === newNotification.action &&
+                  JSON.stringify(notif.data) === JSON.stringify(newNotification.data) &&
+                  // Consider it duplicate if it's within 5 seconds
+                  Math.abs(new Date(notif.timestamp).getTime() - new Date(newNotification.timestamp).getTime()) < 5000
+                )
+                
+                if (isDuplicate) {
+                  return prev
+                }
+                
+                return [newNotification, ...prev]
+              })
+              setUnreadCount(prev => prev + 1)
+            }
+          })
+
+          newSocket.on('disconnect', (reason) => {
+            if (!isMountedRef.current) return
+            console.log('Socket disconnected:', reason)
+            if (reason === 'io server disconnect') {
+              welcomeReceivedRef.current = false
+            }
+          })
+          
+          // Start connection
+          setTimeout(connectSocket, 1000)
+
+          return () => {
+            if (newSocket) {
+              newSocket.disconnect()
+              newSocket.removeAllListeners()
+            }
+            socketRef.current = null
+          }
+        } catch (error) {
+          console.error('Failed to initialize socket:', error)
+          socketRef.current = null
+        }
+      }
+    }
+
+    return () => {
+      // Only cleanup if user is changing or component is unmounting
+      if (socketRef.current && (!user || userIdRef.current !== user?.id)) {
+        socketRef.current.disconnect()
+        socketRef.current.removeAllListeners()
+        socketRef.current = null
+        setSocket(null)
+        welcomeReceivedRef.current = false
+        if (!user) {
+          userIdRef.current = null
+        }
       }
     }
   }, [user])

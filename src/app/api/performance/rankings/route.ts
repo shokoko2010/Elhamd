@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session || !session.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const employees = await db.user.findMany({
       where: {
         role: {
-          in: ['EMPLOYEE', 'ADMIN']
+          in: [UserRole.STAFF, UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN]
         },
         isActive: true
       },

@@ -31,7 +31,7 @@ export default function EmployeeCalendarPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, isStaff } = useAuth()
   
   const [stats, setStats] = useState<CalendarStats>({
     totalEvents: 0,
@@ -47,16 +47,22 @@ export default function EmployeeCalendarPage() {
       return
     }
 
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && user) {
       // Check if user is staff or admin
-      if (!user?.isStaff()) {
+      try {
+        if (!isStaff()) {
+          router.push('/dashboard')
+          return
+        }
+      } catch (error) {
+        console.error('Error checking staff status:', error)
         router.push('/dashboard')
         return
       }
       
       fetchCalendarStats()
     }
-  }, [status, router, user])
+  }, [status, router, user, isStaff])
 
   const fetchCalendarStats = async () => {
     try {

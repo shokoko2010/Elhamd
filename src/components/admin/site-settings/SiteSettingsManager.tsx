@@ -25,6 +25,8 @@ import {
   Columns
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import HeaderManagement from '@/components/admin/HeaderManagement'
+import FooterManagement from '@/components/admin/FooterManagement'
 
 interface SiteSettings {
   id?: string
@@ -51,6 +53,33 @@ interface SiteSettings {
     keywords: string
     ogImage?: string
     twitterHandle?: string
+    canonicalUrl?: string
+    robotsTxt?: string
+    sitemapEnabled: boolean
+    googleAnalyticsId?: string
+    googleTagManagerId?: string
+    bingWebmasterId?: string
+    yandexWebmasterId?: string
+    facebookDomainVerification?: string
+    structuredDataEnabled: boolean
+    openGraphEnabled: boolean
+    twitterCardEnabled: boolean
+    noIndexDefault: boolean
+    hreflangEnabled: boolean
+    defaultLanguage: string
+  }
+  performanceSettings: {
+    cachingEnabled: boolean
+    cacheTTL: number
+    compressionEnabled: boolean
+    imageOptimizationEnabled: boolean
+    lazyLoadingEnabled: boolean
+    minificationEnabled: boolean
+    bundleOptimizationEnabled: boolean
+    cdnEnabled: boolean
+    cdnUrl?: string
+    prefetchingEnabled: boolean
+    monitoringEnabled: boolean
   }
   headerSettings: {
     showLogo: boolean
@@ -94,7 +123,34 @@ export default function SiteSettingsManager() {
       metaDescription: 'Discover premium cars at Al-Hamd Cars. Best prices, excellent service, and wide selection of vehicles.',
       keywords: 'cars, dealership, egypt, premium vehicles, car sales',
       ogImage: '/og-image.jpg',
-      twitterHandle: '@alhamdcars'
+      twitterHandle: '@alhamdcars',
+      canonicalUrl: 'https://alhamdcars.com',
+      robotsTxt: 'User-agent: *\nAllow: /\n\nSitemap: https://alhamdcars.com/sitemap.xml',
+      sitemapEnabled: true,
+      googleAnalyticsId: '',
+      googleTagManagerId: '',
+      bingWebmasterId: '',
+      yandexWebmasterId: '',
+      facebookDomainVerification: '',
+      structuredDataEnabled: true,
+      openGraphEnabled: true,
+      twitterCardEnabled: true,
+      noIndexDefault: false,
+      hreflangEnabled: true,
+      defaultLanguage: 'ar'
+    },
+    performanceSettings: {
+      cachingEnabled: true,
+      cacheTTL: 300,
+      compressionEnabled: true,
+      imageOptimizationEnabled: true,
+      lazyLoadingEnabled: true,
+      minificationEnabled: true,
+      bundleOptimizationEnabled: true,
+      cdnEnabled: false,
+      cdnUrl: '',
+      prefetchingEnabled: true,
+      monitoringEnabled: true
     },
     headerSettings: {
       showLogo: true,
@@ -122,7 +178,20 @@ export default function SiteSettingsManager() {
 
   const fetchSiteSettings = async () => {
     try {
-      const response = await fetch('/api/site-settings')
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/site-settings', {
+        method: 'GET',
+        headers
+      })
+      
       if (response.ok) {
         const data = await response.json()
         if (data[0]) {
@@ -141,11 +210,18 @@ export default function SiteSettingsManager() {
   const handleSave = async () => {
     try {
       setLoading(true)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/site-settings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(settings)
       })
 
@@ -225,12 +301,13 @@ export default function SiteSettingsManager() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="header">Header</TabsTrigger>
           <TabsTrigger value="footer">Footer</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -317,7 +394,7 @@ export default function SiteSettingsManager() {
                   <Label htmlFor="facebook">Facebook</Label>
                   <Input
                     id="facebook"
-                    value={settings.socialLinks.facebook || ''}
+                    value={settings.socialLinks?.facebook || ''}
                     onChange={(e) => updateSettings(['socialLinks', 'facebook'], e.target.value)}
                     placeholder="https://facebook.com/yourpage"
                   />
@@ -326,7 +403,7 @@ export default function SiteSettingsManager() {
                   <Label htmlFor="twitter">Twitter</Label>
                   <Input
                     id="twitter"
-                    value={settings.socialLinks.twitter || ''}
+                    value={settings.socialLinks?.twitter || ''}
                     onChange={(e) => updateSettings(['socialLinks', 'twitter'], e.target.value)}
                     placeholder="https://twitter.com/yourhandle"
                   />
@@ -335,7 +412,7 @@ export default function SiteSettingsManager() {
                   <Label htmlFor="instagram">Instagram</Label>
                   <Input
                     id="instagram"
-                    value={settings.socialLinks.instagram || ''}
+                    value={settings.socialLinks?.instagram || ''}
                     onChange={(e) => updateSettings(['socialLinks', 'instagram'], e.target.value)}
                     placeholder="https://instagram.com/yourhandle"
                   />
@@ -344,7 +421,7 @@ export default function SiteSettingsManager() {
                   <Label htmlFor="linkedin">LinkedIn</Label>
                   <Input
                     id="linkedin"
-                    value={settings.socialLinks.linkedin || ''}
+                    value={settings.socialLinks?.linkedin || ''}
                     onChange={(e) => updateSettings(['socialLinks', 'linkedin'], e.target.value)}
                     placeholder="https://linkedin.com/company/yourcompany"
                   />
@@ -521,171 +598,11 @@ export default function SiteSettingsManager() {
         </TabsContent>
 
         <TabsContent value="header" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layout className="w-5 h-5" />
-                Header Configuration
-              </CardTitle>
-              <CardDescription>
-                Customize your website header appearance and behavior
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="showLogo">Show Logo</Label>
-                    <Switch
-                      id="showLogo"
-                      checked={settings.headerSettings.showLogo}
-                      onCheckedChange={(checked) => updateSettings(['headerSettings', 'showLogo'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="showNavigation">Show Navigation</Label>
-                    <Switch
-                      id="showNavigation"
-                      checked={settings.headerSettings.showNavigation}
-                      onCheckedChange={(checked) => updateSettings(['headerSettings', 'showNavigation'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="showContactInfo">Show Contact Info</Label>
-                    <Switch
-                      id="showContactInfo"
-                      checked={settings.headerSettings.showContactInfo}
-                      onCheckedChange={(checked) => updateSettings(['headerSettings', 'showContactInfo'], checked)}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="showSocialLinks">Show Social Links</Label>
-                    <Switch
-                      id="showSocialLinks"
-                      checked={settings.headerSettings.showSocialLinks}
-                      onCheckedChange={(checked) => updateSettings(['headerSettings', 'showSocialLinks'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="stickyHeader">Sticky Header</Label>
-                    <Switch
-                      id="stickyHeader"
-                      checked={settings.headerSettings.stickyHeader}
-                      onCheckedChange={(checked) => updateSettings(['headerSettings', 'stickyHeader'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="transparentHeader">Transparent Header</Label>
-                    <Switch
-                      id="transparentHeader"
-                      checked={settings.headerSettings.transparentHeader}
-                      onCheckedChange={(checked) => updateSettings(['headerSettings', 'transparentHeader'], checked)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <HeaderManagement />
         </TabsContent>
 
         <TabsContent value="footer" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Columns className="w-5 h-5" />
-                Footer Configuration
-              </CardTitle>
-              <CardDescription>
-                Customize your website footer layout and content
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="footerShowLogo">Show Logo</Label>
-                    <Switch
-                      id="footerShowLogo"
-                      checked={settings.footerSettings.showLogo}
-                      onCheckedChange={(checked) => updateSettings(['footerSettings', 'showLogo'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="footerShowNavigation">Show Navigation</Label>
-                    <Switch
-                      id="footerShowNavigation"
-                      checked={settings.footerSettings.showNavigation}
-                      onCheckedChange={(checked) => updateSettings(['footerSettings', 'showNavigation'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="footerShowContactInfo">Show Contact Info</Label>
-                    <Switch
-                      id="footerShowContactInfo"
-                      checked={settings.footerSettings.showContactInfo}
-                      onCheckedChange={(checked) => updateSettings(['footerSettings', 'showContactInfo'], checked)}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="footerShowSocialLinks">Show Social Links</Label>
-                    <Switch
-                      id="footerShowSocialLinks"
-                      checked={settings.footerSettings.showSocialLinks}
-                      onCheckedChange={(checked) => updateSettings(['footerSettings', 'showSocialLinks'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="footerShowNewsletter">Show Newsletter</Label>
-                    <Switch
-                      id="footerShowNewsletter"
-                      checked={settings.footerSettings.showNewsletter}
-                      onCheckedChange={(checked) => updateSettings(['footerSettings', 'showNewsletter'], checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="footerShowCopyright">Show Copyright</Label>
-                    <Switch
-                      id="footerShowCopyright"
-                      checked={settings.footerSettings.showCopyright}
-                      onCheckedChange={(checked) => updateSettings(['footerSettings', 'showCopyright'], checked)}
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="footerColumns">Number of Columns</Label>
-                <Select
-                  value={settings.footerSettings.columns.toString()}
-                  onValueChange={(value) => updateSettings(['footerSettings', 'columns'], parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 Column</SelectItem>
-                    <SelectItem value="2">2 Columns</SelectItem>
-                    <SelectItem value="3">3 Columns</SelectItem>
-                    <SelectItem value="4">4 Columns</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+          <FooterManagement />
         </TabsContent>
 
         <TabsContent value="seo" className="space-y-6">
@@ -693,7 +610,7 @@ export default function SiteSettingsManager() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Search className="w-5 h-5" />
-                SEO Settings
+                Basic SEO Settings
               </CardTitle>
               <CardDescription>
                 Optimize your site for search engines
@@ -704,7 +621,7 @@ export default function SiteSettingsManager() {
                 <Label htmlFor="metaTitle">Meta Title</Label>
                 <Input
                   id="metaTitle"
-                  value={settings.seoSettings.metaTitle}
+                  value={settings.seoSettings?.metaTitle || ''}
                   onChange={(e) => updateSettings(['seoSettings', 'metaTitle'], e.target.value)}
                   placeholder="Enter meta title"
                 />
@@ -714,7 +631,7 @@ export default function SiteSettingsManager() {
                 <Label htmlFor="metaDescription">Meta Description</Label>
                 <Textarea
                   id="metaDescription"
-                  value={settings.seoSettings.metaDescription}
+                  value={settings.seoSettings?.metaDescription || ''}
                   onChange={(e) => updateSettings(['seoSettings', 'metaDescription'], e.target.value)}
                   placeholder="Enter meta description"
                   rows={3}
@@ -725,7 +642,7 @@ export default function SiteSettingsManager() {
                 <Label htmlFor="keywords">Keywords</Label>
                 <Input
                   id="keywords"
-                  value={settings.seoSettings.keywords}
+                  value={settings.seoSettings?.keywords || ''}
                   onChange={(e) => updateSettings(['seoSettings', 'keywords'], e.target.value)}
                   placeholder="Enter keywords (comma separated)"
                 />
@@ -736,7 +653,7 @@ export default function SiteSettingsManager() {
                   <Label htmlFor="ogImage">OG Image URL</Label>
                   <Input
                     id="ogImage"
-                    value={settings.seoSettings.ogImage || ''}
+                    value={settings.seoSettings?.ogImage || ''}
                     onChange={(e) => updateSettings(['seoSettings', 'ogImage'], e.target.value)}
                     placeholder="Enter OG image URL"
                   />
@@ -745,9 +662,325 @@ export default function SiteSettingsManager() {
                   <Label htmlFor="twitterHandle">Twitter Handle</Label>
                   <Input
                     id="twitterHandle"
-                    value={settings.seoSettings.twitterHandle || ''}
+                    value={settings.seoSettings?.twitterHandle || ''}
                     onChange={(e) => updateSettings(['seoSettings', 'twitterHandle'], e.target.value)}
                     placeholder="@yourhandle"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="canonicalUrl">Canonical URL</Label>
+                  <Input
+                    id="canonicalUrl"
+                    value={settings.seoSettings?.canonicalUrl || ''}
+                    onChange={(e) => updateSettings(['seoSettings', 'canonicalUrl'], e.target.value)}
+                    placeholder="https://yourdomain.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="defaultLanguage">Default Language</Label>
+                  <Select 
+                    value={settings.seoSettings?.defaultLanguage || 'ar'} 
+                    onValueChange={(value) => updateSettings(['seoSettings', 'defaultLanguage'], value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ar">Arabic</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Share2 className="w-5 h-5" />
+                Social Media & Verification
+              </CardTitle>
+              <CardDescription>
+                Configure social media and search engine verification
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="googleAnalyticsId">Google Analytics ID</Label>
+                  <Input
+                    id="googleAnalyticsId"
+                    value={settings.seoSettings?.googleAnalyticsId || ''}
+                    onChange={(e) => updateSettings(['seoSettings', 'googleAnalyticsId'], e.target.value)}
+                    placeholder="G-XXXXXXXXXX"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="googleTagManagerId">Google Tag Manager ID</Label>
+                  <Input
+                    id="googleTagManagerId"
+                    value={settings.seoSettings?.googleTagManagerId || ''}
+                    onChange={(e) => updateSettings(['seoSettings', 'googleTagManagerId'], e.target.value)}
+                    placeholder="GTM-XXXXXXX"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bingWebmasterId">Bing Webmaster ID</Label>
+                  <Input
+                    id="bingWebmasterId"
+                    value={settings.seoSettings?.bingWebmasterId || ''}
+                    onChange={(e) => updateSettings(['seoSettings', 'bingWebmasterId'], e.target.value)}
+                    placeholder="Bing verification code"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="facebookDomainVerification">Facebook Domain Verification</Label>
+                  <Input
+                    id="facebookDomainVerification"
+                    value={settings.seoSettings?.facebookDomainVerification || ''}
+                    onChange={(e) => updateSettings(['seoSettings', 'facebookDomainVerification'], e.target.value)}
+                    placeholder="Facebook verification code"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Advanced SEO Settings
+              </CardTitle>
+              <CardDescription>
+                Advanced SEO configuration options
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="structuredDataEnabled">Structured Data</Label>
+                    <p className="text-sm text-gray-600">Enable schema.org structured data</p>
+                  </div>
+                  <Switch
+                    id="structuredDataEnabled"
+                    checked={settings.seoSettings?.structuredDataEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['seoSettings', 'structuredDataEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="openGraphEnabled">Open Graph</Label>
+                    <p className="text-sm text-gray-600">Enable Open Graph tags</p>
+                  </div>
+                  <Switch
+                    id="openGraphEnabled"
+                    checked={settings.seoSettings?.openGraphEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['seoSettings', 'openGraphEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="twitterCardEnabled">Twitter Cards</Label>
+                    <p className="text-sm text-gray-600">Enable Twitter Card tags</p>
+                  </div>
+                  <Switch
+                    id="twitterCardEnabled"
+                    checked={settings.seoSettings?.twitterCardEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['seoSettings', 'twitterCardEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="sitemapEnabled">Sitemap</Label>
+                    <p className="text-sm text-gray-600">Generate XML sitemap</p>
+                  </div>
+                  <Switch
+                    id="sitemapEnabled"
+                    checked={settings.seoSettings?.sitemapEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['seoSettings', 'sitemapEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="hreflangEnabled">Hreflang</Label>
+                    <p className="text-sm text-gray-600">Enable hreflang tags</p>
+                  </div>
+                  <Switch
+                    id="hreflangEnabled"
+                    checked={settings.seoSettings?.hreflangEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['seoSettings', 'hreflangEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="noIndexDefault">No Index Default</Label>
+                    <p className="text-sm text-gray-600">Prevent indexing by default</p>
+                  </div>
+                  <Switch
+                    id="noIndexDefault"
+                    checked={settings.seoSettings?.noIndexDefault || false}
+                    onCheckedChange={(checked) => updateSettings(['seoSettings', 'noIndexDefault'], checked)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="robotsTxt">Robots.txt Content</Label>
+                <Textarea
+                  id="robotsTxt"
+                  value={settings.seoSettings?.robotsTxt || ''}
+                  onChange={(e) => updateSettings(['seoSettings', 'robotsTxt'], e.target.value)}
+                  placeholder="Enter robots.txt content"
+                  rows={6}
+                  className="font-mono text-sm"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="w-5 h-5" />
+                Performance Optimization
+              </CardTitle>
+              <CardDescription>
+                Configure performance optimization settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="cachingEnabled">Caching</Label>
+                    <p className="text-sm text-gray-600">Enable response caching</p>
+                  </div>
+                  <Switch
+                    id="cachingEnabled"
+                    checked={settings.performanceSettings?.cachingEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'cachingEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="compressionEnabled">Compression</Label>
+                    <p className="text-sm text-gray-600">Enable Gzip compression</p>
+                  </div>
+                  <Switch
+                    id="compressionEnabled"
+                    checked={settings.performanceSettings?.compressionEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'compressionEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="imageOptimizationEnabled">Image Optimization</Label>
+                    <p className="text-sm text-gray-600">Optimize images automatically</p>
+                  </div>
+                  <Switch
+                    id="imageOptimizationEnabled"
+                    checked={settings.performanceSettings?.imageOptimizationEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'imageOptimizationEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="lazyLoadingEnabled">Lazy Loading</Label>
+                    <p className="text-sm text-gray-600">Enable lazy loading for images</p>
+                  </div>
+                  <Switch
+                    id="lazyLoadingEnabled"
+                    checked={settings.performanceSettings?.lazyLoadingEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'lazyLoadingEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="minificationEnabled">Minification</Label>
+                    <p className="text-sm text-gray-600">Minify CSS and JavaScript</p>
+                  </div>
+                  <Switch
+                    id="minificationEnabled"
+                    checked={settings.performanceSettings?.minificationEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'minificationEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="bundleOptimizationEnabled">Bundle Optimization</Label>
+                    <p className="text-sm text-gray-600">Optimize JavaScript bundles</p>
+                  </div>
+                  <Switch
+                    id="bundleOptimizationEnabled"
+                    checked={settings.performanceSettings?.bundleOptimizationEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'bundleOptimizationEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="cdnEnabled">CDN</Label>
+                    <p className="text-sm text-gray-600">Use Content Delivery Network</p>
+                  </div>
+                  <Switch
+                    id="cdnEnabled"
+                    checked={settings.performanceSettings?.cdnEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'cdnEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="prefetchingEnabled">Prefetching</Label>
+                    <p className="text-sm text-gray-600">Enable link prefetching</p>
+                  </div>
+                  <Switch
+                    id="prefetchingEnabled"
+                    checked={settings.performanceSettings?.prefetchingEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'prefetchingEnabled'], checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="monitoringEnabled">Monitoring</Label>
+                    <p className="text-sm text-gray-600">Enable performance monitoring</p>
+                  </div>
+                  <Switch
+                    id="monitoringEnabled"
+                    checked={settings.performanceSettings?.monitoringEnabled || false}
+                    onCheckedChange={(checked) => updateSettings(['performanceSettings', 'monitoringEnabled'], checked)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="cacheTTL">Cache TTL (seconds)</Label>
+                  <Input
+                    id="cacheTTL"
+                    type="number"
+                    value={settings.performanceSettings?.cacheTTL || 300}
+                    onChange={(e) => updateSettings(['performanceSettings', 'cacheTTL'], parseInt(e.target.value) || 300)}
+                    placeholder="300"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cdnUrl">CDN URL</Label>
+                  <Input
+                    id="cdnUrl"
+                    value={settings.performanceSettings?.cdnUrl || ''}
+                    onChange={(e) => updateSettings(['performanceSettings', 'cdnUrl'], e.target.value)}
+                    placeholder="https://cdn.yourdomain.com"
+                    disabled={!settings.performanceSettings?.cdnEnabled}
                   />
                 </div>
               </div>

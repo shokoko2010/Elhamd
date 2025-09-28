@@ -1,27 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { requireStaffRole } from '@/lib/server-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const userId = session.user.id
-
-    // Check if user is staff or admin
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { role: true }
-    })
-
-    if (!user || !['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
+    const user = await requireStaffRole()
 
     // Get today's date
     const today = new Date()
@@ -120,6 +103,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(appointments)
   } catch (error) {
     console.error('Error fetching employee appointments:', error)
+    
+    if (error.message === 'Authentication required') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

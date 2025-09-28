@@ -25,6 +25,7 @@ import {
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import BookingCalendar from '@/components/booking/BookingCalendar'
+import { toast } from 'sonner'
 
 interface Vehicle {
   id: string
@@ -123,26 +124,8 @@ export default function ServiceBookingPage() {
         }
       } catch (error) {
         console.error('Error fetching vehicles:', error)
-        // Fallback to mock data
-        const mockVehicles: Vehicle[] = [
-          {
-            id: '1',
-            make: 'Tata',
-            model: 'Nexon',
-            year: 2022,
-            licensePlate: 'ABC123',
-            vin: 'MAT625487K1L5B4321'
-          },
-          {
-            id: '2',
-            make: 'Tata',
-            model: 'Punch',
-            year: 2023,
-            licensePlate: 'XYZ789',
-            vin: 'MAT625487K1L5B4322'
-          }
-        ]
-        setVehicles(mockVehicles)
+        toast.error('فشل في تحميل المركبات. يرجى المحاولة مرة أخرى لاحقاً.')
+        setVehicles([])
       }
     }
 
@@ -156,34 +139,8 @@ export default function ServiceBookingPage() {
         }
       } catch (error) {
         console.error('Error fetching service types:', error)
-        // Fallback to mock data
-        const mockServiceTypes: ServiceType[] = [
-          {
-            id: '1',
-            name: 'صيانة دورية',
-            description: 'صيانة دورية للمركبة',
-            duration: 120,
-            price: 350,
-            category: 'MAINTENANCE'
-          },
-          {
-            id: '2',
-            name: 'تغيير زيت',
-            description: 'تغيير زيت المحرك والفلتر',
-            duration: 60,
-            price: 150,
-            category: 'MAINTENANCE'
-          },
-          {
-            id: '3',
-            name: 'فحص مكابح',
-            description: 'فحص وصيانة نظام المكابح',
-            duration: 60,
-            price: 180,
-            category: 'INSPECTION'
-          }
-        ]
-        setServiceTypes(mockServiceTypes)
+        toast.error('فشل في تحميل أنواع الخدمات. يرجى المحاولة مرة أخرى لاحقاً.')
+        setServiceTypes([])
       }
     }
 

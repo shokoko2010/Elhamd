@@ -33,7 +33,7 @@ const filterSchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   search: z.string().optional(),
-  limit: z.number().min(1).max(100).default(20),
+  limit: z.number().min(1).max(1000).optional(),
   offset: z.number().min(0).default(0),
   sortBy: z.enum(['createdAt', 'updatedAt', 'size', 'title']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc')
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has permission to view media
-    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role)) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has permission to upload media
-    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role)) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -167,7 +167,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if user has permission to update media
-    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role)) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -233,7 +233,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if user has permission to delete media
-    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role)) {
+    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

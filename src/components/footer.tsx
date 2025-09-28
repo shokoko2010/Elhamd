@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSiteSettings } from '@/components/SiteSettingsProvider'
 import { 
   Car, 
   Phone, 
@@ -52,6 +53,7 @@ interface FooterSocial {
 }
 
 export default function Footer() {
+  const { settings } = useSiteSettings()
   const [footerContent, setFooterContent] = useState<FooterContent | null>(null)
   const [footerColumns, setFooterColumns] = useState<FooterColumn[]>([])
   const [footerSocial, setFooterSocial] = useState<FooterSocial | null>(null)
@@ -157,24 +159,24 @@ export default function Footer() {
           {/* Company Info */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <Car className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold">{footerContent?.logoText || 'الحمد للسيارات'}</span>
+              {settings.logoUrl ? (
+                <img src={settings.logoUrl} alt={settings.siteTitle} className="h-8 w-auto" />
+              ) : (
+                <Car className="h-8 w-8" style={{ color: settings.primaryColor }} />
+              )}
+              <span className="text-xl font-bold">{settings.siteTitle}</span>
             </div>
             <p className="text-gray-300 mb-4">
-              {footerContent?.tagline || 'الوكيل الرسمي لشركة تاتا موتورز في مصر. نقدم أفضل السيارات والخدمات لعملائنا الكرام.'}
+              {settings.siteDescription}
             </p>
-            <div className="flex space-x-4">
-              {footerSocial && (
-                <>
-                  {footerSocial.facebook && getSocialIcon('facebook', footerSocial.facebook)}
-                  {footerSocial.twitter && getSocialIcon('twitter', footerSocial.twitter)}
-                  {footerSocial.instagram && getSocialIcon('instagram', footerSocial.instagram)}
-                  {footerSocial.youtube && getSocialIcon('youtube', footerSocial.youtube)}
-                  {footerSocial.linkedin && getSocialIcon('linkedin', footerSocial.linkedin)}
-                  {footerSocial.tiktok && getSocialIcon('tiktok', footerSocial.tiktok)}
-                </>
-              )}
-            </div>
+            {settings.socialLinks && (
+              <div className="flex space-x-4">
+                {settings.socialLinks.facebook && getSocialIcon('facebook', settings.socialLinks.facebook)}
+                {settings.socialLinks.twitter && getSocialIcon('twitter', settings.socialLinks.twitter)}
+                {settings.socialLinks.instagram && getSocialIcon('instagram', settings.socialLinks.instagram)}
+                {settings.socialLinks.linkedin && getSocialIcon('linkedin', settings.socialLinks.linkedin)}
+              </div>
+            )}
           </div>
 
           {/* Dynamic Columns */}
@@ -207,7 +209,7 @@ export default function Footer() {
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              {footerContent?.copyrightText || '© 2024 الحمد للسيارات. جميع الحقوق محفوظة.'}
+              © {new Date().getFullYear()} {settings.siteTitle}. جميع الحقوق محفوظة.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">

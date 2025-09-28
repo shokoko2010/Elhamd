@@ -30,6 +30,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 interface Service {
   id: string
@@ -71,171 +72,90 @@ export default function MaintenancePage() {
   const [activeTab, setActiveTab] = useState('services')
 
   useEffect(() => {
-    // Mock services data
-    const mockServices: Service[] = [
-      {
-        id: '1',
-        name: 'تغيير الزيت والفلتر',
-        description: 'صيانة دورية شاملة لتغيير زيت المحرك والفلتر',
-        duration: '30 دقيقة',
-        price: '350 جنيه',
-        category: 'صيانة دورية',
-        features: ['زيت محرك أصلي', 'فلتر زيت جديد', 'فحص شامل', 'تقرير حالة'],
-        icon: Fuel,
-        popular: true
-      },
-      {
-        id: '2',
-        name: 'فحص الفرامل',
-        description: 'فحص وصيانة نظام الفرامل بالكامل',
-        duration: '60 دقيقة',
-        price: '450 جنيه',
-        category: 'نظام الفرامل',
-        features: ['فحص تآكل الفرامل', 'تغيير أسطوانات الفرامل', 'فحص سائل الفرامل', 'ضبط الفرامل'],
-        icon: Square,
-        popular: true
-      },
-      {
-        id: '3',
-        name: 'صيانة المكيف',
-        description: 'صيانة وتنظيف نظام تكييف الهواء',
-        duration: '45 دقيقة',
-        price: '600 جنيه',
-        category: 'نظام التكييف',
-        features: ['تنظيف مكيف', 'شحن غاز التكييف', 'فحص ضاغط الهواء', 'تعقيم النظام'],
-        icon: AirVent,
-        popular: false
-      },
-      {
-        id: '4',
-        name: 'خدمة البطارية',
-        description: 'فحص وصيانة البطارية واستبدالها إذا لزم الأمر',
-        duration: '30 دقيقة',
-        price: '200 جنيه',
-        category: 'الكهرباء',
-        features: ['فحص البطارية', 'تنظيف أقطاب البطارية', 'قياس الشحن', 'استبدال البطارية'],
-        icon: Battery,
-        popular: false
-      },
-      {
-        id: '5',
-        name: 'اتزان العجلات',
-        description: 'اتزان العجلات وضبط زوايا العجلة الأمامية',
-        duration: '60 دقيقة',
-        price: '300 جنيه',
-        category: 'العجلات',
-        features: ['اتزان العجلات', 'ضبط زوايا العجلة', 'فحص ضغط الهواء', 'فحص الإطارات'],
-        icon: Circle,
-        popular: false
-      },
-      {
-        id: '6',
-        name: 'تشخيص المحرك',
-        description: 'تشخيص شامل للمحرك باستخدام أحدث الأجهزة',
-        duration: '90 دقيقة',
-        price: '400 جنيه',
-        category: 'المحرك',
-        features: ['تشخيص كمبيوتر', 'فحص أعطال المحرك', 'قراءة رموز الأخطاء', 'تقرير تفصيلي'],
-        icon: Cog,
-        popular: false
-      },
-      {
-        id: '7',
-        name: 'صيانة الأنظمة الكهربائية',
-        description: 'فحص وصيانة جميع الأنظمة الكهربائية',
-        duration: '120 دقيقة',
-        price: '800 جنيه',
-        category: 'الكهرباء',
-        features: ['فحص الأسلاك', 'فحص المصابيح', 'فحص أجهزة القياس', 'فحص نظام الشحن'],
-        icon: Lightbulb,
-        popular: false
-      },
-      {
-        id: '8',
-        name: 'خدمة التنظيف الشاملة',
-        description: 'تنظيف وتلميع داخل وخارج السيارة',
-        duration: '180 دقيقة',
-        price: '800 جنيه',
-        category: 'التنظيف',
-        features: ['غسيل خارجي', 'تنظيف داخلي', 'تلميع وتلميع', 'تنظيف المقاعد'],
-        icon: Car,
-        popular: true
+    // Fetch services from API
+    const fetchServices = async () => {
+      try {
+        const response = await fetch('/api/service-items')
+        if (response.ok) {
+          const data = await response.json()
+          // Transform API data to Service interface
+          const transformedServices = data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            duration: `${item.duration} دقيقة`,
+            price: item.price ? `${item.price} جنيه` : 'يحدد لاحقاً',
+            category: item.category,
+            features: item.features || [],
+            icon: Wrench, // Default icon, can be customized based on category
+            popular: item.popular || false
+          }))
+          setServices(transformedServices)
+        }
+      } catch (error) {
+        console.error('Error fetching services:', error)
+        toast.error('فشل في تحميل الخدمات. يرجى المحاولة مرة أخرى لاحقاً.')
+        setServices([])
       }
-    ]
-    setServices(mockServices)
+    }
 
-    // Mock packages data
-    const mockPackages: MaintenancePackage[] = [
-      {
-        id: '1',
-        name: 'الباقة الأساسية',
-        description: 'صيانة دورية أساسية للحفاظ على سيارتك',
-        price: '1200 جنيه',
-        savings: 'توفير 15%',
-        services: ['تغيير الزيت', 'فحص الفرامل', 'فحص البطارية', 'فحص الإطارات'],
-        includes: ['فحص شامل', 'تقرير حالة', 'ضمان 6 أشهر'],
-        validity: '6 أشهر'
-      },
-      {
-        id: '2',
-        name: 'الباقة المتقدمة',
-        description: 'صيانة شاملة لسيارتك مع ضمان ممتد',
-        price: '2500 جنيه',
-        savings: 'توفير 25%',
-        services: ['تغيير الزيت', 'فحص الفرامل', 'صيانة المكيف', 'اتزان العجلات', 'تشخيص المحرك'],
-        includes: ['صيانة شاملة', 'قطع غيار أصلية', 'ضمان سنة', 'خدمة سيارة بديلة'],
-        validity: 'سنة واحدة'
-      },
-      {
-        id: '3',
-        name: 'باقة السيارة الجديدة',
-        description: 'حزمة صيانة كاملة للسيارات الجديدة',
-        price: '4500 جنيه',
-        savings: 'توفير 30%',
-        services: ['جميع الخدمات الأساسية', 'صيانة المكيف', 'خدمة التنظيف', 'فحص سنوي'],
-        includes: ['صيانة كاملة', 'قطع غيار أصلية', 'ضمان سنتين', 'خدمة طوارئ', 'سيارة بديلة'],
-        validity: 'سنتان'
+    // Fetch maintenance packages from API
+    const fetchPackages = async () => {
+      try {
+        const response = await fetch('/api/maintenance/packages')
+        if (response.ok) {
+          const data = await response.json()
+          // Transform API data to MaintenancePackage interface
+          const transformedPackages = data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: `${item.price} جنيه`,
+            savings: item.savings || `توفير ${item.discountPercentage || 0}%`,
+            services: item.services || [],
+            includes: item.includes || [],
+            validity: item.validity || '6 أشهر'
+          }))
+          setPackages(transformedPackages)
+        }
+      } catch (error) {
+        console.error('Error fetching packages:', error)
+        toast.error('فشل في تحميل الباقات. يرجى المحاولة مرة أخرى لاحقاً.')
+        setPackages([])
       }
-    ]
-    setPackages(mockPackages)
+    }
 
-    // Mock technicians data
-    const mockTechnicians: Technician[] = [
-      {
-        id: '1',
-        name: 'أحمد محمد',
-        specialty: 'محركات تاتا',
-        experience: '10 سنوات',
-        rating: 4.9,
-        certifications: ['شهادة تاتا المتقدمة', 'شهادة الخدمة المعتمدة', 'شهادة السلامة']
-      },
-      {
-        id: '2',
-        name: 'محمد علي',
-        specialty: 'أنظمة الفرامل',
-        experience: '8 سنوات',
-        rating: 4.8,
-        certifications: ['شهادة الفرامل المعتمدة', 'شهادة السلامة', 'شهادة الخدمة']
-      },
-      {
-        id: '3',
-        name: 'عمر خالد',
-        specialty: 'الكهرباء والإلكترونيات',
-        experience: '12 سنة',
-        rating: 4.9,
-        certifications: ['شهادة الكهرباء المتقدمة', 'شهادة التشخيص', 'شهادة السلامة']
-      },
-      {
-        id: '4',
-        name: 'إبراهيم حسن',
-        specialty: 'تكييف وتبريد',
-        experience: '6 سنوات',
-        rating: 4.7,
-        certifications: ['شهادة التكييف المعتمدة', 'شهادة السلامة', 'شهادة الخدمة']
+    // Fetch technicians from API
+    const fetchTechnicians = async () => {
+      try {
+        const response = await fetch('/api/maintenance/technicians')
+        if (response.ok) {
+          const data = await response.json()
+          // Transform API data to Technician interface
+          const transformedTechnicians = data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            specialty: item.specialty,
+            experience: `${item.experienceYears} سنوات`,
+            rating: item.rating || 4.5,
+            certifications: item.certifications || []
+          }))
+          setTechnicians(transformedTechnicians)
+        }
+      } catch (error) {
+        console.error('Error fetching technicians:', error)
+        toast.error('فشل في تحميل الفنيين. يرجى المحاولة مرة أخرى لاحقاً.')
+        setTechnicians([])
       }
-    ]
-    setTechnicians(mockTechnicians)
-    setLoading(false)
+    }
+
+    Promise.all([
+      fetchServices(),
+      fetchPackages(),
+      fetchTechnicians()
+    ]).finally(() => {
+      setLoading(false)
+    })
   }, [])
 
   const groupedServices = services.reduce((acc, service) => {

@@ -1,27 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { requireStaffRole } from '@/lib/server-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const userId = session.user.id
-
-    // Check if user is staff or admin
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { role: true }
-    })
-
-    if (!user || !['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
+    const user = await requireStaffRole()
 
     // Get today's date
     const today = new Date()
@@ -29,7 +12,7 @@ export async function GET(request: NextRequest) {
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    // Get all bookings (test drive and service)
+    // Get all bookings (test drive and service) for today
     const [testDriveBookings, serviceBookings] = await Promise.all([
       db.testDriveBooking.findMany({
         where: {
@@ -83,11 +66,77 @@ export async function GET(request: NextRequest) {
 
     const pendingBookings = pendingTestDrive + pendingService
 
-    // Calculate customer satisfaction (mock data for now)
-    const customerSatisfaction = 95 // This would be calculated from actual ratings
+    // Get customer feedback ratings for satisfaction calculation
+    const feedbackRatings = await db.customerFeedback.findMany({
+      where: {
+        rating: {
+          not: null
+        }
+      },
+      select: {
+        rating: true
+      }
+    })
 
-    // Calculate average response time (mock data for now)
-    const averageResponseTime = 15 // minutes
+    const customerSatisfaction = feedbackRatings.length > 0 
+      ? Math.round(feedbackRatings.reduce((sum, f) => sum + (f.rating || 0), 0) / feedbackRatings.length)
+      : 0
+
+    // Calculate average response time from bookings data
+    const recentBookings = await db.booking.findMany({
+      where: {
+        createdAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+        },
+        status: 'COMPLETED'
+      },
+      select: {
+        createdAt: true,
+        updatedAt: true
+      }
+    })
+
+    const averageResponseTime = recentBookings.length > 0
+      ? Math.round(recentBookings.reduce((sum, booking) => {
+          const responseTime = booking.updatedAt.getTime() - booking.createdAt.getTime()
+          return sum + responseTime
+        }, 0) / recentBookings.length / (1000 * 60)) // Convert to minutes
+      : 0
+
+    // Get vehicles stats
+    const [totalVehicles, availableVehicles] = await Promise.all([
+      db.vehicle.count(),
+      db.vehicle.count({
+        where: { status: 'AVAILABLE' }
+      })
+    ])
+
+    // Get orders stats
+    const [totalOrders, pendingOrders] = await Promise.all([
+      db.order.count(),
+      db.order.count({
+        where: { status: 'PENDING' }
+      })
+    ])
+
+    // Get invoices stats
+    const [totalInvoices, paidInvoices] = await Promise.all([
+      db.invoice.count(),
+      db.invoice.count({
+        where: { status: 'PAID' }
+      })
+    ])
+
+    // Get users stats
+    const [totalUsers, activeUsers] = await Promise.all([
+      db.user.count(),
+      db.user.count({
+        where: { 
+          status: 'active',
+          isActive: true
+        }
+      })
+    ])
 
     const stats = {
       totalBookings,
@@ -95,12 +144,29 @@ export async function GET(request: NextRequest) {
       completedBookings,
       pendingBookings,
       customerSatisfaction,
-      averageResponseTime
+      averageResponseTime,
+      totalCars: totalVehicles,
+      availableCars: availableVehicles,
+      totalOrders,
+      pendingOrders,
+      totalInvoices,
+      paidInvoices,
+      totalUsers,
+      activeUsers
     }
 
     return NextResponse.json(stats)
   } catch (error) {
     console.error('Error fetching employee stats:', error)
+    
+    if (error.message === 'Authentication required') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -22,7 +21,17 @@ export async function GET(request: NextRequest) {
       take: key ? 1 : 10
     })
 
-    if (settings.length === 0) {
+    // Ensure all JSON fields have default values
+    const processedSettings = settings.map(setting => ({
+      ...setting,
+      socialLinks: setting.socialLinks || {},
+      seoSettings: setting.seoSettings || {},
+      performanceSettings: setting.performanceSettings || {},
+      headerSettings: setting.headerSettings || {},
+      footerSettings: setting.footerSettings || {}
+    }))
+
+    if (processedSettings.length === 0) {
       // Return default settings if none exist
       const defaultSettings = {
         id: 'default',
@@ -50,6 +59,19 @@ export async function GET(request: NextRequest) {
           ogImage: '/og-image.jpg',
           twitterHandle: '@alhamdcars'
         },
+        performanceSettings: {
+          cachingEnabled: true,
+          cacheTTL: 300,
+          compressionEnabled: true,
+          imageOptimizationEnabled: true,
+          lazyLoadingEnabled: true,
+          minificationEnabled: true,
+          bundleOptimizationEnabled: true,
+          cdnEnabled: false,
+          cdnUrl: '',
+          prefetchingEnabled: true,
+          monitoringEnabled: true
+        },
         headerSettings: {
           showLogo: true,
           showNavigation: true,
@@ -74,7 +96,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([defaultSettings])
     }
 
-    return NextResponse.json(settings)
+    return NextResponse.json(processedSettings)
   } catch (error) {
     console.error('Error fetching site settings:', error)
     return NextResponse.json(
@@ -86,22 +108,11 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const authHandler = createAuthHandler([UserRole.ADMIN])
+    const auth = await authHandler(request)
     
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check if user is admin
-    const user = await db.user.findUnique({
-      where: { id: session.user.id }
-    })
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+    if (auth.error) {
+      return auth.error
     }
 
     const body = await request.json()
@@ -141,10 +152,11 @@ export async function PUT(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const authHandler = createAuthHandler([UserRole.ADMIN])
+    const auth = await authHandler(request)
     
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (auth.error) {
+      return auth.error
     }
 
     const body = await request.json()
@@ -162,6 +174,7 @@ export async function POST(request: NextRequest) {
       contactAddress,
       socialLinks,
       seoSettings,
+      performanceSettings,
       headerSettings,
       footerSettings
     } = body
@@ -195,6 +208,7 @@ export async function POST(request: NextRequest) {
         contactAddress,
         socialLinks: socialLinks || {},
         seoSettings: seoSettings || {},
+        performanceSettings: performanceSettings || {},
         headerSettings: headerSettings || {},
         footerSettings: footerSettings || {},
         isActive: true

@@ -385,7 +385,7 @@ export class AdminService {
       db.user.count({
         where: {
           isActive: true,
-          lastLogin: { gte: subDays(new Date(), 30) }
+          lastLoginAt: { gte: subDays(new Date(), 30) }
         }
       }),
       db.testDriveBooking.count() + db.serviceBooking.count(),

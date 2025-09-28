@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -95,84 +95,114 @@ export function EnhancedFilters({
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 2000000])
   const [yearRange, setYearRange] = useState<[number, number]>([2015, 2024])
   const [mileageRange, setMileageRange] = useState<[number, number]>([0, 200000])
+  const isInternalUpdate = useRef(false)
 
   useEffect(() => {
-    // Update ranges when filters change
-    if (filters.minPrice || filters.maxPrice) {
-      setPriceRange([
-        filters.minPrice ? parseInt(filters.minPrice) : 0,
-        filters.maxPrice ? parseInt(filters.maxPrice) : 2000000
-      ])
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false
+      return
     }
-    if (filters.minYear || filters.maxYear) {
-      setYearRange([
-        filters.minYear ? parseInt(filters.minYear) : 2015,
-        filters.maxYear ? parseInt(filters.maxYear) : 2024
-      ])
+    
+    // Update ranges when filters change from external sources (not from our own slider changes)
+    // Only update if the actual filter values are different from our current range values
+    const currentMinPrice = filters.minPrice ? parseInt(filters.minPrice) : 0
+    const currentMaxPrice = filters.maxPrice ? parseInt(filters.maxPrice) : 2000000
+    
+    const currentMinYear = filters.minYear ? parseInt(filters.minYear) : 2015
+    const currentMaxYear = filters.maxYear ? parseInt(filters.maxYear) : 2024
+    
+    const currentMinMileage = filters.minMileage ? parseInt(filters.minMileage) : 0
+    const currentMaxMileage = filters.maxMileage ? parseInt(filters.maxMileage) : 200000
+
+    // Only update state if values actually changed to prevent infinite loops
+    const priceChanged = currentMinPrice !== priceRange[0] || currentMaxPrice !== priceRange[1]
+    const yearChanged = currentMinYear !== yearRange[0] || currentMaxYear !== yearRange[1]
+    const mileageChanged = currentMinMileage !== mileageRange[0] || currentMaxMileage !== mileageRange[1]
+
+    if (priceChanged) {
+      setPriceRange([currentMinPrice, currentMaxPrice])
     }
-    if (filters.minMileage || filters.maxMileage) {
-      setMileageRange([
-        filters.minMileage ? parseInt(filters.minMileage) : 0,
-        filters.maxMileage ? parseInt(filters.maxMileage) : 200000
-      ])
+    if (yearChanged) {
+      setYearRange([currentMinYear, currentMaxYear])
     }
-  }, [filters])
+    if (mileageChanged) {
+      setMileageRange([currentMinMileage, currentMaxMileage])
+    }
+  }, [filters.minPrice, filters.maxPrice, filters.minYear, filters.maxYear, filters.minMileage, filters.maxMileage])
 
-  const updateFilter = (key: string, value: string | string[]) => {
-    onFiltersChange({ ...filters, [key]: value })
-  }
+  const updateFilter = useCallback((key: string, value: string | string[]) => {
+    onFiltersChange(prevFilters => ({ ...prevFilters, [key]: value }))
+  }, [onFiltersChange])
 
-  const handlePriceRangeChange = (values: number[]) => {
-    setPriceRange(values as [number, number])
-    updateFilter('minPrice', values[0].toString())
-    updateFilter('maxPrice', values[1].toString())
-  }
-
-  const handleYearRangeChange = (values: number[]) => {
-    setYearRange(values as [number, number])
-    updateFilter('minYear', values[0].toString())
-    updateFilter('maxYear', values[1].toString())
-  }
-
-  const handleMileageRangeChange = (values: number[]) => {
-    setMileageRange(values as [number, number])
-    updateFilter('minMileage', values[0].toString())
-    updateFilter('maxMileage', values[1].toString())
-  }
-
-  const handleColorChange = (color: string, checked: boolean) => {
-    const currentColors = filters.colors || []
-    let newColors
-    if (checked) {
-      newColors = [...currentColors, color]
+  // Create a stable callback that doesn't depend on filters
+  const handleFilterChange = useCallback((key: string, value: string | string[] | ((prev: any) => any)) => {
+    if (typeof value === 'function') {
+      onFiltersChange(prevFilters => ({ ...prevFilters, [key]: value(prevFilters[key]) }))
     } else {
-      newColors = currentColors.filter(c => c !== color)
+      onFiltersChange(prevFilters => ({ ...prevFilters, [key]: value }))
     }
-    updateFilter('colors', newColors)
-  }
+  }, [onFiltersChange])
 
-  const getActiveFiltersCount = () => {
+  const handlePriceRangeChange = useCallback((values: number[]) => {
+    const newPriceRange = values as [number, number]
+    isInternalUpdate.current = true
+    setPriceRange(newPriceRange)
+    // Update both min and max price at once to avoid multiple filter updates
+    handleFilterChange('minPrice', newPriceRange[0].toString())
+    handleFilterChange('maxPrice', newPriceRange[1].toString())
+  }, [handleFilterChange])
+
+  const handleYearRangeChange = useCallback((values: number[]) => {
+    const newYearRange = values as [number, number]
+    isInternalUpdate.current = true
+    setYearRange(newYearRange)
+    // Update both min and max year at once to avoid multiple filter updates
+    handleFilterChange('minYear', newYearRange[0].toString())
+    handleFilterChange('maxYear', newYearRange[1].toString())
+  }, [handleFilterChange])
+
+  const handleMileageRangeChange = useCallback((values: number[]) => {
+    const newMileageRange = values as [number, number]
+    isInternalUpdate.current = true
+    setMileageRange(newMileageRange)
+    // Update both min and max mileage at once to avoid multiple filter updates
+    handleFilterChange('minMileage', newMileageRange[0].toString())
+    handleFilterChange('maxMileage', newMileageRange[1].toString())
+  }, [handleFilterChange])
+
+  const handleColorChange = useCallback((color: string, checked: boolean) => {
+    handleFilterChange('colors', (prevColors: string[] = []) => {
+      const currentColors = prevColors || []
+      if (checked) {
+        return [...currentColors, color]
+      } else {
+        return currentColors.filter(c => c !== color)
+      }
+    })
+  }, [handleFilterChange])
+
+  const getActiveFiltersCount = useCallback(() => {
     const count = Object.values(filters).filter(value => {
       if (Array.isArray(value)) return value.length > 0
       return value && value !== '' && value !== 'all'
     }).length
     return count
-  }
+  }, [filters])
 
   const activeFiltersCount = getActiveFiltersCount()
 
-  const formatPrice = (price: number) => {
+  const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('ar-EG', {
       style: 'currency',
       currency: 'EGP',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price)
-  }
+  }, [])
 
-  const formatMileage = (mileage: number) => {
+  const formatMileage = useCallback((mileage: number) => {
     return new Intl.NumberFormat('ar-EG').format(mileage) + ' كم'
-  }
+  }, [])
 
   return (
     <Card className={className}>
@@ -203,7 +233,7 @@ export function EnhancedFilters({
         {/* Category */}
         <div className="space-y-2">
           <Label className="text-right font-medium">الفئة</Label>
-          <Select value={filters.category} onValueChange={(value) => updateFilter('category', value)}>
+          <Select value={filters.category} onValueChange={(value) => handleFilterChange('category', value)}>
             <SelectTrigger className="text-right">
               <SelectValue placeholder="جميع الفئات" />
             </SelectTrigger>
@@ -223,7 +253,7 @@ export function EnhancedFilters({
         {/* Fuel Type */}
         <div className="space-y-2">
           <Label className="text-right font-medium">نوع الوقود</Label>
-          <Select value={filters.fuelType} onValueChange={(value) => updateFilter('fuelType', value)}>
+          <Select value={filters.fuelType} onValueChange={(value) => handleFilterChange('fuelType', value)}>
             <SelectTrigger className="text-right">
               <SelectValue placeholder="جميع أنواع الوقود" />
             </SelectTrigger>
@@ -241,7 +271,7 @@ export function EnhancedFilters({
         {/* Transmission */}
         <div className="space-y-2">
           <Label className="text-right font-medium">ناقل الحركة</Label>
-          <Select value={filters.transmission} onValueChange={(value) => updateFilter('transmission', value)}>
+          <Select value={filters.transmission} onValueChange={(value) => handleFilterChange('transmission', value)}>
             <SelectTrigger className="text-right">
               <SelectValue placeholder="جميع أنواع ناقل الحركة" />
             </SelectTrigger>
@@ -362,7 +392,7 @@ export function EnhancedFilters({
         {/* Sort By */}
         <div className="space-y-2">
           <Label className="text-right font-medium">ترتيب حسب</Label>
-          <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
+          <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange('sortBy', value)}>
             <SelectTrigger className="text-right">
               <SelectValue />
             </SelectTrigger>

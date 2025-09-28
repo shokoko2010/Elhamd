@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
 import InteractiveCalendar from '@/components/ui/interactive-calendar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -126,6 +126,11 @@ export default function AdminCalendarPage() {
     }))
   }
 
+  // Memoize filter types to prevent unnecessary re-renders
+  const memoizedFilterTypes = useMemo(() => {
+    return state.filterType === 'all' ? undefined : [state.filterType]
+  }, [state.filterType])
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Page Header */}
@@ -207,7 +212,7 @@ export default function AdminCalendarPage() {
         showTimeSlots={true}
         showEvents={true}
         showHolidays={true}
-        filterTypes={state.filterType === 'all' ? undefined : [state.filterType]}
+        filterTypes={memoizedFilterTypes}
         height="700px"
       />
 

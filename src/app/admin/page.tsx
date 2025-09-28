@@ -15,8 +15,14 @@ import {
   BarChart3, 
   Settings,
   Bell,
-  Search
+  Search,
+  Package,
+  Shield,
+  Calculator,
+  UserCheck,
+  FileText
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface DashboardStats {
   totalVehicles: number
@@ -59,6 +65,7 @@ export default function AdminDashboard() {
 }
 
 function DashboardContent() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState<any>(null)
@@ -153,10 +160,19 @@ function DashboardContent() {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-13">
             <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
             <TabsTrigger value="vehicles">المركبات</TabsTrigger>
             <TabsTrigger value="bookings">الحجوزات</TabsTrigger>
+            <TabsTrigger value="crm">العملاء</TabsTrigger>
+            <TabsTrigger value="inventory">المخزون</TabsTrigger>
+            <TabsTrigger value="hr">الموارد البشرية</TabsTrigger>
+            <TabsTrigger value="accounting">المحاسبة</TabsTrigger>
+            <TabsTrigger value="contracts">العقود</TabsTrigger>
+            <TabsTrigger value="maintenance">الصيانة</TabsTrigger>
+            <TabsTrigger value="permissions">الصلاحيات</TabsTrigger>
+            <TabsTrigger value="search">بحث</TabsTrigger>
+            <TabsTrigger value="notifications">إشعارات</TabsTrigger>
             <TabsTrigger value="analytics">التحليلات</TabsTrigger>
           </TabsList>
 
@@ -379,6 +395,271 @@ function DashboardContent() {
                   </p>
                   <Button>
                     الذهاب إلى إدارة الحجوزات
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="crm" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام إدارة علاقات العملاء (CRM)</CardTitle>
+                    <CardDescription>إدارة العملاء والتفاعلات والتجزئة</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/crm')}>
+                    <Users className="mr-2 h-4 w-4" />
+                    إدارة العملاء
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام إدارة علاقات العملاء</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة العملاء، تتبع التفاعلات، وتجزئة العملاء لتحسين الخدمة
+                  </p>
+                  <Button onClick={() => router.push('/admin/crm')}>
+                    الذهاب إلى نظام CRM
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="inventory" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام إدارة المخزون</CardTitle>
+                    <CardDescription>إدارة قطع الغيار والمستودعات والموردين</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/inventory')}>
+                    <Package className="mr-2 h-4 w-4" />
+                    إدارة المخزون
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام إدارة المخزون</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة قطع الغيار، تتبع المخزون، والمستودعات والموردين
+                  </p>
+                  <Button onClick={() => router.push('/admin/inventory')}>
+                    الذهاب إلى نظام المخزون
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="hr" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام الموارد البشرية</CardTitle>
+                    <CardDescription>إدارة الموظفين والرواتب والإجازات</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/hr')}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    الموارد البشرية
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <UserCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام الموارد البشرية</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة الموظفين، الرواتب، الإجازات، وتقييم الأداء
+                  </p>
+                  <Button onClick={() => router.push('/admin/hr')}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    الموارد البشرية
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="accounting" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام المحاسبة</CardTitle>
+                    <CardDescription>إدارة الحسابات المالية والقيود المحاسبية</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/accounting')}>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    المحاسبة
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام المحاسبة</h3>
+                  <p className="text-gray-600 mb-4">
+                    دليل الحسابات، القيود اليومية، التقارير المالية، والميزانية العمومية
+                  </p>
+                  <Button onClick={() => router.push('/admin/accounting')}>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    المحاسبة
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contracts" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام العقود والضمانات</CardTitle>
+                    <CardDescription>إدارة العقود والضمانات ومطالبات الضمان</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/contracts')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    العقود والضمانات
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام العقود والضمانات</h3>
+                  <p className="text-gray-600 mb-4">
+                    عقود المركبات، الضمانات، مطالبات الضمان، وإدارة العقود الشاملة
+                  </p>
+                  <Button onClick={() => router.push('/admin/contracts')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    العقود والضمانات
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="maintenance" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام الصيانة الدورية</CardTitle>
+                    <CardDescription>إدارة جداول الصيانة، السجلات، قطع الغيار والتذكيرات</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/maintenance')}>
+                    <Wrench className="mr-2 h-4 w-4" />
+                    إدارة الصيانة
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Wrench className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام الصيانة الدورية</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة جداول الصيانة الدورية للمركبات، سجلات الصيانة، مخزون قطع الغيار وتذكيرات الصيانة
+                  </p>
+                  <Button onClick={() => router.push('/admin/maintenance')}>
+                    الذهاب إلى نظام الصيانة
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="permissions" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام إدارة الصلاحيات</CardTitle>
+                    <CardDescription>إدارة صلاحيات المستخدمين وقوالب الأدوار</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/permissions')}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    إدارة الصلاحيات
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام إدارة الصلاحيات</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة صلاحيات المستخدمين، قوالب الأدوار، والتحكم الكامل في صلاحيات النظام
+                  </p>
+                  <Button onClick={() => router.push('/admin/permissions')}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    إدارة الصلاحيات
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="search" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام البحث المتقدم</CardTitle>
+                    <CardDescription>بحث متقدم مع تصفية وتحليلات</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/search')}>
+                    <Search className="mr-2 h-4 w-4" />
+                    بحث متقدم
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Search className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام البحث المتقدم</h3>
+                  <p className="text-gray-600 mb-4">
+                    بحث في جميع بيانات النظام مع خيارات تصفية متقدمة وتحليلات
+                  </p>
+                  <Button onClick={() => router.push('/admin/search')}>
+                    الذهاب إلى البحث المتقدم
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>نظام الإشعارات المتقدم</CardTitle>
+                    <CardDescription>إدارة الإشعارات والقوالب والإعدادات</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/notifications')}>
+                    <Bell className="mr-2 h-4 w-4" />
+                    إدارة الإشعارات
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Bell className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">نظام الإشعارات المتقدم</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة الإشعارات المتعددة القنوات مع قوالب قابلة للتخصيص وتحليلات
+                  </p>
+                  <Button onClick={() => router.push('/admin/notifications')}>
+                    الذهاب إلى نظام الإشعارات
                   </Button>
                 </div>
               </CardContent>
