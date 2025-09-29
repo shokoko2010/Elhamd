@@ -11,3 +11,7 @@ export const db =
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+
+// Export prisma instance for backward compatibility
+export { PrismaClient }
+export const prisma = db

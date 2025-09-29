@@ -32,7 +32,7 @@ import {
   Crown,
   Sparkles,
   Activity,
-  Segmentation,
+  Users as Segmentation,
   MailCheck,
   Scale
 } from 'lucide-react'

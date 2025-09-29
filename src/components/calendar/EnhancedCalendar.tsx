@@ -22,7 +22,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Today,
+  CalendarDays,
   Filter,
   Search,
   Video,
@@ -35,7 +35,6 @@ import {
   MoreHorizontal,
   Grid,
   List,
-  CalendarDays,
   User,
   AlertCircle,
   CheckCircle,
@@ -517,7 +516,7 @@ export default function EnhancedCalendar() {
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <Button variant="outline" size="sm" onClick={goToToday}>
-              <Today className="w-4 h-4 mr-1" />
+              <CalendarDays className="w-4 h-4 mr-1" />
               Today
             </Button>
             <Button variant="outline" size="sm" onClick={() => navigateDate('next')}>

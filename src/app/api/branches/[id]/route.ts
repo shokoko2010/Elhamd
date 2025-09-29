@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth';
 
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
     const auth = await authHandler(request)
     
@@ -15,7 +20,7 @@ export async function GET(
     }
 
     const branch = await db.branch.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         manager: {
           select: {
@@ -54,9 +59,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
     const auth = await authHandler(request)
     
@@ -80,7 +86,7 @@ export async function PUT(
 
     // التحقق من وجود الفرع
     const existingBranch = await db.branch.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existingBranch) {
@@ -119,7 +125,7 @@ export async function PUT(
         where: { managerId },
       });
 
-      if (existingManagerBranch && existingManagerBranch.id !== params.id) {
+      if (existingManagerBranch && existingManagerBranch.id !== id) {
         return NextResponse.json(
           { error: 'هذا المستخدم يدير فرع آخر بالفعل' },
           { status: 400 }
@@ -128,7 +134,7 @@ export async function PUT(
     }
 
     const branch = await db.branch.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(name && { name }),
         ...(code && { code }),
@@ -164,9 +170,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
     const auth = await authHandler(request)
     
@@ -176,7 +183,7 @@ export async function DELETE(
 
     // التحقق من وجود الفرع
     const branch = await db.branch.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -212,7 +219,7 @@ export async function DELETE(
     }
 
     await db.branch.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'تم حذف الفرع بنجاح' });

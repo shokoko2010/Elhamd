@@ -179,3 +179,14 @@ export function createAuthResponse(user: UnifiedUser, token?: string) {
     token: responseToken
   }
 }
+
+// Create authentication handler for API routes
+export function createAuthHandler(options: {
+  roles?: UserRole[]
+  permissions?: string[]
+  requireAll?: boolean
+} = {}) {
+  return async (request: Request): Promise<UnifiedUser> => {
+    return await authorize(request, options)
+  }
+}

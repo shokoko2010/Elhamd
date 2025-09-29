@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { BookingStatus } from '@prisma/client'
 
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const booking = await db.serviceBooking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: {
           select: {
@@ -66,15 +71,16 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const body = await request.json()
     const { status, notes, date, timeSlot, totalPrice } = body
 
     // Check if booking exists
     const existingBooking = await db.serviceBooking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         serviceType: true
       }
@@ -100,7 +106,7 @@ export async function PUT(
             in: ['PENDING', 'CONFIRMED']
           },
           id: {
-            not: params.id
+            not: id
           }
         }
       })
@@ -115,7 +121,7 @@ export async function PUT(
 
     // Update booking
     const updatedBooking = await db.serviceBooking.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: status ? status as BookingStatus : undefined,
         notes: notes !== undefined ? notes : undefined,
@@ -165,12 +171,14 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
+
     // Check if booking exists
     const existingBooking = await db.serviceBooking.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingBooking) {
@@ -182,7 +190,7 @@ export async function DELETE(
 
     // Delete booking
     await db.serviceBooking.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'تم حذف حجز الخدمة بنجاح' })
