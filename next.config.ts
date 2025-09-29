@@ -3,10 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
+    // Exclude Firebase functions directory from TypeScript compilation
+    tsconfigPath: './tsconfig.json',
   },
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: false,
+    // Exclude Firebase functions directory from ESLint
+    dirs: ['src'],
   },
   allowedDevOrigins: [
   "preview-chat-6b323351-ce1b-4e1b-b225-cc99f0ec3948.space.z.ai",

@@ -22,7 +22,7 @@ import {
   Mail,
   Phone
 } from 'lucide-react'
-import { TestDriveBookingService, ServiceBookingService, BookingStatus } from '@/lib/firestore'
+import { TestDriveBookingService, ServiceBookingService, BookingStatus } from '@/lib/booking-service'
 
 interface Booking {
   id: string
