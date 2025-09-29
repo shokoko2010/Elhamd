@@ -5,6 +5,7 @@
   "env": {
     "NEXTAUTH_URL": "https://elhamdimports.com",
     "NODE_ENV": "production"
+<<<<<<< HEAD
   },
   "functions": {
     "app/api/**/*.{js,ts}": {
@@ -12,3 +13,7 @@
     }
   }
 }
+=======
+  }
+}
+>>>>>>> 85b56e7c4a1b79101b91f6efff2fce33824e1855
