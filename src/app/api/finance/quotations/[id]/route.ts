@@ -9,6 +9,7 @@ import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     const authenticatedUser = await requireUnifiedAuth(request)
     
     if (!authenticatedUser) {
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
 
 export async function PUT(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     const authenticatedUser = await requireUnifiedAuth(request)
     
     if (!authenticatedUser) {
@@ -183,6 +185,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 
 export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     const authenticatedUser = await requireUnifiedAuth(request)
     
     if (!authenticatedUser) {

@@ -1,14 +1,15 @@
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ params: string[] }>
 }
 
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { params: string[] } }
+  context: RouteParams
 ) {
-  const [width, height] = params.params
+  const { params } = await context
+  const [width, height] = params
 
   // Create a simple SVG placeholder
   const svg = `
