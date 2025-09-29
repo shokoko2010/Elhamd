@@ -9,25 +9,25 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
-
+        
     - name: Install dependencies
       run: npm ci
-
+      
     - name: Run linting
       run: npm run lint
-
+      
     - name: Run type check
       run: npm run type-check
-
+      
     - name: Build application
       run: npm run build
       env:
@@ -37,39 +37,38 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-
+    
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
-
+        
     - name: Install dependencies
       run: npm ci
-
+      
     - name: Build application
       run: npm run build
       env:
         NODE_ENV: production
-
-    - name: Deploy to server via SSH
+        
+    - name: Deploy to Namecheap via SSH
       uses: appleboy/ssh-action@v1.0.0
       with:
-        host: 162.0.209.203
-        port: 21098
-        username: bitcstcp
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
-          cd ~/elhamd-imports || exit 0
+          cd ~/elhamd-imports
           git pull origin main
           npm install --production
-          npm run db:generate || true
+          npm run db:generate
           npm run build
-          pm2 restart elhamd-imports || pm2 start npm --name "elhamd-imports" -- run start
-
+          pm2 restart elhamd-imports
+          
     - name: Send notification
       if: always()
       uses: 8398a7/action-slack@v3

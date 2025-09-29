@@ -6,14 +6,14 @@ import { sendQuotationEmail } from '@/lib/email-service'
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const authUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: authUser.id },
       include: { role: true }
     })
 

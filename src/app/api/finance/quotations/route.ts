@@ -5,14 +5,14 @@ import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const authUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: authUser.id },
       include: { role: true }
     })
 
@@ -112,14 +112,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const authUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: authUser.id },
       include: { role: true }
     })
 
