@@ -1,5 +1,5 @@
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string; imageId: string }>
 }
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -7,16 +7,10 @@ import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 
-interface RouteParams {
-  params: {
-    id: string
-    imageId: string
-  }
-}
-
 // PUT /api/admin/vehicles/[id]/images/[imageId]/primary - Set image as primary
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteParams) {
   try {
+    const { id, imageId } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
@@ -37,7 +31,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if image exists
     const image = await db.vehicleImage.findUnique({
-      where: { id: params.imageId }
+      where: { id: imageId }
     })
 
     if (!image) {
@@ -55,7 +49,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Set this image as primary
     const updatedImage = await db.vehicleImage.update({
-      where: { id: params.imageId },
+      where: { id: imageId },
       data: { isPrimary: true }
     })
 
@@ -70,8 +64,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/admin/vehicles/[id]/images/[imageId] - Delete image
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
+    const { id, imageId } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
@@ -92,7 +87,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Check if image exists
     const image = await db.vehicleImage.findUnique({
-      where: { id: params.imageId }
+      where: { id: imageId }
     })
 
     if (!image) {
@@ -107,7 +102,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       const remainingImages = await db.vehicleImage.findMany({
         where: { 
           vehicleId: id,
-          id: { not: params.imageId }
+          id: { not: imageId }
         }
       })
 
@@ -122,7 +117,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Delete the image
     await db.vehicleImage.delete({
-      where: { id: params.imageId }
+      where: { id: imageId }
     })
 
     // Reorder remaining images

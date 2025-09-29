@@ -6,10 +6,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth';
 
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 export async function GET(
   request: NextRequest,
   context: RouteParams

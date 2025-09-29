@@ -27,15 +27,10 @@ const updateVehicleSchema = z.object({
   isActive: z.boolean().optional()
 })
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
-
 // GET /api/admin/vehicles/[id] - Get single vehicle
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
@@ -79,8 +74,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT /api/admin/vehicles/[id] - Update vehicle
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
@@ -166,8 +162,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/admin/vehicles/[id] - Delete vehicle
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {

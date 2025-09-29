@@ -56,10 +56,6 @@ const popupConfigSchema = z.object({
   priority: z.number().int().min(0).max(100).default(0),
 })
 
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 // GET /api/admin/popup-configs/[id] - Get specific popup configuration
 export async function GET(request: NextRequest, context: RouteParams) {
   try {

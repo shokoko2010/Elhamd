@@ -22,15 +22,12 @@ const updateImageOrderSchema = z.object({
   }))
 })
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
+
 
 // GET /api/admin/vehicles/[id]/images - Get vehicle images
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
@@ -53,8 +50,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // POST /api/admin/vehicles/[id]/images - Add new image
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
@@ -121,8 +119,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT /api/admin/vehicles/[id]/images - Update image order
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {

@@ -34,15 +34,10 @@ const pricingSchema = z.object({
   message: 'سعر الخصم يجب أن يكون أقل من السعر الأساسي'
 })
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
-
 // GET /api/admin/vehicles/[id]/pricing - Get vehicle pricing
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
@@ -95,8 +90,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT /api/admin/vehicles/[id]/pricing - Update vehicle pricing
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
