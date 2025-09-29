@@ -1,39 +1,14 @@
 {
-  "version": 2,
-  "name": "elhamd-imports",
-  "builds": [
-    {
-      "src": "server.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": ".next"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.ts"
-    }
-  ],
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "env": {
     "NEXTAUTH_URL": "https://elhamdimports.com",
     "NODE_ENV": "production"
   },
-  "build": {
-    "env": {
-      "NEXTAUTH_URL": "https://elhamdimports.com",
-      "NODE_ENV": "production"
-    }
-  },
   "functions": {
-    "server.ts": {
+    "app/api/**/*.{js,ts}": {
       "maxDuration": 30
     }
-  },
-  "crons": []
+  }
 }

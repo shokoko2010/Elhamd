@@ -5,14 +5,14 @@ import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const authenticatedUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: authenticatedUser.id },
       include: { role: true }
     })
 
@@ -64,14 +64,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const authenticatedUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: authenticatedUser.id },
       include: { role: true }
     })
 
@@ -179,14 +179,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const authenticatedUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: authenticatedUser.id },
       include: { role: true }
     })
 

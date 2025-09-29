@@ -81,12 +81,12 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // التحقق من وجود المستخدم والفرع
-    const [user, branch] = await Promise.all([
+    const [targetUser, branch] = await Promise.all([
       db.user.findUnique({ where: { id: userId } }),
       db.branch.findUnique({ where: { id: branchId } }),
     ]);
 
-    if (!user) {
+    if (!targetUser) {
       return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 400 });
     }
 

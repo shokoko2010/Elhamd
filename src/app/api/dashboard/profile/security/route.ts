@@ -14,17 +14,17 @@ export async function PUT(request: NextRequest) {
     const { twoFactorEnabled, loginNotifications, emailNotifications } = await request.json()
 
     // Get current security settings
-    const user = await db.user.findUnique({
+    const currentUser = await db.user.findUnique({
       where: { id: userId },
       select: { securitySettings: true }
     })
 
-    if (!user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     // Update security settings
-    const currentSettings = user.securitySettings || {}
+    const currentSettings = currentUser.securitySettings || {}
     const updatedSettings = {
       ...currentSettings,
       twoFactorEnabled: twoFactorEnabled ?? currentSettings.twoFactorEnabled ?? false,

@@ -6,14 +6,14 @@ import { generateQuotationPDF } from '@/lib/electronic-invoicing-service'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const authenticatedUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: authenticatedUser.id },
       include: { role: true }
     })
 
