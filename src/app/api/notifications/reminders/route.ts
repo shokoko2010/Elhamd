@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { emailService } from '@/lib/email'
 

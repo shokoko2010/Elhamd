@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireUnifiedAnyRole } from '@/lib/unified-auth-server'
@@ -6,11 +10,12 @@ import { UserRole } from '@prisma/client'
 // GET single slider (public)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const slider = await db.slider.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!slider) {
@@ -33,9 +38,10 @@ export async function GET(
 // PUT update slider
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
 
@@ -55,7 +61,7 @@ export async function PUT(
 
     // Check if slider exists
     const existingSlider = await db.slider.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingSlider) {
@@ -67,7 +73,7 @@ export async function PUT(
 
     // Update slider
     const slider = await db.slider.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(title && { title }),
         ...(subtitle !== undefined && { subtitle: subtitle || null }),
@@ -101,15 +107,16 @@ export async function PUT(
 // DELETE slider
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     // Check authentication and authorization
     const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
 
     // Check if slider exists
     const existingSlider = await db.slider.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingSlider) {
@@ -121,7 +128,7 @@ export async function DELETE(
 
     // Delete slider
     await db.slider.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     // Reorder remaining sliders

@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -31,7 +35,7 @@ export async function PUT(
 
     // Update order status
     const order = await db.order.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: status.toUpperCase()
       }

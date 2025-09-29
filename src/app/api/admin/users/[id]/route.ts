@@ -1,13 +1,17 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await db.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         permissions: {
           include: {
@@ -42,7 +46,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const body = await request.json()
@@ -50,7 +54,7 @@ export async function PUT(
 
     // Check if user exists
     const existingUser = await db.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -65,7 +69,7 @@ export async function PUT(
       const emailTaken = await db.user.findFirst({
         where: {
           email,
-          id: { not: params.id }
+          id: { not: id }
         }
       })
 
@@ -79,7 +83,7 @@ export async function PUT(
 
     // Update user
     const updatedUser = await db.user.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         email,
         name,
@@ -102,14 +106,14 @@ export async function PUT(
     if (permissions !== undefined) {
       // Remove existing permissions
       await db.userPermission.deleteMany({
-        where: { userId: params.id }
+        where: { userId: id }
       })
 
       // Add new permissions
       if (permissions.length > 0) {
         await db.userPermission.createMany({
           data: permissions.map((permissionId: string) => ({
-            userId: params.id,
+            userId: id,
             permissionId
           }))
         })
@@ -128,12 +132,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     // Check if user exists
     const existingUser = await db.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -145,12 +149,12 @@ export async function DELETE(
 
     // Delete user permissions first
     await db.userPermission.deleteMany({
-      where: { userId: params.id }
+      where: { userId: id }
     })
 
     // Delete user
     await db.user.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'تم حذف المستخدم بنجاح' })

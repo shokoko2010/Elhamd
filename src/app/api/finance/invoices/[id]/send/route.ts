@@ -1,14 +1,18 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     // Update invoice status to SENT
     const invoice = await db.invoice.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: 'SENT' },
       include: {
         customer: true

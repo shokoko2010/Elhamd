@@ -1,14 +1,19 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { BookingStatus } from '@prisma/client'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const params = await context.params
     const booking = await db.testDriveBooking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: {
           select: {
@@ -56,15 +61,16 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const params = await context.params
     const body = await request.json()
     const { status, notes, date, timeSlot } = body
 
     // Check if booking exists
     const existingBooking = await db.testDriveBooking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         vehicle: true
       }
@@ -105,7 +111,7 @@ export async function PUT(
 
     // Update booking
     const updatedBooking = await db.testDriveBooking.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: status ? status as BookingStatus : undefined,
         notes: notes !== undefined ? notes : undefined,
@@ -145,12 +151,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
+    const params = await context.params
     // Check if booking exists
     const existingBooking = await db.testDriveBooking.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingBooking) {
@@ -162,7 +169,7 @@ export async function DELETE(
 
     // Delete booking
     await db.testDriveBooking.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'تم حذف حجز القيادة التجريبية بنجاح' })

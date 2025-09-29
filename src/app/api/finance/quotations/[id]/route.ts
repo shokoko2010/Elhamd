@@ -1,9 +1,13 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const authenticatedUser = await requireUnifiedAuth(request)
     
@@ -21,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const quotation = await db.quotation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: {
           select: {
@@ -62,7 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     const authenticatedUser = await requireUnifiedAuth(request)
     
@@ -84,7 +88,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Check if quotation exists and user has access
     const existingQuotation = await db.quotation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: true
       }
@@ -112,7 +116,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Update quotation
     const updatedQuotation = await db.quotation.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: status || existingQuotation.status,
         notes: notes !== undefined ? notes : existingQuotation.notes,
@@ -177,7 +181,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
     const authenticatedUser = await requireUnifiedAuth(request)
     
@@ -196,7 +200,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     // Check if quotation exists
     const quotation = await db.quotation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: true
       }
@@ -215,12 +219,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     // Delete quotation items first
     await db.quotationItem.deleteMany({
-      where: { quotationId: params.id }
+      where: { quotationId: id }
     })
 
     // Delete quotation
     await db.quotation.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     // Log activity
@@ -228,7 +232,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       data: {
         action: 'DELETE_QUOTATION',
         entityType: 'QUOTATION',
-        entityId: params.id,
+        entityId: id,
         userId: user.id,
         details: {
           quotationNumber: quotation.quotationNumber,

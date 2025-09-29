@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
@@ -21,7 +25,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -45,7 +49,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Set all other images to non-primary
     await db.vehicleImage.updateMany({
-      where: { vehicleId: params.id },
+      where: { vehicleId: id },
       data: { isPrimary: false }
     })
 
@@ -76,7 +80,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -102,7 +106,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (image.isPrimary) {
       const remainingImages = await db.vehicleImage.findMany({
         where: { 
-          vehicleId: params.id,
+          vehicleId: id,
           id: { not: params.imageId }
         }
       })
@@ -123,7 +127,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Reorder remaining images
     const remainingImages = await db.vehicleImage.findMany({
-      where: { vehicleId: params.id },
+      where: { vehicleId: id },
       orderBy: { order: 'asc' }
     })
 

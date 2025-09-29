@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 import { sendQuotationEmail } from '@/lib/email-service'
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, context: RouteParams) {
   try {
     const authUser = await requireUnifiedAuth(request)
     
@@ -23,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // Check if quotation exists and user has access
     const quotation = await db.quotation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: true,
         items: true
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // Update quotation status
     const updatedQuotation = await db.quotation.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: 'SENT'
       },

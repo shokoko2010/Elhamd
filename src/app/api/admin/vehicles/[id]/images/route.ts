@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
@@ -34,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const images = await db.vehicleImage.findMany({
-      where: { vehicleId: params.id },
+      where: { vehicleId: id },
       orderBy: { order: 'asc' }
     })
 
@@ -59,7 +63,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -76,13 +80,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Get current image count for ordering
     const imageCount = await db.vehicleImage.count({
-      where: { vehicleId: params.id }
+      where: { vehicleId: id }
     })
 
     // If this is the first image or marked as primary, update other images
     if (validatedData.isPrimary || imageCount === 0) {
       await db.vehicleImage.updateMany({
-        where: { vehicleId: params.id },
+        where: { vehicleId: id },
         data: { isPrimary: false }
       })
       validatedData.isPrimary = true
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const image = await db.vehicleImage.create({
       data: {
         ...validatedData,
-        vehicleId: params.id,
+        vehicleId: id,
         order: imageCount,
         thumbnailUrl: validatedData.imageUrl // In real app, generate thumbnail
       }

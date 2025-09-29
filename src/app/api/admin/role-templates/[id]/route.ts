@@ -1,12 +1,17 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { PermissionService } from '@/lib/permissions'
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     const user = await getAuthUser()
-    const templateId = params.id
+    const templateId = id
     const { name, description, role, permissions } = await request.json()
 
     if (!user) {
@@ -93,10 +98,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
+    const { id } = await context.params
     const user = await getAuthUser()
-    const templateId = params.id
+    const templateId = id
 
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })

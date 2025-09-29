@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { CalendarService } from '@/lib/calendar-service'

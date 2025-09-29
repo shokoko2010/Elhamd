@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
@@ -5,7 +9,7 @@ import { ReviewStatus } from '@prisma/client'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -14,7 +18,7 @@ export async function GET(
     }
 
     const review = await db.productReview.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         product: {
           select: {
@@ -52,7 +56,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -69,7 +73,7 @@ export async function PUT(
     const { status, action } = body
 
     const review = await db.productReview.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!review) {
@@ -109,7 +113,7 @@ export async function PUT(
     }
 
     updatedReview = await db.productReview.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         product: {
@@ -154,7 +158,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -168,7 +172,7 @@ export async function DELETE(
     }
 
     const review = await db.productReview.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!review) {
@@ -176,7 +180,7 @@ export async function DELETE(
     }
 
     await db.productReview.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     // Update product rating

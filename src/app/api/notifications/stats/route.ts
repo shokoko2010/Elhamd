@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
 

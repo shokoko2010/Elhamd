@@ -109,3 +109,13 @@ export async function generateInvoicePDF(invoiceId: string): Promise<Buffer> {
     throw new Error('Failed to generate PDF')
   }
 }
+
+export class ElectronicInvoicingService {
+  static async generateQuotationPDF(quotationId: string): Promise<Buffer> {
+    return generateQuotationPDF(quotationId)
+  }
+
+  static async generateInvoicePDF(invoiceId: string): Promise<Buffer> {
+    return generateInvoicePDF(invoiceId)
+  }
+}

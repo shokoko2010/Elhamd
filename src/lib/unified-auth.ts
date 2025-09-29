@@ -2,6 +2,9 @@ import { db } from '@/lib/db'
 import { PermissionService } from './permissions'
 import { UserRole } from '@prisma/client'
 
+// Re-export UserRole for convenience
+export { UserRole }
+
 export interface UnifiedUser {
   id: string
   email: string

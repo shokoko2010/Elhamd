@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
@@ -5,7 +9,7 @@ import { TaskStatus } from '@prisma/client'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -15,7 +19,7 @@ export async function GET(
     }
 
     const task = await db.task.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         assignee: {
           select: {
@@ -95,7 +99,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -117,7 +121,7 @@ export async function PUT(
 
     // Check if task exists
     const existingTask = await db.task.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingTask) {
@@ -156,7 +160,7 @@ export async function PUT(
     if (notes !== undefined) updateData.notes = notes
 
     const task = await db.task.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         assignee: {
@@ -220,7 +224,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -231,7 +235,7 @@ export async function DELETE(
 
     // Check if task exists
     const existingTask = await db.task.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingTask) {
@@ -239,7 +243,7 @@ export async function DELETE(
     }
 
     await db.task.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'Task deleted successfully' })

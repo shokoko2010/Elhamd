@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
@@ -47,7 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         pricing: true
       }
@@ -64,7 +68,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!vehicle.pricing) {
       const defaultPricing = await db.vehiclePricing.create({
         data: {
-          vehicleId: params.id,
+          vehicleId: id,
           basePrice: vehicle.price,
           discountPrice: null,
           discountPercentage: null,
@@ -101,7 +105,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -130,14 +134,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if pricing exists
     const existingPricing = await db.vehiclePricing.findUnique({
-      where: { vehicleId: params.id }
+      where: { vehicleId: id }
     })
 
     let pricing
     if (existingPricing) {
       // Update existing pricing
       pricing = await db.vehiclePricing.update({
-        where: { vehicleId: params.id },
+        where: { vehicleId: id },
         data: {
           ...validatedData,
           totalPrice
@@ -148,7 +152,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       pricing = await db.vehiclePricing.create({
         data: {
           ...validatedData,
-          vehicleId: params.id,
+          vehicleId: id,
           totalPrice
         }
       })

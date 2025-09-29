@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -45,7 +49,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Get specifications
     const specs = await db.vehicleSpecification.findMany({
-      where: { vehicleId: params.id },
+      where: { vehicleId: id },
       orderBy: { category: 'asc' }
     })
 
@@ -70,7 +74,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const spec = await db.vehicleSpecification.create({
       data: {
         ...validatedData,
-        vehicleId: params.id
+        vehicleId: id
       }
     })
 
@@ -122,7 +126,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -139,20 +143,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Delete existing specifications
     await db.vehicleSpecification.deleteMany({
-      where: { vehicleId: params.id }
+      where: { vehicleId: id }
     })
 
     // Create new specifications
     const specs = await db.vehicleSpecification.createMany({
       data: validatedData.specifications.map(spec => ({
         ...spec,
-        vehicleId: params.id
+        vehicleId: id
       }))
     })
 
     // Get the created specifications
     const createdSpecs = await db.vehicleSpecification.findMany({
-      where: { vehicleId: params.id },
+      where: { vehicleId: id },
       orderBy: { category: 'asc' }
     })
 

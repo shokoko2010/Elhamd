@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -15,7 +19,7 @@ export async function GET(
 
     // Check if task exists
     const task = await db.task.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!task) {
@@ -23,7 +27,7 @@ export async function GET(
     }
 
     const comments = await db.taskComment.findMany({
-      where: { taskId: params.id },
+      where: { taskId: id },
       include: {
         author: {
           select: {
@@ -50,7 +54,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -71,7 +75,7 @@ export async function POST(
 
     // Check if task exists
     const task = await db.task.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!task) {
@@ -80,7 +84,7 @@ export async function POST(
 
     const comment = await db.taskComment.create({
       data: {
-        taskId: params.id,
+        taskId: id,
         authorId: user.id,
         content: content.trim()
       },

@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -13,7 +17,7 @@ export async function GET(
     }
 
     const permission = await db.branchPermission.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: {
           select: {
@@ -56,7 +60,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -72,7 +76,7 @@ export async function PUT(
 
     // التحقق من وجود الصلاحية
     const existingPermission = await db.branchPermission.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existingPermission) {
@@ -80,7 +84,7 @@ export async function PUT(
     }
 
     const permission = await db.branchPermission.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(permissions !== undefined && { permissions }),
         ...(expiresAt !== undefined && { 
@@ -125,7 +129,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -135,7 +139,7 @@ export async function DELETE(
 
     // التحقق من وجود الصلاحية
     const permission = await db.branchPermission.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!permission) {
@@ -143,7 +147,7 @@ export async function DELETE(
     }
 
     await db.branchPermission.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'تم حذف الصلاحية بنجاح' });

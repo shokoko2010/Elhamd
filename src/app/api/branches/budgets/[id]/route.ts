@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -13,7 +17,7 @@ export async function GET(
     }
 
     const budget = await db.branchBudget.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         branch: {
           select: {
@@ -55,7 +59,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -73,7 +77,7 @@ export async function PUT(
 
     // التحقق من وجود الميزانية
     const budget = await db.branchBudget.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!budget) {
@@ -111,7 +115,7 @@ export async function PUT(
     switch (action) {
       case 'approve':
         updatedBudget = await db.branchBudget.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             approvedBy: user.id,
             approvedAt: new Date(),
@@ -148,7 +152,7 @@ export async function PUT(
         const remaining = budget.allocated - spent;
         
         updatedBudget = await db.branchBudget.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             spent,
             remaining: Math.max(0, remaining),
@@ -181,7 +185,7 @@ export async function PUT(
 
       default:
         updatedBudget = await db.branchBudget.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             ...(allocated !== undefined && { 
               allocated,
@@ -228,7 +232,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -238,7 +242,7 @@ export async function DELETE(
 
     // التحقق من وجود الميزانية
     const budget = await db.branchBudget.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!budget) {
@@ -254,7 +258,7 @@ export async function DELETE(
     }
 
     await db.branchBudget.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'تم حذف الميزانية بنجاح' });

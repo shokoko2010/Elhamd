@@ -1,13 +1,17 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const invoice = await db.invoice.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: true,
         items: true,

@@ -1,13 +1,17 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const invoice = await db.invoice.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: {
           select: {
@@ -55,7 +59,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const body = await request.json()
@@ -87,7 +91,7 @@ export async function PUT(
 
     // Update invoice
     const updatedInvoice = await db.invoice.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         customerId,
         type,
@@ -149,12 +153,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     // Check if invoice can be deleted (only draft invoices)
     const invoice = await db.invoice.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { status: true }
     })
 
@@ -173,7 +177,7 @@ export async function DELETE(
     }
 
     await db.invoice.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ success: true })

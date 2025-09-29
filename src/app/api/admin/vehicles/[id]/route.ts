@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
@@ -39,7 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         images: {
           orderBy: { order: 'asc' }
@@ -85,7 +89,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const existingVehicle = await db.vehicle.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingVehicle) {
@@ -130,7 +134,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Update vehicle
     const vehicle = await db.vehicle.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         images: {
@@ -172,7 +176,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         testDriveBookings: true,
         serviceBookings: true
@@ -202,12 +206,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Delete vehicle images first
     await db.vehicleImage.deleteMany({
-      where: { vehicleId: params.id }
+      where: { vehicleId: id }
     })
 
     // Delete vehicle
     await db.vehicle.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'تم حذف المركبة بنجاح' })

@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
@@ -5,7 +9,7 @@ import { EventStatus } from '@prisma/client'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -15,7 +19,7 @@ export async function GET(
     }
 
     const event = await db.calendarEvent.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         booking: {
           include: {
@@ -80,7 +84,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -104,7 +108,7 @@ export async function PUT(
 
     // Check if event exists
     const existingEvent = await db.calendarEvent.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingEvent) {
@@ -133,7 +137,7 @@ export async function PUT(
     if (notes !== undefined) updateData.notes = notes
 
     const event = await db.calendarEvent.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         booking: {
@@ -195,7 +199,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -206,7 +210,7 @@ export async function DELETE(
 
     // Check if event exists
     const existingEvent = await db.calendarEvent.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingEvent) {
@@ -214,7 +218,7 @@ export async function DELETE(
     }
 
     await db.calendarEvent.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'Event deleted successfully' })

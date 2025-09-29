@@ -1,3 +1,7 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { ElectronicInvoicingService } from '@/lib/electronic-invoicing-service'
 

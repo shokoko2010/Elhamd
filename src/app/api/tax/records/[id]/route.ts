@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUnifiedAuth } from '@/lib/unified-auth';
 import { db } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -13,7 +17,7 @@ export async function GET(
     }
 
     const taxRecord = await db.taxRecord.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         creator: {
           select: { id: true, name: true, email: true },
@@ -46,7 +50,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -70,7 +74,7 @@ export async function PUT(
     } = body;
 
     const existingRecord = await db.taxRecord.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existingRecord) {
@@ -100,7 +104,7 @@ export async function PUT(
     }
 
     const taxRecord = await db.taxRecord.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         creator: {
@@ -127,7 +131,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -136,7 +140,7 @@ export async function DELETE(
     }
 
     const existingRecord = await db.taxRecord.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existingRecord) {
@@ -155,7 +159,7 @@ export async function DELETE(
     }
 
     await db.taxRecord.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Tax record deleted successfully' });

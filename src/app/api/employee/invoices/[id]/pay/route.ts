@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request)
@@ -21,7 +25,7 @@ export async function POST(
 
     // Update invoice status to PAID and set paid date
     const invoice = await db.invoice.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: 'PAID',
         paidDate: new Date()

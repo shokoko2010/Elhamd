@@ -192,3 +192,21 @@ export async function sendWelcomeEmail(customerEmail: string, customerName: stri
     html
   })
 }
+
+export class EmailService {
+  static async sendQuotationEmail(quotationId: string): Promise<void> {
+    return sendQuotationEmail(quotationId)
+  }
+
+  static async sendInvoiceEmail(invoiceId: string): Promise<void> {
+    return sendInvoiceEmail(invoiceId)
+  }
+
+  static async sendWelcomeEmail(customerEmail: string, customerName: string): Promise<void> {
+    return sendWelcomeEmail(customerEmail, customerName)
+  }
+
+  static async sendEmail(options: EmailOptions): Promise<void> {
+    return sendEmail(options)
+  }
+}

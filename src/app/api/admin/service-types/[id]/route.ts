@@ -1,13 +1,17 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const serviceType = await db.serviceType.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -50,7 +54,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const body = await request.json()
@@ -58,7 +62,7 @@ export async function PUT(
 
     // Check if service type exists
     const existingServiceType = await db.serviceType.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingServiceType) {
@@ -70,7 +74,7 @@ export async function PUT(
 
     // Update service type
     const updatedServiceType = await db.serviceType.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         description,
@@ -100,12 +104,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     // Check if service type exists
     const existingServiceType = await db.serviceType.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -132,7 +136,7 @@ export async function DELETE(
 
     // Delete service type
     await db.serviceType.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'تم حذف نوع الخدمة بنجاح' })

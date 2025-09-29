@@ -270,3 +270,6 @@ export class PaymentService {
     return validMethods.includes(method)
   }
 }
+
+// Export paymentService instance for backward compatibility
+export const paymentService = new PaymentService()

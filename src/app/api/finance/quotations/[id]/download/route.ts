@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 import { generateQuotationPDF } from '@/lib/electronic-invoicing-service'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const authenticatedUser = await requireUnifiedAuth(request)
     
@@ -23,7 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     // Check if quotation exists and user has access
     const quotation = await db.quotation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: {
           select: {

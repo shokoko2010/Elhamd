@@ -1,10 +1,14 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -13,7 +17,7 @@ export async function GET(
     }
 
     const transfer = await db.branchTransfer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         fromBranch: {
           select: {
@@ -66,7 +70,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -79,7 +83,7 @@ export async function PUT(
 
     // التحقق من وجود التحويل
     const transfer = await db.branchTransfer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         fromBranch: true,
         toBranch: true,
@@ -125,7 +129,7 @@ export async function PUT(
         }
 
         updatedTransfer = await db.branchTransfer.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             status: 'APPROVED',
             approvedBy: user.id,
@@ -225,7 +229,7 @@ export async function PUT(
         }
 
         updatedTransfer = await db.branchTransfer.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             status: 'REJECTED',
             approvedBy: user.id,
@@ -296,7 +300,7 @@ export async function PUT(
         }
 
         updatedTransfer = await db.branchTransfer.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             status: 'COMPLETED',
             completedAt: now,
@@ -350,7 +354,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   try {
     const user = await requireUnifiedAuth(request);
@@ -360,7 +364,7 @@ export async function DELETE(
 
     // التحقق من وجود التحويل
     const transfer = await db.branchTransfer.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!transfer) {
@@ -376,7 +380,7 @@ export async function DELETE(
     }
 
     await db.branchTransfer.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'تم حذف التحويل بنجاح' });
