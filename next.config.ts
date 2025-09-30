@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
     // Exclude Firebase functions directory from ESLint
     dirs: ['src'],
   },
+  // Exclude scripts directory from build
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = { fs: false, path: false };
+    }
+    return config;
+  },
   allowedDevOrigins: [
   "preview-chat-6b323351-ce1b-4e1b-b225-cc99f0ec3948.space.z.ai",
   "preview-chat-e452f205-fd1b-4a33-90d8-b739e1e8cf3c.space.z.ai"
