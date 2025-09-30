@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "env": {
-    "NEXTAUTH_URL": "https://elhamdimports.com",
+    "NEXTAUTH_URL": "https://elhamd-steel.vercel.app",
     "NODE_ENV": "production"
   },
   "functions": {
