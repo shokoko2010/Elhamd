@@ -168,7 +168,7 @@ export default function Home() {
         console.log('✅ Sliders response:', data)
         
         // Handle different response formats
-        let sliders = []
+        let sliders: SliderItem[] = []
         if (data?.sliders) {
           sliders = data.sliders
         } else if (Array.isArray(data)) {
