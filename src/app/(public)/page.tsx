@@ -313,7 +313,7 @@ export default function Home() {
                       {companyInfo.ctaButtons && companyInfo.ctaButtons.map((button: any, index: number) => (
                         <Link key={index} href={button.link} className="flex-1 sm:flex-none">
                           <TouchButton
-                            variant={button.variant === 'primary' ? 'default' : 'outline'}
+                            variant={button.variant === 'primary' ? 'primary' : 'outline'}
                             size={deviceInfo.isMobile ? 'lg' : 'xl'}
                             fullWidth
                             hapticFeedback={true}
