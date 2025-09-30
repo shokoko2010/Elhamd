@@ -52,6 +52,8 @@ interface TimeSlot {
   endTime: string
   maxBookings: number
   isActive: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 interface ServiceBookingFormData {

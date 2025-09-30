@@ -22,6 +22,8 @@ export interface TimeSlot {
   maxBookings: number
   isActive: boolean
   breakTime?: number
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface Holiday {
