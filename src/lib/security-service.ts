@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { NextResponse, NextRequest } from 'next/server'
 import bcrypt from 'bcryptjs'
 import speakeasy from 'speakeasy' // For TOTP
 import qrcode from 'qrcode' // For QR code generation
@@ -605,6 +606,124 @@ export class SecurityService {
   // Update password policy
   updatePasswordPolicy(newPolicy: Partial<PasswordPolicy>): void {
     this.passwordPolicy = { ...this.passwordPolicy, ...newPolicy }
+  }
+
+  // Security headers and middleware methods
+
+  // Add security headers to response
+  addSecurityHeaders(response: NextResponse): NextResponse {
+    // Add security headers
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    
+    // HSTS in production
+    if (process.env.NODE_ENV === 'production') {
+      response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
+    }
+    
+    // Content Security Policy
+    response.headers.set('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self' https:; " +
+      "frame-ancestors 'none';"
+    )
+    
+    // Remove headers that expose server information
+    response.headers.delete('x-powered-by')
+    response.headers.delete('server')
+    
+    return response
+  }
+
+  // Rate limiting method
+  async rateLimit(request: NextRequest, key: string): Promise<{
+    allowed: boolean
+    remaining: number
+    resetTime: number
+  }> {
+    // Simple in-memory rate limiting (in production, use Redis or similar)
+    const now = Date.now()
+    const windowMs = 15 * 60 * 1000 // 15 minutes
+    const maxRequests = key === 'api' ? 100 : key === 'booking-service' ? 20 : 10
+    
+    // Create a simple key for the rate limit
+    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const rateLimitKey = `${key}:${ip}`
+    
+    // In a real implementation, this would use a proper rate limiting store
+    // For now, we'll use a simple mock implementation
+    const mockData = {
+      requests: 5, // Mock current request count
+      resetTime: now + windowMs
+    }
+    
+    const remaining = Math.max(0, maxRequests - mockData.requests)
+    
+    return {
+      allowed: mockData.requests <= maxRequests,
+      remaining,
+      resetTime: mockData.resetTime
+    }
+  }
+
+  // CORS handling
+  handleCors(request: NextRequest, response: NextResponse): NextResponse {
+    const origin = request.headers.get('origin')
+    
+    // Allow specific origins in production, all in development
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? ['https://elhamd-cars.com'] 
+      : ['http://localhost:3000', 'http://localhost:3001']
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      response.headers.set('Access-Control-Allow-Origin', origin || '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, X-CSRF-Token')
+      response.headers.set('Access-Control-Allow-Credentials', 'true')
+    }
+    
+    return response
+  }
+
+  // Input sanitization
+  sanitizeInput(input: string): string {
+    if (typeof input !== 'string') {
+      return ''
+    }
+    
+    // Remove potentially dangerous characters
+    return input
+      .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+      .replace(/['"]/g, '') // Remove quotes to prevent SQL injection
+      .replace(/[;&|`$]/g, '') // Remove shell command characters
+      .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+      .trim()
+  }
+
+  // SQL injection prevention
+  preventSqlInjection(input: string): boolean {
+    if (typeof input !== 'string') {
+      return false
+    }
+    
+    // Check for common SQL injection patterns
+    const sqlInjectionPatterns = [
+      /(\s|^)(OR|AND)\s+\d+\s*=\s*\d+/i, // OR 1=1
+      /(\s|^)(OR|AND)\s+['"]\w+['"]\s*=\s*['"]\w+['"]/i, // OR 'a'='a'
+      /(\s|^)(DROP|DELETE|INSERT|UPDATE|CREATE|ALTER|EXEC|UNION|SELECT)\s+/i, // SQL keywords
+      /(\s|^)(--|\/\*|\*\/|#)/i, // SQL comments
+      /['"]\s*;\s*['"]/i, // Separated statements
+      /(\s|^)(WAITFOR|DELAY|SLEEP)\s+/i, // Timing attacks
+      /(\s|^)(XP_|SP_)/i, // SQL Server extended procedures
+    ]
+    
+    return !sqlInjectionPatterns.some(pattern => pattern.test(input))
   }
 
   // Security health check
