@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Calendar, DateRange } from 'react-day-picker'
+import { DayPicker } from 'react-day-picker'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 import { 
@@ -315,7 +315,7 @@ function BookingsContent() {
       if (response.ok) {
         await loadBookings()
         setShowDeleteDialog(false)
-        setEditingCustomer(null)
+        setEditingBooking(null)
       } else {
         const error = await response.json()
         alert(error.error || 'فشل في حذف الحجز')

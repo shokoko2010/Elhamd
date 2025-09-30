@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
     // Exclude Firebase functions directory from TypeScript compilation
     tsconfigPath: './tsconfig.json',
   },
