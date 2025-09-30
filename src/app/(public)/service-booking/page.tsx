@@ -81,7 +81,7 @@ export default function ServiceBookingPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [selectedService, setSelectedService] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState<Date>()
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null)
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | undefined>(undefined)
   const [calendarData, setCalendarData] = useState<{
     timeSlots: TimeSlot[]
     holidays: any[]
@@ -198,7 +198,7 @@ export default function ServiceBookingPage() {
     setStep(3)
   }
 
-  const handleDateSelect = (date: Date, timeSlot: TimeSlot | null) => {
+  const handleDateSelect = (date: Date, timeSlot: TimeSlot | undefined) => {
     setSelectedDate(date)
     if (timeSlot) {
       setSelectedTimeSlot(timeSlot)
@@ -209,7 +209,7 @@ export default function ServiceBookingPage() {
       }))
       setStep(4)
     } else {
-      setSelectedTimeSlot(null)
+      setSelectedTimeSlot(undefined)
     }
   }
 
@@ -272,7 +272,7 @@ export default function ServiceBookingPage() {
     setSelectedVehicle(null)
     setSelectedService('')
     setSelectedDate(undefined)
-    setSelectedTimeSlot(null)
+    setSelectedTimeSlot(undefined)
     setFormData({
       vehicleId: '',
       serviceTypeId: '',
