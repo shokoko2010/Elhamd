@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home } from 'lucide-react'
+import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon } from 'lucide-react'
 import Link from 'next/link'
 import { VehicleCardSkeleton, HeroSliderSkeleton } from '@/components/ui/skeleton'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
@@ -1701,7 +1701,7 @@ export default function Home() {
       {deviceInfo.isMobile && (
         <MobileNav
           items={[
-            { label: 'الرئيسية', href: '/', icon: <Home className="w-5 h-5" /> },
+            { label: 'الرئيسية', href: '/', icon: <HomeIcon className="w-5 h-5" /> },
             { label: 'السيارات', href: '/vehicles', icon: <Car className="w-5 h-5" /> },
             { label: 'قيادة تجريبية', href: '/test-drive', icon: <Calendar className="w-5 h-5" /> },
             { label: 'الخدمات', href: '/maintenance', icon: <Wrench className="w-5 h-5" /> },
