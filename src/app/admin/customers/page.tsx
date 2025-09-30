@@ -569,7 +569,7 @@ function CustomersContent() {
                   
                   <div className="text-sm text-gray-500">
                     <span className="font-medium">آخر تسجيل دخول:</span> {
-                      customer.lastLogin ? formatDate(customer.lastLogin) : 'لم يسجل دخوله بعد'
+                      customer.lastLoginAt ? formatDate(customer.lastLoginAt) : 'لم يسجل دخوله بعد'
                     }
                   </div>
                 </div>

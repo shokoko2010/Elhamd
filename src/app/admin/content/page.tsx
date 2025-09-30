@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -96,6 +97,7 @@ export default function AdminContentPage() {
 }
 
 function ContentContent() {
+  const router = useRouter()
   const [pages, setPages] = useState<ContentPage[]>([])
   const [navigation, setNavigation] = useState<NavigationItem[]>([])
   const [settings, setSettings] = useState<SiteSettings | null>(null)
