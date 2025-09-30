@@ -1,2 +1,2 @@
-// Re-export authOptions from the NextAuth route
-export { authOptions } from '@/app/api/auth/[...nextauth]/route'
+// Re-export authOptions from the authOptions file
+export { authOptions } from '@/lib/authOptions'

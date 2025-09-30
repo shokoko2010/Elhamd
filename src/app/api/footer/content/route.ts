@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
+import { authorize, UserRole } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -38,13 +38,8 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
-    const auth = await authHandler(request)
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
     
-    if (auth.error) {
-      return auth.error
-    }
-
     const data = await request.json()
 
     // Update or create footer content

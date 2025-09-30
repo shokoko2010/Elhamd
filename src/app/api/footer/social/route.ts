@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
+import { authorize, UserRole } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -28,12 +28,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
-    const auth = await authHandler(request)
-    
-    if (auth.error) {
-      return auth.error
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     const data = await request.json()
 

@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
+import { authorize, UserRole } from '@/lib/unified-auth'
 
 const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
 

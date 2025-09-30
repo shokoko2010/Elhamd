@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth'
+import { authorize, UserRole } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 interface NavigationItem {
@@ -17,12 +17,7 @@ interface NavigationItem {
 
 export async function GET(request: NextRequest) {
   try {
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
-    const auth = await authHandler(request)
-    
-    if (auth.error) {
-      return auth.error
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] })
 
     // Get navigation from site settings
     const settings = await db.siteSettings.findFirst()
@@ -51,12 +46,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
-    const auth = await authHandler(request)
-    
-    if (auth.error) {
-      return auth.error
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     const body = await request.json()
     const navigation = body as NavigationItem[]

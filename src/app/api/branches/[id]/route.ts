@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth';
+import { authorize, UserRole } from '@/lib/unified-auth';
 
 export async function GET(
   request: NextRequest,
@@ -12,12 +12,7 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
-    const auth = await authHandler(request)
-    
-    if (auth.error) {
-      return auth.error
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] })
 
     const branch = await db.branch.findUnique({
       where: { id },
@@ -63,12 +58,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await context.params
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
-    const auth = await authHandler(request)
-    
-    if (auth.error) {
-      return auth.error
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     const body = await request.json();
     const {
@@ -174,12 +164,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await context.params
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
-    const auth = await authHandler(request)
-    
-    if (auth.error) {
-      return auth.error
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     // التحقق من وجود الفرع
     const branch = await db.branch.findUnique({

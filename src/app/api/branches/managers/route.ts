@@ -4,16 +4,11 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUnifiedUser, createAuthHandler, UserRole } from '@/lib/unified-auth';
+import { authorize, UserRole } from '@/lib/unified-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
-    const auth = await authHandler(request)
-    
-    if (auth.error) {
-      return auth.error
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';

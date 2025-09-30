@@ -67,9 +67,10 @@ export async function middleware(request: NextRequest) {
       request.nextUrl.pathname.startsWith(endpoint)
     )
     
+    let rateLimitResult = null
     if (!isPublicEndpoint) {
       // Apply rate limiting
-      const rateLimitResult = await securityService.rateLimit(request, 'api')
+      rateLimitResult = await securityService.rateLimit(request, 'api')
       if (!rateLimitResult.allowed) {
         return NextResponse.json(
           { error: 'Too many requests', message: 'Please try again later' },
