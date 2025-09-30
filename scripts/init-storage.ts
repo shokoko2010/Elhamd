@@ -19,7 +19,7 @@ async function initializeStorage() {
       await fs.mkdir(dir, { recursive: true })
       console.log(`Created directory: ${dir}`)
     } catch (error) {
-      if (error.code !== 'EEXIST') {
+      if (error instanceof Error && (error as any).code !== 'EEXIST') {
         console.error(`Error creating directory ${dir}:`, error)
       }
     }

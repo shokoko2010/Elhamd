@@ -62,7 +62,7 @@ async function generateSampleImages() {
           await new Promise(resolve => setTimeout(resolve, 1000))
           
         } catch (error) {
-          console.error(`Failed to generate image for ${vehicle.make} ${vehicle.model} image ${i}:`, error)
+          console.error(`Failed to generate image for ${vehicle.make} ${vehicle.model} image ${i}:`, error instanceof Error ? error.message : error)
         }
       }
     }
@@ -70,7 +70,7 @@ async function generateSampleImages() {
     console.log('Sample images generated successfully!')
     
   } catch (error) {
-    console.error('Error generating sample images:', error)
+    console.error('Error generating sample images:', error instanceof Error ? error.message : error)
     console.log('You can manually upload images to the public/uploads/vehicles directory')
   }
 }

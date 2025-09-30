@@ -82,7 +82,7 @@ async function updateVehicleImages() {
 
       console.log(`Successfully updated images for vehicle ${vehicleUpdate.stockNumber}`)
     } catch (error) {
-      console.error(`Error updating vehicle ${vehicleUpdate.stockNumber}:`, error)
+      console.error(`Error updating vehicle ${vehicleUpdate.stockNumber}:`, error instanceof Error ? error.message : error)
     }
   }
 
@@ -91,7 +91,7 @@ async function updateVehicleImages() {
 
 updateVehicleImages()
   .catch((error) => {
-    console.error('Error updating vehicle images:', error)
+    console.error('Error updating vehicle images:', error instanceof Error ? error.message : error)
     process.exit(1)
   })
   .finally(async () => {

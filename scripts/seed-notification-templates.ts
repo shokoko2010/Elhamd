@@ -261,7 +261,7 @@ async function main() {
       })
       console.log(`Created/updated template: ${template.name}`)
     } catch (error) {
-      console.error(`Error creating template ${template.name}:`, error)
+      console.error(`Error creating template ${template.name}:`, error instanceof Error ? error.message : error)
     }
   }
 
@@ -270,7 +270,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e)
+    console.error(e instanceof Error ? e.message : e)
     process.exit(1)
   })
   .finally(async () => {

@@ -409,7 +409,7 @@ async function createSampleMedia() {
     console.log(`Total media files in database: ${count}`)
 
   } catch (error) {
-    console.error('Error creating sample media:', error)
+    console.error('Error creating sample media:', error instanceof Error ? error.message : error)
   } finally {
     await prisma.$disconnect()
   }

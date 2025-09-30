@@ -76,7 +76,7 @@ async function seedDefaultPopups() {
 
     console.log('🎉 Default popup configurations seeded successfully!')
   } catch (error) {
-    console.error('❌ Error seeding default popups:', error)
+    console.error('❌ Error seeding default popups:', error instanceof Error ? error.message : error)
   } finally {
     await db.$disconnect()
   }

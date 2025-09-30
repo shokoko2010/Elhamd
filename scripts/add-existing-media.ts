@@ -72,7 +72,7 @@ async function scanDirectory(dirPath: string, category: string = 'general') {
       }
     }
   } catch (error) {
-    console.error(`Error scanning directory ${dirPath}:`, error)
+    console.error(`Error scanning directory ${dirPath}:`, error instanceof Error ? error.message : error)
   }
   
   return files
@@ -211,7 +211,7 @@ async function main() {
     console.log(`Total media files in database: ${totalCount}`)
     
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error:', error instanceof Error ? error.message : error)
   } finally {
     await prisma.$disconnect()
   }

@@ -32,7 +32,7 @@ async function checkMediaData() {
     console.log(`\nTotal media files: ${totalCount}`)
 
   } catch (error) {
-    console.error('Error checking media data:', error)
+    console.error('Error checking media data:', error instanceof Error ? error.message : error)
   } finally {
     await prisma.$disconnect()
   }
