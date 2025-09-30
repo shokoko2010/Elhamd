@@ -69,7 +69,7 @@ export default function AdminCalendarPage() {
   }
 
   const handleTimeSlotSelect = (date: Date, timeSlot: TimeSlot) => {
-    updateState({ selectedDate: date, selectedTimeSlot, selectedEvent: undefined })
+    updateState({ selectedDate: date, selectedTimeSlot: timeSlot, selectedEvent: undefined })
   }
 
   const handleCreateEvent = () => {
