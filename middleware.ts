@@ -67,7 +67,11 @@ export async function middleware(request: NextRequest) {
       request.nextUrl.pathname.startsWith(endpoint)
     )
     
-    let rateLimitResult = null
+    let rateLimitResult: {
+      allowed: boolean
+      remaining: number
+      resetTime: number
+    } | null = null
     if (!isPublicEndpoint) {
       // Apply rate limiting
       rateLimitResult = await securityService.rateLimit(request, 'api')
