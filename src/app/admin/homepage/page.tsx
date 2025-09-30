@@ -254,7 +254,7 @@ function HomepageContent() {
       if (newIndex < 0 || newIndex >= sliderItems.length) return
 
       // Create new order array
-      const newOrder = [...sliderItems]
+      const newOrder: SliderItem[] = [...sliderItems]
       // Swap items
       [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]]
       
