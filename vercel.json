@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
+  "buildCommand": "prisma generate && npm run build",
   "installCommand": "npm install",
   "env": {
     "NEXTAUTH_URL": "https://elhamd-steel.vercel.app",
@@ -10,5 +10,6 @@
     "app/api/**/*.{js,ts}": {
       "maxDuration": 30
     }
-  }
+  },
+  "regions": ["iad1"]
 }

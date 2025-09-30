@@ -3,15 +3,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Database configuration with connection pooling support
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-// Add this for connection pooling
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL_POOLING")
+  // For connection pooling, use DATABASE_URL_POOLING in production
+  // directUrl = env("DATABASE_URL_NON_POOLING")
 }
 
 // Keep all your existing models here

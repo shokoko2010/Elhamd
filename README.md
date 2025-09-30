@@ -56,6 +56,8 @@ This scaffold provides a robust foundation built with:
 
 ## 🚀 Quick Start
 
+### Local Development
+
 ```bash
 # Install dependencies
 npm install
@@ -71,6 +73,27 @@ npm start
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see your application running.
+
+### 🌐 Deploy to Vercel
+
+This project is **ready to deploy on Vercel** with PostgreSQL database!
+
+#### Quick Deploy (10 minutes)
+📄 **[VERCEL_QUICK_DEPLOY.md](./VERCEL_QUICK_DEPLOY.md)** - Step-by-step deployment guide
+
+#### Comprehensive Guide
+📄 **[DEPLOYMENT_INDEX.md](./DEPLOYMENT_INDEX.md)** - Complete deployment documentation index
+
+#### What's Included
+- ✅ Vercel configuration (`vercel.json`)
+- ✅ PostgreSQL schema (`prisma/schema.prisma`)
+- ✅ Environment variables template (`.env.example`)
+- ✅ Deployment checklist and troubleshooting guides
+- ✅ Quick commands reference
+
+**Status**: ✅ Ready to deploy (90% complete)
+**Time**: ⏱️ 10-15 minutes
+**Requirements**: Vercel account + PostgreSQL database
 
 ## 🤖 Powered by Z.ai
 
