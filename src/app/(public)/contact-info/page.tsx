@@ -108,7 +108,7 @@ export default function ContactInfoPage() {
                 <TouchButton
                   onClick={handleMapClick}
                   disabled={isLoading}
-                  variant="default"
+                  variant="primary"
                   size={deviceInfo.isMobile ? "lg" : "xl"}
                   fullWidth
                   hapticFeedback={true}
@@ -164,7 +164,7 @@ export default function ContactInfoPage() {
                 <TouchButton
                   onClick={handleEmailClick}
                   disabled={isLoading}
-                  variant="default"
+                  variant="primary"
                   size={deviceInfo.isMobile ? "lg" : "xl"}
                   fullWidth
                   hapticFeedback={true}
@@ -220,7 +220,7 @@ export default function ContactInfoPage() {
                 <TouchButton
                   onClick={handlePhoneCall}
                   disabled={isLoading}
-                  variant="default"
+                  variant="primary"
                   size={deviceInfo.isMobile ? "lg" : "xl"}
                   fullWidth
                   hapticFeedback={true}
