@@ -94,7 +94,7 @@ export default function ConsultationPage() {
                 <TouchButton
                   onClick={handlePhoneCall}
                   disabled={isLoading}
-                  variant="default"
+                  variant="primary"
                   size={deviceInfo.isMobile ? "lg" : "xl"}
                   fullWidth
                   hapticFeedback={true}
@@ -142,7 +142,7 @@ export default function ConsultationPage() {
                 <TouchButton
                   onClick={handleBooking}
                   disabled={isLoading}
-                  variant="default"
+                  variant="primary"
                   size={deviceInfo.isMobile ? "lg" : "xl"}
                   fullWidth
                   hapticFeedback={true}
