@@ -536,7 +536,7 @@ export default function TransferApprovalsPage() {
                     label: 'المبلغ',
                     type: 'currency',
                     mobilePriority: 'high',
-                    format: (value, _, row) => formatCurrency(value, row.currency)
+                    format: (value) => formatCurrency(value, 'EGP')
                   },
                   {
                     key: 'requestedBy',
@@ -562,56 +562,50 @@ export default function TransferApprovalsPage() {
                     type: 'date',
                     mobilePriority: 'medium'
                   },
-                  {
-                    key: 'actions',
-                    label: 'الإجراءات',
-                    type: 'actions',
-                    mobilePriority: 'low',
-                    format: (_, __, row) => (
-                      <div className="flex items-center space-x-2">
-                        {row.status === 'PENDING' && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setBulkAction('approve');
-                                setSelectedTransfers([row.id]);
-                                setIsBulkDialogOpen(true);
-                              }}
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setBulkAction('reject');
-                                setSelectedTransfers([row.id]);
-                                setIsBulkDialogOpen(true);
-                              }}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        {row.status === 'APPROVED' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setBulkAction('complete');
-                              setSelectedTransfers([row.id]);
-                              setIsBulkDialogOpen(true);
-                            }}
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    )
-                  }
                 ]}
+                actions={(row) => (
+                  <div className="flex items-center space-x-2">
+                    {row.status === 'PENDING' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setBulkAction('approve');
+                            setSelectedTransfers([row.id]);
+                            setIsBulkDialogOpen(true);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setBulkAction('reject');
+                            setSelectedTransfers([row.id]);
+                            setIsBulkDialogOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {row.status === 'APPROVED' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setBulkAction('complete');
+                          setSelectedTransfers([row.id]);
+                          setIsBulkDialogOpen(true);
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
                 emptyState={{
                   title: 'لا توجد تحويلات',
                   description: 'لا توجد تحويلات تتطلب الموافقة حالياً'
