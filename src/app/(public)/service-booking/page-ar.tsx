@@ -504,7 +504,7 @@ export default function ServiceBookingArabicPage() {
                                     <div className="flex items-start gap-3">
                                       <Checkbox
                                         checked={selectedServices.includes(service.id)}
-                                        onChange={(checked) => handleServiceToggle(service.id, checked as boolean)}
+                                        onCheckedChange={(checked) => handleServiceToggle(service.id, checked as boolean)}
                                       />
                                       <div className="flex-1">
                                         <h4 className="font-semibold">{service.name}</h4>

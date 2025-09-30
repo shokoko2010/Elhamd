@@ -453,7 +453,7 @@ export default function ServiceBookingPage() {
                               <div className="flex items-start gap-3">
                                 <Checkbox
                                   checked={selectedService === service.id}
-                                  onChange={(checked) => {
+                                  onCheckedChange={(checked) => {
                                     if (checked) handleServiceSelect(service.id)
                                   }}
                                 />
