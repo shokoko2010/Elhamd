@@ -5,7 +5,24 @@ import path from 'path'
 const prisma = new PrismaClient()
 
 async function scanDirectory(dirPath: string, category: string = 'general') {
-  const files = []
+  const files: Array<{
+    filename: string
+    originalName: string
+    path: string
+    url: string
+    thumbnailUrl: string
+    size: number
+    mimeType: string
+    type: string
+    category: string
+    altText: string
+    title: string
+    description: string
+    tags: string[]
+    uploadedBy: string
+    createdAt: Date
+    updatedAt: Date
+  }> = []
   
   try {
     const items = await fs.readdir(dirPath, { withFileTypes: true })
