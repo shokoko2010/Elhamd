@@ -97,7 +97,9 @@ export interface Branch {
 export enum UserRole {
   CUSTOMER = 'CUSTOMER',
   ADMIN = 'ADMIN',
-  STAFF = 'STAFF'
+  STAFF = 'STAFF',
+  BRANCH_MANAGER = 'BRANCH_MANAGER',
+  SUPER_ADMIN = 'SUPER_ADMIN'
 }
 
 export enum VehicleCategory {
