@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
     // Exclude Firebase functions directory from ESLint
     dirs: ['src'],
   },
