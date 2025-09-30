@@ -79,7 +79,7 @@ export default function ServiceBookingArabicPage() {
   const [formData, setFormData] = useState<ServiceBookingFormData>({
     vehicleId: '',
     serviceTypes: [],
-    date: undefined,
+    date: new Date(),
     timeSlot: '',
     customerInfo: {
       name: '',

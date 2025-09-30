@@ -62,7 +62,7 @@ export default function TestDrivePage() {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('')
   const [formData, setFormData] = useState<BookingFormData>({
     vehicleId: '',
-    date: undefined,
+    date: new Date(),
     timeSlot: '',
     customerInfo: {
       name: '',
@@ -82,7 +82,7 @@ export default function TestDrivePage() {
     schema: bookingSchemas.testDrive,
     initialValues: {
       vehicleId: '',
-      date: undefined,
+      date: new Date(),
       timeSlot: '',
       customerInfo: {
         name: '',
@@ -216,7 +216,7 @@ export default function TestDrivePage() {
     setSelectedTimeSlot('')
     setFormData({
       vehicleId: '',
-      date: undefined,
+      date: new Date(),
       timeSlot: '',
       customerInfo: {
         name: '',

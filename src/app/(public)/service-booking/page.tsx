@@ -94,7 +94,7 @@ export default function ServiceBookingPage() {
   const [formData, setFormData] = useState<ServiceBookingFormData>({
     vehicleId: '',
     serviceTypeId: '',
-    date: undefined,
+    date: new Date(),
     timeSlot: '',
     customerInfo: {
       name: '',
