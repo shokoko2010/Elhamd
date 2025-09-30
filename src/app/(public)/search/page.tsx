@@ -160,14 +160,14 @@ export default function SearchPage() {
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
                   <TouchButton
-                    variant={viewMode === 'grid' ? 'default' : 'outline'}
+                    variant={viewMode === 'grid' ? 'primary' : 'outline'}
                     size="sm"
                     onClick={() => setViewMode('grid')}
                   >
                     <Grid className="h-4 w-4" />
                   </TouchButton>
                   <TouchButton
-                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    variant={viewMode === 'list' ? 'primary' : 'outline'}
                     size="sm"
                     onClick={() => setViewMode('list')}
                   >
