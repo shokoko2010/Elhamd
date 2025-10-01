@@ -178,18 +178,11 @@ export default function SiteSettingsManager() {
 
   const fetchSiteSettings = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
       const response = await fetch('/api/site-settings', {
         method: 'GET',
-        headers
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
       
       if (response.ok) {
@@ -197,6 +190,9 @@ export default function SiteSettingsManager() {
         if (data[0]) {
           setSettings(data[0])
         }
+      } else if (response.status === 401) {
+        // Unauthorized - redirect to login
+        window.location.href = '/login'
       }
     } catch (error) {
       toast({
@@ -210,18 +206,11 @@ export default function SiteSettingsManager() {
   const handleSave = async () => {
     try {
       setLoading(true)
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
       const response = await fetch('/api/site-settings', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(settings)
       })
 
@@ -230,6 +219,9 @@ export default function SiteSettingsManager() {
           title: 'Success',
           description: 'Site settings saved successfully'
         })
+      } else if (response.status === 401) {
+        // Unauthorized - redirect to login
+        window.location.href = '/login'
       } else {
         const error = await response.json()
         toast({
