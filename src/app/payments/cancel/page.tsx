@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { XCircle, Home, RefreshCw, Phone } from 'lucide-react'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
-export default function PaymentCancelPage() {
+function PaymentCancelContent() {
   const searchParams = useSearchParams()
   const [paymentDetails, setPaymentDetails] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -114,5 +115,20 @@ export default function PaymentCancelPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function PaymentCancelPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">جاري التحميل...</p>
+        </div>
+      </div>
+    }>
+      <PaymentCancelContent />
+    </Suspense>
   )
 }
