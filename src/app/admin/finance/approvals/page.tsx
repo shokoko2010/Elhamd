@@ -574,15 +574,12 @@ export default function TransferApprovalsPage() {
                     )
                   }
                 ]
-              }
-                  title: 'لا توجد تحويلات',
-                  description: 'لا توجد تحويلات تتطلب الموافقة حالياً'
-                }}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          }
+        />
+        </>
+      )}
+    </CardContent>
+  </Card>
+</div>
   );
 }

@@ -75,6 +75,13 @@ export async function requireAuthWithRole(request: NextRequest, requiredRoles: U
   return user
 }
 
+export async function authorize(request: NextRequest, options: { roles?: UserRole[] } = {}) {
+  if (options.roles) {
+    return await requireAuthWithRole(request, options.roles)
+  }
+  return await requireUnifiedAuth(request)
+}
+
 export function createUnauthorizedResponse(message: string = 'غير مصرح بالوصول') {
   return Response.json({ error: message }, { status: 401 })
 }
@@ -82,3 +89,6 @@ export function createUnauthorizedResponse(message: string = 'غير مصرح ب
 export function createForbiddenResponse(message: string = 'ممنوع الوصول') {
   return Response.json({ error: message }, { status: 403 })
 }
+
+// Re-export UserRole for convenience
+export { UserRole }
