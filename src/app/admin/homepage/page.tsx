@@ -28,7 +28,7 @@ import {
   Upload
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { ImageUpload } from '@/components/admin/ImageUpload'
+import { SliderImageManager } from '@/components/admin/SliderImageManager'
 
 interface SliderItem {
   id: string
@@ -746,21 +746,10 @@ function HomepageContent() {
               </div>
             </div>
             
-            <div>
-              <Label htmlFor="imageUrl">رابط الصورة</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="imageUrl"
-                  value={sliderForm.imageUrl || ''}
-                  onChange={(e) => setSliderForm({...sliderForm, imageUrl: e.target.value})}
-                  placeholder="/api/placeholder/1200/600"
-                  className="flex-1"
-                />
-                <Button variant="outline" size="sm">
-                  <Upload className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            <SliderImageManager
+              currentImage={sliderForm.imageUrl || ''}
+              onImageChange={(imageUrl) => setSliderForm({...sliderForm, imageUrl})}
+            />
             
             <div className="flex items-center gap-2">
               <Switch

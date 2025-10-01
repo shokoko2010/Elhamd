@@ -95,7 +95,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
+                  placeholder="أدخل بريدك الإلكتروني"
                   required
                 />
               </div>
@@ -108,7 +108,7 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="أدخل كلمة المرور"
                     required
                   />
                   <Button
@@ -131,16 +131,6 @@ export default function LoginPage() {
                 {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
               </Button>
             </form>
-
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-sm mb-2">بيانات الدخول التجريبية:</h4>
-              <div className="space-y-1 text-xs text-gray-600">
-                <p><strong>مشرف:</strong> admin@example.com / admin123</p>
-                <p><strong>مشرف الحمد:</strong> admin@alhamdcars.com / admin123</p>
-                <p><strong>موظف:</strong> staff@example.com / staff123</p>
-                <p><strong>عميل:</strong> customer@example.com / customer123</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
 

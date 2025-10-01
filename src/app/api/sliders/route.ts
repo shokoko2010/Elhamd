@@ -4,8 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireUnifiedAnyRole } from '@/lib/unified-auth-server'
-import { UserRole } from '@prisma/client'
+import { authorize, UserRole } from '@/lib/unified-auth'
 
 // GET all sliders (public)
 export async function GET(request: NextRequest) {
@@ -49,7 +48,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
+    await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     const body = await request.json()
     const {

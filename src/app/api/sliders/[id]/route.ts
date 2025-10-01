@@ -4,8 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireUnifiedAnyRole } from '@/lib/unified-auth-server'
-import { UserRole } from '@prisma/client'
+import { authorize, UserRole } from '@/lib/unified-auth'
 
 // GET single slider (public)
 export async function GET(
@@ -43,7 +42,7 @@ export async function PUT(
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
+    await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     const body = await request.json()
     const {
@@ -112,7 +111,7 @@ export async function DELETE(
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
+    await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     // Check if slider exists
     const existingSlider = await db.slider.findUnique({
