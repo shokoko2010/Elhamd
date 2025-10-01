@@ -213,7 +213,7 @@ export class EnhancedImageService {
     }).join(', ')
 
     // Generate placeholder
-    let placeholder: string | undefined = undefined
+    let placeholder = undefined
     if (this.config.placeholder.enabled) {
       placeholder = this.generatePlaceholder(originalUrl)
     }
@@ -352,7 +352,7 @@ export class EnhancedImageService {
       estimatedBandwidthSavings: string
     }
     recommendations: string[]
-    stats: ReturnType<EnhancedImageService['getOptimizationStats']>
+    stats: ReturnType<typeof this.getOptimizationStats>
   } {
     const stats = this.getOptimizationStats()
     const totalSizeSavedMB = stats.totalSizeSaved / (1024 * 1024)

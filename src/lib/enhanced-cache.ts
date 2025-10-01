@@ -93,7 +93,7 @@ class EnhancedCache {
     }
   }
 
-  public async refreshInBackground(key: string, fetchFn: () => Promise<any>): Promise<void> {
+  private async backgroundRefresh(key: string, fetchFn: () => Promise<any>): Promise<void> {
     if (this.pendingRefreshes.has(key)) return
     
     this.pendingRefreshes.add(key)
@@ -114,10 +114,6 @@ class EnhancedCache {
     } finally {
       this.pendingRefreshes.delete(key)
     }
-  }
-
-  private async backgroundRefresh(key: string, fetchFn: () => Promise<any>): Promise<void> {
-    return this.refreshInBackground(key, fetchFn)
   }
 
   set<T>(key: string, data: T, ttl: number = this.config.defaultTTL): void {
@@ -372,7 +368,7 @@ export function useEnhancedCache<T>(
             if (timeRemaining < refreshThreshold) {
               setIsStale(true)
               // Background refresh
-              enhancedCache.refreshInBackground(key, fetchFn).then(() => {
+              enhancedCache.backgroundRefresh(key, fetchFn).then(() => {
                 if (isMounted) {
                   const refreshedData = enhancedCache.get<T>(key)
                   if (refreshedData !== null) {
@@ -429,28 +425,12 @@ export function useEnhancedCache<T>(
     }
   }, [key, fetchFn, ttl, enabled, staleWhileRevalidate, retryCount])
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const freshData = await fetchFn()
-      enhancedCache.set(key, freshData, ttl)
-      setData(freshData)
-      setIsStale(false)
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Unknown error'))
-    } finally {
-      setLoading(false)
-    }
-  }, [key, fetchFn, ttl])
-
   return { 
     data, 
     loading, 
     error, 
     isStale,
-    refetch,
+    refetch: () => fetchData(),
     invalidate: () => enhancedCache.delete(key)
   }
 }

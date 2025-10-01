@@ -72,16 +72,24 @@ export const commonSchemas = {
     .url('الرابط غير صالح'),
   
   // Vehicle category validation
-  vehicleCategory: z.enum(['SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'PICKUP', 'VAN']),
+  vehicleCategory: z.enum(['SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'PICKUP', 'VAN'], {
+    errorMap: () => ({ message: 'فئة المركبة غير صالحة' })
+  }),
   
   // Fuel type validation
-  fuelType: z.enum(['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID']),
+  fuelType: z.enum(['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID'], {
+    errorMap: () => ({ message: 'نوع الوقود غير صالح' })
+  }),
   
   // Transmission validation
-  transmission: z.enum(['MANUAL', 'AUTOMATIC', 'CVT', 'SEMI_AUTOMATIC']),
+  transmission: z.enum(['MANUAL', 'AUTOMATIC', 'CVT', 'SEMI_AUTOMATIC'], {
+    errorMap: () => ({ message: 'نوع ناقل الحركة غير صالح' })
+  }),
   
   // Vehicle status validation
-  vehicleStatus: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'MAINTENANCE'])
+  vehicleStatus: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'MAINTENANCE'], {
+    errorMap: () => ({ message: 'حالة المركبة غير صالحة' })
+  })
 }
 
 // Vehicle validation schemas
@@ -228,7 +236,9 @@ export const adminSchemas = {
     name: commonSchemas.name,
     email: commonSchemas.email,
     phone: commonSchemas.phone,
-    role: z.enum(['ADMIN', 'BRANCH_MANAGER', 'STAFF']),
+    role: z.enum(['ADMIN', 'BRANCH_MANAGER', 'STAFF'], {
+      errorMap: () => ({ message: 'الدور غير صالح' })
+    }),
     permissions: z.array(z.string()).optional()
   }),
 

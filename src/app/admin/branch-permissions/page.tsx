@@ -102,16 +102,11 @@ function BranchPermissionsContent() {
   const [userPermissions, setUserPermissions] = useState<Permission[]>([])
   
   // Form state for template permissions
-  const [templateForm, setTemplateForm] = useState<{
-    name: string
-    description: string
-    role: UserRole
-    permissions: Permission[]
-  }>({
+  const [templateForm, setTemplateForm] = useState({
     name: '',
     description: '',
     role: UserRole.BRANCH_MANAGER,
-    permissions: []
+    permissions: [] as Permission[]
   })
 
   // Branch-specific permission groups
@@ -331,7 +326,7 @@ function BranchPermissionsContent() {
     setTemplateForm({
       name: template.name,
       description: template.description || '',
-      role: template.role,
+      role: template.role as "BRANCH_MANAGER",
       permissions: [...template.permissions]
     })
     setIsEditTemplateModalOpen(true)
@@ -850,7 +845,7 @@ function BranchPermissionsContent() {
                 <Label htmlFor="templateRole">الدور</Label>
                 <Select 
                   value={templateForm.role} 
-                  onValueChange={(value) => setTemplateForm(prev => ({ ...prev, role: value as UserRole }))}
+                  onValueChange={(value) => setTemplateForm(prev => ({ ...prev, role: value as "BRANCH_MANAGER" }))}
                   disabled={selectedTemplate?.isSystem}
                 >
                   <SelectTrigger>

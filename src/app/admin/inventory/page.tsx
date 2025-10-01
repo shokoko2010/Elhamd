@@ -195,24 +195,24 @@ function InventoryContent() {
       setLoading(true)
       
       // Fetch inventory items
-      const itemsData = await api.get('/api/inventory/items')
+      const itemsData = await api.get('/api/inventory/items') as { items: any[] }
       setInventoryItems(itemsData.items || [])
 
       // Fetch warehouses
-      const warehousesData = await api.get('/api/inventory/warehouses')
-      setWarehouses(warehousesData)
+      const warehousesData = await api.get('/api/inventory/warehouses') as any[]
+      setWarehouses(warehousesData || [])
 
       // Fetch branches
-      const branchesData = await api.get('/api/branches')
+      const branchesData = await api.get('/api/branches') as { branches: any[] }
       setBranches(branchesData.branches || [])
 
       // Fetch suppliers
-      const suppliersData = await api.get('/api/inventory/suppliers')
-      setSuppliers(suppliersData)
+      const suppliersData = await api.get('/api/inventory/suppliers') as any[]
+      setSuppliers(suppliersData || [])
 
       // Fetch alerts
-      const alertsData = await api.get('/api/inventory/alerts')
-      setAlerts(alertsData)
+      const alertsData = await api.get('/api/inventory/alerts') as any[]
+      setAlerts(alertsData || [])
     } catch (error) {
       toast({
         title: 'Error',
@@ -263,7 +263,7 @@ function InventoryContent() {
     try {
       setIsSyncingVehicles(true)
       
-      const result = await api.post('/api/inventory/sync-vehicles')
+      const result = await api.post('/api/inventory/sync-vehicles') as { syncedCount: number; skippedCount: number }
       
       toast({
         title: 'Success',
