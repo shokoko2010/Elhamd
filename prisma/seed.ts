@@ -713,9 +713,9 @@ async function seedServiceBookings() {
         serviceTypeId: services[1].id,
         date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day from now
         timeSlot: '11:00',
-        status: 'IN_PROGRESS',
+        status: 'CONFIRMED',
         totalPrice: services[1].price,
-        paymentStatus: 'PAID',
+        paymentStatus: 'COMPLETED',
         notes: 'تغيير زيت مع فلتر',
       },
     ]

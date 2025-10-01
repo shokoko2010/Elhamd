@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,29 +24,26 @@ import { useAuth } from '@/hooks/use-auth'
 import SiteSettingsManager from '@/components/admin/site-settings/SiteSettingsManager'
 
 export default function AdminSiteSettingsPage() {
-  const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  const { user, isAdmin } = useAuth()
+  const { user, loading, authenticated, isAdmin } = useAuth()
   
-  const [loading, setLoading] = useState(true)
-
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!loading && !authenticated) {
       router.push('/login')
       return
     }
 
-    if (status === 'authenticated') {
-      // Check if user is admin
-      if (!isAdmin()) {
-        router.push('/dashboard')
-        return
-      }
-      
-      setLoading(false)
+    if (!loading && authenticated && !isAdmin()) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page.",
+        variant: "destructive"
+      })
+      router.push('/dashboard')
+      return
     }
-  }, [status, router, user, isAdmin])
+  }, [loading, authenticated, isAdmin, router, toast])
 
   if (loading) {
     return (
@@ -58,6 +54,10 @@ export default function AdminSiteSettingsPage() {
         </div>
       </div>
     )
+  }
+
+  if (!authenticated || !isAdmin()) {
+    return null
   }
 
   return (

@@ -357,8 +357,21 @@ export class PermissionService {
     // Start with role template permissions
     if (user.roleTemplate?.permissions) {
       try {
-        const templatePermissions = JSON.parse(user.roleTemplate.permissions)
-        permissions = templatePermissions
+        // Check if permissions are already stored as an array or as JSON string
+        let templatePermissions: string[] = []
+        if (typeof user.roleTemplate.permissions === 'string') {
+          templatePermissions = JSON.parse(user.roleTemplate.permissions)
+        } else if (Array.isArray(user.roleTemplate.permissions)) {
+          templatePermissions = user.roleTemplate.permissions
+        }
+        
+        // Convert permission IDs to Permission names
+        const permissionNames = await db.permission.findMany({
+          where: { id: { in: templatePermissions } },
+          select: { name: true }
+        })
+        
+        permissions = permissionNames.map(p => p.name as Permission)
       } catch (error) {
         console.error('Error parsing role template permissions:', error)
       }
