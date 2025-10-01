@@ -1,6 +1,6 @@
 # 🚀 Quick Vercel Deployment Guide
 
-## ⚡ Fast Deployment (Fixed Environment Variables)
+## ⚡ Fast Deployment (Fixed Configuration)
 
 ### 1. Generate Secret Key
 ```bash
@@ -28,7 +28,9 @@ npx vercel --prod
 
 ## 🔧 What Was Fixed
 
-- ❌ **Before**: `vercel.json` referenced non-existent secrets (`@nextauth_url`)
+- ❌ **Before**: `runtime: "nodejs18.x"` - Invalid runtime format
+- ✅ **After**: Removed functions section (Next.js handles automatically)
+- ❌ **Before**: Environment variables referenced non-existent secrets
 - ✅ **After**: Environment variables set directly in Vercel dashboard
 
 ## 📝 Environment Variables Explained
@@ -39,4 +41,16 @@ npx vercel --prod
 
 ## 🎯 Result
 
-Your project will now deploy successfully to Vercel without the environment variable error!
+Your project will now deploy successfully to Vercel without runtime or environment variable errors!
+
+## 📋 Current Configuration
+
+The `vercel.json` is now simplified and uses Next.js automatic function handling:
+```json
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+}
+```
