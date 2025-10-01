@@ -160,7 +160,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: error.errors },
+        { error: 'بيانات غير صالحة', details: error.issues },
         { status: 400 }
       )
     }

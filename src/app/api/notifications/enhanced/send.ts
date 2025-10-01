@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     // Sanitize input
     const sanitizedData = {
       recipient: security.sanitizeEmail(recipient),
-      channel: security.sanitizeInput(channel),
+      channel: channel as 'EMAIL' | 'SMS' | 'PUSH' | 'WHATSAPP',
       templateId: security.sanitizeInput(templateId),
       variables: security.sanitizeObject(variables),
       type: type ? security.sanitizeInput(type) : 'CUSTOM',

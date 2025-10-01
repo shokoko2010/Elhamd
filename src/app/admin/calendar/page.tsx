@@ -69,7 +69,7 @@ export default function AdminCalendarPage() {
   }
 
   const handleTimeSlotSelect = (date: Date, timeSlot: TimeSlot) => {
-    updateState({ selectedDate: date, selectedTimeSlot, selectedEvent: undefined })
+    updateState({ selectedDate: date, selectedTimeSlot: timeSlot, selectedEvent: undefined })
   }
 
   const handleCreateEvent = () => {
@@ -222,11 +222,11 @@ export default function AdminCalendarPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {getEventIcon(state.selectedEvent.type)}
+                {state.selectedEvent && getEventIcon(state.selectedEvent.type)}
                 تفاصيل الحدث
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleEditEvent(state.selectedEvent)}>
+                <Button variant="outline" size="sm" onClick={() => state.selectedEvent && handleEditEvent(state.selectedEvent)}>
                   <Edit className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="sm">

@@ -1,15 +1,21 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "prisma generate && npm run build",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
   "installCommand": "npm install",
-  "env": {
-    "NEXTAUTH_URL": "https://elhamd-steel.vercel.app",
-    "NODE_ENV": "production"
-  },
+  "framework": "nextjs",
   "functions": {
-    "app/api/**/*.{js,ts}": {
-      "maxDuration": 30
+    "src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
     }
   },
-  "regions": ["iad1"]
+  "env": {
+    "NEXTAUTH_URL": "@nextauth_url",
+    "NEXTAUTH_SECRET": "@nextauth_secret",
+    "DATABASE_URL": "@database_url"
+  },
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  }
 }

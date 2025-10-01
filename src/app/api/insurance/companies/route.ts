@@ -7,11 +7,19 @@ import { db } from '@/lib/db'
 import { InsuranceCompany } from '@prisma/client'
 import { authorize, UserRole } from '@/lib/unified-auth'
 
-const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER])
+const authHandler = async (request: NextRequest) => {
+  try {
+    return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MANAGER,] })
+  } catch (error) {
+    return null
+  }
+}
 
 export async function GET(request: NextRequest) {
   const auth = await authHandler(request)
-  if (auth.error) return auth.error
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   
   try {
     const companies = await db.insuranceCompany.findMany({
@@ -41,7 +49,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await authHandler(request)
-  if (auth.error) return auth.error
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   
   try {
 
@@ -90,7 +100,7 @@ export async function POST(request: NextRequest) {
         address,
         website,
         branchId,
-        createdBy: auth.user!.id
+        createdBy: auth.id
       },
       include: {
         creator: {

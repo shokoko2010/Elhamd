@@ -5,11 +5,19 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { authorize, UserRole } from '@/lib/unified-auth'
 
-const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN])
+const authHandler = async (request: NextRequest) => {
+  try {
+    return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,] })
+  } catch (error) {
+    return null
+  }
+}
 
 export async function GET(request: NextRequest) {
   const auth = await authHandler(request)
-  if (auth.error) return auth.error
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   
   try {
 
@@ -41,7 +49,9 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const auth = await authHandler(request)
-  if (auth.error) return auth.error
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   
   try {
 

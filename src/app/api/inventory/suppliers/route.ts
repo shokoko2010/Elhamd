@@ -6,7 +6,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { createAuthHandler, UserRole } from '@/lib/unified-auth'
 
-const authHandler = createAuthHandler([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER])
+const authHandler = async (request: NextRequest) => {
+  try {
+    return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.BRANCH_MANAGER,] })
+  } catch (error) {
+    return null
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
