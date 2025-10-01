@@ -3,6 +3,18 @@ import { sitemapService } from '@/lib/sitemap-service'
 
 export async function GET() {
   try {
+    // Skip API calls during build time
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+      const robotsContent = sitemapService.generateRobotsTxt()
+      
+      return new NextResponse(robotsContent, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'public, max-age=86400, s-maxage=86400', // Cache for 1 day
+        },
+      })
+    }
+    
     // Fetch site settings to get custom robots.txt if available
     let robotsContent = ''
     

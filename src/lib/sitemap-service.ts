@@ -84,6 +84,11 @@ export class SitemapService {
 
   // Get vehicle page URLs
   private async getVehiclePages(): Promise<SitemapUrl[]> {
+    // Skip database access during build time
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+      return []
+    }
+    
     try {
       const vehicles = await db.vehicle.findMany({
         where: { status: 'AVAILABLE' },
@@ -105,6 +110,11 @@ export class SitemapService {
 
   // Get service page URLs
   private async getServicePages(): Promise<SitemapUrl[]> {
+    // Skip database access during build time
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+      return []
+    }
+    
     try {
       const services = await db.serviceType.findMany({
         where: { isActive: true },
@@ -153,6 +163,11 @@ export class SitemapService {
     const sitemaps: SitemapIndex[] = [
       { loc: `${this.baseUrl}/sitemap.xml` }
     ]
+
+    // Skip database access during build time
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+      return sitemaps
+    }
 
     // Add vehicle sitemap if many vehicles
     try {

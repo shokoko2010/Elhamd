@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 
 interface GoogleAnalyticsProps {
   measurementId: string
 }
 
-export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
+function GoogleAnalyticsInner({ measurementId }: GoogleAnalyticsProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -36,8 +36,16 @@ export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps)
 
     return () => {
       // Cleanup scripts when component unmounts
-      document.head.removeChild(script1)
-      document.head.removeChild(script2)
+      try {
+        if (document.head.contains(script1)) {
+          document.head.removeChild(script1)
+        }
+        if (document.head.contains(script2)) {
+          document.head.removeChild(script2)
+        }
+      } catch (error) {
+        // Ignore cleanup errors
+      }
     }
   }, [measurementId])
 
@@ -62,6 +70,14 @@ export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps)
   }, [pathname, searchParams, measurementId])
 
   return null
+}
+
+export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
+  return (
+    <Suspense>
+      <GoogleAnalyticsInner measurementId={measurementId} />
+    </Suspense>
+  )
 }
 
 // Helper function to determine page type
