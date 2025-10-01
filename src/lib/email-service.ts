@@ -194,6 +194,17 @@ export async function sendWelcomeEmail(customerEmail: string, customerName: stri
 }
 
 export class EmailService {
+  private static instance: EmailService;
+
+  private constructor() {}
+
+  static getInstance(): EmailService {
+    if (!EmailService.instance) {
+      EmailService.instance = new EmailService();
+    }
+    return EmailService.instance;
+  }
+
   static async sendQuotationEmail(quotationId: string): Promise<void> {
     return sendQuotationEmail(quotationId)
   }
@@ -208,5 +219,110 @@ export class EmailService {
 
   static async sendEmail(options: EmailOptions): Promise<void> {
     return sendEmail(options)
+  }
+
+  // Instance methods for when using getInstance()
+  async sendQuotationEmailInstance(quotationId: string): Promise<void> {
+    return sendQuotationEmail(quotationId)
+  }
+
+  async sendInvoiceEmailInstance(invoiceId: string): Promise<void> {
+    return sendInvoiceEmail(invoiceId)
+  }
+
+  async sendWelcomeEmailInstance(customerEmail: string, customerName: string): Promise<void> {
+    return sendWelcomeEmail(customerEmail, customerName)
+  }
+
+  async sendEmailInstance(options: EmailOptions): Promise<void> {
+    return sendEmail(options)
+  }
+
+  async sendBookingConfirmation(params: {
+    customerName: string
+    customerEmail: string
+    bookingType: 'test-drive' | 'service'
+    vehicleInfo?: string
+    date?: string
+    time?: string
+    services?: string[]
+  }): Promise<void> {
+    const { customerName, customerEmail, bookingType, vehicleInfo, date, time, services } = params
+    
+    const subject = `Booking Confirmation - ${bookingType === 'test-drive' ? 'Test Drive' : 'Service Appointment'}`
+    
+    const html = `
+      <html>
+        <body>
+          <h2>Booking Confirmation</h2>
+          <p>Dear ${customerName},</p>
+          <p>Your ${bookingType === 'test-drive' ? 'test drive' : 'service appointment'} has been confirmed!</p>
+          
+          ${vehicleInfo ? `<p><strong>Vehicle:</strong> ${vehicleInfo}</p>` : ''}
+          ${date ? `<p><strong>Date:</strong> ${date}</p>` : ''}
+          ${time ? `<p><strong>Time:</strong> ${time}</p>` : ''}
+          
+          ${services && services.length > 0 ? `
+            <h3>Services:</h3>
+            <ul>
+              ${services.map(service => `<li>${service}</li>`).join('')}
+            </ul>
+          ` : ''}
+          
+          <p>Please arrive 10 minutes early for your appointment.</p>
+          
+          <p>Best regards,<br>Al-Hamd Cars Team</p>
+        </body>
+      </html>
+    `
+
+    await sendEmail({
+      to: customerEmail,
+      subject,
+      html
+    })
+  }
+
+  async sendAdminNotification(params: {
+    customerName: string
+    customerEmail: string
+    bookingType: 'test-drive' | 'service'
+    vehicleInfo?: string
+    date?: string
+    time?: string
+    services?: string[]
+  }): Promise<void> {
+    const { customerName, customerEmail, bookingType, vehicleInfo, date, time, services } = params
+    
+    const subject = `New ${bookingType === 'test-drive' ? 'Test Drive' : 'Service'} Booking`
+    
+    const html = `
+      <html>
+        <body>
+          <h2>New Booking Alert</h2>
+          <p>A new ${bookingType === 'test-drive' ? 'test drive' : 'service'} booking has been made:</p>
+          
+          <p><strong>Customer:</strong> ${customerName} (${customerEmail})</p>
+          ${vehicleInfo ? `<p><strong>Vehicle:</strong> ${vehicleInfo}</p>` : ''}
+          ${date ? `<p><strong>Date:</strong> ${date}</p>` : ''}
+          ${time ? `<p><strong>Time:</strong> ${time}</p>` : ''}
+          
+          ${services && services.length > 0 ? `
+            <h3>Services:</h3>
+            <ul>
+              ${services.map(service => `<li>${service}</li>`).join('')}
+            </ul>
+          ` : ''}
+          
+          <p>Please check the admin dashboard for more details.</p>
+        </body>
+      </html>
+    `
+
+    await sendEmail({
+      to: 'admin@alhamdcars.com', // This should be an environment variable
+      subject,
+      html
+    })
   }
 }
