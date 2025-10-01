@@ -58,19 +58,35 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     
-    // Parse and validate filter parameters
+    // Parse filter parameters
     const filterParams: Record<string, any> = {}
-    for (const [key, value] of searchParams.entries()) {
-      if (key === 'tags') {
-        filterParams[key] = value.split(',').map(tag => tag.trim())
-      } else if (key === 'limit' || key === 'offset') {
-        filterParams[key] = parseInt(value)
-      } else if (key === 'isPublic' || key === 'isFeatured') {
-        filterParams[key] = value === 'true'
-      } else {
-        filterParams[key] = value
-      }
-    }
+    const limit = searchParams.get('limit')
+    const offset = searchParams.get('offset')
+    const category = searchParams.get('category')
+    const tags = searchParams.get('tags')
+    const mimeType = searchParams.get('mimeType')
+    const isPublic = searchParams.get('isPublic')
+    const isFeatured = searchParams.get('isFeatured')
+    const createdBy = searchParams.get('createdBy')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
+    const search = searchParams.get('search')
+    const sortBy = searchParams.get('sortBy')
+    const sortOrder = searchParams.get('sortOrder')
+    
+    if (limit) filterParams.limit = parseInt(limit)
+    if (offset) filterParams.offset = parseInt(offset)
+    if (category) filterParams.category = category
+    if (tags) filterParams.tags = tags.split(',').map(tag => tag.trim())
+    if (mimeType) filterParams.mimeType = mimeType
+    if (isPublic) filterParams.isPublic = isPublic === 'true'
+    if (isFeatured) filterParams.isFeatured = isFeatured === 'true'
+    if (createdBy) filterParams.createdBy = createdBy
+    if (dateFrom) filterParams.dateFrom = dateFrom
+    if (dateTo) filterParams.dateTo = dateTo
+    if (search) filterParams.search = search
+    if (sortBy) filterParams.sortBy = sortBy
+    if (sortOrder) filterParams.sortOrder = sortOrder
 
     const validatedFilter = filterSchema.parse(filterParams)
     

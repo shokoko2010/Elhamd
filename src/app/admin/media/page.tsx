@@ -115,7 +115,7 @@ function MediaContent() {
       console.log('🔄 Loading media data...')
       
       // Fetch media files from API using direct fetch - get all files without limit
-      const response = await fetch('/api/media?limit=1000', {
+      const response = await fetch('/api/media-simple', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -275,7 +275,7 @@ function MediaContent() {
           optimizeFormats: ['webp']
         }))
 
-        const response = await fetch('/api/media', {
+        const response = await fetch('/api/media-simple', {
           method: 'POST',
           headers: {
             // Don't set Content-Type for FormData, let the browser set it with boundary
@@ -344,7 +344,7 @@ function MediaContent() {
     if (!editingFile) return
 
     try {
-      const response = await fetch(`/api/media?id=${editingFile.id}`, {
+      const response = await fetch(`/api/media-simple?id=${editingFile.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -391,7 +391,7 @@ function MediaContent() {
 
     try {
       const deletePromises = selectedFiles.map(fileId => 
-        fetch(`/api/media?id=${fileId}`, { 
+        fetch(`/api/media-simple?id=${fileId}`, { 
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
