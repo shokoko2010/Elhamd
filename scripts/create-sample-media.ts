@@ -6,9 +6,14 @@ async function createSampleMedia() {
   try {
     console.log('Creating sample media files...')
 
-    // Get admin user
+    // Get admin user - check for both ADMIN and SUPER_ADMIN roles
     const admin = await prisma.user.findFirst({
-      where: { role: 'SUPER_ADMIN' }
+      where: { 
+        OR: [
+          { role: 'SUPER_ADMIN' },
+          { role: 'ADMIN' }
+        ]
+      }
     })
 
     if (!admin) {
