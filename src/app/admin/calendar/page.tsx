@@ -69,7 +69,7 @@ export default function AdminCalendarPage() {
   }
 
   const handleTimeSlotSelect = (date: Date, timeSlot: TimeSlot) => {
-    updateState({ selectedDate: date, selectedTimeSlot: timeSlot, selectedEvent: undefined })
+    updateState({ selectedDate: date, selectedTimeSlot, selectedEvent: undefined })
   }
 
   const handleCreateEvent = () => {
@@ -226,7 +226,7 @@ export default function AdminCalendarPage() {
                 تفاصيل الحدث
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => state.selectedEvent && handleEditEvent(state.selectedEvent)}>
+                <Button variant="outline" size="sm" onClick={() => handleEditEvent(state.selectedEvent)}>
                   <Edit className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="sm">

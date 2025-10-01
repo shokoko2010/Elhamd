@@ -4,13 +4,13 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireUnifiedAuth, createUnauthorizedResponse } from '@/lib/unified-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role)) {
-      return createUnauthorizedResponse();
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         break;
       case 'my-approvals':
         // Transfers that need user's approval based on their role and permissions
-        if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+        if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN') {
           where.status = 'PENDING';
         } else {
           // For managers, check branch permissions
@@ -146,8 +146,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role)) {
-      return createUnauthorizedResponse();
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
               continue;
             }
             
-            if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+            if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN') {
               canProceed = true;
             } else {
               const hasPermission = await db.branchPermission.findFirst({
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
               continue;
             }
             
-            if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+            if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN') {
               canProceed = true;
             } else {
               const hasPermission = await db.branchPermission.findFirst({

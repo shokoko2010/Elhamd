@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enhancedNotificationService } from '@/lib/enhanced-notification-service'
 import { getAuthUser } from '@/lib/auth-server'
-import { securityService } from '@/lib/security-service'
+import { SecurityService } from '@/lib/security-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,9 +13,9 @@ export async function GET(request: NextRequest) {
 
     // Rate limiting
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown'
-    const rateLimitResult = await securityService.checkRateLimit(clientIP, 'notification_stats')
+    const rateLimitResult = await security.checkRateLimit(clientIP, 'notification_stats')
     
-    if (!rateLimitResult.allowed) {
+    if (!rateLimitResult) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
         { status: 429 }

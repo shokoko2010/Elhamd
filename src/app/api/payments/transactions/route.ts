@@ -45,11 +45,11 @@ export async function GET(request: NextRequest) {
       db.payment.findMany({
         where,
         include: {
-          customer: {
+          booking: {
             select: {
               id: true,
-              name: true,
-              email: true
+              customerName: true,
+              customerEmail: true
             }
           },
           invoicePayments: {
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
           }
         },
         orderBy: {
-          paymentDate: 'desc'
+          createdAt: 'desc'
         },
         skip,
         take: limit

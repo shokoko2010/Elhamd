@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enhancedNotificationService } from '@/lib/enhanced-notification-service'
 import { getAuthUser } from '@/lib/auth-server'
-import { securityService } from '@/lib/security-service'
+import { SecurityService } from '@/lib/security-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown'
-    const rateLimitResult = await securityService.checkRateLimit(clientIP, 'notification_bulk')
+    const rateLimitResult = await security.checkRateLimit(clientIP, 'notification_bulk')
     
-    if (!rateLimitResult.allowed) {
+    if (!rateLimitResult) {
       return NextResponse.json(
         { error: 'Too many bulk notification requests. Please try again later.' },
         { status: 429 }
@@ -65,11 +65,11 @@ export async function POST(request: NextRequest) {
 
     // Sanitize input
     const sanitizedData = {
-      recipients: recipients.map((r: string) => securityService.sanitizeEmail(r)),
-      channel: securityService.sanitizeInput(channel),
-      templateId: securityService.sanitizeInput(templateId),
-      variables: securityService.sanitizeObject(variables),
-      priority: securityService.sanitizeInput(priority)
+      recipients: recipients.map((r: string) => security.sanitizeEmail(r)),
+      channel: security.sanitizeInput(channel),
+      templateId: security.sanitizeInput(templateId),
+      variables: security.sanitizeObject(variables),
+      priority: security.sanitizeInput(priority)
     }
 
     // Send bulk notification

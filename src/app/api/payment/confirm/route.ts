@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const paymentService = PaymentService.getInstance()
+    const paymentService = new PaymentService()
     const success = await paymentService.confirmPayment(paymentIntentId)
 
     if (!success) {

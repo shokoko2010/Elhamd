@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { enhancedPaymentService } from '@/lib/enhanced-payment-service'
 import { PaymentMethod } from '@prisma/client'
 import { getAuthUser } from '@/lib/auth-server'
-import { securityService } from '@/lib/security-service'
+import { SecurityService } from '@/lib/security-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown'
-    const rateLimitResult = await securityService.checkRateLimit(clientIP, 'payment_process')
+    const rateLimitResult = await SecurityService.checkRateLimit(clientIP, 'payment_process')
     
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -57,16 +57,16 @@ export async function POST(request: NextRequest) {
 
     // Sanitize input
     const sanitizedData = {
-      bookingId: securityService.sanitizeInput(bookingId),
-      bookingType: securityService.sanitizeInput(bookingType),
-      amount: securityService.sanitizeNumber(amount),
-      paymentMethod: securityService.sanitizeInput(paymentMethod),
-      customerEmail: securityService.sanitizeEmail(customerEmail),
-      customerPhone: customerPhone ? securityService.sanitizeInput(customerPhone) : undefined,
-      customerName: customerName ? securityService.sanitizeInput(customerName) : undefined,
-      description: description ? securityService.sanitizeInput(description) : undefined,
-      notes: notes ? securityService.sanitizeInput(notes) : undefined,
-      metadata: metadata ? securityService.sanitizeObject(metadata) : undefined
+      bookingId: SecurityService.sanitizeInput(bookingId),
+      bookingType: SecurityService.sanitizeInput(bookingType),
+      amount: SecurityService.sanitizeNumber(amount),
+      paymentMethod: SecurityService.sanitizeInput(paymentMethod),
+      customerEmail: SecurityService.sanitizeEmail(customerEmail),
+      customerPhone: customerPhone ? SecurityService.sanitizeInput(customerPhone) : undefined,
+      customerName: customerName ? SecurityService.sanitizeInput(customerName) : undefined,
+      description: description ? SecurityService.sanitizeInput(description) : undefined,
+      notes: notes ? SecurityService.sanitizeInput(notes) : undefined,
+      metadata: metadata ? SecurityService.sanitizeObject(metadata) : undefined
     }
 
     // Process payment

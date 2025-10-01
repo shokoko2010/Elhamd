@@ -326,7 +326,7 @@ function BranchPermissionsContent() {
     setTemplateForm({
       name: template.name,
       description: template.description || '',
-      role: template.role as "BRANCH_MANAGER",
+      role: template.role,
       permissions: [...template.permissions]
     })
     setIsEditTemplateModalOpen(true)
@@ -845,7 +845,7 @@ function BranchPermissionsContent() {
                 <Label htmlFor="templateRole">الدور</Label>
                 <Select 
                   value={templateForm.role} 
-                  onValueChange={(value) => setTemplateForm(prev => ({ ...prev, role: value as "BRANCH_MANAGER" }))}
+                  onValueChange={(value) => setTemplateForm(prev => ({ ...prev, role: value as UserRole }))}
                   disabled={selectedTemplate?.isSystem}
                 >
                   <SelectTrigger>

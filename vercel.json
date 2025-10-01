@@ -1,24 +1,15 @@
 {
   "framework": "nextjs",
-  "buildCommand": "node vercel-build-debug.js",
+  "buildCommand": "prisma generate && npm run build",
   "installCommand": "npm install",
   "env": {
     "NEXTAUTH_URL": "https://elhamd-steel.vercel.app",
-    "NODE_ENV": "production",
-    "NEXT_TELEMETRY_DISABLED": "1",
-    "DEBUG": "*",
-    "VERBOSITY": "verbose"
+    "NODE_ENV": "production"
   },
   "functions": {
     "app/api/**/*.{js,ts}": {
       "maxDuration": 30
     }
   },
-  "regions": ["iad1"],
-  "build": {
-    "env": {
-      "NEXT_BUILD_WORKERS": "1",
-      "NEXT_DEBUG": "1"
-    }
-  }
+  "regions": ["iad1"]
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enhancedNotificationService } from '@/lib/enhanced-notification-service'
 import { getAuthUser } from '@/lib/auth-server'
-import { securityService } from '@/lib/security-service'
+import { SecurityService } from '@/lib/security-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown'
-    const rateLimitResult = await securityService.checkRateLimit(clientIP, 'notification_send')
+    const rateLimitResult = await security.checkRateLimit(clientIP, 'notification_send')
     
-    if (!rateLimitResult.allowed) {
+    if (!rateLimitResult) {
       return NextResponse.json(
         { error: 'Too many notification requests. Please try again later.' },
         { status: 429 }
@@ -62,14 +62,14 @@ export async function POST(request: NextRequest) {
 
     // Sanitize input
     const sanitizedData = {
-      recipient: securityService.sanitizeEmail(recipient),
-      channel: securityService.sanitizeInput(channel),
-      templateId: securityService.sanitizeInput(templateId),
-      variables: securityService.sanitizeObject(variables),
-      type: type ? securityService.sanitizeInput(type) : 'CUSTOM',
-      priority: securityService.sanitizeInput(priority),
+      recipient: security.sanitizeEmail(recipient),
+      channel: security.sanitizeInput(channel),
+      templateId: security.sanitizeInput(templateId),
+      variables: security.sanitizeObject(variables),
+      type: type ? security.sanitizeInput(type) : 'CUSTOM',
+      priority: security.sanitizeInput(priority),
       scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
-      metadata: metadata ? securityService.sanitizeObject(metadata) : undefined
+      metadata: metadata ? security.sanitizeObject(metadata) : undefined
     }
 
     // Send notification

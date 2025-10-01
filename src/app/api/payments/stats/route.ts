@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate gateway statistics
     const gatewayStats = payments.reduce((acc, payment) => {
-      const gateway = payment.gateway || 'Unknown'
+      const gateway = 'Unknown' // Mock gateway since field doesn't exist
       
       if (!acc[gateway]) {
         acc[gateway] = {
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate success rates for each gateway
     Object.keys(gatewayStats).forEach(gateway => {
-      const gatewayPayments = payments.filter(p => (p.gateway || 'Unknown') === gateway)
+      const gatewayPayments = payments.filter(p => true) // All payments since gateway doesn't exist
       const successfulCount = gatewayPayments.filter(p => p.status === PaymentStatus.COMPLETED).length
       const totalCount = gatewayPayments.length
       

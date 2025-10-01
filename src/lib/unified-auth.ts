@@ -1,54 +1,62 @@
-import { NextRequest } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authOptions'
 import { db } from '@/lib/db'
+import { PermissionService } from './permissions'
 import { UserRole } from '@prisma/client'
 
-export interface AuthUser {
+// Re-export UserRole for convenience
+export { UserRole }
+
+export interface UnifiedUser {
   id: string
   email: string
   name?: string | null
   role: UserRole
   phone?: string | null
   branchId?: string | null
-  permissions?: string[]
+  permissions: string[]
+  isActive: boolean
+  emailVerified: boolean
+  lastLoginAt?: Date | null
+  createdAt: Date
+  updatedAt: Date
 }
 
-export async function getServerAuthSession(request?: NextRequest) {
+// Server-side authentication for API routes
+export async function getUnifiedUser(request: Request): Promise<UnifiedUser | null> {
   try {
-    return await getServerSession(authOptions)
-  } catch (error) {
-    console.error('Error getting server session:', error)
-    return null
-  }
-}
+    // Get token from cookie
+    const cookieHeader = request.headers.get('cookie')
+    if (!cookieHeader) return null
 
-export async function requireUnifiedAuth(request: NextRequest): Promise<AuthUser | null> {
-  try {
-    const session = await getServerAuthSession(request)
+    const tokenMatch = cookieHeader.match(/staff_token=([^;]+)/)
+    if (!tokenMatch) return null
+
+    const token = tokenMatch[1]
     
-    if (!session?.user?.id) {
-      return null
-    }
+    // Decode token to get user ID
+    const decoded = Buffer.from(token, 'base64').toString('utf-8')
+    const [userId, timestamp] = decoded.split(':')
+    
+    if (!userId || !timestamp) return null
 
-    // Get fresh user data from database
+    // Check if token is not too old (24 hours)
+    const tokenTime = parseInt(timestamp)
+    const now = Date.now()
+    const maxAge = 60 * 60 * 24 * 1000 // 24 hours
+    
+    if (now - tokenTime > maxAge) return null
+
+    // Get user from database with full details
     const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        phone: true,
-        branchId: true,
-        isActive: true,
-        customPermissions: true
+      where: { id: userId },
+      include: {
+        roleTemplate: true
       }
     })
 
-    if (!user || !user.isActive) {
-      return null
-    }
+    if (!user || !user.isActive) return null
+
+    // Get user permissions
+    const permissions = await PermissionService.getUserPermissions(user.id)
 
     return {
       id: user.id,
@@ -57,38 +65,131 @@ export async function requireUnifiedAuth(request: NextRequest): Promise<AuthUser
       role: user.role,
       phone: user.phone,
       branchId: user.branchId,
-      permissions: user.customPermissions || []
+      permissions,
+      isActive: user.isActive,
+      emailVerified: user.emailVerified,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
     }
   } catch (error) {
-    console.error('Error in requireUnifiedAuth:', error)
+    console.error('Unified auth error:', error)
     return null
   }
 }
 
-export async function requireAuthWithRole(request: NextRequest, requiredRoles: UserRole[]): Promise<AuthUser | null> {
-  const user = await requireUnifiedAuth(request)
+export async function requireUnifiedAuth(request: Request): Promise<UnifiedUser> {
+  const user = await getUnifiedUser(request)
   
-  if (!user || !requiredRoles.includes(user.role)) {
-    return null
+  if (!user) {
+    throw new Error('Authentication required')
   }
   
   return user
 }
 
-export async function authorize(request: NextRequest, options: { roles?: UserRole[] } = {}) {
-  if (options.roles) {
-    return await requireAuthWithRole(request, options.roles)
+// Role-based authorization helpers
+export function requireRole(user: UnifiedUser, allowedRoles: UserRole[]): UnifiedUser {
+  if (!allowedRoles.includes(user.role)) {
+    throw new Error('Insufficient permissions')
   }
-  return await requireUnifiedAuth(request)
+  return user
 }
 
-export function createUnauthorizedResponse(message: string = 'غير مصرح بالوصول') {
-  return Response.json({ error: message }, { status: 401 })
+export function requireAnyRole(user: UnifiedUser, allowedRoles: UserRole[]): UnifiedUser {
+  if (!allowedRoles.includes(user.role)) {
+    throw new Error('Insufficient permissions')
+  }
+  return user
 }
 
-export function createForbiddenResponse(message: string = 'ممنوع الوصول') {
-  return Response.json({ error: message }, { status: 403 })
+export function requirePermission(user: UnifiedUser, permission: string): UnifiedUser {
+  if (!user.permissions.includes(permission)) {
+    throw new Error('Insufficient permissions')
+  }
+  return user
 }
 
-// Re-export UserRole for convenience
-export { UserRole }
+export function requireAnyPermission(user: UnifiedUser, permissions: string[]): UnifiedUser {
+  if (!permissions.some(permission => user.permissions.includes(permission))) {
+    throw new Error('Insufficient permissions')
+  }
+  return user
+}
+
+// Common role checkers
+export const isAdmin = (user: UnifiedUser): boolean => 
+  ['SUPER_ADMIN', 'ADMIN'].includes(user.role)
+
+export const isBranchManager = (user: UnifiedUser): boolean => 
+  ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER'].includes(user.role)
+
+export const isStaff = (user: UnifiedUser): boolean => 
+  ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'STAFF'].includes(user.role)
+
+export const isCustomer = (user: UnifiedUser): boolean => 
+  user.role === 'CUSTOMER'
+
+// Authorization middleware for API routes
+export async function authorize(request: Request, options: {
+  roles?: UserRole[]
+  permissions?: string[]
+  requireAll?: boolean
+} = {}): Promise<UnifiedUser> {
+  const user = await requireUnifiedAuth(request)
+  
+  if (options.roles && options.roles.length > 0) {
+    if (options.requireAll) {
+      if (!options.roles.every(role => role === user.role)) {
+        throw new Error('Insufficient permissions')
+      }
+    } else {
+      if (!options.roles.includes(user.role)) {
+        throw new Error('Insufficient permissions')
+      }
+    }
+  }
+  
+  if (options.permissions && options.permissions.length > 0) {
+    if (options.requireAll) {
+      if (!options.permissions.every(permission => user.permissions.includes(permission))) {
+        throw new Error('Insufficient permissions')
+      }
+    } else {
+      if (!options.permissions.some(permission => user.permissions.includes(permission))) {
+        throw new Error('Insufficient permissions')
+      }
+    }
+  }
+  
+  return user
+}
+
+// Create authentication response helpers
+export function createAuthResponse(user: UnifiedUser, token?: string) {
+  const responseToken = token || Buffer.from(`${user.id}:${Date.now()}`).toString('base64')
+  
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      phone: user.phone,
+      branchId: user.branchId,
+      permissions: user.permissions
+    },
+    token: responseToken
+  }
+}
+
+// Create authentication handler for API routes
+export function createAuthHandler(options: {
+  roles?: UserRole[]
+  permissions?: string[]
+  requireAll?: boolean
+} = {}) {
+  return async (request: Request): Promise<UnifiedUser> => {
+    return await authorize(request, options)
+  }
+}

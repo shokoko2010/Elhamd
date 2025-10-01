@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireUnifiedAuth, createUnauthorizedResponse } from '@/lib/unified-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 interface BudgetAlert {
   id: string;
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireUnifiedAuth(request);
     if (!user) {
-      return createUnauthorizedResponse();
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -160,8 +160,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role)) {
-      return createUnauthorizedResponse();
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
     const body = await request.json();

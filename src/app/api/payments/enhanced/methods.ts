@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enhancedPaymentService } from '@/lib/enhanced-payment-service'
 import { getAuthUser } from '@/lib/auth-server'
-import { securityService } from '@/lib/security-service'
+import { SecurityService } from '@/lib/security-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     // Rate limiting
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown'
-    const rateLimitResult = await securityService.checkRateLimit(clientIP, 'payment_methods')
+    const rateLimitResult = await SecurityService.checkRateLimit(clientIP, 'payment_methods')
     
     if (!rateLimitResult.allowed) {
       return NextResponse.json(

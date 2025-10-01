@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireUnifiedAuth, createUnauthorizedResponse } from '@/lib/unified-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: NextRequest,
@@ -13,11 +13,8 @@ export async function GET(
   try {
     const user = await requireUnifiedAuth(request);
     if (!user) {
-      return createUnauthorizedResponse();
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
-
-    const { params } = context;
-    const { id } = await params;
 
     const budget = await db.branchBudget.findUnique({
       where: { id },
@@ -66,12 +63,9 @@ export async function PUT(
 ) {
   try {
     const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role)) {
-      return createUnauthorizedResponse();
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
-
-    const { params } = context;
-    const { id } = await params;
 
     const body = await request.json();
     const {
@@ -91,7 +85,7 @@ export async function PUT(
     }
 
     // التحقق من صلاحية المستخدم في الفرع
-    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+    if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
       const userPermission = await db.branchPermission.findFirst({
         where: {
           userId: user.id,
@@ -242,12 +236,9 @@ export async function DELETE(
 ) {
   try {
     const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
-      return createUnauthorizedResponse();
+    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
-
-    const { params } = context;
-    const { id } = await params;
 
     // التحقق من وجود الميزانية
     const budget = await db.branchBudget.findUnique({

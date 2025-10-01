@@ -13,10 +13,7 @@ export async function PUT(
   try {
     const user = await requireUnifiedAuth(request)
     
-    const { params } = context;
-    const { id } = await params;
-    
-    if (!user?.id) {
+    if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -52,7 +49,7 @@ export async function PUT(
           message: `Your test drive booking for ${new Date(booking.date).toLocaleDateString()} has been cancelled.`,
           status: 'PENDING',
           channel: 'EMAIL',
-          recipient: user.email
+          recipient: session.user.email!
         }
       })
 
@@ -88,7 +85,7 @@ export async function PUT(
           message: `Your service booking for ${new Date(booking.date).toLocaleDateString()} has been cancelled.`,
           status: 'PENDING',
           channel: 'EMAIL',
-          recipient: user.email
+          recipient: session.user.email!
         }
       })
 

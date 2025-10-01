@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { enhancedPaymentService } from '@/lib/enhanced-payment-service'
 import { getAuthUser } from '@/lib/auth-server'
-import { securityService } from '@/lib/security-service'
+import { SecurityService } from '@/lib/security-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown'
-    const rateLimitResult = await securityService.checkRateLimit(clientIP, 'payment_verify')
+    const rateLimitResult = await SecurityService.checkRateLimit(clientIP, 'payment_verify')
     
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Sanitize input
-    const sanitizedTransactionId = securityService.sanitizeInput(transactionId)
+    const sanitizedTransactionId = SecurityService.sanitizeInput(transactionId)
 
     // Verify payment
     const isValid = await enhancedPaymentService.verifyPayment(sanitizedTransactionId)
