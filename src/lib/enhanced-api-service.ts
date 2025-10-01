@@ -180,8 +180,8 @@ class EnhancedApiService {
         lastError = error
         
         // Don't retry on abort or certain status codes
-        if (error.name === 'AbortError' || 
-            (error.response && [400, 401, 403, 404].includes(error.response.status))) {
+        if ((error as any).name === 'AbortError' || 
+            ((error as any).response && [400, 401, 403, 404].includes((error as any).response.status))) {
           break
         }
 
@@ -216,7 +216,7 @@ class EnhancedApiService {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        const error = new Error(`HTTP ${response.status}: ${response.statusText}`)
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`) as any
         error.response = response
         throw error
       }

@@ -101,12 +101,7 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
       where: { id: invoiceId },
       include: {
         customer: true,
-        vehicle: true,
-        items: {
-          include: {
-            vehicle: true
-          }
-        },
+        items: true,
         branch: true
       }
     })
@@ -128,13 +123,10 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
           <p><strong>Date:</strong> ${invoice.createdAt.toLocaleDateString()}</p>
           <p><strong>Branch:</strong> ${invoice.branch.name}</p>
           
-          <h3>Vehicle Information</h3>
-          <p><strong>Vehicle:</strong> ${invoice.vehicle.make} ${invoice.vehicle.model} (${invoice.vehicle.year})</p>
-          
           <h3>Invoice Items</h3>
           <ul>
             ${invoice.items.map(item => 
-              `<li>${item.vehicle.make} ${item.vehicle.model}: $${item.price}</li>`
+              `<li>${item.description}: $${item.totalPrice}</li>`
             ).join('')}
           </ul>
           
@@ -142,7 +134,7 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
           <p><strong>Total Amount:</strong> $${invoice.totalAmount}</p>
           <p><strong>Paid Amount:</strong> $${invoice.paidAmount}</p>
           <p><strong>Due Amount:</strong> $${invoice.totalAmount - invoice.paidAmount}</p>
-          <p><strong>Payment Status:</strong> ${invoice.paymentStatus}</p>
+          <p><strong>Payment Status:</strong> ${invoice.status}</p>
           
           <p>Please make payment at your earliest convenience.</p>
           
@@ -152,7 +144,7 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
     `
 
     await sendEmail({
-      to: invoice.customer.email,
+      to: invoice.customer.email || '',
       subject,
       html
     })
