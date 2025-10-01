@@ -18,6 +18,27 @@ vercel whoami || {
     vercel login
 }
 
+# Check if environment variables are set
+echo "🔍 Checking environment variables..."
+if [ -z "$NEXTAUTH_URL" ] || [ -z "$NEXTAUTH_SECRET" ] || [ -z "$DATABASE_URL" ]; then
+    echo "⚠️  Warning: Environment variables not set!"
+    echo "Please set the following environment variables:"
+    echo "- NEXTAUTH_URL (e.g., https://your-app.vercel.app)"
+    echo "- NEXTAUTH_SECRET (run: node generate-secret.js)"
+    echo "- DATABASE_URL"
+    echo ""
+    echo "You can set them using:"
+    echo "vercel env add NEXTAUTH_URL"
+    echo "vercel env add NEXTAUTH_SECRET"
+    echo "vercel env add DATABASE_URL"
+    echo ""
+    read -p "Continue anyway? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
 # Build the project to ensure it works
 echo "🔨 Building project..."
 npm run build
@@ -30,6 +51,7 @@ if [ $? -eq 0 ]; then
     vercel --prod
     
     echo "🎉 Deployment complete!"
+    echo "📝 Don't forget to set environment variables in your Vercel dashboard!"
 else
     echo "❌ Build failed!"
     exit 1
