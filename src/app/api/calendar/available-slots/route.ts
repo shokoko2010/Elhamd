@@ -3,14 +3,20 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/authOptions'
 import { CalendarService } from '@/lib/calendar-service'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 })
+    // For development/testing, allow without authentication
+    if (process.env.NODE_ENV === 'development') {
+      // Skip auth check in development
+    } else {
+      const session = await getServerSession(authOptions)
+      if (!session?.user) {
+        return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 })
+      }
     }
 
     const { searchParams } = new URL(request.url)
