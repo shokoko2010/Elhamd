@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { CalendarService } from '@/lib/calendar-service'
 import { z } from 'zod'
 
@@ -24,7 +24,7 @@ const calendarSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const user = await getAuthUser()
+    const user = await requireUnifiedAuth(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const user = await getAuthUser()
+    const user = await requireUnifiedAuth(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { CalendarService } from '@/lib/calendar-service'
 
 export async function GET(request: NextRequest) {
