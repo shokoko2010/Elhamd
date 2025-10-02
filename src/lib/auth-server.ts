@@ -16,30 +16,35 @@ export interface AuthUser {
 }
 
 export async function getAuthUser(): Promise<AuthUser | null> {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user) {
-    return null
-  }
-
-  let permissions: Permission[] = []
-  
-  // Try to get permissions, but don't fail if they don't exist yet
   try {
-    permissions = await PermissionService.getUserPermissions(session.user.id)
-  } catch (error) {
-    console.warn('Could not fetch user permissions, they may not be initialized yet')
-    permissions = []
-  }
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return null
+    }
 
-  return {
-    id: session.user.id,
-    email: session.user.email!,
-    name: session.user.name,
-    role: session.user.role,
-    phone: session.user.phone,
-    branchId: session.user.branchId,
-    permissions
+    let permissions: Permission[] = []
+    
+    // Try to get permissions, but don't fail if they don't exist yet
+    try {
+      permissions = await PermissionService.getUserPermissions(session.user.id)
+    } catch (error) {
+      console.warn('Could not fetch user permissions, they may not be initialized yet')
+      permissions = []
+    }
+
+    return {
+      id: session.user.id,
+      email: session.user.email!,
+      name: session.user.name,
+      role: session.user.role,
+      phone: session.user.phone,
+      branchId: session.user.branchId,
+      permissions
+    }
+  } catch (error) {
+    console.error('Error getting auth user:', error)
+    return null
   }
 }
 

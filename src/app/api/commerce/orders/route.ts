@@ -8,8 +8,8 @@ import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
-    if (!user) {
+    const session = await requireUnifiedAuth(request)
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -87,8 +87,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
-    if (!user) {
+    const session = await requireUnifiedAuth(request)
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         billingAddress: billingAddress || shippingAddress,
         paymentMethod,
         notes,
-        createdBy: user.id,
+        createdBy: session.user.id,
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,

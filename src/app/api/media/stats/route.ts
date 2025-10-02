@@ -1,40 +1,60 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
-import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
-import { EnhancedMediaService } from '@/lib/enhanced-media-service'
-
-// Initialize media service
-const mediaService = EnhancedMediaService.getInstance()
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { auth } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const user = await getAuthUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check if user has permission to view media stats
-    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get media statistics
-    const stats = await mediaService.getMediaStats()
-    
-    return NextResponse.json({
-      success: true,
-      data: stats
-    })
+    const totalMedia = await db.media.count();
+    const totalSize = await db.media.aggregate({
+      _sum: {
+        fileSize: true
+      }
+    });
 
+    const mediaByType = await db.media.groupBy({
+      by: ['fileType'],
+      _count: {
+        id: true
+      }
+    });
+
+    const recentMedia = await db.media.findMany({
+      take: 5,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      select: {
+        id: true,
+        filename: true,
+        originalName: true,
+        fileType: true,
+        fileSize: true,
+        createdAt: true
+      }
+    });
+
+    const stats = {
+      totalMedia,
+      totalSize: totalSize._sum.fileSize || 0,
+      mediaByType: mediaByType.reduce((acc, item) => {
+        acc[item.fileType] = item._count.id;
+        return acc;
+      }, {} as Record<string, number>),
+      recentMedia
+    };
+
+    return NextResponse.json(stats);
   } catch (error) {
-    console.error('Error fetching media stats:', error)
+    console.error('Error fetching media stats:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch media stats' },
+      { error: 'Failed to fetch media statistics' },
       { status: 500 }
-    )
+    );
   }
 }

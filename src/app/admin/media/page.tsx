@@ -112,18 +112,32 @@ function MediaContent() {
     setLoading(true)
     setError('')
     try {
+      console.log('🔄 Loading media data...')
+      
       // Fetch media files from API using direct fetch - get all files without limit
-      const response = await fetch('/api/media?limit=1000', {
+      const response = await fetch('/api/media-simple', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Include cookies for authentication
       })
+      
+      console.log('📡 Media API response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch media')
+        if (response.status === 401) {
+          setError('يرجى تسجيل الدخول للوصول إلى صفحة الوسائط')
+        } else if (response.status === 403) {
+          setError('ليس لديك صلاحية للوصول إلى صفحة الوسائط')
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        return
       }
+      
       const data = await response.json()
+      console.log('📊 Media API response:', data)
       
       // Ensure data structure is valid
       if (data && data.data && data.data.files && Array.isArray(data.data.files)) {
@@ -150,36 +164,51 @@ function MediaContent() {
           isPublic: file.isPublic,
           isFeatured: file.isFeatured
         }))
+        console.log(`✅ Mapped ${mappedFiles.length} media files`)
         setMediaFiles(mappedFiles)
       } else {
+        console.warn('⚠️ Invalid media data structure:', data)
         throw new Error('Invalid media data structure')
       }
 
       // Fetch media stats using direct fetch
-      const statsResponse = await fetch('/api/media/stats', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      })
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        // Update folders based on categories
-        if (statsData && statsData.data && statsData.data.byCategory && typeof statsData.data.byCategory === 'object' && statsData.data.byCategory !== null) {
-          const categoryFolders = Object.entries(statsData.data.byCategory).map(([category, info]: [string, any]) => ({
-            id: category,
-            name: categories.find(c => c.value === category)?.label || category,
-            path: `/${category}`,
-            fileCount: info.count || 0,
-            createdAt: new Date().toISOString()
-          }))
-          setFolders(categoryFolders)
+      try {
+        const statsResponse = await fetch('/api/media/stats', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        })
+        
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json()
+          console.log('📈 Stats API response:', statsData)
+          
+          // Update folders based on categories
+          if (statsData && statsData.data && statsData.data.byCategory && typeof statsData.data.byCategory === 'object' && statsData.data.byCategory !== null) {
+            const categoryFolders = Object.entries(statsData.data.byCategory).map(([category, info]: [string, any]) => ({
+              id: category,
+              name: categories.find(c => c.value === category)?.label || category,
+              path: `/${category}`,
+              fileCount: info.count || 0,
+              createdAt: new Date().toISOString()
+            }))
+            console.log(`📁 Created ${categoryFolders.length} category folders`)
+            setFolders(categoryFolders)
+          }
+        } else {
+          console.warn('⚠️ Failed to fetch stats:', statsResponse.status)
         }
+      } catch (statsError) {
+        console.warn('⚠️ Stats fetch error:', statsError)
+        // Continue without stats - not critical
       }
+      
     } catch (error) {
-      console.error('Error loading media data:', error)
-      setError('فشل في تحميل بيانات الوسائط')
+      console.error('❌ Error loading media data:', error)
+      const errorMessage = error instanceof Error ? error.message : 'فشل في تحميل بيانات الوسائط'
+      setError(errorMessage)
       // Don't use mock data - show empty state instead
       setMediaFiles([])
       setFolders([])
@@ -246,7 +275,7 @@ function MediaContent() {
           optimizeFormats: ['webp']
         }))
 
-        const response = await fetch('/api/media', {
+        const response = await fetch('/api/media-simple', {
           method: 'POST',
           headers: {
             // Don't set Content-Type for FormData, let the browser set it with boundary
@@ -315,7 +344,7 @@ function MediaContent() {
     if (!editingFile) return
 
     try {
-      const response = await fetch(`/api/media?id=${editingFile.id}`, {
+      const response = await fetch(`/api/media-simple?id=${editingFile.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -362,7 +391,7 @@ function MediaContent() {
 
     try {
       const deletePromises = selectedFiles.map(fileId => 
-        fetch(`/api/media?id=${fileId}`, { 
+        fetch(`/api/media-simple?id=${fileId}`, { 
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
