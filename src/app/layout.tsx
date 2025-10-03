@@ -5,8 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/components/auth-provider";
 import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
 import { HomepageSEO } from "@/components/seo/SEO";
 
 const geistSans = Geist({

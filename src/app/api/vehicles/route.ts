@@ -53,13 +53,15 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           images: {
-            where: {
-              isPrimary: true
+            orderBy: {
+              order: 'asc'
             },
             select: {
               id: true,
               imageUrl: true,
-              altText: true
+              altText: true,
+              isPrimary: true,
+              order: true
             }
           }
         },

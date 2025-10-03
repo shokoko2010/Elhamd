@@ -42,6 +42,7 @@ export interface RecentVehicle {
   category: string
   createdAt: Date
   featured: boolean
+  images?: Array<{ id: string; url: string; isPrimary: boolean }>
 }
 
 export interface AnalyticsData {

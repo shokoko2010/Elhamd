@@ -18,13 +18,24 @@ export default function WebSocketTest() {
       setMessages(prev => [...prev, 'Attempting to connect to WebSocket...'])
 
       try {
-        const socketInstance = io({
+        // Determine the protocol and host based on current environment
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+        const host = window.location.host
+        const socketUrl = `${protocol}//${host}`
+
+        const socketInstance = io(socketUrl, {
           path: '/api/socketio',
           transports: ['websocket', 'polling'],
           timeout: 5000,
           reconnection: true,
-          reconnectionAttempts: 3,
+          reconnectionAttempts: 2,
           reconnectionDelay: 1000,
+          // Force WebSocket in production for better performance
+          ...(process.env.NODE_ENV === 'production' && {
+            upgrade: true,
+            rememberUpgrade: true,
+            transports: ['websocket', 'polling']
+          })
         })
 
         socketInstance.on('connect', () => {
@@ -42,6 +53,7 @@ export default function WebSocketTest() {
           console.error('WebSocket connection error:', error)
           setConnectionStatus('error')
           setMessages(prev => [...prev, `❌ Connection error: ${error.message}`])
+          setMessages(prev => [...prev, 'ℹ️ Note: WebSocket functionality requires server configuration'])
         })
 
         socketInstance.on('disconnect', (reason) => {
@@ -73,6 +85,7 @@ export default function WebSocketTest() {
         console.error('Failed to create socket connection:', error)
         setConnectionStatus('error')
         setMessages(prev => [...prev, `❌ Failed to create socket: ${error instanceof Error ? error.message : 'Unknown error'}`])
+        setMessages(prev => [...prev, 'ℹ️ Note: WebSocket functionality requires server configuration'])
       }
     }
 
@@ -107,7 +120,11 @@ export default function WebSocketTest() {
     
     // Force reconnection by re-running the effect
     setTimeout(() => {
-      const socketInstance = io({
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+      const host = window.location.host
+      const socketUrl = `${protocol}//${host}`
+      
+      const socketInstance = io(socketUrl, {
         path: '/api/socketio',
         transports: ['websocket', 'polling'],
         timeout: 5000,

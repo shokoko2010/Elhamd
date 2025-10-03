@@ -22,7 +22,11 @@ const API_URLS = [
   '/api/sliders',
   '/api/about/stats',
   '/api/about/values',
-  '/api/about/features'
+  '/api/about/features',
+  '/api/calendar/data',
+  '/api/calendar/available-slots',
+  '/api/admin/dashboard-data',
+  '/api/placeholder'
 ];
 
 // Cache strategies
@@ -134,7 +138,14 @@ async function cacheFirstStrategy(request, cacheName = STATIC_CACHE_NAME) {
       request.url.startsWith('moz-extension://') ||
       request.url.startsWith('safari-web-extension://') ||
       request.url.startsWith('edge://') ||
-      request.url.startsWith('chrome://')) {
+      request.url.startsWith('chrome://') ||
+      request.url.startsWith('data:')) {
+    return fetch(request);
+  }
+  
+  // Skip caching for external domains in production to avoid CORS issues
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
     return fetch(request);
   }
   
@@ -148,12 +159,14 @@ async function cacheFirstStrategy(request, cacheName = STATIC_CACHE_NAME) {
     if (networkResponse.ok) {
       try {
         const cache = await caches.open(cacheName);
-        // Only cache if the URL is valid (not chrome-extension)
+        // Only cache if the URL is valid and from same origin
         if (!request.url.startsWith('chrome-extension://') && 
             !request.url.startsWith('moz-extension://') &&
             !request.url.startsWith('safari-web-extension://') &&
             !request.url.startsWith('edge://') &&
-            !request.url.startsWith('chrome://')) {
+            !request.url.startsWith('chrome://') &&
+            !request.url.startsWith('data:') &&
+            url.origin === self.location.origin) {
           await cache.put(request, networkResponse.clone());
         }
       } catch (error) {
@@ -163,6 +176,14 @@ async function cacheFirstStrategy(request, cacheName = STATIC_CACHE_NAME) {
     return networkResponse;
   } catch (error) {
     console.error('Cache First Strategy failed:', error);
+    // For external images, try to fetch without caching
+    if (url.origin !== self.location.origin && request.destination === 'image') {
+      try {
+        return await fetch(request);
+      } catch (fetchError) {
+        console.error('Failed to fetch external image:', fetchError);
+      }
+    }
     return getOfflineResponse();
   }
 }
@@ -174,7 +195,14 @@ async function networkFirstStrategy(request, cacheName = DYNAMIC_CACHE_NAME) {
       request.url.startsWith('moz-extension://') ||
       request.url.startsWith('safari-web-extension://') ||
       request.url.startsWith('edge://') ||
-      request.url.startsWith('chrome://')) {
+      request.url.startsWith('chrome://') ||
+      request.url.startsWith('data:')) {
+    return fetch(request);
+  }
+  
+  // Skip caching for external domains in production to avoid CORS issues
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
     return fetch(request);
   }
   
@@ -183,12 +211,14 @@ async function networkFirstStrategy(request, cacheName = DYNAMIC_CACHE_NAME) {
     if (networkResponse.ok) {
       try {
         const cache = await caches.open(cacheName);
-        // Only cache if the URL is valid (not chrome-extension)
+        // Only cache if the URL is valid and from same origin
         if (!request.url.startsWith('chrome-extension://') && 
             !request.url.startsWith('moz-extension://') &&
             !request.url.startsWith('safari-web-extension://') &&
             !request.url.startsWith('edge://') &&
-            !request.url.startsWith('chrome://')) {
+            !request.url.startsWith('chrome://') &&
+            !request.url.startsWith('data:') &&
+            url.origin === self.location.origin) {
           await cache.put(request, networkResponse.clone());
         }
       } catch (error) {
@@ -213,7 +243,14 @@ async function staleWhileRevalidateStrategy(request, cacheName = STATIC_CACHE_NA
       request.url.startsWith('moz-extension://') ||
       request.url.startsWith('safari-web-extension://') ||
       request.url.startsWith('edge://') ||
-      request.url.startsWith('chrome://')) {
+      request.url.startsWith('chrome://') ||
+      request.url.startsWith('data:')) {
+    return fetch(request);
+  }
+  
+  // Skip caching for external domains in production to avoid CORS issues
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
     return fetch(request);
   }
   
@@ -223,12 +260,14 @@ async function staleWhileRevalidateStrategy(request, cacheName = STATIC_CACHE_NA
     if (networkResponse.ok) {
       try {
         const cache = await caches.open(cacheName);
-        // Only cache if the URL is valid (not chrome-extension)
+        // Only cache if the URL is valid and from same origin
         if (!request.url.startsWith('chrome-extension://') && 
             !request.url.startsWith('moz-extension://') &&
             !request.url.startsWith('safari-web-extension://') &&
             !request.url.startsWith('edge://') &&
-            !request.url.startsWith('chrome://')) {
+            !request.url.startsWith('chrome://') &&
+            !request.url.startsWith('data:') &&
+            url.origin === self.location.origin) {
           await cache.put(request, networkResponse.clone());
         }
       } catch (error) {

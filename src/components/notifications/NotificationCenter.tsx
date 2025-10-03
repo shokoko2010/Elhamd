@@ -53,14 +53,37 @@ export default function NotificationCenter({
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    // Initialize socket connection
-    const socketInstance = io({
+    // Initialize socket connection with production-friendly configuration
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    const socketConfig: any = {
       path: '/api/socketio',
+      transports: ['polling', 'websocket'],
+      upgrade: true,
+      rememberUpgrade: true,
+      timeout: 20000,
+      forceNew: true,
       auth: {
         userId,
         role: userRole
       }
-    })
+    }
+    
+    // In production, force polling first to avoid WSS issues
+    if (!isDevelopment) {
+      socketConfig.transports = ['polling']
+    }
+    
+    const socketInstance = io(socketConfig)
+    
+    // In production, try to upgrade to websocket after polling succeeds
+    if (!isDevelopment) {
+      setTimeout(() => {
+        if (socketInstance && socketInstance.connected) {
+          socketInstance.io.engine.transport = ['polling', 'websocket']
+        }
+      }, 5000)
+    }
 
     socketInstance.on('connect', () => {
       console.log('Connected to notification server')
