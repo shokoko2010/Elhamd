@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 
@@ -35,7 +35,7 @@ const updateVehicleSchema = createVehicleSchema.partial().extend({
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await requireUnifiedAuth(request)
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await requireUnifiedAuth(request)
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }

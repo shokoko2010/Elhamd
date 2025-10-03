@@ -129,6 +129,15 @@ self.addEventListener('fetch', (event) => {
 
 // Cache First Strategy
 async function cacheFirstStrategy(request, cacheName = STATIC_CACHE_NAME) {
+  // Skip caching for chrome-extension and other unsupported schemes
+  if (request.url.startsWith('chrome-extension://') || 
+      request.url.startsWith('moz-extension://') ||
+      request.url.startsWith('safari-web-extension://') ||
+      request.url.startsWith('edge://') ||
+      request.url.startsWith('chrome://')) {
+    return fetch(request);
+  }
+  
   try {
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
@@ -137,8 +146,19 @@ async function cacheFirstStrategy(request, cacheName = STATIC_CACHE_NAME) {
     
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      try {
+        const cache = await caches.open(cacheName);
+        // Only cache if the URL is valid (not chrome-extension)
+        if (!request.url.startsWith('chrome-extension://') && 
+            !request.url.startsWith('moz-extension://') &&
+            !request.url.startsWith('safari-web-extension://') &&
+            !request.url.startsWith('edge://') &&
+            !request.url.startsWith('chrome://')) {
+          await cache.put(request, networkResponse.clone());
+        }
+      } catch (error) {
+        console.warn('Failed to cache response:', error);
+      }
     }
     return networkResponse;
   } catch (error) {
@@ -149,11 +169,31 @@ async function cacheFirstStrategy(request, cacheName = STATIC_CACHE_NAME) {
 
 // Network First Strategy  
 async function networkFirstStrategy(request, cacheName = DYNAMIC_CACHE_NAME) {
+  // Skip caching for chrome-extension and other unsupported schemes
+  if (request.url.startsWith('chrome-extension://') || 
+      request.url.startsWith('moz-extension://') ||
+      request.url.startsWith('safari-web-extension://') ||
+      request.url.startsWith('edge://') ||
+      request.url.startsWith('chrome://')) {
+    return fetch(request);
+  }
+  
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      try {
+        const cache = await caches.open(cacheName);
+        // Only cache if the URL is valid (not chrome-extension)
+        if (!request.url.startsWith('chrome-extension://') && 
+            !request.url.startsWith('moz-extension://') &&
+            !request.url.startsWith('safari-web-extension://') &&
+            !request.url.startsWith('edge://') &&
+            !request.url.startsWith('chrome://')) {
+          await cache.put(request, networkResponse.clone());
+        }
+      } catch (error) {
+        console.warn('Failed to cache response:', error);
+      }
     }
     return networkResponse;
   } catch (error) {
@@ -168,14 +208,37 @@ async function networkFirstStrategy(request, cacheName = DYNAMIC_CACHE_NAME) {
 
 // Stale While Revalidate Strategy
 async function staleWhileRevalidateStrategy(request, cacheName = STATIC_CACHE_NAME) {
+  // Skip caching for chrome-extension and other unsupported schemes
+  if (request.url.startsWith('chrome-extension://') || 
+      request.url.startsWith('moz-extension://') ||
+      request.url.startsWith('safari-web-extension://') ||
+      request.url.startsWith('edge://') ||
+      request.url.startsWith('chrome://')) {
+    return fetch(request);
+  }
+  
   const cachedResponse = await caches.match(request);
   
   const fetchPromise = fetch(request).then(async (networkResponse) => {
     if (networkResponse.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, networkResponse.clone());
+      try {
+        const cache = await caches.open(cacheName);
+        // Only cache if the URL is valid (not chrome-extension)
+        if (!request.url.startsWith('chrome-extension://') && 
+            !request.url.startsWith('moz-extension://') &&
+            !request.url.startsWith('safari-web-extension://') &&
+            !request.url.startsWith('edge://') &&
+            !request.url.startsWith('chrome://')) {
+          await cache.put(request, networkResponse.clone());
+        }
+      } catch (error) {
+        console.warn('Failed to cache response:', error);
+      }
     }
     return networkResponse;
+  }).catch(error => {
+    console.warn('Fetch failed in stale-while-revalidate:', error);
+    throw error;
   });
   
   return cachedResponse || fetchPromise;

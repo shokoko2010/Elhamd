@@ -25,6 +25,7 @@ import {
   MobileNav
 } from '@/components/ui/enhanced-mobile-optimization'
 import { EnhancedLazyImage } from '@/components/ui/enhanced-lazy-loading'
+import { VehicleImage } from '@/components/ui/VehicleImage'
 
 interface Vehicle {
   id: string
@@ -525,22 +526,12 @@ export default function Home() {
                   >
                     <Card className="overflow-hidden group h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-white rounded-2xl">
                       <div className="relative h-56 md:h-64 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-                        <img
-                          src={vehicle.images && vehicle.images.length > 0 
-                            ? vehicle.images[0].imageUrl 
-                            : `/api/placeholder/400/300?text=${encodeURIComponent(vehicle.make + ' ' + vehicle.model)}`}
-                          alt={`${vehicle.make} ${vehicle.model}`}
+                        <VehicleImage
+                          vehicle={vehicle}
+                          className="w-full h-full group-hover:scale-110 transition-transform duration-500"
                           width={400}
                           height={300}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement
-                            if (!target.dataset.triedFallback) {
-                              target.dataset.triedFallback = 'true'
-                              // Try with placeholder if original fails
-                              target.src = `/api/placeholder/400/300?text=${encodeURIComponent(vehicle.make + ' ' + vehicle.model)}`
-                            }
-                          }}
+                          priority={false}
                         />
                         {/* Overlay Gradient */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>

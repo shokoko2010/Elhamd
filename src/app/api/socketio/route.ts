@@ -21,7 +21,11 @@ const SocketHandler = (req: NextRequest, res: any) => {
       cors: {
         origin: "*",
         methods: ["GET", "POST"]
-      }
+      },
+      transports: ['polling', 'websocket'], // Try polling first for better compatibility
+      allowEIO3: true,
+      pingTimeout: 60000,
+      pingInterval: 25000
     })
     res.socket.server.io = io
     setupSocket(io)

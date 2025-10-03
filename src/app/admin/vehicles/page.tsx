@@ -39,6 +39,7 @@ import {
   Phone,
   Mail
 } from 'lucide-react'
+import { VehicleImage } from '@/components/ui/VehicleImage'
 
 interface Vehicle {
   id: string
@@ -737,10 +738,11 @@ function VehiclesContent() {
                     />
                     
                     {vehicle.images.length > 0 ? (
-                      <img
-                        src={vehicle.images[0].imageUrl}
-                        alt={vehicle.images[0].altText || `${vehicle.make} ${vehicle.model}`}
+                      <VehicleImage
+                        vehicle={vehicle}
                         className="w-full h-48 object-cover"
+                        width={300}
+                        height={200}
                       />
                     ) : (
                       <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
@@ -847,10 +849,11 @@ function VehiclesContent() {
                       />
                       
                       {vehicle.images.length > 0 ? (
-                        <img
-                          src={vehicle.images[0].imageUrl}
-                          alt={vehicle.images[0].altText || `${vehicle.make} ${vehicle.model}`}
+                        <VehicleImage
+                          vehicle={vehicle}
                           className="w-24 h-24 object-cover rounded-lg"
+                          width={96}
+                          height={96}
                         />
                       ) : (
                         <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">

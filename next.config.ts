@@ -2,13 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
     // Exclude Firebase functions directory from TypeScript compilation
     tsconfigPath: './tsconfig.json',
   },
   reactStrictMode: true,
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
     // Exclude Firebase functions directory from ESLint
     dirs: ['src'],
   },
@@ -42,6 +42,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable optimized package imports
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // optimizeCss: true, // Temporarily disabled due to build issues
   },
   
   // Headers for security and performance
