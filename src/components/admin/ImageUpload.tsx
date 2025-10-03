@@ -14,7 +14,7 @@ import {
   Trash2,
   AlertCircle
 } from 'lucide-react'
-import { LocalStorageService } from '@/lib/local-storage'
+import { ImageUploadService } from '@/lib/image-upload'
 import Image from 'next/image'
 
 interface ImageUploadProps {
@@ -72,7 +72,7 @@ export function ImageUpload({
     const file = files[0]
     
     // Validate image
-    const validation = LocalStorageService.validateImage(file)
+    const validation = ImageUploadService.validateImage(file)
     if (!validation.valid) {
       setError(validation.error || 'Invalid file')
       return
@@ -94,10 +94,10 @@ export function ImageUpload({
       }, 100)
 
       // Compress image
-      const compressedFile = await LocalStorageService.compressImage(file, 0.8)
+      const compressedFile = await ImageUploadService.compressImage(file, 0.8)
 
       // Upload image
-      const result = await LocalStorageService.uploadVehicleImage(
+      const result = await ImageUploadService.uploadVehicleImage(
         compressedFile,
         vehicleId,
         currentImages.length === 0, // First image is primary
@@ -108,7 +108,7 @@ export function ImageUpload({
       const newImage = {
         id: Date.now().toString(),
         url: result.url,
-        path: result.path,
+        path: result.url, // Use URL as path since we're using public storage
         isPrimary: currentImages.length === 0,
         order: currentImages.length
       }
@@ -125,7 +125,7 @@ export function ImageUpload({
 
   const removeImage = async (imageId: string, imagePath: string) => {
     try {
-      await LocalStorageService.deleteVehicleImage(imagePath)
+      await ImageUploadService.deleteVehicleImage(imagePath)
       const updatedImages = currentImages
         .filter(img => img.id !== imageId)
         .map((img, index) => ({
