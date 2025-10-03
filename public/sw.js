@@ -22,7 +22,11 @@ const API_URLS = [
   '/api/sliders',
   '/api/about/stats',
   '/api/about/values',
-  '/api/about/features'
+  '/api/about/features',
+  '/api/calendar/data',
+  '/api/calendar/available-slots',
+  '/api/admin/dashboard-data',
+  '/api/placeholder'
 ];
 
 // Cache strategies

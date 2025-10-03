@@ -18,13 +18,24 @@ export default function WebSocketTest() {
       setMessages(prev => [...prev, 'Attempting to connect to WebSocket...'])
 
       try {
-        const socketInstance = io({
+        // Determine the protocol and host based on current environment
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+        const host = window.location.host
+        const socketUrl = `${protocol}//${host}`
+
+        const socketInstance = io(socketUrl, {
           path: '/api/socketio',
           transports: ['websocket', 'polling'],
           timeout: 5000,
           reconnection: true,
           reconnectionAttempts: 3,
           reconnectionDelay: 1000,
+          // Force WebSocket in production for better performance
+          ...(process.env.NODE_ENV === 'production' && {
+            upgrade: true,
+            rememberUpgrade: true,
+            transports: ['websocket', 'polling']
+          })
         })
 
         socketInstance.on('connect', () => {
@@ -107,7 +118,11 @@ export default function WebSocketTest() {
     
     // Force reconnection by re-running the effect
     setTimeout(() => {
-      const socketInstance = io({
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+      const host = window.location.host
+      const socketUrl = `${protocol}//${host}`
+      
+      const socketInstance = io(socketUrl, {
         path: '/api/socketio',
         transports: ['websocket', 'polling'],
         timeout: 5000,

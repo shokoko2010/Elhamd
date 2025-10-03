@@ -1,40 +1,53 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authOptions'
-import { CalendarService } from '@/lib/calendar-service'
+import { TimeSlot } from '@/lib/calendar-service'
+import { format, isToday, isPast, addDays } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
-    // For development/testing, allow without authentication
-    if (process.env.NODE_ENV === 'development') {
-      // Skip auth check in development
-    } else {
-      const session = await getServerSession(authOptions)
-      if (!session?.user) {
-        return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 })
-      }
-    }
-
     const { searchParams } = new URL(request.url)
-    const dateParam = searchParams.get('date')
+    const dateStr = searchParams.get('date')
     
-    if (!dateParam) {
-      return NextResponse.json({ error: 'التاريخ مطلوب' }, { status: 400 })
+    if (!dateStr) {
+      return NextResponse.json(
+        { error: 'التاريخ مطلوب' },
+        { status: 400 }
+      )
     }
 
-    const date = new Date(dateParam)
-    if (isNaN(date.getTime())) {
-      return NextResponse.json({ error: 'تاريخ غير صالح' }, { status: 400 })
+    const selectedDate = new Date(dateStr)
+    
+    // Check if the date is in the past
+    if (isPast(selectedDate) && !isToday(selectedDate)) {
+      return NextResponse.json([])
     }
 
-    const calendarService = CalendarService.getInstance()
-    const availableSlots = await calendarService.getAvailableTimeSlots(date)
+    // Generate time slots for the selected date
+    const timeSlots: TimeSlot[] = []
+    const startHour = 9 // 9 AM
+    const endHour = 17 // 5 PM
+    const slotDuration = 1 // 1 hour per slot
 
-    return NextResponse.json(availableSlots)
+    for (let hour = startHour; hour < endHour; hour += slotDuration) {
+      const startTime = `${hour.toString().padStart(2, '0')}:00`
+      const endTime = `${(hour + slotDuration).toString().padStart(2, '0')}:00`
+      
+      timeSlots.push({
+        id: `slot-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}`,
+        date: selectedDate,
+        startTime,
+        endTime,
+        maxBookings: 1,
+        currentBookings: 0,
+        isAvailable: true
+      })
+    }
+
+    // Check existing bookings for this date
+    // TODO: Query actual bookings from database
+    // For now, return all slots as available
+
+    return NextResponse.json(timeSlots)
+
   } catch (error) {
     console.error('Error fetching available time slots:', error)
     return NextResponse.json(

@@ -46,7 +46,12 @@ async function createCustomServer() {
       allowUpgrades: true,
       upgradeTimeout: 10000,
       rememberUpgrade: true,
-      addTrailingSlash: false
+      addTrailingSlash: false,
+      // Handle production WSS connections
+      ...(process.env.NODE_ENV === 'production' && {
+        secure: true,
+        wsEngine: require('ws').Server
+      })
     });
 
     setupSocket(io);
