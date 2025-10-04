@@ -115,7 +115,7 @@ function MediaContent() {
       console.log('🔄 Loading media data...')
       
       // Fetch media files from API using direct fetch - get all files without limit
-      const response = await fetch('/api/media-simple', {
+      const response = await fetch('/api/media-simple?limit=1000&offset=0', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -438,8 +438,8 @@ function MediaContent() {
     <div className="max-w-7xl mx-auto">
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">إدارة الوسائط</h1>
-        <p className="text-gray-600">رفع وإدارة الصور والملفات في جميع أنحاء الموقع</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">جميع وسائط الموقع</h1>
+        <p className="text-gray-600">عرض وإدارة جميع الصور والملفات من جميع أقسام الموقع</p>
         <div className="mt-4 flex gap-3">
           <Button onClick={() => setShowUploadDialog(true)}>
             <Upload className="ml-2 h-4 w-4" />
@@ -457,6 +457,58 @@ function MediaContent() {
           )}
         </div>
       </div>
+
+      {/* Media Statistics */}
+      {!loading && !error && (
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">إجمالي الوسائط</p>
+                    <p className="text-2xl font-bold">{mediaFiles.length}</p>
+                  </div>
+                  <FileImage className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">الصور</p>
+                    <p className="text-2xl font-bold">{mediaFiles.filter(f => f.type === 'image').length}</p>
+                  </div>
+                  <ImageIcon className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">المستخدمة</p>
+                    <p className="text-2xl font-bold">{mediaFiles.filter(f => f.entityId).length}</p>
+                  </div>
+                  <Folder className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">الحجم الإجمالي</p>
+                    <p className="text-2xl font-bold">{formatFileSize(mediaFiles.reduce((total, f) => total + f.size, 0))}</p>
+                  </div>
+                  <Download className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (

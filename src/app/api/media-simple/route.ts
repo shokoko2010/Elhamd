@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import fs from 'fs'
+import path from 'path'
+import imageSize from 'image-size'
 
 export async function GET(request: NextRequest) {
   try {
@@ -87,27 +90,93 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const options = formData.get('options') ? JSON.parse(formData.get('options') as string) : {}
     
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
     
-    // For now, just return a success message
-    // In production, you would save the file and create a database record
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+    
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+    
+    // Generate unique filename
+    const timestamp = Date.now()
+    const randomString = Math.random().toString(36).substring(2, 8)
+    const fileExtension = path.extname(file.name)
+    const uniqueFilename = `${timestamp}_${randomString}${fileExtension}`
+    const filePath = path.join(uploadsDir, uniqueFilename)
+    
+    // Save file to disk
+    const buffer = Buffer.from(await file.arrayBuffer())
+    fs.writeFileSync(filePath, buffer)
+    
+    // Get image dimensions if it's an image
+    let width = null
+    let height = null
+    if (file.type.startsWith('image/')) {
+      try {
+        // Use image-size library to get dimensions
+        const dimensions = imageSize(filePath)
+        width = dimensions.width
+        height = dimensions.height
+      } catch (error) {
+        console.warn('Could not get image dimensions:', error)
+      }
+    }
+    
+    // Create database record
+    const mediaRecord = await db.media.create({
+      data: {
+        filename: uniqueFilename,
+        originalName: file.name,
+        path: `/uploads/${uniqueFilename}`,
+        url: `/uploads/${uniqueFilename}`,
+        thumbnailUrl: `/uploads/${uniqueFilename}`,
+        mimeType: file.type,
+        size: file.size,
+        width: width,
+        height: height,
+        altText: options.altText || '',
+        title: options.title || '',
+        description: options.description || '',
+        tags: options.tags ? JSON.stringify(options.tags) : JSON.stringify([]),
+        category: options.category || 'other',
+        entityId: options.entityId || null,
+        isPublic: options.isPublic !== undefined ? options.isPublic : true,
+        isFeatured: options.isFeatured !== undefined ? options.isFeatured : false,
+        order: options.order || 0,
+        metadata: options.metadata ? JSON.stringify(options.metadata) : JSON.stringify({}),
+        createdBy: 'admin'
+      }
+    })
+    
     return NextResponse.json({
       success: true,
       message: 'File uploaded successfully',
       data: {
-        id: `temp_${Date.now()}`,
-        filename: file.name,
-        originalName: file.name,
-        url: `/uploads/${file.name}`,
-        thumbnailUrl: `/uploads/${file.name}`,
-        mimeType: file.type,
-        size: file.size,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: 'admin'
+        id: mediaRecord.id,
+        filename: mediaRecord.filename,
+        originalName: mediaRecord.originalName,
+        url: mediaRecord.url,
+        thumbnailUrl: mediaRecord.thumbnailUrl,
+        mimeType: mediaRecord.mimeType,
+        size: mediaRecord.size,
+        width: mediaRecord.width,
+        height: mediaRecord.height,
+        altText: mediaRecord.altText,
+        title: mediaRecord.title,
+        description: mediaRecord.description,
+        tags: mediaRecord.tags ? JSON.parse(mediaRecord.tags) : [],
+        category: mediaRecord.category,
+        isPublic: mediaRecord.isPublic,
+        isFeatured: mediaRecord.isFeatured,
+        createdAt: mediaRecord.createdAt.toISOString(),
+        updatedAt: mediaRecord.updatedAt.toISOString(),
+        createdBy: mediaRecord.createdBy
       }
     })
     
@@ -173,6 +242,30 @@ export async function DELETE(request: NextRequest) {
     
     if (!mediaId) {
       return NextResponse.json({ error: 'Media ID required' }, { status: 400 })
+    }
+    
+    // Get the media record first
+    const media = await db.media.findUnique({
+      where: { id: mediaId }
+    })
+    
+    if (!media) {
+      return NextResponse.json({ error: 'Media not found' }, { status: 404 })
+    }
+    
+    // Delete file from file system if it exists
+    if (media.path) {
+      try {
+        const filePath = path.join(process.cwd(), 'public', media.path)
+        
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath)
+          console.log('✅ Deleted file from file system:', filePath)
+        }
+      } catch (fileError) {
+        console.warn('⚠️ Could not delete file from file system:', fileError)
+        // Continue with database deletion even if file deletion fails
+      }
     }
     
     // Delete media from database
