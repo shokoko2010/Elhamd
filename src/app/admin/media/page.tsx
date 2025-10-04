@@ -102,6 +102,15 @@ function MediaContent() {
   })
   const [error, setError] = useState('')
 
+  const categories = [
+    { value: 'vehicles', label: 'المركبات' },
+    { value: 'company', label: 'الشركة' },
+    { value: 'services', label: 'الخدمات' },
+    { value: 'blog', label: 'المدونة' },
+    { value: 'gallery', label: 'معرض الصور' },
+    { value: 'banner', label: 'اللافتات' }
+  ]
+
   useEffect(() => {
     if (!authLoading && user) {
       loadMediaData()
@@ -424,15 +433,6 @@ function MediaContent() {
       day: 'numeric'
     })
   }
-
-  const categories = [
-    { value: 'vehicles', label: 'المركبات' },
-    { value: 'company', label: 'الشركة' },
-    { value: 'services', label: 'الخدمات' },
-    { value: 'blog', label: 'المدونة' },
-    { value: 'gallery', label: 'معرض الصور' },
-    { value: 'banner', label: 'اللافتات' }
-  ]
 
   return (
     <div className="max-w-7xl mx-auto">
