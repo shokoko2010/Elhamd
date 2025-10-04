@@ -19,7 +19,7 @@ export async function GET() {
     let robotsContent = ''
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/site-settings`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com'}/api/site-settings`)
       if (response.ok) {
         const settings = await response.json()
         if (settings[0]?.seoSettings?.robotsTxt) {

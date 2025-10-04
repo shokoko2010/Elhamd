@@ -211,23 +211,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Create some sample holidays
-    const holidays: Holiday[] = [
-      {
-        id: 'holiday-1',
-        name: 'عيد الفطر',
-        date: addDays(new Date(), 30), // Sample date
-        type: 'religious',
-        description: 'عيد الفطر المبارك'
-      },
-      {
-        id: 'holiday-2',
-        name: 'عيد الأضحى',
-        date: addDays(new Date(), 60), // Sample date
-        type: 'religious',
-        description: 'عيد الأضحى المبارك'
-      }
-    ]
+    // Create holidays from database or empty array
+    const holidays: Holiday[] = [] // TODO: Fetch from database
 
     // Create some sample time slots
     const timeSlots: TimeSlot[] = [

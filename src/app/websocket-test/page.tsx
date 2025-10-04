@@ -28,7 +28,7 @@ export default function WebSocketTest() {
           transports: ['websocket', 'polling'],
           timeout: 5000,
           reconnection: true,
-          reconnectionAttempts: 3,
+          reconnectionAttempts: 2,
           reconnectionDelay: 1000,
           // Force WebSocket in production for better performance
           ...(process.env.NODE_ENV === 'production' && {
@@ -53,6 +53,7 @@ export default function WebSocketTest() {
           console.error('WebSocket connection error:', error)
           setConnectionStatus('error')
           setMessages(prev => [...prev, `❌ Connection error: ${error.message}`])
+          setMessages(prev => [...prev, 'ℹ️ Note: WebSocket functionality requires server configuration'])
         })
 
         socketInstance.on('disconnect', (reason) => {
@@ -84,6 +85,7 @@ export default function WebSocketTest() {
         console.error('Failed to create socket connection:', error)
         setConnectionStatus('error')
         setMessages(prev => [...prev, `❌ Failed to create socket: ${error instanceof Error ? error.message : 'Unknown error'}`])
+        setMessages(prev => [...prev, 'ℹ️ Note: WebSocket functionality requires server configuration'])
       }
     }
 
@@ -205,7 +207,7 @@ export default function WebSocketTest() {
             <div>
               <h4 className="font-semibold mb-2">Connection Details:</h4>
               <ul className="space-y-1 text-gray-600">
-                <li>• Server URL: {process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'}</li>
+                <li>• Server URL: {process.env.NEXT_PUBLIC_SOCKET_URL || 'https://elhamdimport.com'}</li>
                 <li>• Socket Path: /api/socketio</li>
                 <li>• Transports: websocket, polling</li>
                 <li>• Socket ID: {socket?.id || 'N/A'}</li>

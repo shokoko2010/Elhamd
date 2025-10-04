@@ -678,7 +678,7 @@ export class SecurityService {
     
     // Allow specific origins in production, all in development
     const allowedOrigins = process.env.NODE_ENV === 'production' 
-      ? ['https://elhamd-cars.com'] 
+      ? ['https://elhamdimport.com'] 
       : ['http://localhost:3000', 'http://localhost:3001']
     
     if (!origin || allowedOrigins.includes(origin)) {

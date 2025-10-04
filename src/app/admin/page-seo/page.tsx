@@ -373,7 +373,7 @@ export default function AdminPageSEOPage() {
                   id="canonicalUrl"
                   value={editingSEO.canonicalUrl || ''}
                   onChange={(e) => setEditingSEO(prev => prev ? { ...prev, canonicalUrl: e.target.value } : null)}
-                  placeholder="https://example.com/page"
+                  placeholder="https://elhamdimport.com/page"
                 />
               </div>
             </div>

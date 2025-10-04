@@ -177,39 +177,20 @@ export default function EnhancedNotificationCenter({
 
   const loadNotifications = async () => {
     try {
-      // In production, fetch from API
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'BOOKING_CONFIRMATION',
-          title: 'تأكيد الحجز',
-          message: 'تم تأكيد حجز خدمة الصيانة بنجاح',
-          channel: 'EMAIL',
-          status: 'SENT',
-          priority: 'HIGH',
-          recipient: 'customer@example.com',
-          createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-          sentAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
-          metadata: { bookingId: 'BK001', vehicleMake: 'Tata', vehicleModel: 'Nexon' }
-        },
-        {
-          id: '2',
-          type: 'PAYMENT_CONFIRMATION',
-          title: 'تأكيد الدفع',
-          message: 'تم استلام الدفع بنجاح',
-          channel: 'SMS',
-          status: 'DELIVERED',
-          priority: 'HIGH',
-          recipient: '+201234567890',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-          sentAt: new Date(Date.now() - 1000 * 60 * 59).toISOString(),
-          metadata: { amount: 1500, currency: 'EGP', transactionId: 'TXN123456' }
-        }
-      ]
-      setNotifications(mockNotifications)
-      updateUnreadCount(mockNotifications)
+      // Fetch from API
+      const response = await fetch('/api/notifications/enhanced/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setNotifications(data.notifications || [])
+        updateUnreadCount(data.notifications || [])
+      } else {
+        setNotifications([])
+        updateUnreadCount([])
+      }
     } catch (error) {
       console.error('Failed to load notifications:', error)
+      setNotifications([])
+      updateUnreadCount([])
     }
   }
 

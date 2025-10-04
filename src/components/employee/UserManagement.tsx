@@ -82,39 +82,8 @@ export default function UserManagement() {
         const data = await response.json()
         setUsers(data)
       } else {
-        // If API fails, use mock data for demonstration
-        setUsers([
-          {
-            id: '1',
-            name: 'أحمد محمد',
-            email: 'ahmed@example.com',
-            phone: '01234567890',
-            role: 'CUSTOMER',
-            status: 'active',
-            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            lastLogin: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '2',
-            name: 'فاطمة علي',
-            email: 'fatima@example.com',
-            phone: '0112345678',
-            role: 'STAFF',
-            status: 'active',
-            createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-            lastLogin: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '3',
-            name: 'محمد خالد',
-            email: 'mohamed@example.com',
-            phone: '01098765432',
-            role: 'ADMIN',
-            status: 'active',
-            createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-            lastLogin: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
-          }
-        ])
+        // If API fails, show empty state
+        setUsers([])
       }
     } catch (error) {
       toast({
@@ -122,19 +91,8 @@ export default function UserManagement() {
         description: 'فشل في تحميل بيانات المستخدمين',
         variant: 'destructive'
       })
-      // Use mock data as fallback
-      setUsers([
-        {
-          id: '1',
-          name: 'أحمد محمد',
-          email: 'ahmed@example.com',
-          phone: '01234567890',
-          role: 'CUSTOMER',
-          status: 'active',
-          createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          lastLogin: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ])
+      // Use empty state as fallback
+      setUsers([])
     } finally {
       setLoading(false)
     }

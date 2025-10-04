@@ -12,26 +12,26 @@ interface SEOProps {
 }
 
 export function generateMetadata({
-  title = 'Al-Hamd Cars | TATA Motors Authorized Dealer in Egypt',
-  description = 'Al-Hamd Cars is your authorized TATA Motors dealer in Egypt. Explore our wide range of TATA vehicles, book test drives, and get expert service and maintenance.',
-  keywords = 'TATA Motors Egypt, Al-Hamd Cars, TATA dealer Egypt, new cars Egypt, car dealership, TATA Nexon, TATA Punch, TATA Tiago, car service Egypt',
+  title = 'Elhamd Import | Premium Car Import and Dealership',
+  description = 'Elhamd Import is your premium car import and dealership in Egypt. Explore our wide range of imported vehicles, book test drives, and get expert service and maintenance.',
+  keywords = 'Elhamd Import, car import Egypt, premium cars Egypt, car dealership, imported vehicles, luxury cars Egypt, car service Egypt',
   ogImage = '/og-image.jpg',
   ogUrl,
   canonicalUrl,
   noIndex = false,
   structuredData
 }: SEOProps = {}): Metadata {
-  const currentUrl = ogUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com'}`
+  const currentUrl = ogUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com'}`
   const canonical = canonicalUrl || currentUrl
 
   const defaultStructuredData = {
     "@context": "https://schema.org",
     "@type": "AutomotiveBusiness",
-    "name": "Al-Hamd Cars",
+    "name": "Elhamd Import",
     "description": description,
-    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -95,11 +95,11 @@ export function generateStructuredData({
   const defaultStructuredData = {
     "@context": "https://schema.org",
     "@type": "AutomotiveBusiness",
-    "name": "Al-Hamd Cars",
+    "name": "Elhamd Import",
     "description": description,
-    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -119,11 +119,11 @@ export function HomepageSEO() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "AutomotiveBusiness",
-    "name": "Al-Hamd Cars",
+    "name": "Elhamd Import",
     "description": "Your authorized TATA Motors dealer in Egypt offering new vehicles, test drives, and expert service.",
-    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -196,7 +196,7 @@ export function VehicleSEO({ make, model, year, price }: { make: string; model: 
       "availability": "https://schema.org/InStock",
       "seller": {
         "@type": "AutomotiveBusiness",
-        "name": "Al-Hamd Cars",
+        "name": "Elhamd Import",
         "address": {
           "@type": "PostalAddress",
           "streetAddress": "Tahrir Street",
@@ -230,7 +230,7 @@ export function ServiceSEO() {
     "serviceType": "Car maintenance and repair",
     "provider": {
       "@type": "AutomotiveBusiness",
-      "name": "Al-Hamd Cars",
+      "name": "Elhamd Import",
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "Tahrir Street",
@@ -258,11 +258,11 @@ export function ContactSEO() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "AutomotiveBusiness",
-    "name": "Al-Hamd Cars",
+    "name": "Elhamd Import",
     "description": "Authorized TATA Motors dealer in Egypt",
-    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -296,11 +296,11 @@ export function VehiclesSEO() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "AutomotiveBusiness",
-    "name": "Al-Hamd Cars",
+    "name": "Elhamd Import",
     "description": "Authorized TATA Motors dealer with complete vehicle inventory",
-    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -360,11 +360,11 @@ export function TestDriveSEO() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "AutomotiveBusiness",
-    "name": "Al-Hamd Cars",
+    "name": "Elhamd Import",
     "description": "Authorized TATA Motors dealer offering test drives",
-    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
+    "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     // Test sending a welcome email
-    const testEmail = process.env.TEST_EMAIL || 'test@example.com'
+    const testEmail = process.env.TEST_EMAIL || 'admin@elhamdimport.com'
     const success = await emailService.sendWelcomeEmail(testEmail, 'Test User')
 
     return NextResponse.json({

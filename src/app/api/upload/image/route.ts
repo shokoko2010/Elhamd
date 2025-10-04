@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user has permission to upload images
     if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
+      console.log('User role:', user.role, 'Not authorized for image upload');
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

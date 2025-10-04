@@ -106,45 +106,8 @@ export default function OrderManagement() {
         const data = await response.json()
         setOrders(data)
       } else {
-        // If API fails, use mock data for demonstration
-        setOrders([
-          {
-            id: '1',
-            customerName: 'أحمد محمد',
-            customerEmail: 'ahmed@example.com',
-            customerPhone: '01234567890',
-            carId: '1',
-            carDetails: {
-              make: 'Toyota',
-              model: 'Camry',
-              year: 2023,
-              price: 850000
-            },
-            status: 'pending',
-            orderDate: new Date().toISOString(),
-            totalAmount: 850000,
-            paymentStatus: 'pending',
-            notes: 'يريد السيارة خلال أسبوع'
-          },
-          {
-            id: '2',
-            customerName: 'فاطمة علي',
-            customerEmail: 'fatima@example.com',
-            customerPhone: '0112345678',
-            carId: '2',
-            carDetails: {
-              make: 'Honda',
-              model: 'Accord',
-              year: 2022,
-              price: 750000
-            },
-            status: 'confirmed',
-            orderDate: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-            totalAmount: 750000,
-            paymentStatus: 'paid',
-            notes: 'دفعت مقدم'
-          }
-        ])
+        // If API fails, show empty state
+        setOrders([])
       }
     } catch (error) {
       toast({
@@ -152,27 +115,8 @@ export default function OrderManagement() {
         description: 'فشل في تحميل بيانات الطلبات',
         variant: 'destructive'
       })
-      // Use mock data as fallback
-      setOrders([
-        {
-          id: '1',
-          customerName: 'أحمد محمد',
-          customerEmail: 'ahmed@example.com',
-          customerPhone: '01234567890',
-          carId: '1',
-          carDetails: {
-            make: 'Toyota',
-            model: 'Camry',
-            year: 2023,
-            price: 850000
-          },
-          status: 'pending',
-          orderDate: new Date().toISOString(),
-          totalAmount: 850000,
-          paymentStatus: 'pending',
-          notes: 'يريد السيارة خلال أسبوع'
-        }
-      ])
+      // Use empty state as fallback
+      setOrders([])
     } finally {
       setLoading(false)
     }
