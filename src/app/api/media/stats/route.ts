@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,17 +16,6 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Try to get session in production
-    try {
-      const session = await getServerSession(authOptions);
-      if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-    } catch (authError) {
-      console.error('Auth error in media stats:', authError);
-      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
-    }
-
     // Try to get media statistics with error handling
     try {
       const totalMedia = await db.media.count();
