@@ -47,11 +47,15 @@ export async function sendQuotationEmail(quotationId: string): Promise<void> {
       throw new Error('Quotation not found')
     }
 
-    const subject = `Quotation #${quotation.id} from Al-Hamd Cars`
+    // Get company settings from database
+    const siteSettings = await db.siteSettings.findFirst({ where: { isActive: true } })
+    const companyName = siteSettings?.siteTitle || 'Elhamd Import'
+
+    const subject = `Quotation #${quotation.id} from ${companyName}`
     const html = `
       <html>
         <body>
-          <h2>Quotation from Al-Hamd Cars</h2>
+          <h2>Quotation from ${companyName}</h2>
           <p>Dear ${quotation.customer.name},</p>
           <p>Thank you for your interest in our vehicles. Please find your quotation below:</p>
           
@@ -79,7 +83,7 @@ export async function sendQuotationEmail(quotationId: string): Promise<void> {
           
           <p>Please feel free to contact us if you have any questions.</p>
           
-          <p>Best regards,<br>Al-Hamd Cars Team</p>
+          <p>Best regards,<br>${companyName} Team</p>
         </body>
       </html>
     `
@@ -115,11 +119,15 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
       throw new Error('Invoice not found')
     }
 
-    const subject = `Invoice #${invoice.id} from Al-Hamd Cars`
+    // Get company settings from database
+    const siteSettings = await db.siteSettings.findFirst({ where: { isActive: true } })
+    const companyName = siteSettings?.siteTitle || 'Elhamd Import'
+
+    const subject = `Invoice #${invoice.id} from ${companyName}`
     const html = `
       <html>
         <body>
-          <h2>Invoice from Al-Hamd Cars</h2>
+          <h2>Invoice from ${companyName}</h2>
           <p>Dear ${invoice.customer.name},</p>
           <p>Please find your invoice below:</p>
           
@@ -146,7 +154,7 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
           
           <p>Please make payment at your earliest convenience.</p>
           
-          <p>Best regards,<br>Al-Hamd Cars Team</p>
+          <p>Best regards,<br>${companyName} Team</p>
         </body>
       </html>
     `
@@ -163,15 +171,19 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
 }
 
 export async function sendWelcomeEmail(customerEmail: string, customerName: string): Promise<void> {
-  const subject = 'Welcome to Al-Hamd Cars!'
+  // Get company settings from database
+  const companySettings = await db.companySettings.findFirst()
+  const companyName = companySettings?.companyName || 'Elhamd Import'
+  
+  const subject = `Welcome to ${companyName}!`
   const html = `
     <html>
       <body>
-        <h2>Welcome to Al-Hamd Cars!</h2>
+        <h2>Welcome to ${companyName}!</h2>
         <p>Dear ${customerName},</p>
-        <p>Thank you for registering with Al-Hamd Cars. We're excited to help you find your perfect vehicle.</p>
+        <p>Thank you for registering with ${companyName}. We're excited to help you find your perfect vehicle.</p>
         
-        <p>At Al-Hamd Cars, we offer:</p>
+        <p>At ${companyName}, we offer:</p>
         <ul>
           <li>Wide selection of quality vehicles</li>
           <li>Competitive pricing</li>
@@ -181,7 +193,7 @@ export async function sendWelcomeEmail(customerEmail: string, customerName: stri
         
         <p>Please feel free to browse our inventory and contact us if you have any questions.</p>
         
-        <p>Best regards,<br>Al-Hamd Cars Team</p>
+        <p>Best regards,<br>${companyName} Team</p>
       </body>
     </html>
   `
@@ -249,6 +261,10 @@ export class EmailService {
   }): Promise<void> {
     const { customerName, customerEmail, bookingType, vehicleInfo, date, time, services } = params
     
+    // Get company settings from database
+    const siteSettings = await db.siteSettings.findFirst({ where: { isActive: true } })
+    const companyName = siteSettings?.siteTitle || 'Elhamd Import'
+    
     const subject = `Booking Confirmation - ${bookingType === 'test-drive' ? 'Test Drive' : 'Service Appointment'}`
     
     const html = `
@@ -271,7 +287,7 @@ export class EmailService {
           
           <p>Please arrive 10 minutes early for your appointment.</p>
           
-          <p>Best regards,<br>Al-Hamd Cars Team</p>
+          <p>Best regards,<br>${companyName} Team</p>
         </body>
       </html>
     `
@@ -293,6 +309,10 @@ export class EmailService {
     services?: string[]
   }): Promise<void> {
     const { customerName, customerEmail, bookingType, vehicleInfo, date, time, services } = params
+    
+    // Get company settings from database
+    const siteSettings = await db.siteSettings.findFirst({ where: { isActive: true } })
+    const adminEmail = siteSettings?.contactEmail || 'admin@elhamdimport.com'
     
     const subject = `New ${bookingType === 'test-drive' ? 'Test Drive' : 'Service'} Booking`
     
@@ -320,7 +340,7 @@ export class EmailService {
     `
 
     await sendEmail({
-      to: 'admin@alhamdcars.com', // This should be an environment variable
+      to: adminEmail,
       subject,
       html
     })

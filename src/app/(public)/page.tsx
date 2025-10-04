@@ -83,7 +83,7 @@ export default function Home() {
         console.error('Error fetching company info:', error)
         // Set default company info on error
         setCompanyInfo({
-          title: 'الحمد للسيارات - وكيل تاتا المعتمد',
+          title: 'مرحباً بك في Elhamd Import',
           subtitle: 'الجودة والثقة في عالم السيارات',
           description: 'نحن وكيل تاتا المعتمد في مصر، نقدم أحدث موديلات تاتا مع ضمان المصنع الكامل وخدمة ما بعد البيع المتميزة.',
           features: ['وكيل معتمد لتاتا', 'ضمان المصنع الكامل', 'خدمة ما بعد البيع 24/7', 'تمويل سهل ومريح'],
@@ -342,7 +342,7 @@ export default function Home() {
                 <div className="aspect-[4/3] bg-gradient-to-br from-white/10 to-white/20 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm border border-white/20">
                   <EnhancedLazyImage 
                     src="/uploads/showroom-luxury.jpg" 
-                    alt="معرض الحمد للسيارات" 
+                    alt="معرض Elhamd Import" 
                     width={800}
                     height={600}
                     sizes="(max-width: 768px) 100vw, 50vw"

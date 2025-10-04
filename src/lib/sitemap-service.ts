@@ -21,7 +21,7 @@ export class SitemapService {
   private baseUrl: string
 
   private constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com'
+    this.baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://elhamdimport.com'
   }
 
   static getInstance(): SitemapService {
@@ -293,18 +293,26 @@ Allow: /
   }
 
   // Generate structured data for homepage
-  generateHomepageStructuredData(): string {
+  async generateHomepageStructuredData(): Promise<string> {
+    // Get site settings from database
+    const siteSettings = await db.siteSettings.findFirst({ where: { isActive: true } })
+    const companyName = siteSettings?.siteTitle || 'Elhamd Import'
+    const companyDescription = siteSettings?.siteDescription || 'Premium Car Importers in Egypt'
+    const companyEmail = siteSettings?.contactEmail || 'info@elhamdimport.com'
+    const companyPhone = siteSettings?.contactPhone || '+20 123 456 7890'
+    const companyAddress = siteSettings?.contactAddress || 'Cairo, Egypt'
+    
     const structuredData = {
       "@context": "https://schema.org",
       "@type": "AutomotiveBusiness",
-      "name": "Al-Hamd Cars",
-      "description": "Authorized TATA Motors dealer in Egypt offering new vehicles, test drives, and expert service.",
+      "name": companyName,
+      "description": companyDescription,
       "url": this.baseUrl,
-      "telephone": "+20 2 1234 5678",
-      "email": "info@alhamdcars.com",
+      "telephone": companyPhone,
+      "email": companyEmail,
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": "Tahrir Street",
+        "streetAddress": companyAddress,
         "addressLocality": "Cairo",
         "addressCountry": "EG"
       },
@@ -341,9 +349,9 @@ Allow: /
         ]
       },
       "sameAs": [
-        "https://facebook.com/alhamdcars",
-        "https://twitter.com/alhamdcars",
-        "https://instagram.com/alhamdcars"
+        "https://facebook.com/elhamdimport",
+        "https://twitter.com/elhamdimport",
+        "https://instagram.com/elhamdimport"
       ]
     }
 
@@ -351,7 +359,12 @@ Allow: /
   }
 
   // Generate structured data for vehicle
-  generateVehicleStructuredData(vehicle: any): string {
+  async generateVehicleStructuredData(vehicle: any): Promise<string> {
+    // Get site settings from database
+    const siteSettings = await db.siteSettings.findFirst({ where: { isActive: true } })
+    const companyName = siteSettings?.siteTitle || 'Elhamd Import'
+    const companyAddress = siteSettings?.contactAddress || 'Cairo, Egypt'
+    
     const structuredData = {
       "@context": "https://schema.org",
       "@type": "Vehicle",
@@ -369,10 +382,10 @@ Allow: /
         "availability": "https://schema.org/InStock",
         "seller": {
           "@type": "AutomotiveBusiness",
-          "name": "Al-Hamd Cars",
+          "name": companyName,
           "address": {
             "@type": "PostalAddress",
-            "streetAddress": "Tahrir Street",
+            "streetAddress": companyAddress,
             "addressLocality": "Cairo",
             "addressCountry": "EG"
           }

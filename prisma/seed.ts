@@ -167,7 +167,7 @@ async function seedBranches() {
       code: 'CAI-001',
       address: 'شارع التحرير، وسط القاهرة',
       phone: '+20 2 2345 6789',
-      email: 'cairo@elhamdimports.com',
+      email: 'cairo@elhamdimport.com',
       openingDate: new Date('2020-01-15'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -177,7 +177,7 @@ async function seedBranches() {
       code: 'ALEX-002',
       address: 'شارع سعد زغلول، الإسكندرية',
       phone: '+20 3 4567 8901',
-      email: 'alexandria@elhamdimports.com',
+      email: 'alexandria@elhamdimport.com',
       openingDate: new Date('2021-03-20'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -187,7 +187,7 @@ async function seedBranches() {
       code: 'GIZ-003',
       address: 'ميدان المحطة، الجيزة',
       phone: '+20 2 3456 7890',
-      email: 'giza@elhamdimports.com',
+      email: 'giza@elhamdimport.com',
       openingDate: new Date('2022-06-10'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -215,7 +215,7 @@ async function seedUsers() {
 
   const users = [
     {
-      email: 'admin@elhamdimports.com',
+      email: 'admin@elhamdimport.com',
       password: hashedPassword,
       name: 'أحمد محمد',
       role: 'ADMIN',
@@ -228,7 +228,7 @@ async function seedUsers() {
       roleTemplateId: adminTemplate?.id,
     },
     {
-      email: 'manager@elhamdimports.com',
+      email: 'manager@elhamdimport.com',
       password: hashedPassword,
       name: 'محمد علي',
       role: 'BRANCH_MANAGER',
@@ -241,7 +241,7 @@ async function seedUsers() {
       roleTemplateId: managerTemplate?.id,
     },
     {
-      email: 'employee@elhamdimports.com',
+      email: 'employee@elhamdimport.com',
       password: hashedPassword,
       name: 'عمر حسن',
       role: 'STAFF',

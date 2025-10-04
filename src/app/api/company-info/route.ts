@@ -17,7 +17,7 @@ export async function GET() {
       // Return default company info if none exists
       return NextResponse.json({
         id: 'default',
-        title: 'مرحباً بك في الحمد للسيارات',
+        title: 'مرحباً بك في Elhamd Import',
         subtitle: 'الوكيل الرسمي المعتمد لسيارات تاتا في مصر',
         description: 'نحن فخورون بتمثيل علامة تاتا التجارية في مصر، حيث نقدم لكم أحدث الموديلات مع ضمان الجودة الأصلي وخدمة ما بعد البيع المتميزة.',
         imageUrl: '/uploads/showroom-luxury.jpg',

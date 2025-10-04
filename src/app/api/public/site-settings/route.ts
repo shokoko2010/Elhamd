@@ -18,29 +18,29 @@ export async function GET(request: NextRequest) {
       // Return default settings if none exist
       const defaultSettings = {
         id: 'default',
-        logoUrl: '/logo.svg',
+        logoUrl: '/elhamd-import-logo.png',
         faviconUrl: '/favicon.ico',
         primaryColor: '#3B82F6',
         secondaryColor: '#10B981',
         accentColor: '#F59E0B',
         fontFamily: 'Inter',
-        siteTitle: 'Al-Hamd Cars',
-        siteDescription: 'Premium Car Dealership in Egypt',
-        contactEmail: 'info@alhamdcars.com',
+        siteTitle: 'Elhamd Import',
+        siteDescription: 'Premium Car Importers in Egypt',
+        contactEmail: 'info@elhamdimport.com',
         contactPhone: '+20 123 456 7890',
         contactAddress: 'Cairo, Egypt',
         socialLinks: {
-          facebook: 'https://facebook.com/alhamdcars',
-          twitter: 'https://twitter.com/alhamdcars',
-          instagram: 'https://instagram.com/alhamdcars',
-          linkedin: 'https://linkedin.com/company/alhamdcars'
+          facebook: 'https://facebook.com/elhamdimport',
+          twitter: 'https://twitter.com/elhamdimport',
+          instagram: 'https://instagram.com/elhamdimport',
+          linkedin: 'https://linkedin.com/company/elhamdimport'
         },
         seoSettings: {
-          metaTitle: 'Al-Hamd Cars - Premium Car Dealership in Egypt',
-          metaDescription: 'Discover premium cars at Al-Hamd Cars. Best prices, excellent service, and wide selection of vehicles.',
-          keywords: 'cars, dealership, egypt, premium vehicles, car sales',
+          metaTitle: 'Elhamd Import - Premium Car Importers in Egypt',
+          metaDescription: 'Discover premium cars at Elhamd Import. Best prices, excellent service, and wide selection of vehicles.',
+          keywords: 'cars, importers, egypt, premium vehicles, car sales',
           ogImage: '/og-image.jpg',
-          twitterHandle: '@alhamdcars'
+          twitterHandle: '@elhamdimport'
         },
         performanceSettings: {
           cachingEnabled: true,
