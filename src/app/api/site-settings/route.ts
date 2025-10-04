@@ -113,6 +113,9 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const auth = await authorize(request, { roles: [UserRole.ADMIN] })
+    if (!auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const body = await request.json()
     const { headerSettings, footerSettings } = body
@@ -123,10 +126,26 @@ export async function PUT(request: NextRequest) {
     })
 
     if (!currentSettings) {
-      return NextResponse.json(
-        { error: 'No active settings found' },
-        { status: 404 }
-      )
+      // Create default settings if none exist
+      const defaultSettings = await db.siteSettings.create({
+        data: {
+          logoUrl: '/elhamd-import-logo.png',
+          faviconUrl: '/favicon.ico',
+          primaryColor: '#3B82F6',
+          secondaryColor: '#10B981',
+          accentColor: '#F59E0B',
+          fontFamily: 'Inter',
+          siteTitle: 'Elhamd Import',
+          siteDescription: 'Premium Car Importers in Egypt',
+          contactEmail: 'info@elhamdimport.com',
+          contactPhone: '+20 123 456 7890',
+          contactAddress: 'Cairo, Egypt',
+          headerSettings: headerSettings || {},
+          footerSettings: footerSettings || {},
+          isActive: true
+        }
+      })
+      return NextResponse.json(defaultSettings)
     }
 
     // Update settings
@@ -152,6 +171,9 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const auth = await authorize(request, { roles: [UserRole.ADMIN] })
+    if (!auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const body = await request.json()
     const {
