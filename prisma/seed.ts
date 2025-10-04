@@ -464,31 +464,75 @@ async function seedVehicleImages() {
   const vehicles = await prisma.vehicle.findMany()
 
   for (const vehicle of vehicles) {
+    // Define image mappings for each vehicle model
+    const imageMappings: { [key: string]: string[] } = {
+      'Nexon': [
+        '/uploads/vehicles/nexon-1.jpg',
+        '/uploads/vehicles/nexon-1.jpg',
+        '/uploads/vehicles/nexon-1.jpg',
+        '/uploads/vehicles/nexon-1.jpg'
+      ],
+      'Punch': [
+        '/uploads/vehicles/punch-1.jpg',
+        '/uploads/vehicles/punch-1.jpg',
+        '/uploads/vehicles/punch-1.jpg',
+        '/uploads/vehicles/punch-1.jpg'
+      ],
+      'Tiago': [
+        '/uploads/vehicles/tiago-ev-1.jpg',
+        '/uploads/vehicles/tiago-ev-1.jpg',
+        '/uploads/vehicles/tiago-ev-1.jpg',
+        '/uploads/vehicles/tiago-ev-1.jpg'
+      ],
+      'Altroz': [
+        '/uploads/vehicles/altroz-1.jpg',
+        '/uploads/vehicles/altroz-1.jpg',
+        '/uploads/vehicles/altroz-1.jpg',
+        '/uploads/vehicles/altroz-1.jpg'
+      ],
+      'Harrier': [
+        '/uploads/vehicles/harrier-1.jpg',
+        '/uploads/vehicles/harrier-2.jpg',
+        '/uploads/vehicles/harrier-3.jpg',
+        '/uploads/vehicles/harrier-4.jpg'
+      ],
+      'Safari': [
+        '/uploads/vehicles/safari-1.jpg',
+        '/uploads/vehicles/safari-1.jpg',
+        '/uploads/vehicles/safari-1.jpg',
+        '/uploads/vehicles/safari-1.jpg'
+      ]
+    }
+
+    const vehicleImages = imageMappings[vehicle.model] || [
+      '/api/placeholder/800/600?text=' + encodeURIComponent(`${vehicle.make} ${vehicle.model}`)
+    ]
+
     const images = [
       {
         vehicleId: vehicle.id,
-        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Front`,
+        imageUrl: vehicleImages[0],
         altText: `${vehicle.make} ${vehicle.model} - Front View`,
         isPrimary: true,
         order: 0,
       },
       {
         vehicleId: vehicle.id,
-        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Side`,
+        imageUrl: vehicleImages[1],
         altText: `${vehicle.make} ${vehicle.model} - Side View`,
         isPrimary: false,
         order: 1,
       },
       {
         vehicleId: vehicle.id,
-        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Rear`,
+        imageUrl: vehicleImages[2],
         altText: `${vehicle.make} ${vehicle.model} - Rear View`,
         isPrimary: false,
         order: 2,
       },
       {
         vehicleId: vehicle.id,
-        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Interior`,
+        imageUrl: vehicleImages[3],
         altText: `${vehicle.make} ${vehicle.model} - Interior`,
         isPrimary: false,
         order: 3,

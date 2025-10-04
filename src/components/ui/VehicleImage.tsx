@@ -34,7 +34,7 @@ export function VehicleImage({
   const imageUrl = primaryImage?.imageUrl ? encodeURI(primaryImage.imageUrl) : null
   
   // Fallback placeholder URL
-  const placeholderUrl = `/api/placeholder/${width}/${height}?text=${encodeURIComponent(vehicle.make + ' ' + vehicle.model)}`
+  const placeholderUrl = `/api/placeholder?width=${width}&height=${height}&text=${encodeURIComponent(vehicle.make + ' ' + vehicle.model)}`
 
   const handleImageError = () => {
     console.error('Failed to load vehicle image:', imageUrl)
