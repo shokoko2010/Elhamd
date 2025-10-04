@@ -1618,7 +1618,7 @@ export default function Home() {
                   <Mail className="h-10 w-10 text-white" />
                 </div>
                 <h3 className="text-2xl font-semibold mb-4">البريد الإلكتروني</h3>
-                <p className="text-blue-100 mb-2 text-lg font-medium">info@alhamdcars.com</p>
+                <p className="text-blue-100 mb-2 text-lg font-medium">info@elhamdimport.com</p>
                 <p className="text-blue-200 mb-6">رد خلال 24 ساعة</p>
                 <div className="space-y-2 text-sm text-blue-200">
                   <div className="flex items-center justify-center gap-2">

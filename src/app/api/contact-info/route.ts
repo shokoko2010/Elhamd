@@ -19,7 +19,7 @@ export async function GET() {
         id: 'default',
         primaryPhone: '+20 2 1234 5678',
         secondaryPhone: '+20 1 2345 6789',
-        primaryEmail: 'info@alhamdcars.com',
+        primaryEmail: 'info@elhamdimport.com',
         secondaryEmail: 'sales@alhamdcars.com',
         address: 'القاهرة، مصر',
         mapLat: 30.0444,
