@@ -62,6 +62,16 @@ const InteractiveCalendar = memo(({
   // Memoize calendar service to prevent recreation
   const memoizedCalendarService = useMemo(() => calendarService, [])
 
+  const loadAvailableTimeSlots = useCallback(async (date: Date) => {
+    try {
+      const slots = await memoizedCalendarService.getAvailableTimeSlots(date)
+      setAvailableTimeSlots(slots)
+    } catch (err) {
+      console.error('Error loading time slots:', err)
+      setAvailableTimeSlots([])
+    }
+  }, [memoizedCalendarService]) // Use memoized service
+
   const loadCalendarData = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -116,16 +126,6 @@ const InteractiveCalendar = memo(({
       return () => clearTimeout(timeout)
     }
   }, [loading, selectedDate, showTimeSlots])
-
-  const loadAvailableTimeSlots = useCallback(async (date: Date) => {
-    try {
-      const slots = await memoizedCalendarService.getAvailableTimeSlots(date)
-      setAvailableTimeSlots(slots)
-    } catch (err) {
-      console.error('Error loading time slots:', err)
-      setAvailableTimeSlots([])
-    }
-  }, [memoizedCalendarService]) // Use memoized service
 
   const handlePreviousMonth = () => {
     setCurrentDate(prev => subMonths(prev, 1))

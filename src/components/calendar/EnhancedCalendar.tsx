@@ -169,6 +169,18 @@ export default function EnhancedCalendar() {
     reminders: []
   })
 
+  const fetchCalendarStats = async () => {
+    try {
+      const response = await fetch('/api/calendar/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch calendar stats:', error)
+    }
+  }
+
   useEffect(() => {
     fetchEvents()
     fetchCalendarStats()
@@ -218,18 +230,6 @@ export default function EnhancedCalendar() {
       })
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchCalendarStats = async () => {
-    try {
-      const response = await fetch('/api/calendar/stats')
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch calendar stats:', error)
     }
   }
 
