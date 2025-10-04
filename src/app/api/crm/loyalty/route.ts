@@ -165,208 +165,282 @@ export async function POST(request: NextRequest) {
 }
 
 async function getLoyaltyOverview() {
-  try {
-    // Fetch real data from database
-    const totalMembers = await db.loyaltyMember.count()
-    const activeMembers = await db.loyaltyMember.count({
-      where: { 
-        lastActivity: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+  const analytics = await getLoyaltyAnalytics()
+  
+  return {
+    totalMembers: analytics.totalMembers,
+    activeMembers: analytics.activeMembers,
+    totalPointsIssued: analytics.totalPointsIssued,
+    totalPointsRedeemed: analytics.totalPointsRedeemed,
+    avgPointsPerMember: analytics.avgPointsPerMember,
+    retentionRate: analytics.retentionRate,
+    programROI: analytics.programROI,
+    recentActivity: [
+      {
+        type: 'points_earned',
+        customer: 'أحمد محمد',
+        points: 250,
+        description: 'حجز صيانة',
+        date: new Date().toISOString()
+      },
+      {
+        type: 'reward_redeemed',
+        customer: 'فاطمة علي',
+        reward: 'خصم 10% على الصيانة',
+        date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        type: 'tier_upgrade',
+        customer: 'محمد سعيد',
+        fromTier: 'Bronze',
+        toTier: 'Silver',
+        date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
       }
-    })
-    
-    const transactions = await db.loyaltyTransaction.groupBy({
-      by: ['type'],
-      _sum: { points: true }
-    })
-    
-    const totalPointsIssued = transactions.find(t => t.type === 'earned')?._sum.points || 0
-    const totalPointsRedeemed = Math.abs(transactions.find(t => t.type === 'redeemed')?._sum.points || 0)
-    
-    return {
-      totalMembers,
-      activeMembers,
-      totalPointsIssued,
-      totalPointsRedeemed,
-      avgPointsPerMember: totalMembers > 0 ? Math.floor(totalPointsIssued / totalMembers) : 0,
-      retentionRate: totalMembers > 0 ? (activeMembers / totalMembers) * 100 : 0,
-      programROI: 0, // Calculate based on actual revenue vs rewards cost
-      recentActivity: [] // Fetch from recent transactions
-    }
-  } catch (error) {
-    console.error('Error fetching loyalty overview:', error)
-    return {
-      totalMembers: 0,
-      activeMembers: 0,
-      totalPointsIssued: 0,
-      totalPointsRedeemed: 0,
-      avgPointsPerMember: 0,
-      retentionRate: 0,
-      programROI: 0,
-      recentActivity: []
-    }
+    ]
   }
 }
 
 async function getLoyaltyTiers(): Promise<LoyaltyTier[]> {
-  try {
-    const tiers = await db.loyaltyTier.findMany({
-      orderBy: { minPoints: 'asc' }
-    })
-    
-    return tiers.map(tier => ({
-      id: tier.id,
-      name: tier.name,
-      description: tier.description,
-      minPoints: tier.minPoints,
-      maxPoints: tier.maxPoints,
-      benefits: tier.benefits as string[],
-      color: tier.color,
-      icon: tier.icon,
-      discountRate: tier.discountRate,
-      prioritySupport: tier.prioritySupport,
-      exclusiveAccess: tier.exclusiveAccess
-    }))
-  } catch (error) {
-    console.error('Error fetching loyalty tiers:', error)
-    return []
-  }
+  return [
+    {
+      id: 'bronze',
+      name: 'برونزي',
+      description: 'بداية رحلتك مع الهامد كارز',
+      minPoints: 0,
+      maxPoints: 999,
+      benefits: [
+        'كسب 1 نقطة لكل 100 جنيه',
+        'عروض حصرية عبر البريد',
+        'دعوة لفعاليات محددة'
+      ],
+      color: '#CD7F32',
+      icon: '🥉',
+      discountRate: 0,
+      prioritySupport: false,
+      exclusiveAccess: false
+    },
+    {
+      id: 'silver',
+      name: 'فضي',
+      description: 'عميل مميز في الهامد كارز',
+      minPoints: 1000,
+      maxPoints: 4999,
+      benefits: [
+        'كسب 1.5 نقطة لكل 100 جنيه',
+        'خصم 5% على الصيانة',
+        'دعم مفضل',
+        'دعوة لجميع الفعاليات'
+      ],
+      color: '#C0C0C0',
+      icon: '🥈',
+      discountRate: 5,
+      prioritySupport: true,
+      exclusiveAccess: false
+    },
+    {
+      id: 'gold',
+      name: 'ذهبي',
+      description: 'عميل VIP في الهامد كارز',
+      minPoints: 5000,
+      maxPoints: 14999,
+      benefits: [
+        'كسب 2 نقطة لكل 100 جنيه',
+        'خصم 10% على الصيانة',
+        'دعم أولوية عالية',
+        'خدمة سيارة بديلة',
+        'دعوة لفعاليات حصرية'
+      ],
+      color: '#FFD700',
+      icon: '🥇',
+      discountRate: 10,
+      prioritySupport: true,
+      exclusiveAccess: true
+    },
+    {
+      id: 'platinum',
+      name: 'بلاتيني',
+      description: 'أفضل عملاء الهامد كارز',
+      minPoints: 15000,
+      benefits: [
+        'كسب 3 نقاط لكل 100 جنيه',
+        'خصم 15% على الصيانة',
+        'دعم VIP على مدار الساعة',
+        'خدمة سيارة بديلة مجانية',
+        'فعاليات حصرية جداً',
+        'مدير علاقات شخصي'
+      ],
+      color: '#E5E4E2',
+      icon: '💎',
+      discountRate: 15,
+      prioritySupport: true,
+      exclusiveAccess: true
+    }
+  ]
 }
 
 async function getLoyaltyRewards(): Promise<LoyaltyReward[]> {
-  try {
-    const rewards = await db.loyaltyReward.findMany({
-      where: { isActive: true },
-      orderBy: { pointsRequired: 'asc' }
-    })
-    
-    return rewards.map(reward => ({
-      id: reward.id,
-      name: reward.name,
-      description: reward.description,
-      type: reward.type as any,
-      pointsRequired: reward.pointsRequired,
-      value: reward.value,
-      validity: reward.validity,
-      isLimited: reward.isLimited,
-      limitCount: reward.limitCount,
-      claimedCount: reward.claimedCount,
-      isActive: reward.isActive,
-      category: reward.category,
-      imageUrl: reward.imageUrl,
-      terms: reward.terms
-    }))
-  } catch (error) {
-    console.error('Error fetching loyalty rewards:', error)
-    return []
-  }
+  return [
+    {
+      id: '1',
+      name: 'خصم 5% على الصيانة',
+      description: 'احصل على خصم 5% على خدمة الصيانة التالية',
+      type: 'discount',
+      pointsRequired: 500,
+      value: 5,
+      validity: 90,
+      isLimited: false,
+      claimedCount: 45,
+      isActive: true,
+      category: 'الصيانة',
+      terms: 'صالح لخدمة صيانة واحدة فقط. لا يمكن تجميعه مع عروض أخرى.'
+    },
+    {
+      id: '2',
+      name: 'غسيل سيارة مجاني',
+      description: 'غسيل سيارة خارجي وداخلي مجاني',
+      type: 'service',
+      pointsRequired: 300,
+      value: 150,
+      validity: 60,
+      isLimited: false,
+      claimedCount: 78,
+      isActive: true,
+      category: 'الخدمات',
+      terms: 'صالح لغسيل سيارة واحد فقط. يحتاج إلى حجز مسبق.'
+    },
+    {
+      id: '3',
+      name: 'تغيير زيت مجاني',
+      description: 'خدمة تغيير زيت مع فلتر مجانية',
+      type: 'service',
+      pointsRequired: 800,
+      value: 250,
+      validity: 120,
+      isLimited: true,
+      limitCount: 50,
+      claimedCount: 23,
+      isActive: true,
+      category: 'الصيانة',
+      terms: 'يشمل الزيت والفلتر فقط. لا يشمل قطع غيار إضافية.'
+    },
+    {
+      id: '4',
+      name: 'تجربة قيادة سيارة جديدة',
+      description: 'تجربة قيادة سيارة تاتا جديدة لمدة ساعة',
+      type: 'experience',
+      pointsRequired: 1000,
+      value: 500,
+      validity: 30,
+      isLimited: true,
+      limitCount: 20,
+      claimedCount: 8,
+      isActive: true,
+      category: 'تجارب',
+      terms: 'يحتاج إلى حجز مسبق. متوفر لنماذج محددة فقط.'
+    },
+    {
+      id: '5',
+      name: 'خصم 10% على سيارة جديدة',
+      description: 'خصم خاص على شراء سيارة تاتا جديدة',
+      type: 'discount',
+      pointsRequired: 5000,
+      value: 10,
+      validity: 180,
+      isLimited: true,
+      limitCount: 10,
+      claimedCount: 2,
+      isActive: true,
+      category: 'المبيعات',
+      terms: 'صالح لسيارة واحدة فقط. لا يمكن تجميعه مع عروض أخرى.'
+    }
+  ]
 }
 
-async function getCustomerLoyalty(customerId: string): Promise<CustomerLoyalty | null> {
-  try {
-    const loyalty = await db.loyaltyMember.findUnique({
-      where: { customerId }
-    })
-    
-    if (!loyalty) return null
-    
-    return {
-      customerId: loyalty.customerId,
-      points: loyalty.points,
-      tier: loyalty.tier,
-      tierProgress: loyalty.tierProgress,
-      totalEarned: loyalty.totalEarned,
-      totalSpent: loyalty.totalSpent,
-      joinDate: loyalty.joinDate,
-      lastActivity: loyalty.lastActivity,
-      nextTierProgress: loyalty.nextTierProgress,
-      rewardsClaimed: loyalty.rewardsClaimed,
-      referrals: loyalty.referrals,
-      streak: loyalty.streak
-    }
-  } catch (error) {
-    console.error('Error fetching customer loyalty:', error)
-    return null
+async function getCustomerLoyalty(customerId: string): Promise<CustomerLoyalty> {
+  // Mock customer loyalty data - in production, this would come from database
+  return {
+    customerId,
+    points: 2750,
+    tier: 'silver',
+    tierProgress: 55, // 55% to next tier
+    totalEarned: 3200,
+    totalSpent: 185000,
+    joinDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
+    lastActivity: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    nextTierProgress: 2250, // points needed for next tier
+    rewardsClaimed: 3,
+    referrals: 2,
+    streak: 6
   }
 }
 
 async function getLoyaltyTransactions(customerId: string): Promise<LoyaltyTransaction[]> {
-  try {
-    const transactions = await db.loyaltyTransaction.findMany({
-      where: { customerId },
-      orderBy: { createdAt: 'desc' },
-      take: 50
-    })
-    
-    return transactions.map(transaction => ({
-      id: transaction.id,
-      customerId: transaction.customerId,
-      type: transaction.type as any,
-      points: transaction.points,
-      description: transaction.description,
-      referenceId: transaction.referenceId,
-      referenceType: transaction.referenceType,
-      expiryDate: transaction.expiryDate,
-      createdAt: transaction.createdAt
-    }))
-  } catch (error) {
-    console.error('Error fetching loyalty transactions:', error)
-    return []
-  }
+  // Mock transaction history
+  return [
+    {
+      id: '1',
+      customerId,
+      type: 'earned',
+      points: 250,
+      description: 'حجز صيانة دورية',
+      referenceId: 'booking_123',
+      referenceType: 'booking',
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+    },
+    {
+      id: '2',
+      customerId,
+      type: 'redeemed',
+      points: 500,
+      description: 'استبدال: خصم 5% على الصيانة',
+      referenceId: 'reward_1',
+      referenceType: 'reward',
+      createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)
+    },
+    {
+      id: '3',
+      customerId,
+      type: 'earned',
+      points: 150,
+      description: 'إحالة صديق',
+      referenceId: 'referral_456',
+      referenceType: 'referral',
+      createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)
+    },
+    {
+      id: '4',
+      customerId,
+      type: 'earned',
+      points: 500,
+      description: 'شراء سيارة جديدة',
+      referenceId: 'sale_789',
+      referenceType: 'sale',
+      createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
+    }
+  ]
 }
 
 async function getLoyaltyAnalytics(): Promise<LoyaltyAnalytics> {
-  try {
-    const totalMembers = await db.loyaltyMember.count()
-    const activeMembers = await db.loyaltyMember.count({
-      where: { 
-        lastActivity: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-      }
-    })
-    
-    const transactions = await db.loyaltyTransaction.groupBy({
-      by: ['type'],
-      _sum: { points: true }
-    })
-    
-    const totalPointsIssued = transactions.find(t => t.type === 'earned')?._sum.points || 0
-    const totalPointsRedeemed = Math.abs(transactions.find(t => t.type === 'redeemed')?._sum.points || 0)
-    
-    // Get tier distribution
-    const tierDistribution = await db.loyaltyMember.groupBy({
-      by: ['tier'],
-      _count: { tier: true }
-    })
-    
-    const tierDist = tierDistribution.map(tier => ({
-      tier: tier.tier,
-      count: tier._count.tier,
-      percentage: totalMembers > 0 ? (tier._count.tier / totalMembers) * 100 : 0
-    }))
-    
-    return {
-      totalMembers,
-      activeMembers,
-      totalPointsIssued,
-      totalPointsRedeemed,
-      avgPointsPerMember: totalMembers > 0 ? Math.floor(totalPointsIssued / totalMembers) : 0,
-      tierDistribution: tierDist,
-      topRewards: [], // Fetch from reward redemptions
-      retentionRate: totalMembers > 0 ? (activeMembers / totalMembers) * 100 : 0,
-      programROI: 0 // Calculate based on actual revenue vs rewards cost
-    }
-  } catch (error) {
-    console.error('Error fetching loyalty analytics:', error)
-    return {
-      totalMembers: 0,
-      activeMembers: 0,
-      totalPointsIssued: 0,
-      totalPointsRedeemed: 0,
-      avgPointsPerMember: 0,
-      tierDistribution: [],
-      topRewards: [],
-      retentionRate: 0,
-      programROI: 0
-    }
+  // Mock analytics data
+  return {
+    totalMembers: 1250,
+    activeMembers: 980,
+    totalPointsIssued: 2450000,
+    totalPointsRedeemed: 1850000,
+    avgPointsPerMember: 1960,
+    tierDistribution: [
+      { tier: 'bronze', count: 450, percentage: 36 },
+      { tier: 'silver', count: 520, percentage: 41.6 },
+      { tier: 'gold', count: 230, percentage: 18.4 },
+      { tier: 'platinum', count: 50, percentage: 4 }
+    ],
+    topRewards: [
+      { rewardId: '1', name: 'خصم 5% على الصيانة', claimed: 45 },
+      { rewardId: '2', name: 'غسيل سيارة مجاني', claimed: 78 },
+      { rewardId: '3', name: 'تغيير زيت مجاني', claimed: 23 }
+    ],
+    retentionRate: 78.5,
+    programROI: 3.2
   }
 }
 

@@ -19,112 +19,103 @@ export async function GET(request: NextRequest) {
     const monthEnd = endOfMonth(currentDate)
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-    // Initialize empty arrays for data
-    let testDriveBookings = []
-    let serviceBookings = []
-    let calendarEvents = []
+    // Fetch calendar data
+    const [testDriveBookings, serviceBookings, calendarEvents] = await Promise.all([
+      // Test drive bookings
+      db.testDriveBooking.findMany({
+        where: {
+          date: {
+            gte: monthStart,
+            lte: monthEnd
+          }
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          vehicle: {
+            select: {
+              id: true,
+              make: true,
+              model: true,
+              year: true
+            }
+          }
+        },
+        orderBy: [
+          { date: 'asc' },
+          { timeSlot: 'asc' }
+        ]
+      }),
 
-    // Try to fetch calendar data with error handling
-    try {
-      [testDriveBookings, serviceBookings, calendarEvents] = await Promise.all([
-        // Test drive bookings
-        db.testDriveBooking.findMany({
-          where: {
-            date: {
-              gte: monthStart,
-              lte: monthEnd
+      // Service bookings
+      db.serviceBooking.findMany({
+        where: {
+          date: {
+            gte: monthStart,
+            lte: monthEnd
+          }
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
             }
           },
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            vehicle: {
-              select: {
-                id: true,
-                make: true,
-                model: true,
-                year: true
-              }
+          serviceType: {
+            select: {
+              id: true,
+              name: true,
+              duration: true,
+              price: true
             }
           },
-          orderBy: [
-            { date: 'asc' },
-            { timeSlot: 'asc' }
-          ]
-        }),
+          vehicle: {
+            select: {
+              id: true,
+              make: true,
+              model: true,
+              year: true
+            }
+          }
+        },
+        orderBy: [
+          { date: 'asc' },
+          { timeSlot: 'asc' }
+        ]
+      }),
 
-        // Service bookings
-        db.serviceBooking.findMany({
-          where: {
-            date: {
-              gte: monthStart,
-              lte: monthEnd
+      // Calendar events
+      db.calendarEvent.findMany({
+        where: {
+          startDate: {
+            gte: monthStart,
+            lte: monthEnd
+          }
+        },
+        include: {
+          organizer: {
+            select: {
+              id: true,
+              name: true,
+              email: true
             }
-          },
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            serviceType: {
-              select: {
-                id: true,
-                name: true,
-                duration: true,
-                price: true
-              }
-            },
-            vehicle: {
-              select: {
-                id: true,
-                make: true,
-                model: true,
-                year: true
-              }
-            }
-          },
-          orderBy: [
-            { date: 'asc' },
-            { timeSlot: 'asc' }
-          ]
-        }),
-
-        // Calendar events
-        db.calendarEvent.findMany({
-          where: {
-            startTime: {
-              gte: monthStart,
-              lte: monthEnd
-            }
-          },
-          include: {
-            organizer: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          },
-          orderBy: [
-            { startTime: 'asc' }
-          ]
-        })
-      ])
-    } catch (dbError) {
-      console.error('Database query failed, returning empty data:', dbError)
-      // Continue with empty arrays if database queries fail
-    }
+          }
+        },
+        orderBy: [
+          { startDate: 'asc' },
+          { startTime: 'asc' }
+        ]
+      })
+    ])
 
     // Convert bookings to calendar events
     const bookingEvents: CalendarEvent[] = []
@@ -187,37 +178,19 @@ export async function GET(request: NextRequest) {
         id: `event-${event.id}`,
         title: event.title,
         description: event.description,
-        start: event.startTime,
-        end: event.endTime,
+        start: new Date(`${format(event.startDate, 'yyyy-MM-dd')}T${event.startTime || '09:00'}`),
+        end: new Date(`${format(event.endDate, 'yyyy-MM-dd')}T${event.endTime || '10:00'}`),
         type: 'event',
-        status: event.status as any,
+        status: 'CONFIRMED',
         organizerId: event.organizerId,
         organizerName: event.organizer?.name,
         location: event.location,
-        allDay: false, // Default to false since schema doesn't have this field
+        allDay: event.isAllDay,
         createdAt: event.createdAt,
         updatedAt: event.updatedAt
       }
       bookingEvents.push(calendarEvent)
     })
-
-    // Create holidays from database or empty array
-    let holidays: Holiday[] = []
-    if (showHolidays) {
-      try {
-        holidays = await db.holiday.findMany({
-          where: {
-            date: {
-              gte: monthStart,
-              lte: monthEnd
-            }
-          }
-        })
-      } catch (holidayError) {
-        console.error('Failed to fetch holidays:', holidayError)
-        holidays = []
-      }
-    }
 
     // Create calendar days
     const calendarDays: CalendarDay[] = daysInMonth.map(day => {
@@ -226,9 +199,6 @@ export async function GET(request: NextRequest) {
       const isWeekendDate = isWeekend(day)
       const isPastDate = isPast(day) && !isTodayDate
       
-      // Check if this day is a holiday
-      const isHolidayDate = holidays.some(holiday => isSameDay(new Date(holiday.date), day))
-      
       return {
         date: day,
         events: dayEvents,
@@ -236,61 +206,59 @@ export async function GET(request: NextRequest) {
         isToday: isTodayDate,
         isWeekend: isWeekendDate,
         isPast: isPastDate,
-        isHoliday: isHolidayDate,
-        availableTimeSlots: [] // Will be populated in frontend based on day of week
+        isHoliday: false, // TODO: Add holiday logic
+        availableTimeSlots: [] // TODO: Add time slots logic
       }
     })
 
-    // Create time slots from database or sample data
-    let timeSlots: TimeSlot[] = []
-    try {
-      const dbTimeSlots = await db.timeSlot.findMany({
-        where: { isActive: true }
-      })
-      
-      // Convert database TimeSlot to calendar-service TimeSlot format
-      timeSlots = dbTimeSlots.map(slot => ({
-        id: slot.id,
-        date: new Date(), // Will be filtered by day of week in frontend
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        maxBookings: slot.maxBookings,
-        currentBookings: 0, // Will be calculated dynamically
+    // Create some sample holidays
+    const holidays: Holiday[] = [
+      {
+        id: 'holiday-1',
+        name: 'عيد الفطر',
+        date: addDays(new Date(), 30), // Sample date
+        type: 'religious',
+        description: 'عيد الفطر المبارك'
+      },
+      {
+        id: 'holiday-2',
+        name: 'عيد الأضحى',
+        date: addDays(new Date(), 60), // Sample date
+        type: 'religious',
+        description: 'عيد الأضحى المبارك'
+      }
+    ]
+
+    // Create some sample time slots
+    const timeSlots: TimeSlot[] = [
+      {
+        id: 'slot-1',
+        date: new Date(),
+        startTime: '09:00',
+        endTime: '10:00',
+        maxBookings: 1,
+        currentBookings: 0,
         isAvailable: true
-      }))
-    } catch (timeSlotError) {
-      console.error('Failed to fetch time slots, using sample data:', timeSlotError)
-      // Use sample time slots as fallback
-      timeSlots = [
-        {
-          id: 'slot-1',
-          date: new Date(),
-          startTime: '09:00',
-          endTime: '10:00',
-          maxBookings: 1,
-          currentBookings: 0,
-          isAvailable: true
-        },
-        {
-          id: 'slot-2',
-          date: new Date(),
-          startTime: '10:00',
-          endTime: '11:00',
-          maxBookings: 1,
-          currentBookings: 0,
-          isAvailable: true
-        },
-        {
-          id: 'slot-3',
-          date: new Date(),
-          startTime: '11:00',
-          endTime: '12:00',
-          maxBookings: 1,
-          currentBookings: 0,
-          isAvailable: true
-        }
-      ]
-    }
+      },
+      {
+        id: 'slot-2',
+        date: new Date(),
+        startTime: '10:00',
+        endTime: '11:00',
+        maxBookings: 1,
+        currentBookings: 0,
+        isAvailable: true
+      },
+      {
+        id: 'slot-3',
+        date: new Date(),
+        startTime: '11:00',
+        endTime: '12:00',
+        maxBookings: 1,
+        currentBookings: 0,
+        isAvailable: true
+      }
+    ]
 
     return NextResponse.json({
       days: calendarDays,

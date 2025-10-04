@@ -222,7 +222,7 @@ export function BackgroundImage({
             target.src = imageSrc.replace('/public', '')
           } else if (!currentSrc.startsWith('http')) {
             console.log('Trying with full URL')
-            target.src = `https://elhamdimport.com${imageSrc}`
+            target.src = `http://localhost:3000${imageSrc}`
           }
         }}
       />

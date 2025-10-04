@@ -26,276 +26,9 @@ async function main() {
   await seedServiceBookings()
   await seedSecurityLogs()
   await seedNotifications()
-  await seedMedia()
   await seedActivityLogs()
 
   console.log('✅ Database seeding completed successfully!')
-}
-
-async function seedMedia() {
-  console.log('📸 Seeding media files...')
-
-  const mediaFiles = [
-    // Company/Banner images
-    {
-      filename: 'company-logo-main.png',
-      originalName: 'Elhamd Import Logo.png',
-      path: '/uploads/company/logo-main.png',
-      url: '/uploads/company/logo-main.png',
-      thumbnailUrl: '/uploads/company/logo-main.png',
-      mimeType: 'image/png',
-      size: 25600,
-      width: 300,
-      height: 150,
-      altText: 'شركة الحمد للسيارات - الشعار الرئيسي',
-      title: 'شعار الشركة',
-      description: 'الشعار الرسمي لشركة الحمد لاستيراد السيارات',
-      tags: JSON.stringify(['شركة', 'شعار', 'رئيسي']),
-      category: 'company',
-      entityId: 'company-logo',
-      isPublic: true,
-      isFeatured: true,
-      order: 1,
-      metadata: JSON.stringify({ type: 'logo', section: 'header' }),
-      createdBy: 'admin'
-    },
-    {
-      filename: 'hero-banner-home.jpg',
-      originalName: 'Hero Banner Home.jpg',
-      path: '/uploads/banner/hero-home.jpg',
-      url: '/uploads/banner/hero-home.jpg',
-      thumbnailUrl: '/uploads/banner/hero-home.jpg',
-      mimeType: 'image/jpeg',
-      size: 512000,
-      width: 1920,
-      height: 600,
-      altText: 'بانر رئيسي لصفحة الهبوط',
-      title: 'البنر الرئيسي',
-      description: 'البنر الرئيسي لصفحة الهبوط يعرض أحدث السيارات',
-      tags: JSON.stringify(['بانر', 'رئيسي', 'هبوط']),
-      category: 'banner',
-      entityId: 'home-hero',
-      isPublic: true,
-      isFeatured: true,
-      order: 1,
-      metadata: JSON.stringify({ type: 'banner', section: 'home' }),
-      createdBy: 'admin'
-    },
-    // Vehicle images (additional)
-    {
-      filename: 'tata-nexon-front.jpg',
-      originalName: 'Tata Nexon Front View.jpg',
-      path: '/uploads/vehicles/nexon-front.jpg',
-      url: '/uploads/vehicles/nexon-front.jpg',
-      thumbnailUrl: '/uploads/vehicles/nexon-front.jpg',
-      mimeType: 'image/jpeg',
-      size: 384000,
-      width: 800,
-      height: 600,
-      altText: 'تاتا نيكسون - نظرة أمامية',
-      title: 'تاتا نيكسون الأمامية',
-      description: 'صورة أمامية لسيارة تاتا نيكسون موديل 2024',
-      tags: JSON.stringify(['تاتا', 'نيكسون', 'سيارة', 'أمامي']),
-      category: 'vehicles',
-      entityId: 'vehicle-1',
-      isPublic: true,
-      isFeatured: true,
-      order: 1,
-      metadata: JSON.stringify({ vehicleModel: 'Nexon', view: 'front' }),
-      createdBy: 'admin'
-    },
-    {
-      filename: 'tata-punch-side.jpg',
-      originalName: 'Tata Punch Side View.jpg',
-      path: '/uploads/vehicles/punch-side.jpg',
-      url: '/uploads/vehicles/punch-side.jpg',
-      thumbnailUrl: '/uploads/vehicles/punch-side.jpg',
-      mimeType: 'image/jpeg',
-      size: 356000,
-      width: 800,
-      height: 600,
-      altText: 'تاتا بانش - نظرة جانبية',
-      title: 'تاتا بانش الجانبية',
-      description: 'صورة جانبية لسيارة تاتا بانش موديل 2024',
-      tags: JSON.stringify(['تاتا', 'بانش', 'سيارة', 'جانبي']),
-      category: 'vehicles',
-      entityId: 'vehicle-2',
-      isPublic: true,
-      isFeatured: false,
-      order: 2,
-      metadata: JSON.stringify({ vehicleModel: 'Punch', view: 'side' }),
-      createdBy: 'admin'
-    },
-    // Service images
-    {
-      filename: 'service-center-exterior.jpg',
-      originalName: 'Service Center Exterior.jpg',
-      path: '/uploads/services/center-exterior.jpg',
-      url: '/uploads/services/center-exterior.jpg',
-      thumbnailUrl: '/uploads/services/center-exterior.jpg',
-      mimeType: 'image/jpeg',
-      size: 428000,
-      width: 1200,
-      height: 800,
-      altText: 'مركز الخدمة - الواجهة الخارجية',
-      title: 'مركز الخدمة',
-      description: 'الواجهة الخارجية لمركز خدمة الحمد للسيارات',
-      tags: JSON.stringify(['خدمة', 'مركز', 'خارجي']),
-      category: 'services',
-      entityId: 'service-center',
-      isPublic: true,
-      isFeatured: false,
-      order: 1,
-      metadata: JSON.stringify({ type: 'facility', service: 'general' }),
-      createdBy: 'admin'
-    },
-    {
-      filename: 'car-maintenance-workshop.jpg',
-      originalName: 'Car Maintenance Workshop.jpg',
-      path: '/uploads/services/maintenance-workshop.jpg',
-      url: '/uploads/services/maintenance-workshop.jpg',
-      thumbnailUrl: '/uploads/services/maintenance-workshop.jpg',
-      mimeType: 'image/jpeg',
-      size: 512000,
-      width: 1200,
-      height: 900,
-      altText: 'ورشة صيانة السيارات',
-      title: 'ورشة الصيانة',
-      description: 'ورشة مجهزة لأحدث أجهزة صيانة السيارات',
-      tags: JSON.stringify(['صيانة', 'ورشة', 'سيارات']),
-      category: 'services',
-      entityId: 'maintenance-service',
-      isPublic: true,
-      isFeatured: false,
-      order: 2,
-      metadata: JSON.stringify({ type: 'facility', service: 'maintenance' }),
-      createdBy: 'admin'
-    },
-    // Blog/Gallery images
-    {
-      filename: 'car-showroom-2024.jpg',
-      originalName: 'Car Showroom 2024.jpg',
-      path: '/uploads/gallery/showroom-2024.jpg',
-      url: '/uploads/gallery/showroom-2024.jpg',
-      thumbnailUrl: '/uploads/gallery/showroom-2024.jpg',
-      mimeType: 'image/jpeg',
-      size: 640000,
-      width: 1600,
-      height: 1200,
-      altText: 'معرض السيارات 2024',
-      title: 'معرض السيارات',
-      description: 'صورة حديثة لمعرض سيارات الحمد',
-      tags: JSON.stringify(['معرض', 'سيارات', '2024']),
-      category: 'gallery',
-      entityId: 'gallery-1',
-      isPublic: true,
-      isFeatured: true,
-      order: 1,
-      metadata: JSON.stringify({ type: 'gallery', year: 2024 }),
-      createdBy: 'admin'
-    },
-    {
-      filename: 'tata-safari-interior.jpg',
-      originalName: 'Tata Safari Interior.jpg',
-      path: '/uploads/vehicles/safari-interior.jpg',
-      url: '/uploads/vehicles/safari-interior.jpg',
-      thumbnailUrl: '/uploads/vehicles/safari-interior.jpg',
-      mimeType: 'image/jpeg',
-      size: 448000,
-      width: 1200,
-      height: 900,
-      altText: 'تاتا سفاري - المقصورة الداخلية',
-      title: 'داخلية تاتا سفاري',
-      description: 'المقصورة الداخلية الفاخرة لسيارة تاتا سفاري',
-      tags: JSON.stringify(['تاتا', 'سفاري', 'داخلي', 'مقاعد']),
-      category: 'vehicles',
-      entityId: 'vehicle-6',
-      isPublic: true,
-      isFeatured: false,
-      order: 3,
-      metadata: JSON.stringify({ vehicleModel: 'Safari', view: 'interior' }),
-      createdBy: 'admin'
-    },
-    // Additional company images
-    {
-      filename: 'team-photo-2024.jpg',
-      originalName: 'Team Photo 2024.jpg',
-      path: '/uploads/company/team-2024.jpg',
-      url: '/uploads/company/team-2024.jpg',
-      thumbnailUrl: '/uploads/company/team-2024.jpg',
-      mimeType: 'image/jpeg',
-      size: 580000,
-      width: 1920,
-      height: 1080,
-      altText: 'فريق عمل الحمد 2024',
-      title: 'فريق العمل',
-      description: 'صورة فريق عمل شركة الحمد لاستيراد السيارات',
-      tags: JSON.stringify(['فريق', 'عمل', 'موظفين']),
-      category: 'company',
-      entityId: 'team-photo',
-      isPublic: true,
-      isFeatured: false,
-      order: 2,
-      metadata: JSON.stringify({ type: 'team', year: 2024 }),
-      createdBy: 'admin'
-    },
-    // Blog post images
-    {
-      filename: 'blog-tata-nexon-review.jpg',
-      originalName: 'Blog Tata Nexon Review.jpg',
-      path: '/uploads/blog/nexon-review.jpg',
-      url: '/uploads/blog/nexon-review.jpg',
-      thumbnailUrl: '/uploads/blog/nexon-review.jpg',
-      mimeType: 'image/jpeg',
-      size: 420000,
-      width: 1200,
-      height: 800,
-      altText: 'مراجعة تاتا نيكسون',
-      title: 'مراجعة نيكسون',
-      description: 'صورة مقال مراجعة سيارة تاتا نيكسون',
-      tags: JSON.stringify(['مدونة', 'مراجعة', 'نيكسون']),
-      category: 'blog',
-      entityId: 'blog-post-1',
-      isPublic: true,
-      isFeatured: false,
-      order: 1,
-      metadata: JSON.stringify({ type: 'blog', postType: 'review' }),
-      createdBy: 'admin'
-    },
-    // Test drive images
-    {
-      filename: 'test-drive-event.jpg',
-      originalName: 'Test Drive Event.jpg',
-      path: '/uploads/events/test-drive-2024.jpg',
-      url: '/uploads/events/test-drive-2024.jpg',
-      thumbnailUrl: '/uploads/events/test-drive-2024.jpg',
-      mimeType: 'image/jpeg',
-      size: 520000,
-      width: 1600,
-      height: 1200,
-      altText: 'فعالية قيادة تجريبية',
-      title: 'قيادة تجريبية',
-      description: 'صورة من فعالية القيادة التجريبية',
-      tags: JSON.stringify(['فعالية', 'قيادة', 'تجريبية']),
-      category: 'events',
-      entityId: 'event-1',
-      isPublic: true,
-      isFeatured: false,
-      order: 1,
-      metadata: JSON.stringify({ type: 'event', eventType: 'test-drive' }),
-      createdBy: 'admin'
-    }
-  ]
-
-  for (const media of mediaFiles) {
-    await prisma.media.upsert({
-      where: { filename: media.filename },
-      update: media,
-      create: media,
-    })
-  }
-
-  console.log(`✅ Created ${mediaFiles.length} media files`)
 }
 
 async function cleanDatabase() {
@@ -303,7 +36,6 @@ async function cleanDatabase() {
   await prisma.securityLog.deleteMany()
   await prisma.notification.deleteMany()
   await prisma.activityLog.deleteMany()
-  await prisma.media.deleteMany()
   await prisma.serviceBooking.deleteMany()
   await prisma.testDriveBooking.deleteMany()
   await prisma.timeSlot.deleteMany()
@@ -435,7 +167,7 @@ async function seedBranches() {
       code: 'CAI-001',
       address: 'شارع التحرير، وسط القاهرة',
       phone: '+20 2 2345 6789',
-      email: 'cairo@elhamdimport.com',
+      email: 'cairo@elhamdimports.com',
       openingDate: new Date('2020-01-15'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -445,7 +177,7 @@ async function seedBranches() {
       code: 'ALEX-002',
       address: 'شارع سعد زغلول، الإسكندرية',
       phone: '+20 3 4567 8901',
-      email: 'alexandria@elhamdimport.com',
+      email: 'alexandria@elhamdimports.com',
       openingDate: new Date('2021-03-20'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -455,7 +187,7 @@ async function seedBranches() {
       code: 'GIZ-003',
       address: 'ميدان المحطة، الجيزة',
       phone: '+20 2 3456 7890',
-      email: 'giza@elhamdimport.com',
+      email: 'giza@elhamdimports.com',
       openingDate: new Date('2022-06-10'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -483,7 +215,7 @@ async function seedUsers() {
 
   const users = [
     {
-      email: 'admin@elhamdimport.com',
+      email: 'admin@elhamdimports.com',
       password: hashedPassword,
       name: 'أحمد محمد',
       role: 'ADMIN',
@@ -496,7 +228,7 @@ async function seedUsers() {
       roleTemplateId: adminTemplate?.id,
     },
     {
-      email: 'manager@elhamdimport.com',
+      email: 'manager@elhamdimports.com',
       password: hashedPassword,
       name: 'محمد علي',
       role: 'BRANCH_MANAGER',
@@ -509,7 +241,7 @@ async function seedUsers() {
       roleTemplateId: managerTemplate?.id,
     },
     {
-      email: 'employee@elhamdimport.com',
+      email: 'employee@elhamdimports.com',
       password: hashedPassword,
       name: 'عمر حسن',
       role: 'STAFF',
@@ -732,75 +464,31 @@ async function seedVehicleImages() {
   const vehicles = await prisma.vehicle.findMany()
 
   for (const vehicle of vehicles) {
-    // Define image mappings for each vehicle model
-    const imageMappings: { [key: string]: string[] } = {
-      'Nexon': [
-        '/uploads/vehicles/nexon-1.jpg',
-        '/uploads/vehicles/nexon-1.jpg',
-        '/uploads/vehicles/nexon-1.jpg',
-        '/uploads/vehicles/nexon-1.jpg'
-      ],
-      'Punch': [
-        '/uploads/vehicles/punch-1.jpg',
-        '/uploads/vehicles/punch-1.jpg',
-        '/uploads/vehicles/punch-1.jpg',
-        '/uploads/vehicles/punch-1.jpg'
-      ],
-      'Tiago': [
-        '/uploads/vehicles/tiago-ev-1.jpg',
-        '/uploads/vehicles/tiago-ev-1.jpg',
-        '/uploads/vehicles/tiago-ev-1.jpg',
-        '/uploads/vehicles/tiago-ev-1.jpg'
-      ],
-      'Altroz': [
-        '/uploads/vehicles/altroz-1.jpg',
-        '/uploads/vehicles/altroz-1.jpg',
-        '/uploads/vehicles/altroz-1.jpg',
-        '/uploads/vehicles/altroz-1.jpg'
-      ],
-      'Harrier': [
-        '/uploads/vehicles/harrier-1.jpg',
-        '/uploads/vehicles/harrier-2.jpg',
-        '/uploads/vehicles/harrier-3.jpg',
-        '/uploads/vehicles/harrier-4.jpg'
-      ],
-      'Safari': [
-        '/uploads/vehicles/safari-1.jpg',
-        '/uploads/vehicles/safari-1.jpg',
-        '/uploads/vehicles/safari-1.jpg',
-        '/uploads/vehicles/safari-1.jpg'
-      ]
-    }
-
-    const vehicleImages = imageMappings[vehicle.model] || [
-      '/api/placeholder/800/600?text=' + encodeURIComponent(`${vehicle.make} ${vehicle.model}`)
-    ]
-
     const images = [
       {
         vehicleId: vehicle.id,
-        imageUrl: vehicleImages[0],
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Front`,
         altText: `${vehicle.make} ${vehicle.model} - Front View`,
         isPrimary: true,
         order: 0,
       },
       {
         vehicleId: vehicle.id,
-        imageUrl: vehicleImages[1],
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Side`,
         altText: `${vehicle.make} ${vehicle.model} - Side View`,
         isPrimary: false,
         order: 1,
       },
       {
         vehicleId: vehicle.id,
-        imageUrl: vehicleImages[2],
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Rear`,
         altText: `${vehicle.make} ${vehicle.model} - Rear View`,
         isPrimary: false,
         order: 2,
       },
       {
         vehicleId: vehicle.id,
-        imageUrl: vehicleImages[3],
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Interior`,
         altText: `${vehicle.make} ${vehicle.model} - Interior`,
         isPrimary: false,
         order: 3,

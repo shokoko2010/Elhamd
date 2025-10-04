@@ -267,7 +267,7 @@ export default function HRPage() {
                   <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
                       <Avatar>
-                        <AvatarImage src={`/api/placeholder?width=40&height=40&text=${employee.user.id}`} />
+                        <AvatarImage src={`/api/placeholder/avatar/${employee.user.id}`} />
                         <AvatarFallback>
                           {employee.user.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </AvatarFallback>
@@ -318,7 +318,7 @@ export default function HRPage() {
                   <div key={leave.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
                       <Avatar>
-                        <AvatarImage src={`/api/placeholder?width=40&height=40&text=${leave.employee.user.id}`} />
+                        <AvatarImage src={`/api/placeholder/avatar/${leave.employee.user.id}`} />
                         <AvatarFallback>
                           {leave.employee.user.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </AvatarFallback>
@@ -373,7 +373,7 @@ export default function HRPage() {
                   <div key={payroll.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
                       <Avatar>
-                        <AvatarImage src={`/api/placeholder?width=40&height=40&text=${payroll.employee.user.id}`} />
+                        <AvatarImage src={`/api/placeholder/avatar/${payroll.employee.user.id}`} />
                         <AvatarFallback>
                           {payroll.employee.user.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </AvatarFallback>

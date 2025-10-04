@@ -24,7 +24,7 @@ export default function ContactInfoPage() {
   const handleEmailClick = () => {
     setIsLoading(true)
     setTimeout(() => {
-      window.open('mailto:info@elhamdimport.com', '_blank')
+      window.open('mailto:info@alhamdcars.com', '_blank')
       setIsLoading(false)
     }, 500)
   }
@@ -147,7 +147,7 @@ export default function ContactInfoPage() {
                   <div className="text-gray-700">
                     <p className="font-medium mb-2">البريد الرئيسي</p>
                     <p className="text-sm text-blue-600 font-medium">
-                      info@elhamdimport.com
+                      info@alhamdcars.com
                     </p>
                   </div>
                   <div className="text-gray-700">

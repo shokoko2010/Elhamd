@@ -358,7 +358,7 @@ export default function TestDrivePage() {
                           <div className="flex items-center gap-4">
                             <div className="w-20 h-16 bg-gray-200 rounded-lg">
                               <img
-                                src={selectedVehicle.images[0]?.imageUrl || '/api/placeholder?width=400&height=300'}
+                                src={selectedVehicle.images[0]?.imageUrl || '/api/placeholder/400/300'}
                                 alt={`${selectedVehicle.make} ${selectedVehicle.model}`}
                                 className="w-full h-full object-cover rounded-lg"
                               />
@@ -402,7 +402,7 @@ export default function TestDrivePage() {
                           <div className="flex items-center gap-4">
                             <div className="w-20 h-16 bg-gray-200 rounded-lg">
                               <img
-                                src={selectedVehicle?.images[0]?.imageUrl || '/api/placeholder?width=400&height=300'}
+                                src={selectedVehicle?.images[0]?.imageUrl || '/api/placeholder/400/300'}
                                 alt={`${selectedVehicle?.make} ${selectedVehicle?.model}`}
                                 className="w-full h-full object-cover rounded-lg"
                               />
@@ -447,7 +447,7 @@ export default function TestDrivePage() {
                           <div className="flex items-center gap-4">
                             <div className="w-20 h-16 bg-gray-200 rounded-lg">
                               <img
-                                src={selectedVehicle?.images[0]?.imageUrl || '/api/placeholder?width=400&height=300'}
+                                src={selectedVehicle?.images[0]?.imageUrl || '/api/placeholder/400/300'}
                                 alt={`${selectedVehicle?.make} ${selectedVehicle?.model}`}
                                 className="w-full h-full object-cover rounded-lg"
                               />

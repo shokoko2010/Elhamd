@@ -17,7 +17,7 @@ export async function GET() {
         logoText: 'الحمد للسيارات',
         tagline: 'وكيل تاتا المعتمد في مصر',
         primaryPhone: '+20 2 1234 5678',
-        primaryEmail: 'info@elhamdimport.com',
+        primaryEmail: 'info@alhamdcars.com',
         address: 'القاهرة، مصر',
         workingHours: 'السبت - الخميس: 9 صباحاً - 8 مساءً، الجمعة: 2 مساءً - 8 مساءً',
         copyrightText: '© 2024 الحمد للسيارات. جميع الحقوق محفوظة.',

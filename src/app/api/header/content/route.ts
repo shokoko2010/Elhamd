@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         logoText: 'Al-Hamd Cars',
         tagline: 'Your Trusted Car Dealership',
         primaryPhone: '+20 2 1234 5678',
-        primaryEmail: 'info@elhamdimport.com',
+        primaryEmail: 'info@alhamdcars.com',
         address: 'Cairo, Egypt',
         workingHours: 'Sat-Thu: 9AM-8PM, Fri: 2PM-8PM',
         ctaButton: {

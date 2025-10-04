@@ -207,7 +207,7 @@ export default function WebSocketTest() {
             <div>
               <h4 className="font-semibold mb-2">Connection Details:</h4>
               <ul className="space-y-1 text-gray-600">
-                <li>• Server URL: {process.env.NEXT_PUBLIC_SOCKET_URL || 'https://elhamdimport.com'}</li>
+                <li>• Server URL: {process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'}</li>
                 <li>• Socket Path: /api/socketio</li>
                 <li>• Transports: websocket, polling</li>
                 <li>• Socket ID: {socket?.id || 'N/A'}</li>

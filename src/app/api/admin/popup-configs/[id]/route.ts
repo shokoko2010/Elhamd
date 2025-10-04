@@ -11,7 +11,7 @@ const popupConfigSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
   imageUrl: z.string().optional().refine(val => {
-  if (!val || val.trim() === '' || val === '#') return true;
+  if (!val || val.trim() === '') return true;
   // Allow both full URLs and relative paths
   try {
     // Try as full URL first
@@ -26,7 +26,7 @@ const popupConfigSchema = z.object({
     message: "Invalid URL or relative path"
   }),
   linkUrl: z.string().optional().refine(val => {
-    if (!val || val.trim() === '' || val === '#') return true;
+    if (!val || val.trim() === '') return true;
     // Allow both full URLs and relative paths
     try {
       // Try as full URL first

@@ -319,7 +319,7 @@ export default function PopupConfigsPage() {
                     id="imageUrl"
                     value={formData.imageUrl}
                     onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
-                    placeholder="https://elhamdimport.com/image.jpg"
+                    placeholder="https://example.com/image.jpg"
                   />
                 </div>
                 
@@ -329,7 +329,7 @@ export default function PopupConfigsPage() {
                     id="linkUrl"
                     value={formData.linkUrl}
                     onChange={(e) => setFormData(prev => ({ ...prev, linkUrl: e.target.value }))}
-                    placeholder="https://elhamdimport.com"
+                    placeholder="https://example.com"
                   />
                 </div>
               </div>

@@ -49,15 +49,6 @@ export default function NotificationSystem() {
 
   useEffect(() => {
     if (user && typeof window !== 'undefined') {
-      // Check if we're on Vercel (WebSocket not supported)
-      const isVercel = window.location.hostname.includes('vercel.app') || 
-                     window.location.hostname === 'elhamdimport.com'
-      
-      if (isVercel) {
-        console.log('WebSocket disabled on Vercel deployment')
-        return
-      }
-      
       // Only reconnect if user has changed
       if (userIdRef.current !== user.id) {
         // Clean up previous connection

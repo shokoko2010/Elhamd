@@ -126,16 +126,63 @@ export default function BookingManagement() {
   const fetchBookings = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/admin/bookings/test-drive')
-      if (response.ok) {
-        const data = await response.json()
-        setBookings(data)
-      } else {
-        setBookings([])
-      }
+      // Mock data - in real implementation, fetch from API
+      const mockBookings: Booking[] = [
+        {
+          id: '1',
+          type: 'test-drive',
+          status: 'CONFIRMED',
+          customer: {
+            id: '1',
+            name: 'أحمد محمد',
+            email: 'ahmed@example.com',
+            phone: '+20 123 456 7890'
+          },
+          vehicle: {
+            id: '1',
+            make: 'تاتا',
+            model: 'نيكسون',
+            year: 2024,
+            stockNumber: 'TN001'
+          },
+          date: '2024-01-15',
+          timeSlot: '10:00',
+          notes: 'عميل مهتم بشراء السيارة',
+          createdAt: '2024-01-10T10:00:00Z',
+          updatedAt: '2024-01-10T10:00:00Z'
+        },
+        {
+          id: '2',
+          type: 'service',
+          status: 'PENDING',
+          customer: {
+            id: '2',
+            name: 'فاطمة علي',
+            email: 'fatima@example.com',
+            phone: '+20 987 654 3210'
+          },
+          vehicle: {
+            id: '2',
+            make: 'تاتا',
+            model: 'تياجو',
+            year: 2023,
+            stockNumber: 'TI002'
+          },
+          date: '2024-01-15',
+          timeSlot: '14:00',
+          services: [
+            { id: '1', name: 'تغيير زيت', duration: 30, price: 350 },
+            { id: '2', name: 'فحص فرامل', duration: 60, price: 450 }
+          ],
+          totalPrice: 800,
+          notes: 'صيانة دورية',
+          createdAt: '2024-01-12T14:00:00Z',
+          updatedAt: '2024-01-12T14:00:00Z'
+        }
+      ]
+      setBookings(mockBookings)
     } catch (error) {
       console.error('Error fetching bookings:', error)
-      setBookings([])
     } finally {
       setLoading(false)
     }
@@ -143,49 +190,22 @@ export default function BookingManagement() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/dashboard/stats')
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data.bookings || {
-          total: 0,
-          pending: 0,
-          confirmed: 0,
-          cancelled: 0,
-          completed: 0,
-          noShow: 0,
-          today: 0,
-          thisWeek: 0,
-          thisMonth: 0,
-          revenue: 0
-        })
-      } else {
-        setStats({
-          total: 0,
-          pending: 0,
-          confirmed: 0,
-          cancelled: 0,
-          completed: 0,
-          noShow: 0,
-          today: 0,
-          thisWeek: 0,
-          thisMonth: 0,
-          revenue: 0
-        })
+      // Mock stats - in real implementation, fetch from API
+      const mockStats: BookingStats = {
+        total: 156,
+        pending: 12,
+        confirmed: 45,
+        cancelled: 8,
+        completed: 89,
+        noShow: 2,
+        today: 8,
+        thisWeek: 24,
+        thisMonth: 67,
+        revenue: 45600
       }
+      setStats(mockStats)
     } catch (error) {
       console.error('Error fetching stats:', error)
-      setStats({
-        total: 0,
-        pending: 0,
-        confirmed: 0,
-        cancelled: 0,
-        completed: 0,
-        noShow: 0,
-        today: 0,
-        thisWeek: 0,
-        thisMonth: 0,
-        revenue: 0
-      })
     }
   }
 
