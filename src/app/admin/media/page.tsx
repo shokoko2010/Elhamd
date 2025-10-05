@@ -629,14 +629,27 @@ function MediaContent() {
                         />
                         
                         {file.type === 'image' ? (
-                          <div className="w-full h-32 relative">
+                          <div className="w-full h-32 relative bg-gray-100">
                             <Image
-                              src={file.thumbnailUrl}
-                              alt={file.altText || file.name}
+                              src={file.thumbnailUrl || file.url}
+                              alt={file.altText || file.title || file.name}
                               fill
                               className="object-cover"
                               sizes="(max-width: 768px) 100vw, 33vw"
+                              onError={(e) => {
+                                // Handle broken images
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                target.parentElement?.classList.add('bg-gray-200')
+                                const placeholder = target.parentElement?.querySelector('.image-placeholder')
+                                if (placeholder) {
+                                  (placeholder as HTMLElement).style.display = 'flex'
+                                }
+                              }}
                             />
+                            <div className="image-placeholder absolute inset-0 bg-gray-200 flex items-center justify-center" style={{display: 'none'}}>
+                              <ImageIcon className="h-8 w-8 text-gray-400" />
+                            </div>
                           </div>
                         ) : (
                           <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
@@ -655,15 +668,20 @@ function MediaContent() {
                       </div>
                       
                       <CardContent className="p-3">
-                        <h3 className="font-medium text-sm truncate mb-1" title={file.name}>
-                          {file.name}
+                        <h3 className="font-medium text-sm truncate mb-1" title={file.title || file.name}>
+                          {file.title || file.name}
                         </h3>
+                        {file.altText && (
+                          <p className="text-xs text-gray-600 truncate mb-1" title={file.altText}>
+                            {file.altText}
+                          </p>
+                        )}
                         <p className="text-xs text-gray-500 mb-2">
                           {formatFileSize(file.size)}
                         </p>
                         <div className="flex items-center justify-between">
                           <Badge variant="outline" className="text-xs">
-                            {file.category || 'غير مصنف'}
+                            {categories.find(c => c.value === file.category)?.label || file.category || 'غير مصنف'}
                           </Badge>
                           <span className="text-xs text-gray-500">
                             {formatDate(file.uploadedAt)}
@@ -687,13 +705,25 @@ function MediaContent() {
                           />
                           
                           {file.type === 'image' ? (
-                            <div className="w-16 h-16 relative">
+                            <div className="w-16 h-16 relative bg-gray-100 rounded">
                               <Image
-                                src={file.thumbnailUrl}
-                                alt={file.altText || file.name}
+                                src={file.thumbnailUrl || file.url}
+                                alt={file.altText || file.title || file.name}
                                 fill
                                 className="object-cover rounded"
                                 sizes="64px"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                  const parent = target.parentElement
+                                  if (parent) {
+                                    parent.classList.add('bg-gray-200')
+                                    const placeholder = document.createElement('div')
+                                    placeholder.className = 'absolute inset-0 flex items-center justify-center'
+                                    placeholder.innerHTML = '<svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>'
+                                    parent.appendChild(placeholder)
+                                  }
+                                }}
                               />
                             </div>
                           ) : (
