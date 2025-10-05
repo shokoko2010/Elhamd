@@ -49,7 +49,7 @@ interface FooterColumn {
   content: string
   order: number
   isVisible: boolean
-  type: 'links' | 'text' | 'contact' | 'social'
+  type: 'LINKS' | 'TEXT' | 'CONTACT' | 'SOCIAL'
 }
 
 interface FooterSettings {
@@ -123,7 +123,7 @@ export default function FooterManagement() {
       content: 'الرئيسية\nالسيارات\nالخدمات\nمن نحن\nاتصل بنا', 
       order: 1, 
       isVisible: true,
-      type: 'links'
+      type: 'LINKS'
     },
     { 
       id: '2', 
@@ -131,7 +131,7 @@ export default function FooterManagement() {
       content: 'بيع السيارات\nقيادة تجريبية\nحجز الخدمة\nالتمويل\nالصيانة', 
       order: 2, 
       isVisible: true,
-      type: 'links'
+      type: 'LINKS'
     },
     { 
       id: '3', 
@@ -139,7 +139,7 @@ export default function FooterManagement() {
       content: '+20 2 1234 5678\ninfo@alhamdcars.com\nالقاهرة، مصر\nالسبت - الخميس: 9:00 ص - 8:00 م', 
       order: 3, 
       isVisible: true,
-      type: 'contact'
+      type: 'CONTACT'
     },
     { 
       id: '4', 
@@ -147,7 +147,7 @@ export default function FooterManagement() {
       content: 'فيسبوك\nتويتر\nانستغرام\nلينكدإن', 
       order: 4, 
       isVisible: true,
-      type: 'social'
+      type: 'SOCIAL'
     },
     { 
       id: '5', 
@@ -155,7 +155,7 @@ export default function FooterManagement() {
       content: 'سياسة الخصوصية\nالشروط والأحكام\nالأسئلة الشائعة\nخريطة الموقع', 
       order: 5, 
       isVisible: true,
-      type: 'links'
+      type: 'LINKS'
     },
     { 
       id: '6', 
@@ -163,14 +163,14 @@ export default function FooterManagement() {
       content: 'الدعم الفني\nالضمان\nالصيانة\nقطع الغيار', 
       order: 6, 
       isVisible: true,
-      type: 'links'
+      type: 'LINKS'
     }
   ])
 
   const [loading, setLoading] = useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingColumn, setEditingColumn] = useState<FooterColumn | null>(null)
-  const [newColumn, setNewColumn] = useState({ title: '', content: '', type: 'text' as const })
+  const [newColumn, setNewColumn] = useState({ title: '', content: '', type: 'TEXT' as const })
 
   useEffect(() => {
     fetchFooterData()
@@ -373,7 +373,7 @@ export default function FooterManagement() {
     }
 
     setColumns([...columns, newCol])
-    setNewColumn({ title: '', content: '', type: 'text' })
+    setNewColumn({ title: '', content: '', type: 'TEXT' })
     setIsAddDialogOpen(false)
   }
 
@@ -854,10 +854,10 @@ export default function FooterManagement() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="links">Links</SelectItem>
-                            <SelectItem value="text">Text</SelectItem>
-                            <SelectItem value="contact">Contact</SelectItem>
-                            <SelectItem value="social">Social</SelectItem>
+                            <SelectItem value="LINKS">Links</SelectItem>
+                            <SelectItem value="TEXT">Text</SelectItem>
+                            <SelectItem value="CONTACT">Contact</SelectItem>
+                            <SelectItem value="SOCIAL">Social</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
