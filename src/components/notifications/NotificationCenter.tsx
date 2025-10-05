@@ -53,8 +53,17 @@ export default function NotificationCenter({
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    // Initialize socket connection with production-friendly configuration
+    // Check if socket should be enabled
     const isDevelopment = process.env.NODE_ENV === 'development'
+    const enableSocket = isDevelopment || process.env.NEXT_PUBLIC_ENABLE_SOCKET === 'true'
+    
+    if (!enableSocket) {
+      console.log('Socket.IO is disabled in production for NotificationCenter')
+      loadInitialNotifications()
+      return
+    }
+    
+    // Initialize socket connection with production-friendly configuration
     
     const socketConfig: any = {
       path: '/api/socketio',

@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { createAuthHandler, UserRole } from '@/lib/unified-auth';
+import { authorize, UserRole } from '@/lib/unified-auth';
 
 const authHandler = async (request: NextRequest) => {
   try {

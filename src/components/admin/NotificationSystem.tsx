@@ -49,6 +49,15 @@ export default function NotificationSystem() {
 
   useEffect(() => {
     if (user && typeof window !== 'undefined') {
+      // Check if we're in development or if socket should be enabled
+      const isDevelopment = process.env.NODE_ENV === 'development'
+      const enableSocket = isDevelopment || process.env.NEXT_PUBLIC_ENABLE_SOCKET === 'true'
+      
+      if (!enableSocket) {
+        console.log('Socket.IO is disabled in production')
+        return
+      }
+      
       // Only reconnect if user has changed
       if (userIdRef.current !== user.id) {
         // Clean up previous connection

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { authorize, UserRole } from '@/lib/unified-auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,12 +17,11 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Try to get session in production
+    // Try to authenticate user
     try {
-      const session = await getServerSession(authOptions);
-      if (!session?.user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+      const user = await authorize(request, { 
+        roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF]
+      });
     } catch (authError) {
       console.error('Auth error in media stats:', authError);
       return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
