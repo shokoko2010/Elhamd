@@ -28,6 +28,9 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   
+  // Server external packages (moved from experimental)
+  serverExternalPackages: [],
+  
   // Image optimization
   images: {
     // Enable image optimization for better performance
@@ -44,10 +47,6 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
     // optimizeCss: true, // Re-enabled now that build issues are resolved
     optimizeCss: true,
-    // Suppress client reference manifest warnings
-    serverComponentsExternalPackages: [],
-    // Fix for Next.js 15 build issues
-    missingSuspenseWithCSRBailout: false,
   },
   
   // Headers for security and performance
