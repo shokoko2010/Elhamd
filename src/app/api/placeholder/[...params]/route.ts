@@ -9,7 +9,8 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    const { params } = await context
+    const resolvedParams = await context.params
+    const params = resolvedParams.params
     
     // Validate params
     if (!params || params.length < 2) {

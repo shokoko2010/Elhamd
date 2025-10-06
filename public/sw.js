@@ -26,7 +26,9 @@ const API_URLS = [
   '/api/calendar/data',
   '/api/calendar/available-slots',
   '/api/admin/dashboard-data',
-  '/api/placeholder'
+  '/api/placeholder',
+  '/api/cars',
+  '/api/compare'
 ];
 
 // Cache strategies

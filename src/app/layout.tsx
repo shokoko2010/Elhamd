@@ -78,92 +78,123 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Error handling for JavaScript initialization
+              window.addEventListener('error', function(e) {
+                console.error('JavaScript Error:', e.error);
+                // Prevent error from breaking the app
+                e.preventDefault();
+              });
+              
+              window.addEventListener('unhandledrejection', function(e) {
+                console.error('Unhandled Promise Rejection:', e.reason);
+                e.preventDefault();
+              });
+              
+              // Safe Service Worker registration
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                      
-                      // Check for updates
-                      registration.addEventListener('updatefound', () => {
-                        const installingWorker = registration.installing;
-                        installingWorker.addEventListener('statechange', () => {
-                          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // New version available
-                            if (confirm('إصدار جديد متاح! هل تريد تحديث الصفحة؟')) {
-                              window.location.reload();
+                  try {
+                    navigator.serviceWorker.register('/sw.js')
+                      .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        
+                        // Check for updates
+                        if (registration.addEventListener) {
+                          registration.addEventListener('updatefound', () => {
+                            const installingWorker = registration.installing;
+                            if (installingWorker && installingWorker.addEventListener) {
+                              installingWorker.addEventListener('statechange', () => {
+                                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                  // New version available
+                                  if (confirm('إصدار جديد متاح! هل تريد تحديث الصفحة؟')) {
+                                    window.location.reload();
+                                  }
+                                }
+                              });
                             }
-                          }
-                        });
+                          });
+                        }
+                      })
+                      .catch(function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
                       });
-                    })
-                    .catch(function(err) {
-                      console.log('ServiceWorker registration failed: ', err);
-                    });
+                  } catch (error) {
+                    console.error('ServiceWorker registration error:', error);
+                  }
                 });
               }
               
-              // PWA Install Prompt
-              let deferredPrompt;
-              window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                
-                // Show install button if desired
-                if (typeof document !== 'undefined') {
-                  const installButton = document.getElementById('pwa-install-button');
-                  if (installButton) {
-                    installButton.style.display = 'block';
-                    installButton.addEventListener('click', () => {
-                      deferredPrompt.prompt();
-                      deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                          console.log('User accepted the install prompt');
-                        } else {
-                          console.log('User dismissed the install prompt');
+              // Safe PWA Install Prompt
+              try {
+                let deferredPrompt;
+                window.addEventListener('beforeinstallprompt', (e) => {
+                  e.preventDefault();
+                  deferredPrompt = e;
+                  
+                  // Show install button if desired
+                  if (typeof document !== 'undefined') {
+                    const installButton = document.getElementById('pwa-install-button');
+                    if (installButton) {
+                      installButton.style.display = 'block';
+                      installButton.addEventListener('click', () => {
+                        if (deferredPrompt) {
+                          deferredPrompt.prompt();
+                          deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                              console.log('User accepted the install prompt');
+                            } else {
+                              console.log('User dismissed the install prompt');
+                            }
+                            deferredPrompt = null;
+                          });
                         }
-                        deferredPrompt = null;
                       });
-                    });
+                    }
                   }
-                }
-              });
-              
-              // Handle app installed
-              window.addEventListener('appinstalled', (evt) => {
-                console.log('PWA was installed');
-                if (typeof document !== 'undefined') {
-                  const installButton = document.getElementById('pwa-install-button');
-                  if (installButton) {
-                    installButton.style.display = 'none';
+                });
+                
+                // Handle app installed
+                window.addEventListener('appinstalled', (evt) => {
+                  console.log('PWA was installed');
+                  if (typeof document !== 'undefined') {
+                    const installButton = document.getElementById('pwa-install-button');
+                    if (installButton) {
+                      installButton.style.display = 'none';
+                    }
                   }
-                }
-              });
+                });
+              } catch (error) {
+                console.error('PWA install prompt error:', error);
+              }
               
-              // Handle online/offline status
-              window.addEventListener('online', () => {
-                console.log('App is online');
-                if (typeof document !== 'undefined' && document.body) {
-                  document.body.classList.remove('offline');
-                  document.body.classList.add('online');
-                }
-              });
-              
-              window.addEventListener('offline', () => {
-                console.log('App is offline');
-                if (typeof document !== 'undefined' && document.body) {
-                  document.body.classList.remove('online');
-                  document.body.classList.add('offline');
-                }
-              });
-              
-              // Check initial status
-              if (typeof document !== 'undefined' && document.body) {
-                if (navigator.onLine) {
-                  document.body.classList.add('online');
-                } else {
-                  document.body.classList.add('offline');
-                }
+              // Safe online/offline status handling
+              try {
+                const updateOnlineStatus = () => {
+                  if (typeof document !== 'undefined' && document.body) {
+                    if (navigator.onLine) {
+                      document.body.classList.remove('offline');
+                      document.body.classList.add('online');
+                    } else {
+                      document.body.classList.remove('online');
+                      document.body.classList.add('offline');
+                    }
+                  }
+                };
+                
+                window.addEventListener('online', () => {
+                  console.log('App is online');
+                  updateOnlineStatus();
+                });
+                
+                window.addEventListener('offline', () => {
+                  console.log('App is offline');
+                  updateOnlineStatus();
+                });
+                
+                // Check initial status
+                updateOnlineStatus();
+              } catch (error) {
+                console.error('Online/offline status handling error:', error);
               }
             `
           }}

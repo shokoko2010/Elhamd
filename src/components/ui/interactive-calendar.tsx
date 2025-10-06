@@ -75,14 +75,29 @@ const InteractiveCalendar = memo(({
         showEvents: filterTypes.includes('event')
       })
       
-      setCalendarData(data)
+      // Transform data to match expected format
+      const transformedData = {
+        days: data.days || [],
+        events: data.events || [],
+        holidays: data.holidays || [],
+        timeSlots: data.timeSlots || []
+      }
+      
+      setCalendarData(transformedData)
     } catch (err) {
       console.error('Error loading calendar data:', err)
       setError('فشل في تحميل بيانات التقويم')
+      // Set empty data on error to prevent crashes
+      setCalendarData({
+        days: [],
+        events: [],
+        holidays: [],
+        timeSlots: []
+      })
     } finally {
       setLoading(false)
     }
-  }, [view, currentDate, showHolidays, filterTypes.join(','), memoizedCalendarService]) // Use join(',') to stabilize array dependency
+  }, [view, currentDate, showHolidays, filterTypes, memoizedCalendarService]) // Simplified dependencies
 
   useEffect(() => {
     loadCalendarData()
@@ -100,32 +115,35 @@ const InteractiveCalendar = memo(({
     }
   }, [loading])
 
+  const loadAvailableTimeSlots = useCallback(async (date: Date) => {
+    if (!date) return
+    
+    try {
+      const slots = await memoizedCalendarService.getAvailableTimeSlots(date)
+      setAvailableTimeSlots(Array.isArray(slots) ? slots : [])
+    } catch (err) {
+      console.error('Error loading time slots:', err)
+      setAvailableTimeSlots([])
+    }
+  }, [memoizedCalendarService])
+
   useEffect(() => {
     if (selectedDate && showTimeSlots) {
       loadAvailableTimeSlots(selectedDate)
     }
   }, [selectedDate, showTimeSlots, loadAvailableTimeSlots])
 
-  // Prevent infinite loading for time slots
+  // Prevent infinite loading with timeout
   useEffect(() => {
-    if (loading && selectedDate && showTimeSlots) {
+    if (loading) {
       const timeout = setTimeout(() => {
-        setAvailableTimeSlots([])
-      }, 5000) // 5 second timeout for time slots
+        setLoading(false)
+        setError('استغرق التحميل وقتاً طويلاً جداً')
+      }, 10000)
       
       return () => clearTimeout(timeout)
     }
-  }, [loading, selectedDate, showTimeSlots])
-
-  const loadAvailableTimeSlots = useCallback(async (date: Date) => {
-    try {
-      const slots = await memoizedCalendarService.getAvailableTimeSlots(date)
-      setAvailableTimeSlots(slots)
-    } catch (err) {
-      console.error('Error loading time slots:', err)
-      setAvailableTimeSlots([])
-    }
-  }, [memoizedCalendarService]) // Use memoized service
+  }, [loading])
 
   const handlePreviousMonth = () => {
     setCurrentDate(prev => subMonths(prev, 1))
@@ -140,20 +158,35 @@ const InteractiveCalendar = memo(({
   }
 
   const handleDateClick = (day: CalendarDay) => {
-    if (day.isPast || day.isHoliday) return
-    
-    const date = new Date(day.date)
-    onDateSelect?.(date)
+    try {
+      if (day.isPast || day.isHoliday) return
+      
+      const date = new Date(day.date)
+      if (isNaN(date.getTime())) return // Invalid date
+      
+      onDateSelect?.(date)
+    } catch (error) {
+      console.error('Error handling date click:', error)
+    }
   }
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
-    e.stopPropagation()
-    onEventSelect?.(event)
+    try {
+      e.stopPropagation()
+      onEventSelect?.(event)
+    } catch (error) {
+      console.error('Error handling event click:', error)
+    }
   }
 
   const handleTimeSlotClick = (timeSlot: TimeSlot) => {
-    if (!selectedDate) return
-    onTimeSlotSelect?.(selectedDate, timeSlot)
+    try {
+      if (!selectedDate || !timeSlot) return
+      
+      onTimeSlotSelect?.(selectedDate, timeSlot)
+    } catch (error) {
+      console.error('Error handling time slot click:', error)
+    }
   }
 
   const getDaysInMonth = () => {
@@ -177,108 +210,122 @@ const InteractiveCalendar = memo(({
   }
 
   const renderMonthView = () => {
-    const daysInMonth = getDaysInMonth()
-    const firstDayOfMonth = daysInMonth[0]
-    const startDay = firstDayOfMonth.getDay()
-    
-    // Create array for empty cells before the first day
-    const emptyCells = Array(startDay).fill(null)
-    
-    // Create array for all days in the month
-    const allDays = [...emptyCells, ...daysInMonth]
-    
-    // Group into weeks
-    const weeks = []
-    for (let i = 0; i < allDays.length; i += 7) {
-      weeks.push(allDays.slice(i, i + 7))
-    }
+    try {
+      const daysInMonth = getDaysInMonth()
+      const firstDayOfMonth = daysInMonth[0]
+      
+      if (!firstDayOfMonth) {
+        return <div className="text-center p-8">لا توجد بيانات لعرضها</div>
+      }
+      
+      const startDay = firstDayOfMonth.getDay()
+      
+      // Create array for empty cells before the first day
+      const emptyCells = Array(startDay).fill(null)
+      
+      // Create array for all days in the month
+      const allDays = [...emptyCells, ...daysInMonth]
+      
+      // Group into weeks
+      const weeks = []
+      for (let i = 0; i < allDays.length; i += 7) {
+        weeks.push(allDays.slice(i, i + 7))
+      }
 
-    const weekDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+      const weekDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 
-    return (
-      <div className="space-y-4">
-        {/* Weekday headers */}
-        <div className="grid grid-cols-7 gap-1">
-          {weekDays.map(day => (
-            <div key={day} className="text-center text-sm font-medium text-gray-600 p-2">
-              {day}
-            </div>
-          ))}
-        </div>
-        
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
-          {weeks.map((week, weekIndex) => 
-            week.map((day, dayIndex) => {
-              if (!day) {
-                return <div key={`empty-${weekIndex}-${dayIndex}`} className="p-2" />
-              }
-              
-              const calendarDay = calendarData.days.find(d => isSameDay(d.date, day))
-              const isSelected = selectedDate && isSameDay(day, selectedDate)
-              const hasEvents = calendarDay?.events.length > 0
-              
-              return (
-                <div
-                  key={day.toString()}
-                  className={cn(
-                    'min-h-[80px] p-1 border border-gray-200 rounded-lg cursor-pointer transition-all',
-                    'hover:bg-gray-50',
-                    isSelected && 'ring-2 ring-blue-500 bg-blue-50',
-                    calendarDay?.isToday && 'bg-blue-100',
-                    calendarDay?.isWeekend && 'bg-gray-50',
-                    calendarDay?.isHoliday && 'bg-red-50',
-                    calendarDay?.isPast && 'opacity-50 cursor-not-allowed',
-                    !calendarDay?.isPast && !calendarDay?.isHoliday && 'hover:shadow-sm'
-                  )}
-                  onClick={() => calendarDay && handleDateClick(calendarDay)}
-                >
-                  <div className="flex flex-col h-full">
-                    <div className={cn(
-                      'text-sm font-medium text-center mb-1',
-                      calendarDay?.isToday && 'text-blue-600 font-bold',
-                      calendarDay?.isWeekend && 'text-red-600',
-                      calendarDay?.isHoliday && 'text-red-600'
-                    )}>
-                      {format(day, 'd')}
-                    </div>
-                    
-                    <div className="flex-1 space-y-1">
-                      {hasEvents && calendarDay?.events.slice(0, 2).map(event => (
-                        <div
-                          key={event.id}
-                          className={cn(
-                            'text-xs p-1 rounded border cursor-pointer truncate',
-                            getEventTypeColor(event.type, event.status)
-                          )}
-                          onClick={(e) => handleEventClick(event, e)}
-                          title={event.title}
-                        >
-                          {format(event.start, 'HH:mm')} {event.title.split(' - ')[0]}
-                        </div>
-                      ))}
+      return (
+        <div className="space-y-4">
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 gap-1">
+            {weekDays.map(day => (
+              <div key={day} className="text-center text-sm font-medium text-gray-600 p-2">
+                {day}
+              </div>
+            ))}
+          </div>
+          
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {weeks.map((week, weekIndex) => 
+              week.map((day, dayIndex) => {
+                if (!day) {
+                  return <div key={`empty-${weekIndex}-${dayIndex}`} className="p-2" />
+                }
+                
+                const calendarDay = calendarData.days.find(d => d.date && isSameDay(new Date(d.date), day))
+                const isSelected = selectedDate && isSameDay(day, selectedDate)
+                const hasEvents = calendarDay?.events && calendarDay.events.length > 0
+                
+                return (
+                  <div
+                    key={day.toString()}
+                    className={cn(
+                      'min-h-[80px] p-1 border border-gray-200 rounded-lg cursor-pointer transition-all',
+                      'hover:bg-gray-50',
+                      isSelected && 'ring-2 ring-blue-500 bg-blue-50',
+                      calendarDay?.isToday && 'bg-blue-100',
+                      calendarDay?.isWeekend && 'bg-gray-50',
+                      calendarDay?.isHoliday && 'bg-red-50',
+                      calendarDay?.isPast && 'opacity-50 cursor-not-allowed',
+                      !calendarDay?.isPast && !calendarDay?.isHoliday && 'hover:shadow-sm'
+                    )}
+                    onClick={() => calendarDay && handleDateClick(calendarDay)}
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className={cn(
+                        'text-sm font-medium text-center mb-1',
+                        calendarDay?.isToday && 'text-blue-600 font-bold',
+                        calendarDay?.isWeekend && 'text-red-600',
+                        calendarDay?.isHoliday && 'text-red-600'
+                      )}>
+                        {format(day, 'd')}
+                      </div>
                       
-                      {hasEvents && calendarDay.events.length > 2 && (
-                        <div className="text-xs text-gray-500 text-center">
-                          +{calendarDay.events.length - 2}
+                      <div className="flex-1 space-y-1">
+                        {hasEvents && calendarDay.events.slice(0, 2).map(event => (
+                          <div
+                            key={event.id}
+                            className={cn(
+                              'text-xs p-1 rounded border cursor-pointer truncate',
+                              getEventTypeColor(event.type, event.status)
+                            )}
+                            onClick={(e) => handleEventClick(event, e)}
+                            title={event.title}
+                          >
+                            {format(event.start, 'HH:mm')} {event.title.split(' - ')[0]}
+                          </div>
+                        ))}
+                        
+                        {hasEvents && calendarDay.events.length > 2 && (
+                          <div className="text-xs text-gray-500 text-center">
+                            +{calendarDay.events.length - 2}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {calendarDay?.bookingsCount > 0 && (
+                        <div className="flex items-center justify-center text-xs text-gray-500">
+                          <Users className="h-3 w-3 mr-1" />
+                          {calendarDay.bookingsCount}
                         </div>
                       )}
                     </div>
-                    
-                    {calendarDay?.bookingsCount > 0 && (
-                      <div className="flex items-center justify-center text-xs text-gray-500">
-                        <Users className="h-3 w-3 mr-1" />
-                        {calendarDay.bookingsCount}
-                      </div>
-                    )}
                   </div>
-                </div>
-              )
-            })
-          )}
+                )
+              })
+            )}
+          </div>
         </div>
-      </div>
-    )
+      )
+    } catch (error) {
+      console.error('Error rendering month view:', error)
+      return (
+        <div className="text-center p-8 text-red-600">
+          حدث خطأ في عرض التقويم. يرجى تحديث الصفحة.
+        </div>
+      )
+    }
   }
 
   return (
