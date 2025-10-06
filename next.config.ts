@@ -29,9 +29,6 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   
-  // Disable static generation for problematic pages
-  output: 'standalone',
-  
   // Image optimization
   images: {
     // Enable image optimization for better performance
