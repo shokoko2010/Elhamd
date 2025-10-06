@@ -362,20 +362,22 @@ export default function Home() {
                       key={vehicle.id}
                       vehicle={vehicle}
                       formatPrice={formatPrice}
+                      deviceInfo={deviceInfo}
                     />
                   ))}
                 </div>
               )}
-
+              
+              {/* View All Button */}
               <div className="text-center mt-12">
                 <Link href="/vehicles">
                   <TouchButton 
                     variant="outline" 
                     size="xl"
-                    className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
+                    className="bg-white hover:bg-blue-50 text-blue-600 border-blue-200 hover:border-blue-300 px-8 py-4 text-lg font-semibold"
                   >
                     استعرض جميع السيارات
-                    <Car className="mr-3 h-5 w-5" />
+                    <Car className="mr-3 h-6 w-6" />
                   </TouchButton>
                 </Link>
               </div>
@@ -383,432 +385,121 @@ export default function Home() {
           </section>
         </EnhancedLazySection>
 
-        {/* Company Stats */}
-        {companyStats.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-20 bg-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-50"></div>
-              <div className="max-w-7xl mx-auto px-4 relative z-10">
-                <div className="text-center mb-12">
-                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
-                    <Users className="ml-2 h-4 w-4" />
-                    إنجازاتنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                    أرقام تتحدث عنا
-                  </h2>
-                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                    نحن فخورون بما حققناه على مدار سنوات من الخبرة والتميز
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-8">
-                  {companyStats.map((stat, index) => (
-                    <div key={index} className="text-center group">
-                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 group-hover:border-blue-200">
-                        <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
-                          {stat.number}
-                        </div>
-                        <div className="text-sm md:text-base text-gray-600 font-medium">
-                          {stat.label}
-                        </div>
-                        {stat.description && (
-                          <div className="text-xs text-gray-500 mt-2">
-                            {stat.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
         {/* Services Section */}
-        {serviceItems.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 relative">
-              <div className="max-w-7xl mx-auto px-4">
-                <div className="text-center mb-16">
-                  <Badge className="bg-green-100 text-green-700 border-green-200 mb-4">
-                    <Wrench className="ml-2 h-4 w-4" />
-                    خدماتنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-green-600 bg-clip-text text-transparent">
-                    خدماتنا المتكاملة
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        <EnhancedLazySection rootMargin="100px" preload={false}>
+          <section className="py-16 md:py-24 bg-gradient-to-br from-gray-50 to-blue-50 relative w-full">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="text-center mb-16">
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
+                  <Wrench className="ml-2 h-4 w-4" />
+                  خدماتنا
+                </Badge>
+                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+                  خدماتنا المتكاملة
+                </h2>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                  نقدم مجموعة شاملة من الخدمات لضمان رحلة شراء سيارة ممتعة وخالية من المتاعب
+                </p>
+              </div>
+              
+              {serviceItems.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {serviceItems.map((service, index) => (
-                    <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
+                    <Card key={index} className="group hover:shadow-2xl transition-all duration-500 border-0 bg-white/80 backdrop-blur-sm">
                       <CardHeader className="text-center pb-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                           <Wrench className="h-8 w-8 text-white" />
                         </div>
-                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
+                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                           {service.title}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="text-center">
-                        <p className="text-gray-600 mb-6 leading-relaxed">
+                        <CardDescription className="text-gray-600 leading-relaxed">
                           {service.description}
-                        </p>
-                        {service.features && (
-                          <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
-                            {service.features.slice(0, 3).map((feature: string, idx: number) => (
-                              <li key={idx} className="flex items-center justify-end gap-2">
-                                <span>{feature}</span>
-                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-sm text-gray-500">المدة:</span>
-                          <span className="text-sm font-medium text-gray-700">{service.duration}</span>
-                        </div>
-                        {service.price && (
-                          <div className="flex items-center justify-between mb-6">
-                            <span className="text-sm text-gray-500">السعر:</span>
-                            <span className="text-lg font-bold text-green-600">
-                              {formatPrice(service.price)}
-                            </span>
-                          </div>
-                        )}
-                        <Link href="/service-booking">
-                          <TouchButton 
-                            variant="outline" 
-                            className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
-                          >
-                            احجز الآن
-                          </TouchButton>
-                        </Link>
+                        </CardDescription>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Company Values */}
-        {companyValues.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-br from-purple-50 to-white relative overflow-hidden">
-              <div className="absolute inset-0 opacity-5">
-                <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%239333EA\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
-              </div>
-              
-              <div className="max-w-7xl mx-auto px-4 relative z-10">
-                <div className="text-center mb-16">
-                  <Badge className="bg-purple-100 text-purple-700 border-purple-200 mb-4">
-                    <Heart className="ml-2 h-4 w-4" />
-                    قيمنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent">
-                    قيمنا ومبادئنا
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    المبادئ التي توجهنا في كل ما نفعله
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {companyValues.map((value, index) => (
-                    <div key={index} className="text-center group">
-                      <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-purple-100 group-hover:border-purple-200 h-full">
-                        <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                          <Award className="h-10 w-10 text-white" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
-                          {value.title}
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed">
-                          {value.description}
-                        </p>
-                      </div>
-                    </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                  {[...Array(6)].map((_, i) => (
+                    <LoadingCard key={i} title="جاري تحميل الخدمة..." className="h-48" />
                   ))}
                 </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Timeline Section */}
-        {timelineEvents.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-white relative">
-              <div className="max-w-7xl mx-auto px-4">
-                <div className="text-center mb-16">
-                  <Badge className="bg-orange-100 text-orange-700 border-orange-200 mb-4">
-                    <Clock className="ml-2 h-4 w-4" />
-                    رحلتنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-orange-600 bg-clip-text text-transparent">
-                    قصة نجاحنا
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    رحلة مليئة بالإنجازات والنمو المستمر
-                  </p>
-                </div>
-
-                <div className="relative">
-                  {/* Timeline Line */}
-                  <div className="absolute right-1/2 transform translate-x-1/2 w-1 h-full bg-gradient-to-b from-orange-200 to-orange-400 rounded-full"></div>
-                  
-                  <div className="space-y-12">
-                    {timelineEvents.map((event, index) => (
-                      <div key={index} className={`relative flex items-center ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`w-5/12 ${index % 2 === 0 ? 'text-right pr-8' : 'text-left pl-8'}`}>
-                          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-orange-100">
-                            <div className="text-2xl font-bold text-orange-600 mb-2">
-                              {event.year}
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">
-                              {event.title}
-                            </h3>
-                            <p className="text-gray-600 leading-relaxed">
-                              {event.description}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {/* Timeline Dot */}
-                        <div className="absolute right-1/2 transform translate-x-1/2 w-6 h-6 bg-orange-500 rounded-full border-4 border-white shadow-lg"></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
+              )}
+            </div>
+          </section>
+        </EnhancedLazySection>
 
         {/* Contact Section */}
-        {contactInfo && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-br from-gray-900 to-blue-900 text-white relative overflow-hidden">
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
-              </div>
-              
-              <div className="max-w-7xl mx-auto px-4 relative z-10">
-                <div className="text-center mb-16">
-                  <Badge className="bg-white/20 text-white border-white/30 mb-4">
-                    <Phone className="ml-2 h-4 w-4" />
-                    تواصل معنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6">
-                    نحن هنا لمساعدتك
-                  </h2>
-                  <p className="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-                    لا تتردد في التواصل معنا لأي استفسار أو مساعدة
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {/* Headquarters */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-                      <MapPin className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-4">الفرع الرئيسي</h3>
-                    <div className="space-y-3 text-blue-50">
-                      <p className="flex items-center gap-3">
-                        <MapPin className="h-4 w-4 flex-shrink-0" />
-                        <span>{contactInfo.headquarters?.address}</span>
-                      </p>
-                      <p className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 flex-shrink-0" />
-                        <span>{contactInfo.headquarters?.phone}</span>
-                      </p>
-                      <p className="flex items-center gap-3">
-                        <Mail className="h-4 w-4 flex-shrink-0" />
-                        <span>{contactInfo.headquarters?.email}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Working Hours */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-                      <Clock className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-4">ساعات العمل</h3>
-                    <div className="space-y-3 text-blue-50">
-                      <p>{contactInfo.workingHours?.weekdays}</p>
-                      <p>{contactInfo.workingHours?.friday}</p>
-                      <p>{contactInfo.workingHours?.saturday}</p>
-                      {contactInfo.emergency && (
-                        <div className="pt-3 border-t border-white/20">
-                          <p className="font-semibold text-white">طوارئ:</p>
-                          <p className="flex items-center gap-3">
-                            <Phone className="h-4 w-4 flex-shrink-0" />
-                            <span>{contactInfo.emergency?.phone}</span>
-                          </p>
-                          <p className="text-sm">{contactInfo.emergency?.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Social Media */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-                      <Users className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-4">تابعنا</h3>
-                    <div className="space-y-3">
-                      {contactInfo.socialMedia && Object.entries(contactInfo.socialMedia).map(([platform, url]) => (
-                        <a
-                          key={platform}
-                          href={url as string}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-blue-50 hover:text-white transition-colors"
-                        >
-                          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                            <Users className="h-4 w-4" />
-                          </div>
-                          <span className="capitalize">{platform}</span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-center mt-12">
-                  <Link href="/contact">
-                    <TouchButton 
-                      variant="outline" 
-                      size="xl"
-                      className="bg-white/10 hover:bg-white/20 text-white border-white/30 hover:border-white/50"
-                    >
-                      تواصل معنا الآن
-                      <Phone className="mr-3 h-5 w-5" />
-                    </TouchButton>
-                  </Link>
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Features Section */}
-        {companyFeatures.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white">
-              <div className="max-w-7xl mx-auto px-4">
-                <div className="text-center mb-16">
-                  <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 mb-4">
-                    <Shield className="ml-2 h-4 w-4" />
-                    مميزاتنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-indigo-600 bg-clip-text text-transparent">
-                    لماذا تختار الحمد للسيارات؟
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    نقدم لكم الأفضل في كل جوانب خدمتنا
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {companyFeatures.map((feature, index) => (
-                    <div key={index} className="group">
-                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 group-hover:border-indigo-200 h-full">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                            <Shield className="h-6 w-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
-                              {feature.title}
-                            </h3>
-                            <p className="text-gray-600 leading-relaxed">
-                              {feature.description}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Testimonials Section - Using Customer Feedback */}
         <EnhancedLazySection rootMargin="100px" preload={false}>
-          <section className="py-16 md:py-24 bg-gradient-to-br from-green-50 to-white relative overflow-hidden">
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%2310B981\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
+          <section className="py-16 md:py-24 bg-gradient-to-br from-blue-600 to-blue-800 text-white relative w-full overflow-hidden">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
             </div>
             
             <div className="max-w-7xl mx-auto px-4 relative z-10">
               <div className="text-center mb-16">
-                <Badge className="bg-green-100 text-green-700 border-green-200 mb-4">
-                  <Star className="ml-2 h-4 w-4" />
-                  آراء العملاء
+                <Badge className="bg-white/20 text-white border-white/30 mb-4">
+                  <Phone className="ml-2 h-4 w-4" />
+                  تواصل معنا
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-green-600 bg-clip-text text-transparent">
-                  تجارب حقيقية من عملاء سعداء
+                <h2 className="text-3xl md:text-5xl font-bold mb-6">
+                  نحن هنا لمساعدتك
                 </h2>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  آراء عملائنا هي أفضل دليل على جودة خدماتنا
+                <p className="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
+                  لا تتردد في التواصل معنا لأي استفسار أو لتحديد موعد زيارة للمعرض
                 </p>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-                {[
-                  {
-                    name: 'أحمد محمد',
-                    rating: 5,
-                    comment: 'تجربة رائعة مع الحمد للسيارات! خدمة عملاء ممتازة والسيارة في حالة ممتازة.',
-                    car: 'تاتا نيكسون',
-                    date: '2024'
-                  },
-                  {
-                    name: 'سارة أحمد',
-                    rating: 5,
-                    comment: 'أشكر فريق الحمد للسيارات على التعامل الرائع والاحترافية في كل التفاصيل.',
-                    car: 'تاتا بنش',
-                    date: '2024'
-                  },
-                  {
-                    name: 'خالد إبراهيم',
-                    rating: 5,
-                    comment: 'أفضل وكيل سيارات تعاملت معه. أسعار ممتازة وخدمة ما بعد البيع رائعة.',
-                    car: 'تاتا هارير',
-                    date: '2024'
-                  }
-                ].map((testimonial, index) => (
-                  <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-green-100">
-                    <div className="flex items-center gap-1 mb-4">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                      ))}
-                    </div>
-                    <p className="text-gray-700 leading-relaxed mb-6 italic">
-                      "{testimonial.comment}"
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                        <div className="text-sm text-gray-500">{testimonial.car}</div>
-                      </div>
-                      <div className="text-sm text-gray-400">{testimonial.date}</div>
-                    </div>
-                  </div>
-                ))}
+              
+              {contactInfo ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                  <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 transition-colors">
+                    <CardContent className="p-8 text-center">
+                      <Phone className="h-12 w-12 mx-auto mb-4 text-blue-200" />
+                      <h3 className="text-xl font-bold mb-2">الهاتف</h3>
+                      <p className="text-blue-100">{contactInfo.phone}</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 transition-colors">
+                    <CardContent className="p-8 text-center">
+                      <Mail className="h-12 w-12 mx-auto mb-4 text-blue-200" />
+                      <h3 className="text-xl font-bold mb-2">البريد الإلكتروني</h3>
+                      <p className="text-blue-100">{contactInfo.email}</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 transition-colors">
+                    <CardContent className="p-8 text-center">
+                      <MapPin className="h-12 w-12 mx-auto mb-4 text-blue-200" />
+                      <h3 className="text-xl font-bold mb-2">العنوان</h3>
+                      <p className="text-blue-100">{contactInfo.address}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                  {[...Array(3)].map((_, i) => (
+                    <LoadingCard key={i} title="جاري تحميل معلومات الاتصال..." className="h-32" />
+                  ))}
+                </div>
+              )}
+              
+              <div className="text-center mt-12">
+                <Link href="/contact">
+                  <TouchButton 
+                    variant="outline" 
+                    size="xl"
+                    className="bg-white hover:bg-blue-50 text-blue-600 border-white hover:border-blue-100 px-8 py-4 text-lg font-semibold"
+                  >
+                    تواصل معنا الآن
+                    <Phone className="mr-3 h-6 w-6" />
+                  </TouchButton>
+                </Link>
               </div>
             </div>
           </section>
