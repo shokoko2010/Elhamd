@@ -21,7 +21,8 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: [
   "preview-chat-6b323351-ce1b-4e1b-b225-cc99f0ec3948.space.z.ai",
-  "preview-chat-e452f205-fd1b-4a33-90d8-b739e1e8cf3c.space.z.ai"
+  "preview-chat-e452f205-fd1b-4a33-90d8-b739e1e8cf3c.space.z.ai",
+  "preview-chat-fa99b094-9b85-448d-81a8-a1a9ba155a2e.space.z.ai"
 ],
   
   // Performance optimizations
