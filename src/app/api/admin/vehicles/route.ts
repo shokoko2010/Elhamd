@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getSimpleUser } from '@/lib/simple-auth'
 import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 
@@ -35,7 +35,7 @@ const updateVehicleSchema = createVehicleSchema.partial().extend({
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await requireUnifiedAuth(request)
+    const user = await getSimpleUser(request)
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('VIEW_VEHICLES')
+                      user.permissions.includes('vehicles.view')
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('CREATE_VEHICLES')
+                      user.permissions.includes('vehicles.create')
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })

@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { getSimpleUser } from '@/lib/simple-auth'
 import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await getSimpleUser(request)
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
@@ -42,8 +42,10 @@ export async function GET(request: NextRequest, context: RouteParams) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('EDIT_VEHICLES') ||
-                      user.permissions.includes('VEHICLE_EDIT')
+                      user.permissions.includes('vehicles.update') ||
+                      user.permissions.includes('vehicles.delete') ||
+                      user.permissions.includes('vehicles.create') ||
+                      user.permissions.includes('vehicles.view')
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -90,7 +92,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await getSimpleUser(request)
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
@@ -100,8 +102,10 @@ export async function PUT(request: NextRequest, context: RouteParams) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('EDIT_VEHICLES') ||
-                      user.permissions.includes('VEHICLE_EDIT')
+                      user.permissions.includes('vehicles.update') ||
+                      user.permissions.includes('vehicles.delete') ||
+                      user.permissions.includes('vehicles.create') ||
+                      user.permissions.includes('vehicles.view')
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
