@@ -7,8 +7,7 @@ import { ar } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ClientCalendarService } from '@/lib/client-calendar-service'
-import { CalendarEvent, CalendarDay, TimeSlot, Holiday } from '@/lib/calendar-service'
+import { ClientCalendarService, CalendarEvent, CalendarDay, TimeSlot } from '@/lib/client-calendar-service'
 import { cn } from '@/lib/utils'
 
 interface InteractiveCalendarProps {
@@ -44,7 +43,7 @@ const InteractiveCalendar = memo(({
   const [calendarData, setCalendarData] = useState<{
     days: CalendarDay[]
     events: CalendarEvent[]
-    holidays: Holiday[]
+    holidays: any[]
     timeSlots: TimeSlot[]
   }>({
     days: [],
@@ -58,28 +57,12 @@ const InteractiveCalendar = memo(({
   const [error, setError] = useState('')
   const [manualRefresh, setManualRefresh] = useState(0) // For manual refresh trigger
 
-  // Initialize calendar service safely
-  const [calendarService, setCalendarService] = useState<ClientCalendarService | null>(null)
-  
-  useEffect(() => {
-    try {
-      const service = ClientCalendarService.getInstance()
-      setCalendarService(service)
-    } catch (err) {
-      console.error('Error initializing calendar service:', err)
-      setError('فشل في تهيئة خدمة التقويم')
-    }
-  }, [])
+  const calendarService = ClientCalendarService.getInstance()
   
   // Memoize calendar service to prevent recreation
-  const memoizedCalendarService = useMemo(() => calendarService, [calendarService])
+  const memoizedCalendarService = useMemo(() => calendarService, [])
 
   const loadCalendarData = useCallback(async () => {
-    if (!memoizedCalendarService) {
-      setError('خدمة التقويم غير جاهزة بعد')
-      return
-    }
-    
     setLoading(true)
     setError('')
     
@@ -117,21 +100,6 @@ const InteractiveCalendar = memo(({
     }
   }, [loading])
 
-  const loadAvailableTimeSlots = useCallback(async (date: Date) => {
-    if (!memoizedCalendarService) {
-      console.error('Calendar service not available')
-      return
-    }
-    
-    try {
-      const slots = await memoizedCalendarService.getAvailableTimeSlots(date)
-      setAvailableTimeSlots(slots)
-    } catch (err) {
-      console.error('Error loading time slots:', err)
-      setAvailableTimeSlots([])
-    }
-  }, [memoizedCalendarService]) // Use memoized service
-
   useEffect(() => {
     if (selectedDate && showTimeSlots) {
       loadAvailableTimeSlots(selectedDate)
@@ -148,6 +116,16 @@ const InteractiveCalendar = memo(({
       return () => clearTimeout(timeout)
     }
   }, [loading, selectedDate, showTimeSlots])
+
+  const loadAvailableTimeSlots = useCallback(async (date: Date) => {
+    try {
+      const slots = await memoizedCalendarService.getAvailableTimeSlots(date)
+      setAvailableTimeSlots(slots)
+    } catch (err) {
+      console.error('Error loading time slots:', err)
+      setAvailableTimeSlots([])
+    }
+  }, [memoizedCalendarService]) // Use memoized service
 
   const handlePreviousMonth = () => {
     setCurrentDate(prev => subMonths(prev, 1))
@@ -387,7 +365,7 @@ const InteractiveCalendar = memo(({
                               <div>
                                 <div className="font-medium">{event.title}</div>
                                 <div className="text-sm opacity-75">
-                                  {memoizedCalendarService ? memoizedCalendarService.formatEventTime(event) : format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+                                  {calendarService.formatEventTime(event)}
                                 </div>
                               </div>
                               <Badge variant="outline" className="text-xs">

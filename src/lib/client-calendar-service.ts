@@ -1,7 +1,5 @@
 import { CalendarEvent, TimeSlot, CalendarDay, Holiday, CalendarViewOptions } from './calendar-service'
 
-export { CalendarEvent, TimeSlot, CalendarDay, Holiday }
-
 export class ClientCalendarService {
   private static instance: ClientCalendarService
 
