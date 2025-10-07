@@ -12,6 +12,18 @@ export interface CalendarEvent {
   description?: string
   color?: string
   resource?: any
+  customerId?: string
+  vehicleId?: string
+  customerName?: string
+  customerEmail?: string
+  customerPhone?: string
+  vehicleName?: string
+  organizerId?: string
+  organizerName?: string
+  location?: string
+  allDay?: boolean
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface TimeSlot {
@@ -24,6 +36,9 @@ export interface TimeSlot {
   breakTime?: number
   createdAt: Date
   updatedAt: Date
+  date?: Date
+  currentBookings?: number
+  isAvailable?: boolean
 }
 
 export interface Holiday {
@@ -32,6 +47,7 @@ export interface Holiday {
   date: Date
   isRecurring: boolean
   description?: string
+  type?: string
 }
 
 export interface CalendarDay {

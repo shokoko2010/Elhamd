@@ -4,6 +4,52 @@ import { CalendarEvent, TimeSlot, CalendarDay, Holiday } from '@/lib/calendar-se
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isWeekend, isPast, addDays } from 'date-fns'
 import { ar } from 'date-fns/locale'
 
+interface CalendarEventData {
+  id: string
+  title: string
+  description?: string
+  start: Date
+  end: Date
+  type: 'booking' | 'holiday' | 'maintenance' | 'event'
+  status?: string
+  customerId?: string
+  vehicleId?: string
+  customerName?: string
+  customerEmail?: string
+  customerPhone?: string
+  vehicleName?: string
+  organizerId?: string
+  organizerName?: string
+  location?: string
+  allDay?: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+interface HolidayData {
+  id: string
+  name: string
+  date: Date
+  isRecurring: boolean
+  description?: string
+  type?: string
+}
+
+interface TimeSlotData {
+  id: string
+  date?: Date
+  startTime: string
+  endTime: string
+  maxBookings: number
+  currentBookings?: number
+  isAvailable?: boolean
+  dayOfWeek?: number
+  isActive?: boolean
+  breakTime?: number
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
