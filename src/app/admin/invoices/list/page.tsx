@@ -3,12 +3,12 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function CreateInvoicePage() {
+export default function InvoicesListPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the main finance invoice creation page
-    router.replace('/admin/finance/invoices/create');
+    // Redirect to the main finance page with invoices tab active
+    router.replace('/admin/finance?tab=invoices');
   }, [router]);
 
   return (
