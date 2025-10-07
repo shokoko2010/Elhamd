@@ -19,178 +19,191 @@ export async function GET(request: NextRequest) {
     const monthEnd = endOfMonth(currentDate)
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-    // Fetch calendar data
-    const [testDriveBookings, serviceBookings, calendarEvents] = await Promise.all([
-      // Test drive bookings
-      db.testDriveBooking.findMany({
-        where: {
-          date: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true
-            }
-          }
-        },
-        orderBy: [
-          { date: 'asc' },
-          { timeSlot: 'asc' }
-        ]
-      }),
-
-      // Service bookings
-      db.serviceBooking.findMany({
-        where: {
-          date: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          serviceType: {
-            select: {
-              id: true,
-              name: true,
-              duration: true,
-              price: true
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true
-            }
-          }
-        },
-        orderBy: [
-          { date: 'asc' },
-          { timeSlot: 'asc' }
-        ]
-      }),
-
-      // Calendar events
-      db.calendarEvent.findMany({
-        where: {
-          startDate: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        },
-        include: {
-          organizer: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          }
-        },
-        orderBy: [
-          { startDate: 'asc' },
-          { startTime: 'asc' }
-        ]
-      })
-    ])
-
-    // Convert bookings to calendar events
+    // Initialize empty arrays for data
     const bookingEvents: CalendarEvent[] = []
+    const holidays: Holiday[] = []
+    const timeSlots: TimeSlot[] = []
 
-    // Add test drive bookings
-    testDriveBookings.forEach(booking => {
-      const eventDate = new Date(booking.date)
-      const [startTime, endTime] = getTimeRangeFromTimeSlot(booking.timeSlot)
-      
-      const event: CalendarEvent = {
-        id: `test-drive-${booking.id}`,
-        title: `اختبار قيادة - ${booking.vehicle?.make || 'غير محدد'} ${booking.vehicle?.model || ''}`,
-        description: `عميل: ${booking.customer.name}`,
-        start: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${startTime}`),
-        end: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${endTime}`),
-        type: 'booking',
-        status: booking.status as any,
-        customerId: booking.customerId,
-        vehicleId: booking.vehicleId,
-        customerName: booking.customer.name,
-        customerEmail: booking.customer.email,
-        customerPhone: booking.customer.phone,
-        vehicleName: `${booking.vehicle?.make || 'غير محدد'} ${booking.vehicle?.model || ''}`,
-        allDay: false,
-        createdAt: booking.createdAt,
-        updatedAt: booking.updatedAt
-      }
-      bookingEvents.push(event)
-    })
+    try {
+      // Fetch calendar events if requested
+      if (showEvents) {
+        const calendarEvents = await db.calendarEvent.findMany({
+          where: {
+            startTime: {
+              gte: monthStart,
+              lte: monthEnd
+            }
+          },
+          include: {
+            organizer: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          },
+          orderBy: [
+            { startTime: 'asc' }
+          ]
+        })
 
-    // Add service bookings
-    serviceBookings.forEach(booking => {
-      const eventDate = new Date(booking.date)
-      const [startTime, endTime] = getTimeRangeFromTimeSlot(booking.timeSlot)
-      
-      const event: CalendarEvent = {
-        id: `service-${booking.id}`,
-        title: `صيانة - ${booking.serviceType.name}`,
-        description: `عميل: ${booking.customer.name}`,
-        start: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${startTime}`),
-        end: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${endTime}`),
-        type: 'booking',
-        status: booking.status as any,
-        customerId: booking.customerId,
-        vehicleId: booking.vehicleId,
-        customerName: booking.customer.name,
-        customerEmail: booking.customer.email,
-        customerPhone: booking.customer.phone,
-        vehicleName: booking.vehicle ? `${booking.vehicle.make} ${booking.vehicle.model}` : undefined,
-        allDay: false,
-        createdAt: booking.createdAt,
-        updatedAt: booking.updatedAt
+        // Convert calendar events to CalendarEvent format
+        calendarEvents.forEach(event => {
+          bookingEvents.push({
+            id: `event-${event.id}`,
+            title: event.title,
+            description: event.description,
+            start: new Date(event.startTime),
+            end: new Date(event.endTime),
+            type: 'event',
+            status: event.status,
+            organizerId: event.organizerId,
+            organizerName: event.organizer?.name,
+            location: event.location,
+            allDay: event.isRecurring,
+            createdAt: event.createdAt,
+            updatedAt: event.updatedAt
+          })
+        })
       }
-      bookingEvents.push(event)
-    })
+    } catch (error) {
+      console.warn('Error fetching calendar events:', error)
+    }
 
-    // Add calendar events
-    calendarEvents.forEach(event => {
-      const calendarEvent: CalendarEvent = {
-        id: `event-${event.id}`,
-        title: event.title,
-        description: event.description,
-        start: new Date(`${format(event.startDate, 'yyyy-MM-dd')}T${event.startTime || '09:00'}`),
-        end: new Date(`${format(event.endDate, 'yyyy-MM-dd')}T${event.endTime || '10:00'}`),
-        type: 'event',
-        status: 'CONFIRMED',
-        organizerId: event.organizerId,
-        organizerName: event.organizer?.name,
-        location: event.location,
-        allDay: event.isAllDay,
-        createdAt: event.createdAt,
-        updatedAt: event.updatedAt
+    try {
+      // Fetch test drive bookings if requested
+      if (showBookings) {
+        const testDriveBookings = await db.testDriveBooking.findMany({
+          where: {
+            date: {
+              gte: monthStart,
+              lte: monthEnd
+            }
+          },
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+              }
+            },
+            vehicle: {
+              select: {
+                id: true,
+                make: true,
+                model: true,
+                year: true
+              }
+            }
+          },
+          orderBy: [
+            { date: 'asc' },
+            { timeSlot: 'asc' }
+          ]
+        })
+
+        // Convert test drive bookings to calendar events
+        testDriveBookings.forEach(booking => {
+          const eventDate = new Date(booking.date)
+          const [startTime, endTime] = getTimeRangeFromTimeSlot(booking.timeSlot)
+          
+          bookingEvents.push({
+            id: `test-drive-${booking.id}`,
+            title: `اختبار قيادة - ${booking.vehicle?.make || 'غير محدد'} ${booking.vehicle?.model || ''}`,
+            description: `عميل: ${booking.customer.name}`,
+            start: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${startTime}`),
+            end: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${endTime}`),
+            type: 'booking',
+            status: booking.status as any,
+            customerId: booking.customerId,
+            vehicleId: booking.vehicleId,
+            customerName: booking.customer.name,
+            customerEmail: booking.customer.email,
+            customerPhone: booking.customer.phone,
+            vehicleName: `${booking.vehicle?.make || 'غير محدد'} ${booking.vehicle?.model || ''}`,
+            allDay: false,
+            createdAt: booking.createdAt,
+            updatedAt: booking.updatedAt
+          })
+        })
       }
-      bookingEvents.push(calendarEvent)
-    })
+    } catch (error) {
+      console.warn('Error fetching test drive bookings:', error)
+    }
+
+    try {
+      // Fetch service bookings if requested
+      if (showBookings) {
+        const serviceBookings = await db.serviceBooking.findMany({
+          where: {
+            date: {
+              gte: monthStart,
+              lte: monthEnd
+            }
+          },
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+              }
+            },
+            serviceType: {
+              select: {
+                id: true,
+                name: true,
+                duration: true,
+                price: true
+              }
+            },
+            vehicle: {
+              select: {
+                id: true,
+                make: true,
+                model: true,
+                year: true
+              }
+            }
+          },
+          orderBy: [
+            { date: 'asc' },
+            { timeSlot: 'asc' }
+          ]
+        })
+
+        // Convert service bookings to calendar events
+        serviceBookings.forEach(booking => {
+          const eventDate = new Date(booking.date)
+          const [startTime, endTime] = getTimeRangeFromTimeSlot(booking.timeSlot)
+          
+          bookingEvents.push({
+            id: `service-${booking.id}`,
+            title: `صيانة - ${booking.serviceType.name}`,
+            description: `عميل: ${booking.customer.name}`,
+            start: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${startTime}`),
+            end: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${endTime}`),
+            type: 'booking',
+            status: booking.status as any,
+            customerId: booking.customerId,
+            vehicleId: booking.vehicleId,
+            customerName: booking.customer.name,
+            customerEmail: booking.customer.email,
+            customerPhone: booking.customer.phone,
+            vehicleName: booking.vehicle ? `${booking.vehicle.make} ${booking.vehicle.model}` : undefined,
+            allDay: false,
+            createdAt: booking.createdAt,
+            updatedAt: booking.updatedAt
+          })
+        })
+      }
+    } catch (error) {
+      console.warn('Error fetching service bookings:', error)
+    }
 
     // Create calendar days
     const calendarDays: CalendarDay[] = daysInMonth.map(day => {
@@ -206,59 +219,53 @@ export async function GET(request: NextRequest) {
         isToday: isTodayDate,
         isWeekend: isWeekendDate,
         isPast: isPastDate,
-        isHoliday: false, // TODO: Add holiday logic
-        availableTimeSlots: [] // TODO: Add time slots logic
+        isHoliday: false,
+        availableTimeSlots: []
       }
     })
 
-    // Create some sample holidays
-    const holidays: Holiday[] = [
-      {
-        id: 'holiday-1',
-        name: 'عيد الفطر',
-        date: addDays(new Date(), 30), // Sample date
-        type: 'religious',
-        description: 'عيد الفطر المبارك'
-      },
-      {
-        id: 'holiday-2',
-        name: 'عيد الأضحى',
-        date: addDays(new Date(), 60), // Sample date
-        type: 'religious',
-        description: 'عيد الأضحى المبارك'
-      }
-    ]
+    // Create some sample holidays if requested
+    if (showHolidays) {
+      holidays.push(
+        {
+          id: 'holiday-1',
+          name: 'عيد الفطر',
+          date: addDays(new Date(), 30),
+          type: 'religious',
+          description: 'عيد الفطر المبارك'
+        },
+        {
+          id: 'holiday-2',
+          name: 'عيد الأضحى',
+          date: addDays(new Date(), 60),
+          type: 'religious',
+          description: 'عيد الأضحى المبارك'
+        }
+      )
+    }
 
     // Create some sample time slots
-    const timeSlots: TimeSlot[] = [
-      {
-        id: 'slot-1',
-        date: new Date(),
-        startTime: '09:00',
-        endTime: '10:00',
-        maxBookings: 1,
-        currentBookings: 0,
-        isAvailable: true
-      },
-      {
-        id: 'slot-2',
-        date: new Date(),
-        startTime: '10:00',
-        endTime: '11:00',
-        maxBookings: 1,
-        currentBookings: 0,
-        isAvailable: true
-      },
-      {
-        id: 'slot-3',
-        date: new Date(),
-        startTime: '11:00',
-        endTime: '12:00',
-        maxBookings: 1,
-        currentBookings: 0,
-        isAvailable: true
+    if (showBookings) {
+      const startHour = 9 // 9 AM
+      const endHour = 17 // 5 PM
+      const slotDuration = 1 // 1 hour per slot
+
+      for (let hour = startHour; hour < endHour; hour += slotDuration) {
+        const startTime = `${hour.toString().padStart(2, '0')}:00`
+        const endTime = `${(hour + slotDuration).toString().padStart(2, '0')}:00`
+        
+        timeSlots.push({
+          id: `slot-${startTime}`,
+          dayOfWeek: 1, // Monday
+          startTime,
+          endTime,
+          maxBookings: 1,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
       }
-    ]
+    }
 
     return NextResponse.json({
       days: calendarDays,

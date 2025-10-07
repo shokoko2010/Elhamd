@@ -30,8 +30,19 @@ export async function GET(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('EDIT_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const images = await db.vehicleImage.findMany({
@@ -55,8 +66,19 @@ export async function POST(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('EDIT_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     // Check if vehicle exists
@@ -124,8 +146,19 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('EDIT_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const body = await request.json()
