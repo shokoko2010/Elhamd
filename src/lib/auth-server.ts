@@ -33,29 +33,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       permissions = []
     }
 
-    // Ensure user has the minimum required permissions based on role
-    if (session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN) {
-      // Admin users get all permissions by default
-      const allPermissions = Object.values(Permission)
-      permissions = Array.from(new Set([...permissions, ...allPermissions]))
-    } else if (session.user.role === UserRole.BRANCH_MANAGER) {
-      // Branch managers get vehicle management permissions
-      const vehiclePermissions = [
-        Permission.VEHICLE_MANAGE,
-        Permission.VEHICLE_VIEW,
-        Permission.VEHICLE_EDIT,
-        Permission.VEHICLE_IMAGES_MANAGE
-      ]
-      permissions = Array.from(new Set([...permissions, ...vehiclePermissions]))
-    } else if (session.user.role === UserRole.STAFF) {
-      // Staff get basic vehicle permissions
-      const staffPermissions = [
-        Permission.VEHICLE_VIEW,
-        Permission.VEHICLE_EDIT
-      ]
-      permissions = Array.from(new Set([...permissions, ...staffPermissions]))
-    }
-
     return {
       id: session.user.id,
       email: session.user.email!,
