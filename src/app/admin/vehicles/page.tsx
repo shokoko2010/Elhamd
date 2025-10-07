@@ -132,7 +132,7 @@ interface VehicleFormData {
 
 export default function AdminVehiclesPage() {
   return (
-    <AdminRoute requiredPermissions={['edit_vehicles', 'view_vehicles']}>
+    <AdminRoute>
       <VehiclesContent />
     </AdminRoute>
   )

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
     const user = await requireUnifiedAuth(request)
-    if (!([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
     const user = await requireUnifiedAuth(request)
-    if (!([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 

@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getUnifiedUser, requireUnifiedAuth } from '@/lib/unified-auth'
+import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 import { z } from 'zod'
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getUnifiedUser(request)
+    const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getUnifiedUser(request)
+    const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
@@ -116,7 +116,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getUnifiedUser(request)
+    const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
