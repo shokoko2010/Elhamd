@@ -144,10 +144,15 @@ function CreateInvoiceContent() {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value }
         
+        // Ensure numeric values are properly initialized
+        const quantity = parseFloat(updatedItem.quantity) || 0
+        const unitPrice = parseFloat(updatedItem.unitPrice) || 0
+        const taxRate = parseFloat(updatedItem.taxRate) || 0
+        
         // Recalculate totals
         if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
-          updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice
-          updatedItem.taxAmount = updatedItem.totalPrice * (updatedItem.taxRate / 100)
+          updatedItem.totalPrice = quantity * unitPrice
+          updatedItem.taxAmount = updatedItem.totalPrice * (taxRate / 100)
         }
         
         return updatedItem
@@ -157,21 +162,22 @@ function CreateInvoiceContent() {
   }
 
   const addServiceItem = (serviceItem: ServiceItem) => {
+    const price = parseFloat(serviceItem.price?.toString()) || 0
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      description: serviceItem.name,
+      description: serviceItem.name || '',
       quantity: 1,
-      unitPrice: serviceItem.price,
-      totalPrice: serviceItem.price,
+      unitPrice: price,
+      totalPrice: price,
       taxRate: 14,
-      taxAmount: serviceItem.price * 0.14
+      taxAmount: price * 0.14
     }
     setItems([...items, newItem])
   }
 
   const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0)
-    const taxAmount = items.reduce((sum, item) => sum + item.taxAmount, 0)
+    const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.totalPrice?.toString()) || 0), 0)
+    const taxAmount = items.reduce((sum, item) => sum + (parseFloat(item.taxAmount?.toString()) || 0), 0)
     const totalAmount = subtotal + taxAmount
     
     return { subtotal, taxAmount, totalAmount }
@@ -460,14 +466,14 @@ function CreateInvoiceContent() {
                       <div>
                         <Label className="text-sm">المجموع</Label>
                         <div className="p-2 bg-gray-50 rounded font-medium">
-                          {item.totalPrice.toFixed(2)} ج.م
+                          {(item.totalPrice || 0).toFixed(2)} ج.م
                         </div>
                       </div>
                       
                       <div>
                         <Label className="text-sm">الضريبة</Label>
                         <div className="p-2 bg-gray-50 rounded font-medium">
-                          {item.taxAmount.toFixed(2)} ج.م
+                          {(item.taxAmount || 0).toFixed(2)} ج.م
                         </div>
                       </div>
                     </div>
@@ -531,16 +537,16 @@ function CreateInvoiceContent() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">الإجمالي الفرعي:</span>
-                  <span className="font-medium">{subtotal.toFixed(2)} ج.م</span>
+                  <span className="font-medium">{(subtotal || 0).toFixed(2)} ج.م</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">الضريبة:</span>
-                  <span className="font-medium">{taxAmount.toFixed(2)} ج.م</span>
+                  <span className="font-medium">{(taxAmount || 0).toFixed(2)} ج.م</span>
                 </div>
                 <div className="border-t pt-2">
                   <div className="flex justify-between text-lg font-bold">
                     <span>الإجمالي:</span>
-                    <span className="text-blue-600">{totalAmount.toFixed(2)} ج.م</span>
+                    <span className="text-blue-600">{(totalAmount || 0).toFixed(2)} ج.م</span>
                   </div>
                 </div>
               </div>
