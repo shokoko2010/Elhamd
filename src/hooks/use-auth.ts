@@ -29,16 +29,10 @@ export function useAuth() {
       setLoading(true)
       setError(null)
       
-      console.log('Fetching user from /api/simple-auth/me...')
-      const response = await fetch('/api/simple-auth/me', {
-        credentials: 'include'
-      })
-      
-      console.log('Response status:', response.status)
+      const response = await fetch('/api/simple-auth/me')
       
       if (response.ok) {
         const data = await response.json()
-        console.log('User data received:', data.user?.email)
         setUser({
           id: data.user.id,
           email: data.user.email,
@@ -54,14 +48,12 @@ export function useAuth() {
           updatedAt: new Date(data.user.updatedAt)
         })
       } else {
-        console.log('Response not ok:', response.status)
         setUser(null)
         if (response.status !== 401) {
           setError('Failed to fetch user data')
         }
       }
     } catch (err) {
-      console.error('Error in fetchUser:', err)
       setError('An error occurred')
       setUser(null)
     } finally {
@@ -71,10 +63,7 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      await fetch('/api/simple-auth/logout', { 
-        method: 'POST',
-        credentials: 'include'
-      })
+      await fetch('/api/simple-auth/logout', { method: 'POST' })
       setUser(null)
       window.location.href = '/login'
     } catch (error) {
@@ -116,15 +105,15 @@ export function useAuth() {
   }
 
   const isAdmin = (): boolean => {
-    return hasAnyRole([UserRole.ADMIN])
+    return hasAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])
   }
 
   const isBranchManager = (): boolean => {
-    return hasAnyRole([UserRole.ADMIN, UserRole.BRANCH_MANAGER])
+    return hasAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER])
   }
 
   const isStaff = (): boolean => {
-    return hasAnyRole([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
+    return hasAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
   }
 
   const isCustomer = (): boolean => {
@@ -132,41 +121,41 @@ export function useAuth() {
   }
 
   // Permission check helpers
-  const canViewUsers = (): boolean => hasPermission('users.view')
-  const canManageUsers = (): boolean => hasAnyPermission(['users.create', 'users.update', 'users.delete'])
-  const canManageRoles = (): boolean => hasPermission('users.update')
-  const canManagePermissions = (): boolean => hasPermission('users.update')
+  const canViewUsers = (): boolean => hasPermission('view_users')
+  const canManageUsers = (): boolean => hasAnyPermission(['create_users', 'edit_users', 'delete_users'])
+  const canManageRoles = (): boolean => hasPermission('manage_user_roles')
+  const canManagePermissions = (): boolean => hasPermission('manage_user_permissions')
 
-  const canViewVehicles = (): boolean => hasPermission('vehicles.view')
-  const canManageVehicles = (): boolean => hasAnyPermission(['vehicles.create', 'vehicles.update', 'vehicles.delete'])
+  const canViewVehicles = (): boolean => hasPermission('view_vehicles')
+  const canManageVehicles = (): boolean => hasAnyPermission(['create_vehicles', 'edit_vehicles', 'delete_vehicles'])
 
-  const canViewBookings = (): boolean => hasPermission('bookings.view')
-  const canManageBookings = (): boolean => hasAnyPermission(['bookings.create', 'bookings.update', 'bookings.delete'])
+  const canViewBookings = (): boolean => hasPermission('view_bookings')
+  const canManageBookings = (): boolean => hasAnyPermission(['create_bookings', 'edit_bookings', 'delete_bookings'])
 
-  const canViewServices = (): boolean => hasPermission('bookings.view')
-  const canManageServices = (): boolean => hasAnyPermission(['bookings.create', 'bookings.update'])
+  const canViewServices = (): boolean => hasPermission('view_services')
+  const canManageServices = (): boolean => hasAnyPermission(['create_services', 'edit_services', 'delete_services'])
 
-  const canViewInventory = (): boolean => hasPermission('vehicles.view')
-  const canManageInventory = (): boolean => hasAnyPermission(['vehicles.create', 'vehicles.update'])
-  const canManageWarehouses = (): boolean => hasPermission('branches.view')
-  const canManageSuppliers = (): boolean => hasPermission('branches.view')
+  const canViewInventory = (): boolean => hasPermission('view_inventory')
+  const canManageInventory = (): boolean => hasAnyPermission(['create_inventory_items', 'edit_inventory_items', 'delete_inventory_items'])
+  const canManageWarehouses = (): boolean => hasPermission('manage_warehouses')
+  const canManageSuppliers = (): boolean => hasPermission('manage_suppliers')
 
-  const canViewFinancials = (): boolean => hasPermission('reports.view')
-  const canManageFinancials = (): boolean => hasAnyPermission(['reports.view', 'reports.export'])
+  const canViewFinancials = (): boolean => hasPermission('view_financials')
+  const canManageFinancials = (): boolean => hasAnyPermission(['create_invoices', 'edit_invoices', 'delete_invoices', 'manage_payments'])
 
-  const canViewBranches = (): boolean => hasPermission('branches.view')
-  const canManageBranches = (): boolean => hasAnyPermission(['branches.create', 'branches.update', 'branches.delete'])
-  const canManageBranchStaff = (): boolean => hasPermission('users.update')
+  const canViewBranches = (): boolean => hasPermission('view_branches')
+  const canManageBranches = (): boolean => hasAnyPermission(['create_branches', 'edit_branches', 'delete_branches'])
+  const canManageBranchStaff = (): boolean => hasPermission('manage_branch_staff')
 
-  const canViewCustomers = (): boolean => hasPermission('users.view')
-  const canManageCustomers = (): boolean => hasAnyPermission(['users.create', 'users.update'])
+  const canViewCustomers = (): boolean => hasPermission('view_customers')
+  const canManageCustomers = (): boolean => hasAnyPermission(['create_customers', 'edit_customers', 'delete_customers'])
 
-  const canViewReports = (): boolean => hasPermission('reports.view')
-  const canGenerateReports = (): boolean => hasPermission('reports.export')
-  const canExportData = (): boolean => hasPermission('reports.export')
+  const canViewReports = (): boolean => hasPermission('view_reports')
+  const canGenerateReports = (): boolean => hasPermission('generate_reports')
+  const canExportData = (): boolean => hasPermission('export_data')
 
-  const canManageSystemSettings = (): boolean => hasPermission('system.settings')
-  const canManageRoleTemplates = (): boolean => hasPermission('system.settings')
+  const canManageSystemSettings = (): boolean => hasPermission('manage_system_settings')
+  const canManageRoleTemplates = (): boolean => hasPermission('manage_roles_templates')
 
   return {
     user,

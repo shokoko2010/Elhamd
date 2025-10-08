@@ -33,15 +33,18 @@ export async function GET(request: NextRequest) {
       
       timeSlots.push({
         id: `slot-${format(selectedDate, 'yyyy-MM-dd')}-${startTime}`,
-        dayOfWeek: selectedDate.getDay(),
+        date: selectedDate,
         startTime,
         endTime,
         maxBookings: 1,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        currentBookings: 0,
+        isAvailable: true
       })
     }
+
+    // Check existing bookings for this date
+    // TODO: Query actual bookings from database
+    // For now, return all slots as available
 
     return NextResponse.json(timeSlots)
 

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
-import { PermissionService } from './permissions'
+import { PermissionService, Permission } from './permissions'
 import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-secret'
@@ -13,7 +13,7 @@ export interface AuthUser {
   role: UserRole
   phone?: string | null
   branchId?: string | null
-  permissions: string[]
+  permissions: Permission[]
 }
 
 export async function getUnifiedAuthUser(request: NextRequest): Promise<AuthUser | null> {
@@ -49,7 +49,7 @@ export async function getUnifiedAuthUser(request: NextRequest): Promise<AuthUser
     }
 
     // Map permissions
-    const permissions = user.permissions.map(up => up.permission.name as string)
+    const permissions = user.permissions.map(up => up.permission.name as Permission)
 
     return {
       id: user.id,
@@ -96,7 +96,7 @@ export async function requireUnifiedAnyRole(request: NextRequest, roles: UserRol
   return user
 }
 
-export async function requireUnifiedPermission(request: NextRequest, permission: string): Promise<AuthUser> {
+export async function requireUnifiedPermission(request: NextRequest, permission: Permission): Promise<AuthUser> {
   const user = await requireUnifiedAuth(request)
   
   if (!user.permissions.includes(permission)) {
@@ -106,7 +106,7 @@ export async function requireUnifiedPermission(request: NextRequest, permission:
   return user
 }
 
-export async function requireUnifiedAnyPermission(request: NextRequest, permissions: string[]): Promise<AuthUser> {
+export async function requireUnifiedAnyPermission(request: NextRequest, permissions: Permission[]): Promise<AuthUser> {
   const user = await requireUnifiedAuth(request)
   
   if (!permissions.some(permission => user.permissions.includes(permission))) {
@@ -116,7 +116,7 @@ export async function requireUnifiedAnyPermission(request: NextRequest, permissi
   return user
 }
 
-export async function requireUnifiedAllPermissions(request: NextRequest, permissions: string[]): Promise<AuthUser> {
+export async function requireUnifiedAllPermissions(request: NextRequest, permissions: Permission[]): Promise<AuthUser> {
   const user = await requireUnifiedAuth(request)
   
   if (!permissions.every(permission => user.permissions.includes(permission))) {

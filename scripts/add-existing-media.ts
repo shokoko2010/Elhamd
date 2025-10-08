@@ -1,101 +1,220 @@
 import { PrismaClient } from '@prisma/client'
-import { readdir, stat } from 'fs/promises'
+import { promises as fs } from 'fs'
 import path from 'path'
 
 const prisma = new PrismaClient()
 
-async function addExistingMedia() {
+async function scanDirectory(dirPath: string, category: string = 'general') {
+  const files: Array<{
+    filename: string
+    originalName: string
+    path: string
+    url: string
+    thumbnailUrl: string
+    size: number
+    mimeType: string
+    type: string
+    category: string
+    altText: string
+    title: string
+    description: string
+    tags: string[]
+    uploadedBy: string
+    createdAt: Date
+    updatedAt: Date
+  }> = []
+  
   try {
-    console.log('🔄 Starting to add existing media to database...')
+    const items = await fs.readdir(dirPath, { withFileTypes: true })
     
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
-    
-    // Recursively find all image files
-    async function findImages(dir: string, basePath = ''): Promise<string[]> {
-      const files: string[] = []
-      const entries = await readdir(dir, { withFileTypes: true })
-      
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name)
-        const relativePath = basePath ? path.join(basePath, entry.name) : entry.name
+    for (const item of items) {
+      if (item.isFile()) {
+        const fullPath = path.join(dirPath, item.name)
+        const stats = await fs.stat(fullPath)
+        const relativePath = path.relative('/home/z/my-project/public', fullPath)
         
-        if (entry.isDirectory()) {
-          files.push(...await findImages(fullPath, relativePath))
-        } else if (entry.isFile()) {
-          const ext = path.extname(entry.name).toLowerCase()
-          if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)) {
-            files.push(relativePath)
-          }
+        // Determine category based on path
+        let fileCategory = category
+        if (relativePath.includes('vehicles')) {
+          fileCategory = 'vehicles'
+        } else if (relativePath.includes('banners')) {
+          fileCategory = 'banners'
+        } else if (relativePath.includes('showroom')) {
+          fileCategory = 'company'
+        } else if (relativePath.includes('dealership')) {
+          fileCategory = 'company'
+        } else if (relativePath.includes('logo')) {
+          fileCategory = 'brand'
         }
+        
+        files.push({
+          filename: item.name,
+          originalName: item.name,
+          path: relativePath,
+          url: `/${relativePath}`,
+          thumbnailUrl: `/${relativePath}`,
+          size: stats.size,
+          mimeType: getMimeType(item.name),
+          type: getFileType(item.name),
+          category: fileCategory,
+          altText: generateAltText(item.name, fileCategory),
+          title: generateTitle(item.name),
+          description: generateDescription(item.name, fileCategory),
+          tags: generateTags(item.name, fileCategory),
+          uploadedBy: 'admin',
+          createdAt: stats.mtime,
+          updatedAt: stats.mtime
+        })
+      } else if (item.isDirectory()) {
+        // Recursively scan subdirectories
+        const subFiles = await scanDirectory(path.join(dirPath, item.name), item.name)
+        files.push(...subFiles)
       }
-      
-      return files
     }
+  } catch (error) {
+    console.error(`Error scanning directory ${dirPath}:`, error instanceof Error ? error.message : error)
+  }
+  
+  return files
+}
+
+function getMimeType(filename: string): string {
+  const ext = path.extname(filename).toLowerCase()
+  const mimeTypes: { [key: string]: string } = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  }
+  return mimeTypes[ext] || 'application/octet-stream'
+}
+
+function getFileType(filename: string): string {
+  const ext = path.extname(filename).toLowerCase()
+  const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
+  const documentTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx']
+  
+  if (imageTypes.includes(ext)) return 'image'
+  if (documentTypes.includes(ext)) return 'document'
+  return 'file'
+}
+
+function generateAltText(filename: string, category: string): string {
+  const name = path.parse(filename).name
+  switch (category) {
+    case 'vehicles':
+      return `صورة ${name.replace(/[-_]/g, ' ')}`
+    case 'banners':
+      return `بانر ${name.replace(/[-_]/g, ' ')}`
+    case 'company':
+      return `صورة المعرض ${name.replace(/[-_]/g, ' ')}`
+    case 'brand':
+      return `شعار ${name.replace(/[-_]/g, ' ')}`
+    default:
+      return `صورة ${name.replace(/[-_]/g, ' ')}`
+  }
+}
+
+function generateTitle(filename: string): string {
+  const name = path.parse(filename).name
+  return name.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+function generateDescription(filename: string, category: string): string {
+  const name = path.parse(filename).name
+  switch (category) {
+    case 'vehicles':
+      return `صورة لسيارة ${name.replace(/[-_]/g, ' ')}`
+    case 'banners':
+      return `بانر ترويجي لـ ${name.replace(/[-_]/g, ' ')}`
+    case 'company':
+      return `صورة لمعرض الحمد للسيارات`
+    case 'brand':
+      return `شعار شركة الحمد للسيارات`
+    default:
+      return `ملف ${name.replace(/[-_]/g, ' ')}`
+  }
+}
+
+function generateTags(filename: string, category: string): string[] {
+  const name = path.parse(filename).name.toLowerCase()
+  const tags: string[] = [category]
+  
+  // Add specific tags based on filename
+  if (name.includes('nexon')) tags.push('nexon', 'تاتا', 'suv')
+  if (name.includes('tiago')) tags.push('tiago', 'تاتا', 'هايتباك')
+  if (name.includes('punch')) tags.push('punch', 'تاتا', 'ميني suv')
+  if (name.includes('tigor')) tags.push('tigor', 'تاتا', 'سيدان')
+  if (name.includes('harrier')) tags.push('harrier', 'تاتا', 'suv')
+  if (name.includes('altroz')) tags.push('altroz', 'تاتا', 'هايتباك')
+  if (name.includes('electric')) tags.push('كهربائي', 'ev')
+  if (name.includes('banner')) tags.push('بانر', 'ترويجي')
+  if (name.includes('showroom')) tags.push('معرض', 'محل')
+  if (name.includes('logo')) tags.push('شعار', 'علامة تجارية')
+  
+  return tags
+}
+
+async function main() {
+  try {
+    console.log('Starting to scan uploads directory...')
     
-    const imageFiles = await findImages(uploadsDir)
-    console.log(`📁 Found ${imageFiles.length} image files`)
+    // Clear existing media files
+    console.log('Clearing existing media files...')
+    await prisma.media.deleteMany({})
     
-    for (const imagePath of imageFiles) {
-      const fullPath = path.join(uploadsDir, imagePath)
-      const stats = await stat(fullPath)
-      
-      // Determine category based on path
-      let category = 'other'
-      if (imagePath.includes('vehicles')) category = 'vehicles'
-      else if (imagePath.includes('banners')) category = 'banner'
-      else if (imagePath.includes('logo')) category = 'company'
-      else if (imagePath.includes('showroom')) category = 'gallery'
-      else if (imagePath.includes('thumbnails')) category = 'gallery'
-      
-      // Check if already exists
-      const existing = await prisma.media.findFirst({
-        where: { url: `/uploads/${imagePath}` }
-      })
-      
-      if (existing) {
-        console.log(`⏭️  Skipping existing: ${imagePath}`)
-        continue
-      }
-      
-      // Create media record
+    // Scan the uploads directory
+    const uploadsPath = '/home/z/my-project/public/uploads'
+    const mediaFiles = await scanDirectory(uploadsPath)
+    
+    console.log(`Found ${mediaFiles.length} media files`)
+    
+    // Insert media files into database
+    for (const file of mediaFiles) {
       await prisma.media.create({
         data: {
-          filename: path.basename(imagePath),
-          originalName: path.basename(imagePath),
-          path: `/uploads/${imagePath}`,
-          url: `/uploads/${imagePath}`,
-          thumbnailUrl: `/uploads/${imagePath}`,
-          mimeType: `image/${path.extname(imagePath).slice(1)}`,
-          size: stats.size,
-          width: null,
-          height: null,
-          altText: path.basename(imagePath, path.extname(imagePath)),
-          title: path.basename(imagePath, path.extname(imagePath)),
-          description: '',
-          tags: JSON.stringify([]),
-          category: category,
+          filename: file.filename,
+          originalName: file.originalName,
+          path: file.path,
+          url: file.url,
+          thumbnailUrl: file.thumbnailUrl,
+          mimeType: file.mimeType,
+          size: file.size,
+          altText: file.altText,
+          title: file.title,
+          description: file.description,
+          tags: JSON.stringify(file.tags),
+          category: file.category,
           entityId: null,
           isPublic: true,
           isFeatured: false,
           order: 0,
-          metadata: JSON.stringify({
-            originalPath: imagePath,
-            addedAt: new Date().toISOString()
-          }),
-          createdBy: 'system'
+          metadata: null,
+          createdBy: file.uploadedBy,
+          createdAt: file.createdAt,
+          updatedAt: file.updatedAt
         }
       })
-      
-      console.log(`✅ Added: ${imagePath} (${category})`)
     }
     
-    console.log('🎉 Finished adding existing media to database!')
+    console.log(`Successfully added ${mediaFiles.length} media files to the database`)
+    
+    // Verify the count
+    const totalCount = await prisma.media.count()
+    console.log(`Total media files in database: ${totalCount}`)
     
   } catch (error) {
-    console.error('❌ Error adding existing media:', error)
+    console.error('Error:', error instanceof Error ? error.message : error)
   } finally {
     await prisma.$disconnect()
   }
 }
 
-addExistingMedia()
+main()
