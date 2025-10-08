@@ -85,10 +85,10 @@ interface InvoicePayment {
   payment: {
     id: string
     amount: number
-    paymentDate: string
+    createdAt: string
     paymentMethod: string
     status: string
-    reference?: string
+    transactionId?: string
     notes?: string
   }
 }

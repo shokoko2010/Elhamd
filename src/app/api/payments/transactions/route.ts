@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (startDate && endDate) {
-      where.paymentDate = {
+      where.createdAt = {
         gte: new Date(startDate),
         lte: new Date(endDate)
       }
@@ -52,11 +52,15 @@ export async function GET(request: NextRequest) {
       db.payment.findMany({
         where,
         include: {
-          booking: {
+          serviceBooking: {
             select: {
               id: true,
-              customerName: true,
-              customerEmail: true
+              customer: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
             }
           },
           invoicePayments: {
@@ -106,17 +110,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     const {
-      customerId,
+      bookingId,
       amount,
       paymentMethod,
-      paymentDate,
-      reference,
       notes,
       invoiceId
     } = body
 
     // Validate required fields
-    if (!customerId || !amount || !paymentMethod || !paymentDate) {
+    if (!bookingId || !amount || !paymentMethod) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -126,20 +128,22 @@ export async function POST(request: NextRequest) {
     // Create payment
     const payment = await db.payment.create({
       data: {
-        customerId,
+        bookingId,
+        bookingType: 'SERVICE',
         amount,
         paymentMethod,
-        paymentDate: new Date(paymentDate),
-        reference,
         notes,
         status: 'COMPLETED'
       },
       include: {
-        customer: {
+        serviceBooking: {
           select: {
-            id: true,
-            name: true,
-            email: true
+            customer: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
           }
         }
       }
@@ -152,7 +156,7 @@ export async function POST(request: NextRequest) {
           invoiceId,
           paymentId: payment.id,
           amount: payment.amount,
-          paymentDate: payment.paymentDate,
+          paymentDate: payment.createdAt,
           paymentMethod: payment.paymentMethod,
           transactionId: payment.transactionId
         }
