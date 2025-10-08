@@ -17,7 +17,7 @@ interface AdminRouteProps {
 
 export function AdminRoute({ 
   children, 
-  requiredRoles = [UserRole.ADMIN], 
+  requiredRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN], 
   requiredPermissions = [],
   redirectTo = '/login' 
 }: AdminRouteProps) {
