@@ -195,6 +195,181 @@ function InvoiceDetailsContent() {
     }
   }
 
+  const printInvoice = () => {
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      // Fallback to window.print if popup is blocked
+      window.print()
+      return
+    }
+
+    // Create the print content
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>فاتورة ${invoice?.invoiceNumber}</title>
+        <style>
+          @media print {
+            body { 
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              margin: 0;
+              padding: 20px;
+              direction: rtl;
+            }
+            .no-print { display: none !important; }
+            .print-break { page-break-inside: avoid; }
+            .print-header { 
+              border-bottom: 2px solid #333; 
+              padding-bottom: 20px; 
+              margin-bottom: 30px;
+            }
+            .print-footer { 
+              border-top: 1px solid #ccc; 
+              padding-top: 20px; 
+              margin-top: 30px;
+              font-size: 12px;
+              color: #666;
+            }
+            .invoice-table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin: 20px 0;
+            }
+            .invoice-table th, 
+            .invoice-table td { 
+              border: 1px solid #ddd; 
+              padding: 12px; 
+              text-align: right;
+            }
+            .invoice-table th { 
+              background-color: #f5f5f5; 
+              font-weight: bold;
+            }
+            .total-row { 
+              font-weight: bold; 
+              background-color: #f9f9f9;
+            }
+            .company-info {
+              margin-bottom: 30px;
+            }
+            .customer-info {
+              margin-bottom: 30px;
+            }
+            .invoice-details {
+              margin-bottom: 30px;
+            }
+            .amount-summary {
+              float: left;
+              text-align: left;
+              direction: ltr;
+            }
+            .notes-terms {
+              margin-top: 30px;
+              font-size: 14px;
+              color: #666;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <div class="company-info">
+            <h1>TATA Motors Egypt</h1>
+            <p>وكيل معتمد لسيارات تاتا</p>
+            <p>القاهرة، مصر</p>
+            <p>هاتف: +20 2 12345678</p>
+            <p>البريد الإلكتروني: info@tata-egypt.com</p>
+          </div>
+        </div>
+
+        <div class="invoice-details">
+          <h2>فاتورة رقم: ${invoice?.invoiceNumber}</h2>
+          <p><strong>التاريخ:</strong> ${formatDate(invoice?.issueDate || '')}</p>
+          <p><strong>تاريخ الاستحقاق:</strong> ${formatDate(invoice?.dueDate || '')}</p>
+          <p><strong>الحالة:</strong> ${getStatusBadge(invoice?.status || '').props.children}</p>
+          <p><strong>العملة:</strong> ${invoice?.currency}</p>
+        </div>
+
+        <div class="customer-info">
+          <h3>معلومات العميل</h3>
+          <p><strong>الاسم:</strong> ${invoice?.customer.name}</p>
+          <p><strong>البريد الإلكتروني:</strong> ${invoice?.customer.email}</p>
+          ${invoice?.customer.phone ? `<p><strong>الهاتف:</strong> ${invoice.customer.phone}</p>` : ''}
+          ${invoice?.customer.company ? `<p><strong>الشركة:</strong> ${invoice.customer.company}</p>` : ''}
+          ${invoice?.customer.address ? `<p><strong>العنوان:</strong> ${invoice.customer.address}</p>` : ''}
+        </div>
+
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>الوصف</th>
+              <th>الكمية</th>
+              <th>السعر الواحد</th>
+              <th>الإجمالي</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoice?.items.map(item => `
+              <tr class="print-break">
+                <td>${item.description}</td>
+                <td>${item.quantity}</td>
+                <td>${formatCurrency(item.unitPrice)}</td>
+                <td>${formatCurrency(item.totalPrice)}</td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td colspan="3">الإجمالي الفرعي:</td>
+              <td>${formatCurrency(invoice?.subtotal || 0)}</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="3">ضريبة القيمة المضافة:</td>
+              <td>${formatCurrency(invoice?.taxAmount || 0)}</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="3"><strong>الإجمالي:</strong></td>
+              <td><strong>${formatCurrency(invoice?.totalAmount || 0)}</strong></td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="3">المدفوع:</td>
+              <td>${formatCurrency(invoice?.paidAmount || 0)}</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="3">المتبقي:</td>
+              <td>${formatCurrency((invoice?.totalAmount || 0) - (invoice?.paidAmount || 0))}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        ${invoice?.notes || invoice?.terms ? `
+          <div class="notes-terms">
+            ${invoice?.notes ? `<h3>ملاحظات</h3><p>${invoice.notes}</p>` : ''}
+            ${invoice?.terms ? `<h3>الشروط والأحكام</h3><p>${invoice.terms}</p>` : ''}
+          </div>
+        ` : ''}
+
+        <div class="print-footer">
+          <p>شكراً لتعاملكم مع TATA Motors Egypt</p>
+          <p>هذه الفاتورة تم إنشاؤها بواسطة النظام في ${formatDate(invoice?.createdAt || '')}</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+    printWindow.focus()
+    
+    // Wait for the content to load before printing
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 500)
+  }
+
   const sendInvoice = async () => {
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/send`, {
@@ -293,7 +468,7 @@ function InvoiceDetailsContent() {
             <Download className="ml-2 h-4 w-4" />
             تحميل PDF
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={printInvoice}>
             <Printer className="ml-2 h-4 w-4" />
             طباعة
           </Button>

@@ -10,6 +10,7 @@ export async function GET(
   context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const invoice = await db.invoice.findUnique({
       where: { id },
       include: {
@@ -62,6 +63,7 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     const body = await request.json()
     
     const {
@@ -156,6 +158,7 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
+    const { id } = await context.params
     // Check if invoice can be deleted (only draft invoices)
     const invoice = await db.invoice.findUnique({
       where: { id },
