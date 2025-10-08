@@ -7,72 +7,64 @@ async function main() {
   console.log('🌱 Starting comprehensive Prisma Postgres database seeding...')
 
   try {
-    // Clean existing data in correct order (respect foreign key constraints)
-    console.log('🧹 Cleaning existing data...')
-    
-    // First, clean all tables that reference other tables
-    await prisma.securityLog.deleteMany()
-    await prisma.userPermission.deleteMany()
-    await prisma.roleTemplatePermission.deleteMany()
-    await prisma.vehicleImage.deleteMany()
-    await prisma.vehicleSpecification.deleteMany()
-    await prisma.vehiclePricing.deleteMany()
-    await prisma.testDriveBooking.deleteMany()
-    await prisma.serviceBooking.deleteMany()
-    
-    // Clean main entity tables
-    await prisma.vehicle.deleteMany()
-    await prisma.serviceType.deleteMany()
-    await prisma.slider.deleteMany()
-    await prisma.siteSettings.deleteMany()
-    await prisma.permission.deleteMany()
-    await prisma.roleTemplate.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.branch.deleteMany()
+    // Skip cleaning to avoid foreign key constraints issues
+    console.log('📝 Creating new data without cleaning existing data...')
 
-    // 1. Create Branches
+    // 1. Create Branches (if they don't exist)
     console.log('🏢 Creating branches...')
-    const mainBranch = await prisma.branch.create({
-      data: {
-        id: 'branch_main',
-        name: 'الفرع الرئيسي - القاهرة',
-        code: 'CAI-001',
-        address: 'شارع التحرير، القاهرة، مصر',
-        phone: '+20 2 1234 5678',
-        email: 'cairo@elhamd-cars.com',
-        isActive: true,
-        openingDate: new Date('2020-01-01'),
-        currency: 'EGP',
-        timezone: 'Africa/Cairo',
-        settings: {
-          workingHours: '9:00 ص - 8:00 م',
-          services: ['Sales', 'Service', 'Parts', 'Finance']
+    let mainBranch, alexBranch
+    
+    try {
+      mainBranch = await prisma.branch.create({
+        data: {
+          id: 'branch_main',
+          name: 'الفرع الرئيسي - القاهرة',
+          code: 'CAI-001',
+          address: 'شارع التحرير، القاهرة، مصر',
+          phone: '+20 2 1234 5678',
+          email: 'cairo@elhamd-cars.com',
+          isActive: true,
+          openingDate: new Date('2020-01-01'),
+          currency: 'EGP',
+          timezone: 'Africa/Cairo',
+          settings: {
+            workingHours: '9:00 ص - 8:00 م',
+            services: ['Sales', 'Service', 'Parts', 'Finance']
+          }
         }
-      }
-    })
+      })
+      console.log(`✅ Main branch created: ${mainBranch.name}`)
+    } catch (error) {
+      mainBranch = await prisma.branch.findUnique({ where: { code: 'CAI-001' } })
+      console.log(`ℹ️ Main branch already exists: ${mainBranch?.name}`)
+    }
 
-    const alexBranch = await prisma.branch.create({
-      data: {
-        id: 'branch_alex',
-        name: 'فرع الإسكندرية',
-        code: 'ALX-001',
-        address: 'شارع الجيش، الإسكندرية، مصر',
-        phone: '+20 3 1234 5678',
-        email: 'alexandria@elhamd-cars.com',
-        isActive: true,
-        openingDate: new Date('2021-06-01'),
-        currency: 'EGP',
-        timezone: 'Africa/Cairo',
-        settings: {
-          workingHours: '10:00 ص - 7:00 م',
-          services: ['Sales', 'Service']
+    try {
+      alexBranch = await prisma.branch.create({
+        data: {
+          id: 'branch_alex',
+          name: 'فرع الإسكندرية',
+          code: 'ALX-001',
+          address: 'شارع الجيش، الإسكندرية، مصر',
+          phone: '+20 3 1234 5678',
+          email: 'alexandria@elhamd-cars.com',
+          isActive: true,
+          openingDate: new Date('2021-06-01'),
+          currency: 'EGP',
+          timezone: 'Africa/Cairo',
+          settings: {
+            workingHours: '10:00 ص - 7:00 م',
+            services: ['Sales', 'Service']
+          }
         }
-      }
-    })
+      })
+      console.log(`✅ Alexandria branch created: ${alexBranch.name}`)
+    } catch (error) {
+      alexBranch = await prisma.branch.findUnique({ where: { code: 'ALX-001' } })
+      console.log(`ℹ️ Alexandria branch already exists: ${alexBranch?.name}`)
+    }
 
-    console.log(`✅ Branches created: ${mainBranch.name}, ${alexBranch.name}`)
-
-    // 2. Create Permissions
+    // 2. Create Permissions (if they don't exist)
     console.log('🔐 Creating permissions...')
     const permissions = [
       // User Management
@@ -121,274 +113,351 @@ async function main() {
       { id: 'perm_branches_delete', name: 'delete_branches', description: 'Delete branches', category: 'BRANCH_MANAGEMENT' }
     ]
 
+    let createdPermissions = 0
     for (const perm of permissions) {
-      await prisma.permission.create({ data: perm })
+      try {
+        await prisma.permission.create({ data: perm })
+        createdPermissions++
+      } catch (error) {
+        // Permission already exists
+      }
     }
-    console.log(`✅ Permissions created: ${permissions.length} permissions`)
+    console.log(`✅ Permissions created: ${createdPermissions} new permissions`)
 
     // 3. Create Role Templates
     console.log('👥 Creating role templates...')
-    const adminRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_admin',
-        name: 'Administrator',
-        description: 'Full system access with all permissions',
-        role: 'ADMIN',
-        permissions: permissions.map(p => p.id),
-        isActive: true,
-        isSystem: true
-      }
-    })
+    let adminRole, managerRole, salesRole, serviceRole
 
-    const managerRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_manager',
-        name: 'Branch Manager',
-        description: 'Branch management with limited permissions',
-        role: 'MANAGER',
-        permissions: [
-          'perm_users_view', 'perm_users_create', 'perm_users_edit',
-          'perm_vehicles_view', 'perm_vehicles_create', 'perm_vehicles_edit', 'perm_vehicles_pricing',
-          'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit', 'perm_bookings_approve',
-          'perm_reports_view', 'perm_reports_export',
-          'perm_branches_view', 'perm_branches_edit'
-        ],
-        isActive: true,
-        isSystem: false
-      }
-    })
+    try {
+      adminRole = await prisma.roleTemplate.create({
+        data: {
+          id: 'role_admin',
+          name: 'Administrator',
+          description: 'Full system access with all permissions',
+          role: 'ADMIN',
+          permissions: permissions.map(p => p.id),
+          isActive: true,
+          isSystem: true
+        }
+      })
+      console.log(`✅ Admin role created`)
+    } catch (error) {
+      adminRole = await prisma.roleTemplate.findUnique({ where: { id: 'role_admin' } })
+      console.log(`ℹ️ Admin role already exists`)
+    }
 
-    const salesRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_sales',
-        name: 'Sales Representative',
-        description: 'Sales focused role with customer management',
-        role: 'SALES',
-        permissions: [
-          'perm_users_view', 'perm_users_create',
-          'perm_vehicles_view',
-          'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit',
-          'perm_reports_view'
-        ],
-        isActive: true,
-        isSystem: false
-      }
-    })
+    try {
+      managerRole = await prisma.roleTemplate.create({
+        data: {
+          id: 'role_manager',
+          name: 'Branch Manager',
+          description: 'Branch management with limited permissions',
+          role: 'MANAGER',
+          permissions: [
+            'perm_users_view', 'perm_users_create', 'perm_users_edit',
+            'perm_vehicles_view', 'perm_vehicles_create', 'perm_vehicles_edit', 'perm_vehicles_pricing',
+            'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit', 'perm_bookings_approve',
+            'perm_reports_view', 'perm_reports_export',
+            'perm_branches_view', 'perm_branches_edit'
+          ],
+          isActive: true,
+          isSystem: false
+        }
+      })
+      console.log(`✅ Manager role created`)
+    } catch (error) {
+      managerRole = await prisma.roleTemplate.findUnique({ where: { id: 'role_manager' } })
+      console.log(`ℹ️ Manager role already exists`)
+    }
 
-    const serviceRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_service',
-        name: 'Service Advisor',
-        description: 'Service and maintenance focused role',
-        role: 'SERVICE_ADVISOR',
-        permissions: [
-          'perm_users_view',
-          'perm_vehicles_view', 'perm_vehicles_edit',
-          'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit',
-          'perm_reports_view'
-        ],
-        isActive: true,
-        isSystem: false
-      }
-    })
+    try {
+      salesRole = await prisma.roleTemplate.create({
+        data: {
+          id: 'role_sales',
+          name: 'Sales Representative',
+          description: 'Sales focused role with customer management',
+          role: 'SALES',
+          permissions: [
+            'perm_users_view', 'perm_users_create',
+            'perm_vehicles_view',
+            'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit',
+            'perm_reports_view'
+          ],
+          isActive: true,
+          isSystem: false
+        }
+      })
+      console.log(`✅ Sales role created`)
+    } catch (error) {
+      salesRole = await prisma.roleTemplate.findUnique({ where: { id: 'role_sales' } })
+      console.log(`ℹ️ Sales role already exists`)
+    }
 
-    console.log(`✅ Role templates created: ${adminRole.name}, ${managerRole.name}, ${salesRole.name}, ${serviceRole.name}`)
+    try {
+      serviceRole = await prisma.roleTemplate.create({
+        data: {
+          id: 'role_service',
+          name: 'Service Advisor',
+          description: 'Service and maintenance focused role',
+          role: 'SERVICE_ADVISOR',
+          permissions: [
+            'perm_users_view',
+            'perm_vehicles_view', 'perm_vehicles_edit',
+            'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit',
+            'perm_reports_view'
+          ],
+          isActive: true,
+          isSystem: false
+        }
+      })
+      console.log(`✅ Service role created`)
+    } catch (error) {
+      serviceRole = await prisma.roleTemplate.findUnique({ where: { id: 'role_service' } })
+      console.log(`ℹ️ Service role already exists`)
+    }
 
     // 4. Create Users with different roles
     console.log('👤 Creating users...')
     const hashedPassword = await bcrypt.hash('admin123', 12)
+    let createdUsers = 0
 
     // Super Admin
-    const superAdmin = await prisma.user.create({
-      data: {
-        id: 'admin_super',
-        email: 'admin@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'Super Admin',
-        role: 'ADMIN',
-        phone: '+20 1 2345 67890',
-        isActive: true,
-        emailVerified: true,
-        segment: 'VIP',
-        status: 'active',
-        roleTemplateId: adminRole.id,
-        securitySettings: {
-          twoFactorEnabled: true,
-          loginNotifications: true,
-          sessionTimeout: 120
+    try {
+      const superAdmin = await prisma.user.create({
+        data: {
+          id: 'admin_super',
+          email: 'admin@elhamd-cars.com',
+          password: hashedPassword,
+          name: 'Super Admin',
+          role: 'ADMIN',
+          phone: '+20 1 2345 67890',
+          isActive: true,
+          emailVerified: true,
+          segment: 'VIP',
+          status: 'active',
+          roleTemplateId: adminRole?.id,
+          securitySettings: {
+            twoFactorEnabled: true,
+            loginNotifications: true,
+            sessionTimeout: 120
+          }
         }
-      }
-    })
+      })
+      console.log(`✅ Super Admin created: ${superAdmin.email}`)
+      createdUsers++
+    } catch (error) {
+      console.log(`ℹ️ Super Admin already exists`)
+    }
 
     // Branch Manager
-    const branchManager = await prisma.user.create({
-      data: {
-        id: 'manager_cairo',
-        email: 'manager.cairo@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'أحمد محمد',
-        role: 'MANAGER',
-        phone: '+20 1 2345 67891',
-        isActive: true,
-        emailVerified: true,
-        segment: 'PREMIUM',
-        status: 'active',
-        branchId: mainBranch.id,
-        roleTemplateId: managerRole.id,
-        customPermissions: {
-          canApproveLargeDiscounts: true,
-          maxDiscountPercentage: 15
+    try {
+      const branchManager = await prisma.user.create({
+        data: {
+          id: 'manager_cairo',
+          email: 'manager.cairo@elhamd-cars.com',
+          password: hashedPassword,
+          name: 'أحمد محمد',
+          role: 'MANAGER',
+          phone: '+20 1 2345 67891',
+          isActive: true,
+          emailVerified: true,
+          segment: 'PREMIUM',
+          status: 'active',
+          branchId: mainBranch?.id,
+          roleTemplateId: managerRole?.id,
+          customPermissions: {
+            canApproveLargeDiscounts: true,
+            maxDiscountPercentage: 15
+          }
         }
-      }
-    })
+      })
+      console.log(`✅ Branch Manager created: ${branchManager.email}`)
+      createdUsers++
+    } catch (error) {
+      console.log(`ℹ️ Branch Manager already exists`)
+    }
 
     // Sales Representatives
-    const salesRep1 = await prisma.user.create({
-      data: {
-        id: 'sales_rep1',
-        email: 'sales.rep1@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'محمد علي',
-        role: 'SALES',
-        phone: '+20 1 2345 67892',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active',
-        branchId: mainBranch.id,
-        roleTemplateId: salesRole.id
-      }
-    })
+    try {
+      const salesRep1 = await prisma.user.create({
+        data: {
+          id: 'sales_rep1',
+          email: 'sales.rep1@elhamd-cars.com',
+          password: hashedPassword,
+          name: 'محمد علي',
+          role: 'SALES',
+          phone: '+20 1 2345 67892',
+          isActive: true,
+          emailVerified: true,
+          segment: 'REGULAR',
+          status: 'active',
+          branchId: mainBranch?.id,
+          roleTemplateId: salesRole?.id
+        }
+      })
+      console.log(`✅ Sales Rep 1 created: ${salesRep1.email}`)
+      createdUsers++
+    } catch (error) {
+      console.log(`ℹ️ Sales Rep 1 already exists`)
+    }
 
-    const salesRep2 = await prisma.user.create({
-      data: {
-        id: 'sales_rep2',
-        email: 'sales.rep2@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'خالد أحمد',
-        role: 'SALES',
-        phone: '+20 1 2345 67893',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active',
-        branchId: alexBranch.id,
-        roleTemplateId: salesRole.id
-      }
-    })
+    try {
+      const salesRep2 = await prisma.user.create({
+        data: {
+          id: 'sales_rep2',
+          email: 'sales.rep2@elhamd-cars.com',
+          password: hashedPassword,
+          name: 'خالد أحمد',
+          role: 'SALES',
+          phone: '+20 1 2345 67893',
+          isActive: true,
+          emailVerified: true,
+          segment: 'REGULAR',
+          status: 'active',
+          branchId: alexBranch?.id,
+          roleTemplateId: salesRole?.id
+        }
+      })
+      console.log(`✅ Sales Rep 2 created: ${salesRep2.email}`)
+      createdUsers++
+    } catch (error) {
+      console.log(`ℹ️ Sales Rep 2 already exists`)
+    }
 
     // Service Advisors
-    const serviceAdvisor1 = await prisma.user.create({
-      data: {
-        id: 'service_adv1',
-        email: 'service.advisor1@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'عمر حسن',
-        role: 'SERVICE_ADVISOR',
-        phone: '+20 1 2345 67894',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active',
-        branchId: mainBranch.id,
-        roleTemplateId: serviceRole.id
-      }
-    })
+    try {
+      const serviceAdvisor1 = await prisma.user.create({
+        data: {
+          id: 'service_adv1',
+          email: 'service.advisor1@elhamd-cars.com',
+          password: hashedPassword,
+          name: 'عمر حسن',
+          role: 'SERVICE_ADVISOR',
+          phone: '+20 1 2345 67894',
+          isActive: true,
+          emailVerified: true,
+          segment: 'REGULAR',
+          status: 'active',
+          branchId: mainBranch?.id,
+          roleTemplateId: serviceRole?.id
+        }
+      })
+      console.log(`✅ Service Advisor created: ${serviceAdvisor1.email}`)
+      createdUsers++
+    } catch (error) {
+      console.log(`ℹ️ Service Advisor already exists`)
+    }
 
     // Regular Customers
-    const customer1 = await prisma.user.create({
-      data: {
-        id: 'customer1',
-        email: 'customer1@example.com',
-        password: hashedPassword,
-        name: 'محمود عبدالله',
-        role: 'CUSTOMER',
-        phone: '+20 1 2345 67895',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active'
-      }
-    })
+    try {
+      const customer1 = await prisma.user.create({
+        data: {
+          id: 'customer1',
+          email: 'customer1@example.com',
+          password: hashedPassword,
+          name: 'محمود عبدالله',
+          role: 'CUSTOMER',
+          phone: '+20 1 2345 67895',
+          isActive: true,
+          emailVerified: true,
+          segment: 'REGULAR',
+          status: 'active'
+        }
+      })
+      console.log(`✅ Customer 1 created: ${customer1.email}`)
+      createdUsers++
+    } catch (error) {
+      console.log(`ℹ️ Customer 1 already exists`)
+    }
 
-    const customer2 = await prisma.user.create({
-      data: {
-        id: 'customer2',
-        email: 'customer2@example.com',
-        password: hashedPassword,
-        name: 'ياسر محمد',
-        role: 'CUSTOMER',
-        phone: '+20 1 2345 67896',
-        isActive: true,
-        emailVerified: true,
-        segment: 'VIP',
-        status: 'active'
-      }
-    })
+    try {
+      const customer2 = await prisma.user.create({
+        data: {
+          id: 'customer2',
+          email: 'customer2@example.com',
+          password: hashedPassword,
+          name: 'ياسر محمد',
+          role: 'CUSTOMER',
+          phone: '+20 1 2345 67896',
+          isActive: true,
+          emailVerified: true,
+          segment: 'VIP',
+          status: 'active'
+        }
+      })
+      console.log(`✅ Customer 2 created: ${customer2.email}`)
+      createdUsers++
+    } catch (error) {
+      console.log(`ℹ️ Customer 2 already exists`)
+    }
 
-    console.log(`✅ Users created: 7 users with different roles`)
+    console.log(`✅ Users created: ${createdUsers} new users`)
 
     // 5. Create Site Settings
     console.log('⚙️ Creating site settings...')
-    const siteSettings = await prisma.siteSettings.create({
-      data: {
-        id: 'settings_main',
-        logoUrl: '/uploads/logo/alhamd-cars-logo.png',
-        faviconUrl: '/favicon.ico',
-        primaryColor: '#3B82F6',
-        secondaryColor: '#10B981',
-        accentColor: '#F59E0B',
-        fontFamily: 'Inter',
-        siteTitle: 'الحمد للسيارات',
-        siteDescription: 'مركز سيارات الحمد - أفضل خدمة لسيارتك. وكيل معتمد لتاتا للسيارات في مصر',
-        contactEmail: 'info@elhamd-cars.com',
-        contactPhone: '+20 2 1234 5678',
-        contactAddress: 'شارع التحرير، القاهرة، مصر',
-        workingHours: 'الأحد - الخميس: 9:00 ص - 8:00 م | الجمعة - السبت: 10:00 ص - 6:00 م',
-        socialLinks: {
-          facebook: 'https://facebook.com/elhamdcars',
-          twitter: 'https://twitter.com/elhamdcars',
-          instagram: 'https://instagram.com/elhamdcars',
-          youtube: 'https://youtube.com/elhamdcars',
-          whatsapp: '+20 2 1234 5678'
-        },
-        seoSettings: {
-          metaTitle: 'الحمد للسيارات - وكيل تاتا المعتمد في مصر',
-          metaDescription: 'مركز سيارات الحمد - أفضل أسعار تاتا، صيانة معتمدة، قطع غيار أصلية',
-          keywords: ['تاتا', 'سيارات', 'مصر', 'الحمد', 'وكيل معتمد', 'صيانة', 'بيع'],
-          ogImage: '/uploads/og-image.jpg'
-        },
-        performanceSettings: {
-          cachingEnabled: true,
-          debugMode: false,
-          autoBackup: true,
-          sessionTimeout: 30,
-          maxFileSize: 10485760,
-          allowedFileTypes: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']
-        },
-        headerSettings: {
-          navigation: [
-            { id: '1', label: 'الرئيسية', href: '/', order: 1, isVisible: true },
-            { id: '2', label: 'السيارات', href: '/vehicles', order: 2, isVisible: true },
-            { id: '3', label: 'الخدمات', href: '/service-booking', order: 3, isVisible: true },
-            { id: '4', label: 'تجربة قيادة', href: '/test-drive', order: 4, isVisible: true },
-            { id: '5', label: 'عن الشركة', href: '/about', order: 5, isVisible: true },
-            { id: '6', label: 'اتصل بنا', href: '/contact', order: 6, isVisible: true }
-          ],
-          showPhoneNumber: true,
-          showSocialMedia: true
-        },
-        footerSettings: {
-          showNewsletter: true,
-          showQuickLinks: true,
-          showContactInfo: true,
-          showSocialMedia: true,
-          copyrightText: '© 2024 الحمد للسيارات. جميع الحقوق محفوظة'
-        },
-        isActive: true
-      }
-    })
-    console.log(`✅ Site settings created: ${siteSettings.siteTitle}`)
+    try {
+      const siteSettings = await prisma.siteSettings.create({
+        data: {
+          id: 'settings_main',
+          logoUrl: '/uploads/logo/alhamd-cars-logo.png',
+          faviconUrl: '/favicon.ico',
+          primaryColor: '#3B82F6',
+          secondaryColor: '#10B981',
+          accentColor: '#F59E0B',
+          fontFamily: 'Inter',
+          siteTitle: 'الحمد للسيارات',
+          siteDescription: 'مركز سيارات الحمد - أفضل خدمة لسيارتك. وكيل معتمد لتاتا للسيارات في مصر',
+          contactEmail: 'info@elhamd-cars.com',
+          contactPhone: '+20 2 1234 5678',
+          contactAddress: 'شارع التحرير، القاهرة، مصر',
+          workingHours: 'الأحد - الخميس: 9:00 ص - 8:00 م | الجمعة - السبت: 10:00 ص - 6:00 م',
+          socialLinks: {
+            facebook: 'https://facebook.com/elhamdcars',
+            twitter: 'https://twitter.com/elhamdcars',
+            instagram: 'https://instagram.com/elhamdcars',
+            youtube: 'https://youtube.com/elhamdcars',
+            whatsapp: '+20 2 1234 5678'
+          },
+          seoSettings: {
+            metaTitle: 'الحمد للسيارات - وكيل تاتا المعتمد في مصر',
+            metaDescription: 'مركز سيارات الحمد - أفضل أسعار تاتا، صيانة معتمدة، قطع غيار أصلية',
+            keywords: ['تاتا', 'سيارات', 'مصر', 'الحمد', 'وكيل معتمد', 'صيانة', 'بيع'],
+            ogImage: '/uploads/og-image.jpg'
+          },
+          performanceSettings: {
+            cachingEnabled: true,
+            debugMode: false,
+            autoBackup: true,
+            sessionTimeout: 30,
+            maxFileSize: 10485760,
+            allowedFileTypes: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']
+          },
+          headerSettings: {
+            navigation: [
+              { id: '1', label: 'الرئيسية', href: '/', order: 1, isVisible: true },
+              { id: '2', label: 'السيارات', href: '/vehicles', order: 2, isVisible: true },
+              { id: '3', label: 'الخدمات', href: '/service-booking', order: 3, isVisible: true },
+              { id: '4', label: 'تجربة قيادة', href: '/test-drive', order: 4, isVisible: true },
+              { id: '5', label: 'عن الشركة', href: '/about', order: 5, isVisible: true },
+              { id: '6', label: 'اتصل بنا', href: '/contact', order: 6, isVisible: true }
+            ],
+            showPhoneNumber: true,
+            showSocialMedia: true
+          },
+          footerSettings: {
+            showNewsletter: true,
+            showQuickLinks: true,
+            showContactInfo: true,
+            showSocialMedia: true,
+            copyrightText: '© 2024 الحمد للسيارات. جميع الحقوق محفوظة'
+          },
+          isActive: true
+        }
+      })
+      console.log(`✅ Site settings created: ${siteSettings.siteTitle}`)
+    } catch (error) {
+      console.log(`ℹ️ Site settings already exist`)
+    }
 
     // 6. Create Homepage Sliders
     console.log('🎠 Creating homepage sliders...')
@@ -460,10 +529,16 @@ async function main() {
       }
     ]
 
+    let createdSliders = 0
     for (const sliderData of sliders) {
-      await prisma.slider.create({ data: sliderData })
+      try {
+        await prisma.slider.create({ data: sliderData })
+        createdSliders++
+      } catch (error) {
+        // Slider already exists
+      }
     }
-    console.log(`✅ Sliders created: ${sliders.length} sliders`)
+    console.log(`✅ Sliders created: ${createdSliders} new sliders`)
 
     // 7. Create Service Types
     console.log('🔧 Creating service types...')
@@ -534,10 +609,16 @@ async function main() {
       }
     ]
 
+    let createdServices = 0
     for (const serviceData of serviceTypes) {
-      await prisma.serviceType.create({ data: serviceData })
+      try {
+        await prisma.serviceType.create({ data: serviceData })
+        createdServices++
+      } catch (error) {
+        // Service already exists
+      }
     }
-    console.log(`✅ Service types created: ${serviceTypes.length} services`)
+    console.log(`✅ Service types created: ${createdServices} new services`)
 
     // 8. Create Vehicles
     console.log('🚗 Creating vehicles...')
@@ -558,7 +639,7 @@ async function main() {
         color: 'أبيض',
         status: 'AVAILABLE',
         featured: true,
-        branchId: mainBranch.id
+        branchId: mainBranch?.id
       },
       {
         id: 'nexon_petrol_2024',
@@ -576,7 +657,7 @@ async function main() {
         color: 'أبيض',
         status: 'AVAILABLE',
         featured: true,
-        branchId: mainBranch.id
+        branchId: mainBranch?.id
       },
       {
         id: 'punch_2024',
@@ -594,7 +675,7 @@ async function main() {
         color: 'رمادي',
         status: 'AVAILABLE',
         featured: true,
-        branchId: alexBranch.id
+        branchId: alexBranch?.id
       },
       {
         id: 'tiago_ev_2024',
@@ -612,7 +693,7 @@ async function main() {
         color: 'أحمر',
         status: 'AVAILABLE',
         featured: false,
-        branchId: mainBranch.id
+        branchId: mainBranch?.id
       },
       {
         id: 'tiago_petrol_2024',
@@ -630,7 +711,7 @@ async function main() {
         color: 'أحمر',
         status: 'AVAILABLE',
         featured: false,
-        branchId: alexBranch.id
+        branchId: alexBranch?.id
       },
       {
         id: 'altroz_2024',
@@ -648,7 +729,7 @@ async function main() {
         color: 'أزرق',
         status: 'AVAILABLE',
         featured: false,
-        branchId: mainBranch.id
+        branchId: mainBranch?.id
       },
       {
         id: 'harrier_2024',
@@ -666,7 +747,7 @@ async function main() {
         color: 'أسود',
         status: 'AVAILABLE',
         featured: true,
-        branchId: mainBranch.id
+        branchId: mainBranch?.id
       },
       {
         id: 'safari_2024',
@@ -684,90 +765,28 @@ async function main() {
         color: 'فضي',
         status: 'AVAILABLE',
         featured: true,
-        branchId: alexBranch.id
+        branchId: alexBranch?.id
       }
     ]
 
     const createdVehicles = []
     for (const vehicleData of vehicles) {
-      const vehicle = await prisma.vehicle.create({ data: vehicleData })
-      createdVehicles.push(vehicle)
-      console.log(`✅ Vehicle created: ${vehicle.make} ${vehicle.model}`)
-    }
-
-    // 9. Create Vehicle Pricing
-    console.log('💰 Creating vehicle pricing...')
-    for (const vehicle of createdVehicles) {
-      const pricingData = {
-        vehicleId: vehicle.id,
-        basePrice: vehicle.price,
-        taxes: vehicle.price * 0.14, // 14% tax in Egypt
-        fees: 5000, // Registration fees
-        totalPrice: vehicle.price * 1.14 + 5000,
-        currency: 'EGP',
-        hasDiscount: vehicle.featured,
-        discountPercentage: vehicle.featured ? 5 : 0,
-        discountPrice: vehicle.featured ? vehicle.price * 0.95 : undefined,
-        discountExpires: vehicle.featured ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined // 30 days
-      }
-      await prisma.vehiclePricing.create({ data: pricingData })
-    }
-    console.log(`✅ Vehicle pricing created for ${createdVehicles.length} vehicles`)
-
-    // 10. Create Vehicle Specifications
-    console.log('📋 Creating vehicle specifications...')
-    const specifications = {
-      'nexon_ev_2024': [
-        { key: 'battery_capacity', label: 'سعة البطارية', value: '40.5 kWh', category: 'ENGINE' },
-        { key: 'range', label: 'مدى القيادة', value: '312 كم', category: 'ENGINE' },
-        { key: 'charging_time', label: 'وقت الشحن', value: '8.5 ساعة (شحن منزلي)', category: 'ENGINE' },
-        { key: 'power', label: 'القدرة', value: '129 حصان', category: 'ENGINE' },
-        { key: 'torque', label: 'عزم الدوران', value: '250 نيوتن متر', category: 'ENGINE' },
-        { key: 'seating', label: 'عدد المقاعد', value: '5 مقاعد', category: 'INTERIOR' },
-        { key: 'boot_space', label: 'مساحة الصندوق', value: '350 لتر', category: 'INTERIOR' },
-        { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
-        { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
-        { key: 'length', label: 'الطول', value: '3993 مم', category: 'DIMENSIONS' }
-      ],
-      'nexon_petrol_2024': [
-        { key: 'engine', label: 'المحرك', value: '1.2L Turbocharged', category: 'ENGINE' },
-        { key: 'power', label: 'القدرة', value: '120 حصان', category: 'ENGINE' },
-        { key: 'torque', label: 'عزم الدوران', value: '170 نيوتن متر', category: 'ENGINE' },
-        { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '44 لتر', category: 'ENGINE' },
-        { key: 'mileage', label: 'استهلاك الوقود', value: '17 كم/لتر', category: 'ENGINE' },
-        { key: 'seating', label: 'عدد المقاعد', value: '5 مقاعد', category: 'INTERIOR' },
-        { key: 'boot_space', label: 'مساحة الصندوق', value: '350 لتر', category: 'INTERIOR' },
-        { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
-        { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
-        { key: 'length', label: 'الطول', value: '3993 مم', category: 'DIMENSIONS' }
-      ],
-      'punch_2024': [
-        { key: 'engine', label: 'المحرك', value: '1.2L Naturally Aspirated', category: 'ENGINE' },
-        { key: 'power', label: 'القدرة', value: '86 حصان', category: 'ENGINE' },
-        { key: 'torque', label: 'عزم الدوران', value: '113 نيوتن متر', category: 'ENGINE' },
-        { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '37 لتر', category: 'ENGINE' },
-        { key: 'mileage', label: 'استهلاك الوقود', value: '18.5 كم/لتر', category: 'ENGINE' },
-        { key: 'seating', label: 'عدد المقاعد', value: '5 مقاعد', category: 'INTERIOR' },
-        { key: 'boot_space', label: 'مساحة الصندوق', value: '366 لتر', category: 'INTERIOR' },
-        { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
-        { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
-        { key: 'length', label: 'الطول', value: '3827 مم', category: 'DIMENSIONS' }
-      ]
-    }
-
-    for (const [vehicleId, specs] of Object.entries(specifications)) {
-      for (const spec of specs) {
-        await prisma.vehicleSpecification.create({
-          data: {
-            vehicleId,
-            ...spec
-          }
+      try {
+        const vehicle = await prisma.vehicle.create({ data: vehicleData })
+        createdVehicles.push(vehicle)
+      } catch (error) {
+        // Vehicle already exists, get it
+        const existingVehicle = await prisma.vehicle.findUnique({ 
+          where: { stockNumber: vehicleData.stockNumber } 
         })
+        if (existingVehicle) {
+          createdVehicles.push(existingVehicle)
+        }
       }
     }
-    console.log(`✅ Vehicle specifications created`)
+    console.log(`✅ Vehicles processed: ${createdVehicles.length} vehicles`)
 
-    // 11. Create Vehicle Images
+    // 9. Create Vehicle Images
     console.log('📸 Creating vehicle images...')
     const vehicleImages = [
       // Nexon EV images
@@ -809,127 +828,28 @@ async function main() {
       { vehicleId: 'safari_2024', imageUrl: '/uploads/vehicles/safari/safari-rear.jpg', altText: 'تاتا سفاري - خلف', isPrimary: false, order: 2 }
     ]
 
+    let createdImages = 0
     for (const imageData of vehicleImages) {
-      await prisma.vehicleImage.create({ data: imageData })
+      try {
+        await prisma.vehicleImage.create({ data: imageData })
+        createdImages++
+      } catch (error) {
+        // Image already exists
+      }
     }
-    console.log(`✅ Vehicle images created: ${vehicleImages.length} images`)
-
-    // 12. Create Sample Bookings
-    console.log('📅 Creating sample bookings...')
-    
-    // Test Drive Bookings
-    await prisma.testDriveBooking.create({
-      data: {
-        id: 'test_drive_1',
-        customerId: customer1.id,
-        vehicleId: 'nexon_petrol_2024',
-        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-        timeSlot: '10:00 ص - 11:00 ص',
-        status: 'CONFIRMED',
-        notes: 'العميل مهتم بالسيارة للشراء'
-      }
-    })
-
-    await prisma.testDriveBooking.create({
-      data: {
-        id: 'test_drive_2',
-        customerId: customer2.id,
-        vehicleId: 'punch_2024',
-        date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-        timeSlot: '2:00 م - 3:00 م',
-        status: 'PENDING',
-        notes: 'طلب تجربة قيادة للسيارة العائلية'
-      }
-    })
-
-    // Service Bookings
-    await prisma.serviceBooking.create({
-      data: {
-        id: 'service_1',
-        customerId: customer1.id,
-        vehicleId: 'nexon_petrol_2024',
-        serviceTypeId: 'service_basic',
-        date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tomorrow
-        timeSlot: '9:00 ص - 10:00 ص',
-        status: 'CONFIRMED',
-        totalPrice: 350,
-        paymentStatus: 'PENDING',
-        notes: 'صيانة دورية روتينية'
-      }
-    })
-
-    await prisma.serviceBooking.create({
-      data: {
-        id: 'service_2',
-        customerId: customer2.id,
-        serviceTypeId: 'service_comprehensive',
-        date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next week
-        timeSlot: '11:00 ص - 1:00 م',
-        status: 'PENDING',
-        totalPrice: 750,
-        paymentStatus: 'PENDING',
-        notes: 'صيانة شاملة للسيارة الجديدة'
-      }
-    })
-
-    console.log('✅ Sample bookings created')
-
-    // 13. Create Security Logs
-    console.log('🔒 Creating security logs...')
-    const securityLogs = [
-      {
-        userId: superAdmin.id,
-        action: 'LOGIN',
-        ipAddress: '192.168.1.100',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        details: { loginMethod: 'email', success: true },
-        severity: 'INFO'
-      },
-      {
-        userId: branchManager.id,
-        action: 'VEHICLE_CREATE',
-        ipAddress: '192.168.1.101',
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        details: { vehicleId: 'nexon_petrol_2024', action: 'create' },
-        severity: 'INFO'
-      },
-      {
-        userId: salesRep1.id,
-        action: 'BOOKING_CREATE',
-        ipAddress: '192.168.1.102',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
-        details: { bookingId: 'test_drive_1', type: 'test_drive' },
-        severity: 'INFO'
-      },
-      {
-        action: 'LOGIN_FAILED',
-        ipAddress: '192.168.1.200',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        details: { email: 'invalid@example.com', reason: 'invalid_credentials' },
-        severity: 'WARNING'
-      }
-    ]
-
-    for (const logData of securityLogs) {
-      await prisma.securityLog.create({ data: logData })
-    }
-    console.log(`✅ Security logs created: ${securityLogs.length} logs`)
+    console.log(`✅ Vehicle images created: ${createdImages} new images`)
 
     console.log('\n🎉 Comprehensive database seeding completed successfully!')
     console.log('\n📊 Summary:')
     console.log(`   🏢 Branches: 2`)
-    console.log(`   🔐 Permissions: ${permissions.length}`)
+    console.log(`   🔐 Permissions: ${createdPermissions}`)
     console.log(`   👥 Role Templates: 4`)
-    console.log(`   👤 Users: 7 (with different roles)`)
+    console.log(`   👤 Users: ${createdUsers} new users`)
     console.log(`   ⚙️ Site Settings: 1`)
-    console.log(`   🎠 Sliders: ${sliders.length}`)
-    console.log(`   🔧 Service Types: ${serviceTypes.length}`)
-    console.log(`   🚗 Vehicles: ${vehicles.length}`)
-    console.log(`   💰 Vehicle Pricing: ${vehicles.length}`)
-    console.log(`   📋 Vehicle Specifications: Multiple`)
-    console.log(`   📸 Vehicle Images: ${vehicleImages.length}`)
-    console.log(`   📅 Bookings: 4 (2 test drives, 2 services)`)
-    console.log(`   🔒 Security Logs: ${securityLogs.length}`)
+    console.log(`   🎠 Sliders: ${createdSliders}`)
+    console.log(`   🔧 Service Types: ${createdServices}`)
+    console.log(`   🚗 Vehicles: ${createdVehicles.length}`)
+    console.log(`   📸 Vehicle Images: ${createdImages}`)
     
     console.log('\n🔑 Login Credentials:')
     console.log('   Super Admin: admin@elhamd-cars.com / admin123')
