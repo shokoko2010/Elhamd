@@ -115,12 +115,11 @@ function MediaContent() {
       console.log('🔄 Loading media data...')
       
       // Fetch media files from API using direct fetch - get all files without limit
-      const response = await fetch('/api/media-simple', {
+      const response = await fetch('/api/public/media', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Include cookies for authentication
       })
       
       console.log('📡 Media API response status:', response.status)

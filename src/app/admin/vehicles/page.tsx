@@ -196,7 +196,9 @@ function VehiclesContent() {
         params.append('sortBy', sortBy)
         params.append('sortOrder', sortOrder)
         
-        const response = await fetch(`/api/admin/vehicles?${params.toString()}`)
+        const response = await fetch(`/api/admin/vehicles?${params.toString()}`, {
+          credentials: 'include'
+        })
         if (!response.ok) {
           throw new Error('فشل في جلب المركبات')
         }
@@ -389,6 +391,7 @@ function VehiclesContent() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(formData)
       })
 
@@ -420,6 +423,7 @@ function VehiclesContent() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(formData)
       })
 
@@ -447,7 +451,8 @@ function VehiclesContent() {
     
     try {
       const response = await fetch(`/api/admin/vehicles/${editingVehicle.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       })
 
       if (!response.ok) {

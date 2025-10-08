@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { UserRole } from '@prisma/client'
-import { PermissionService, Permission } from './permissions'
+import { PermissionService } from './permissions'
 
 export { authOptions }
 
@@ -12,7 +12,7 @@ export interface AuthUser {
   role: UserRole
   phone?: string | null
   branchId?: string | null
-  permissions: Permission[]
+  permissions: string[]
 }
 
 export async function getAuthUser(): Promise<AuthUser | null> {
@@ -23,7 +23,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       return null
     }
 
-    let permissions: Permission[] = []
+    let permissions: string[] = []
     
     // Try to get permissions, but don't fail if they don't exist yet
     try {
@@ -31,6 +31,29 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     } catch (error) {
       console.warn('Could not fetch user permissions, they may not be initialized yet')
       permissions = []
+    }
+
+    // Ensure user has the minimum required permissions based on role
+    if (session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN) {
+      // Admin users get all permissions by default
+      const allPermissions = Object.values(Permission)
+      permissions = Array.from(new Set([...permissions, ...allPermissions]))
+    } else if (session.user.role === UserRole.BRANCH_MANAGER) {
+      // Branch managers get vehicle management permissions
+      const vehiclePermissions = [
+        Permission.VEHICLE_MANAGE,
+        Permission.VEHICLE_VIEW,
+        Permission.VEHICLE_EDIT,
+        Permission.VEHICLE_IMAGES_MANAGE
+      ]
+      permissions = Array.from(new Set([...permissions, ...vehiclePermissions]))
+    } else if (session.user.role === UserRole.STAFF) {
+      // Staff get basic vehicle permissions
+      const staffPermissions = [
+        Permission.VEHICLE_VIEW,
+        Permission.VEHICLE_EDIT
+      ]
+      permissions = Array.from(new Set([...permissions, ...staffPermissions]))
     }
 
     return {
@@ -78,7 +101,7 @@ export async function requireAnyRole(roles: UserRole[]): Promise<AuthUser> {
   return user
 }
 
-export async function requirePermission(permission: Permission): Promise<AuthUser> {
+export async function requirePermission(permission: string): Promise<AuthUser> {
   const user = await requireAuth()
   
   if (!user.permissions.includes(permission)) {
@@ -88,7 +111,7 @@ export async function requirePermission(permission: Permission): Promise<AuthUse
   return user
 }
 
-export async function requireAnyPermission(permissions: Permission[]): Promise<AuthUser> {
+export async function requireAnyPermission(permissions: string[]): Promise<AuthUser> {
   const user = await requireAuth()
   
   if (!permissions.some(permission => user.permissions.includes(permission))) {
@@ -98,7 +121,7 @@ export async function requireAnyPermission(permissions: Permission[]): Promise<A
   return user
 }
 
-export async function requireAllPermissions(permissions: Permission[]): Promise<AuthUser> {
+export async function requireAllPermissions(permissions: string[]): Promise<AuthUser> {
   const user = await requireAuth()
   
   if (!permissions.every(permission => user.permissions.includes(permission))) {
@@ -125,14 +148,14 @@ export async function isCustomer(): Promise<AuthUser> {
 }
 
 // Helper functions to check permissions without throwing errors
-export async function hasPermission(userId: string, permission: Permission): Promise<boolean> {
+export async function hasPermission(userId: string, permission: string): Promise<boolean> {
   return await PermissionService.hasPermission(userId, permission)
 }
 
-export async function hasAnyPermission(userId: string, permissions: Permission[]): Promise<boolean> {
+export async function hasAnyPermission(userId: string, permissions: string[]): Promise<boolean> {
   return await PermissionService.hasAnyPermission(userId, permissions)
 }
 
-export async function hasAllPermissions(userId: string, permissions: Permission[]): Promise<boolean> {
+export async function hasAllPermissions(userId: string, permissions: string[]): Promise<boolean> {
   return await PermissionService.hasAllPermissions(userId, permissions)
 }
