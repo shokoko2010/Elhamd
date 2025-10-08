@@ -4,953 +4,850 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Starting comprehensive Prisma Postgres database seeding...')
+  console.log('🌱 Starting database seeding...')
 
-  try {
-    // Clean existing data in correct order (respect foreign key constraints)
-    console.log('🧹 Cleaning existing data...')
+  // Clean existing data
+  await cleanDatabase()
+  console.log('🧹 Cleaned existing data')
+
+  // Seed data in order of dependencies
+  await seedPermissions()
+  await seedRoleTemplates()
+  await seedBranches()
+  await seedUsers()
+  await seedUserPermissions()
+  await seedVehicles()
+  await seedVehicleImages()
+  await seedVehicleSpecifications()
+  await seedVehiclePricing()
+  await seedServiceTypes()
+  await seedTimeSlots()
+  await seedTestDriveBookings()
+  await seedServiceBookings()
+  await seedSecurityLogs()
+  await seedNotifications()
+  await seedActivityLogs()
+
+  console.log('✅ Database seeding completed successfully!')
+}
+
+async function cleanDatabase() {
+  // Delete in reverse order of dependencies
+  await prisma.securityLog.deleteMany()
+  await prisma.notification.deleteMany()
+  await prisma.activityLog.deleteMany()
+  await prisma.serviceBooking.deleteMany()
+  await prisma.testDriveBooking.deleteMany()
+  await prisma.timeSlot.deleteMany()
+  await prisma.vehiclePricing.deleteMany()
+  await prisma.vehicleSpecification.deleteMany()
+  await prisma.vehicleImage.deleteMany()
+  await prisma.vehicle.deleteMany()
+  await prisma.serviceType.deleteMany()
+  await prisma.userPermission.deleteMany()
+  await prisma.user.deleteMany()
+  await prisma.branch.deleteMany()
+  await prisma.roleTemplatePermission.deleteMany()
+  await prisma.roleTemplate.deleteMany()
+  await prisma.permission.deleteMany()
+}
+
+async function seedPermissions() {
+  console.log('📋 Seeding permissions...')
+
+  const permissions = [
+    // User Management
+    { name: 'users.view', description: 'View users', category: 'USER_MANAGEMENT' },
+    { name: 'users.create', description: 'Create users', category: 'USER_MANAGEMENT' },
+    { name: 'users.update', description: 'Update users', category: 'USER_MANAGEMENT' },
+    { name: 'users.delete', description: 'Delete users', category: 'USER_MANAGEMENT' },
     
-    // First, clean all tables that reference other tables
-    await prisma.securityLog.deleteMany()
-    await prisma.userPermission.deleteMany()
-    await prisma.roleTemplatePermission.deleteMany()
-    await prisma.vehicleImage.deleteMany()
-    await prisma.vehicleSpecification.deleteMany()
-    await prisma.vehiclePricing.deleteMany()
-    await prisma.testDriveBooking.deleteMany()
-    await prisma.serviceBooking.deleteMany()
+    // Vehicle Management
+    { name: 'vehicles.view', description: 'View vehicles', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'vehicles.create', description: 'Create vehicles', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'vehicles.update', description: 'Update vehicles', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'vehicles.delete', description: 'Delete vehicles', category: 'VEHICLE_MANAGEMENT' },
     
-    // Clean main entity tables
-    await prisma.vehicle.deleteMany()
-    await prisma.serviceType.deleteMany()
-    await prisma.slider.deleteMany()
-    await prisma.siteSettings.deleteMany()
-    await prisma.permission.deleteMany()
-    await prisma.roleTemplate.deleteMany()
-    await prisma.user.deleteMany()
-    await prisma.branch.deleteMany()
+    // Booking Management
+    { name: 'bookings.view', description: 'View bookings', category: 'BOOKING_MANAGEMENT' },
+    { name: 'bookings.create', description: 'Create bookings', category: 'BOOKING_MANAGEMENT' },
+    { name: 'bookings.update', description: 'Update bookings', category: 'BOOKING_MANAGEMENT' },
+    { name: 'bookings.delete', description: 'Delete bookings', category: 'BOOKING_MANAGEMENT' },
+    
+    // Branch Management
+    { name: 'branches.view', description: 'View branches', category: 'BRANCH_MANAGEMENT' },
+    { name: 'branches.create', description: 'Create branches', category: 'BRANCH_MANAGEMENT' },
+    { name: 'branches.update', description: 'Update branches', category: 'BRANCH_MANAGEMENT' },
+    { name: 'branches.delete', description: 'Delete branches', category: 'BRANCH_MANAGEMENT' },
+    
+    // Reports
+    { name: 'reports.view', description: 'View reports', category: 'REPORTING' },
+    { name: 'reports.export', description: 'Export reports', category: 'REPORTING' },
+    
+    // System
+    { name: 'system.settings', description: 'Manage system settings', category: 'SYSTEM_SETTINGS' },
+    { name: 'system.logs', description: 'View system logs', category: 'SYSTEM_SETTINGS' },
+  ]
 
-    // 1. Create Branches
-    console.log('🏢 Creating branches...')
-    const mainBranch = await prisma.branch.create({
-      data: {
-        id: 'branch_main',
-        name: 'الفرع الرئيسي - القاهرة',
-        code: 'CAI-001',
-        address: 'شارع التحرير، القاهرة، مصر',
-        phone: '+20 2 1234 5678',
-        email: 'cairo@elhamd-cars.com',
-        isActive: true,
-        openingDate: new Date('2020-01-01'),
-        currency: 'EGP',
-        timezone: 'Africa/Cairo',
-        settings: {
-          workingHours: '9:00 ص - 8:00 م',
-          services: ['Sales', 'Service', 'Parts', 'Finance']
-        }
-      }
+  for (const permission of permissions) {
+    await prisma.permission.upsert({
+      where: { name: permission.name },
+      update: permission,
+      create: permission,
     })
+  }
+}
 
-    const alexBranch = await prisma.branch.create({
-      data: {
-        id: 'branch_alex',
-        name: 'فرع الإسكندرية',
-        code: 'ALX-001',
-        address: 'شارع الجيش، الإسكندرية، مصر',
-        phone: '+20 3 1234 5678',
-        email: 'alexandria@elhamd-cars.com',
-        isActive: true,
-        openingDate: new Date('2021-06-01'),
-        currency: 'EGP',
-        timezone: 'Africa/Cairo',
-        settings: {
-          workingHours: '10:00 ص - 7:00 م',
-          services: ['Sales', 'Service']
-        }
-      }
+async function seedRoleTemplates() {
+  console.log('👥 Seeding role templates...')
+
+  const permissions = await prisma.permission.findMany()
+
+  // Admin role template
+  const adminPermissions = permissions.map(p => p.id)
+  await prisma.roleTemplate.upsert({
+    where: { name: 'Admin Template' },
+    update: {
+      permissions: adminPermissions,
+    },
+    create: {
+      name: 'Admin Template',
+      description: 'Full system access',
+      role: 'ADMIN',
+      permissions: adminPermissions,
+      isSystem: true,
+    },
+  })
+
+  // Manager role template
+  const managerPermissions = permissions
+    .filter(p => !p.name.includes('delete') && !p.name.includes('system.settings'))
+    .map(p => p.id)
+  
+  await prisma.roleTemplate.upsert({
+    where: { name: 'Manager Template' },
+    update: {
+      permissions: managerPermissions,
+    },
+    create: {
+      name: 'Manager Template',
+      description: 'Manager access',
+      role: 'BRANCH_MANAGER',
+      permissions: managerPermissions,
+      isSystem: true,
+    },
+  })
+
+  // Employee role template
+  const employeePermissions = permissions
+    .filter(p => p.name.includes('view') || p.name.includes('bookings.create') || p.name.includes('bookings.update'))
+    .map(p => p.id)
+  
+  await prisma.roleTemplate.upsert({
+    where: { name: 'Employee Template' },
+    update: {
+      permissions: employeePermissions,
+    },
+    create: {
+      name: 'Employee Template',
+      description: 'Employee access',
+      role: 'STAFF',
+      permissions: employeePermissions,
+      isSystem: true,
+    },
+  })
+}
+
+async function seedBranches() {
+  console.log('🏢 Seeding branches...')
+
+  const branches = [
+    {
+      name: 'الفرع الرئيسي - القاهرة',
+      code: 'CAI-001',
+      address: 'شارع التحرير، وسط القاهرة',
+      phone: '+20 2 2345 6789',
+      email: 'cairo@elhamdimports.com',
+      openingDate: new Date('2020-01-15'),
+      currency: 'EGP',
+      timezone: 'Africa/Cairo',
+    },
+    {
+      name: 'فرع الإسكندرية',
+      code: 'ALEX-002',
+      address: 'شارع سعد زغلول، الإسكندرية',
+      phone: '+20 3 4567 8901',
+      email: 'alexandria@elhamdimports.com',
+      openingDate: new Date('2021-03-20'),
+      currency: 'EGP',
+      timezone: 'Africa/Cairo',
+    },
+    {
+      name: 'فرع الجيزة',
+      code: 'GIZ-003',
+      address: 'ميدان المحطة، الجيزة',
+      phone: '+20 2 3456 7890',
+      email: 'giza@elhamdimports.com',
+      openingDate: new Date('2022-06-10'),
+      currency: 'EGP',
+      timezone: 'Africa/Cairo',
+    },
+  ]
+
+  for (const branch of branches) {
+    await prisma.branch.upsert({
+      where: { code: branch.code },
+      update: branch,
+      create: branch,
     })
+  }
+}
 
-    console.log(`✅ Branches created: ${mainBranch.name}, ${alexBranch.name}`)
+async function seedUsers() {
+  console.log('👤 Seeding users...')
 
-    // 2. Create Permissions
-    console.log('🔐 Creating permissions...')
-    const permissions = [
-      // User Management
-      { id: 'perm_users_view', name: 'view_users', description: 'View users list', category: 'USER_MANAGEMENT' },
-      { id: 'perm_users_create', name: 'create_users', description: 'Create new users', category: 'USER_MANAGEMENT' },
-      { id: 'perm_users_edit', name: 'edit_users', description: 'Edit existing users', category: 'USER_MANAGEMENT' },
-      { id: 'perm_users_delete', name: 'delete_users', description: 'Delete users', category: 'USER_MANAGEMENT' },
-      { id: 'perm_users_manage_roles', name: 'manage_user_roles', description: 'Manage user roles and permissions', category: 'USER_MANAGEMENT' },
-      
-      // Vehicle Management
-      { id: 'perm_vehicles_view', name: 'view_vehicles', description: 'View vehicles list', category: 'VEHICLE_MANAGEMENT' },
-      { id: 'perm_vehicles_create', name: 'create_vehicles', description: 'Add new vehicles', category: 'VEHICLE_MANAGEMENT' },
-      { id: 'perm_vehicles_edit', name: 'edit_vehicles', description: 'Edit vehicle information', category: 'VEHICLE_MANAGEMENT' },
-      { id: 'perm_vehicles_delete', name: 'delete_vehicles', description: 'Delete vehicles', category: 'VEHICLE_MANAGEMENT' },
-      { id: 'perm_vehicles_pricing', name: 'manage_pricing', description: 'Manage vehicle pricing', category: 'VEHICLE_MANAGEMENT' },
-      
-      // Bookings Management
-      { id: 'perm_bookings_view', name: 'view_bookings', description: 'View all bookings', category: 'BOOKINGS_MANAGEMENT' },
-      { id: 'perm_bookings_create', name: 'create_bookings', description: 'Create new bookings', category: 'BOOKINGS_MANAGEMENT' },
-      { id: 'perm_bookings_edit', name: 'edit_bookings', description: 'Edit existing bookings', category: 'BOOKINGS_MANAGEMENT' },
-      { id: 'perm_bookings_cancel', name: 'cancel_bookings', description: 'Cancel bookings', category: 'BOOKINGS_MANAGEMENT' },
-      { id: 'perm_bookings_approve', name: 'approve_bookings', description: 'Approve bookings', category: 'BOOKINGS_MANAGEMENT' },
-      
-      // Content Management
-      { id: 'perm_sliders_view', name: 'view_sliders', description: 'View homepage sliders', category: 'CONTENT_MANAGEMENT' },
-      { id: 'perm_sliders_create', name: 'create_sliders', description: 'Create homepage sliders', category: 'CONTENT_MANAGEMENT' },
-      { id: 'perm_sliders_edit', name: 'edit_sliders', description: 'Edit homepage sliders', category: 'CONTENT_MANAGEMENT' },
-      { id: 'perm_sliders_delete', name: 'delete_sliders', description: 'Delete homepage sliders', category: 'CONTENT_MANAGEMENT' },
-      { id: 'perm_settings_view', name: 'view_settings', description: 'View site settings', category: 'CONTENT_MANAGEMENT' },
-      { id: 'perm_settings_edit', name: 'edit_settings', description: 'Edit site settings', category: 'CONTENT_MANAGEMENT' },
-      
-      // Reports and Analytics
-      { id: 'perm_reports_view', name: 'view_reports', description: 'View reports and analytics', category: 'REPORTS_ANALYTICS' },
-      { id: 'perm_reports_export', name: 'export_reports', description: 'Export reports', category: 'REPORTS_ANALYTICS' },
-      { id: 'perm_analytics_view', name: 'view_analytics', description: 'View analytics dashboard', category: 'REPORTS_ANALYTICS' },
-      
-      // System Administration
-      { id: 'perm_system_logs', name: 'view_system_logs', description: 'View system logs', category: 'SYSTEM_ADMINISTRATION' },
-      { id: 'perm_system_backup', name: 'manage_backup', description: 'Manage system backup', category: 'SYSTEM_ADMINISTRATION' },
-      { id: 'perm_system_settings', name: 'system_settings', description: 'Manage system settings', category: 'SYSTEM_ADMINISTRATION' },
-      
-      // Branch Management
-      { id: 'perm_branches_view', name: 'view_branches', description: 'View branches', category: 'BRANCH_MANAGEMENT' },
-      { id: 'perm_branches_create', name: 'create_branches', description: 'Create new branches', category: 'BRANCH_MANAGEMENT' },
-      { id: 'perm_branches_edit', name: 'edit_branches', description: 'Edit branch information', category: 'BRANCH_MANAGEMENT' },
-      { id: 'perm_branches_delete', name: 'delete_branches', description: 'Delete branches', category: 'BRANCH_MANAGEMENT' }
-    ]
+  const branches = await prisma.branch.findMany()
+  const adminTemplate = await prisma.roleTemplate.findFirst({ where: { role: 'ADMIN' } })
+  const managerTemplate = await prisma.roleTemplate.findFirst({ where: { role: 'BRANCH_MANAGER' } })
+  const employeeTemplate = await prisma.roleTemplate.findFirst({ where: { role: 'STAFF' } })
 
-    for (const perm of permissions) {
-      await prisma.permission.create({ data: perm })
+  const hashedPassword = await bcrypt.hash('admin123', 10)
+
+  const users = [
+    {
+      email: 'admin@elhamdimports.com',
+      password: hashedPassword,
+      name: 'أحمد محمد',
+      role: 'ADMIN',
+      phone: '+20 10 1234 5678',
+      isActive: true,
+      emailVerified: true,
+      segment: 'VIP',
+      status: 'active',
+      branchId: branches[0]?.id,
+      roleTemplateId: adminTemplate?.id,
+    },
+    {
+      email: 'manager@elhamdimports.com',
+      password: hashedPassword,
+      name: 'محمد علي',
+      role: 'BRANCH_MANAGER',
+      phone: '+20 10 2345 6789',
+      isActive: true,
+      emailVerified: true,
+      segment: 'CUSTOMER',
+      status: 'active',
+      branchId: branches[0]?.id,
+      roleTemplateId: managerTemplate?.id,
+    },
+    {
+      email: 'employee@elhamdimports.com',
+      password: hashedPassword,
+      name: 'عمر حسن',
+      role: 'STAFF',
+      phone: '+20 10 3456 7890',
+      isActive: true,
+      emailVerified: true,
+      segment: 'CUSTOMER',
+      status: 'active',
+      branchId: branches[1]?.id,
+      roleTemplateId: employeeTemplate?.id,
+    },
+    {
+      email: 'customer1@example.com',
+      password: await bcrypt.hash('customer123', 10),
+      name: 'خالد أحمد',
+      role: 'CUSTOMER',
+      phone: '+20 11 1234 5678',
+      isActive: true,
+      emailVerified: true,
+      segment: 'CUSTOMER',
+      status: 'active',
+      branchId: branches[0]?.id,
+    },
+    {
+      email: 'customer2@example.com',
+      password: await bcrypt.hash('customer123', 10),
+      name: 'سارة محمد',
+      role: 'CUSTOMER',
+      phone: '+20 12 2345 6789',
+      isActive: true,
+      emailVerified: true,
+      segment: 'VIP',
+      status: 'active',
+      branchId: branches[1]?.id,
+    },
+  ]
+
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: user,
+      create: user,
+    })
+  }
+}
+
+async function seedUserPermissions() {
+  console.log('🔐 Seeding user permissions...')
+
+  const users = await prisma.user.findMany()
+  const permissions = await prisma.permission.findMany()
+
+  // Give admin user all permissions
+  const adminUser = users.find(u => u.role === 'ADMIN')
+  if (adminUser) {
+    for (const permission of permissions) {
+      await prisma.userPermission.upsert({
+        where: {
+          userId_permissionId: {
+            userId: adminUser.id,
+            permissionId: permission.id,
+          },
+        },
+        update: {},
+        create: {
+          userId: adminUser.id,
+          permissionId: permission.id,
+        },
+      })
     }
-    console.log(`✅ Permissions created: ${permissions.length} permissions`)
+  }
 
-    // 3. Create Role Templates
-    console.log('👥 Creating role templates...')
-    const adminRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_admin',
-        name: 'Administrator',
-        description: 'Full system access with all permissions',
-        role: 'ADMIN',
-        permissions: permissions.map(p => p.id),
-        isActive: true,
-        isSystem: true
-      }
-    })
-
-    const managerRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_manager',
-        name: 'Branch Manager',
-        description: 'Branch management with limited permissions',
-        role: 'MANAGER',
-        permissions: [
-          'perm_users_view', 'perm_users_create', 'perm_users_edit',
-          'perm_vehicles_view', 'perm_vehicles_create', 'perm_vehicles_edit', 'perm_vehicles_pricing',
-          'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit', 'perm_bookings_approve',
-          'perm_reports_view', 'perm_reports_export',
-          'perm_branches_view', 'perm_branches_edit'
-        ],
-        isActive: true,
-        isSystem: false
-      }
-    })
-
-    const salesRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_sales',
-        name: 'Sales Representative',
-        description: 'Sales focused role with customer management',
-        role: 'SALES',
-        permissions: [
-          'perm_users_view', 'perm_users_create',
-          'perm_vehicles_view',
-          'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit',
-          'perm_reports_view'
-        ],
-        isActive: true,
-        isSystem: false
-      }
-    })
-
-    const serviceRole = await prisma.roleTemplate.create({
-      data: {
-        id: 'role_service',
-        name: 'Service Advisor',
-        description: 'Service and maintenance focused role',
-        role: 'SERVICE_ADVISOR',
-        permissions: [
-          'perm_users_view',
-          'perm_vehicles_view', 'perm_vehicles_edit',
-          'perm_bookings_view', 'perm_bookings_create', 'perm_bookings_edit',
-          'perm_reports_view'
-        ],
-        isActive: true,
-        isSystem: false
-      }
-    })
-
-    console.log(`✅ Role templates created: ${adminRole.name}, ${managerRole.name}, ${salesRole.name}, ${serviceRole.name}`)
-
-    // 4. Create Users with different roles
-    console.log('👤 Creating users...')
-    const hashedPassword = await bcrypt.hash('admin123', 12)
-
-    // Super Admin
-    const superAdmin = await prisma.user.create({
-      data: {
-        id: 'admin_super',
-        email: 'admin@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'Super Admin',
-        role: 'ADMIN',
-        phone: '+20 1 2345 67890',
-        isActive: true,
-        emailVerified: true,
-        segment: 'VIP',
-        status: 'active',
-        roleTemplateId: adminRole.id,
-        securitySettings: {
-          twoFactorEnabled: true,
-          loginNotifications: true,
-          sessionTimeout: 120
-        }
-      }
-    })
-
-    // Branch Manager
-    const branchManager = await prisma.user.create({
-      data: {
-        id: 'manager_cairo',
-        email: 'manager.cairo@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'أحمد محمد',
-        role: 'MANAGER',
-        phone: '+20 1 2345 67891',
-        isActive: true,
-        emailVerified: true,
-        segment: 'PREMIUM',
-        status: 'active',
-        branchId: mainBranch.id,
-        roleTemplateId: managerRole.id,
-        customPermissions: {
-          canApproveLargeDiscounts: true,
-          maxDiscountPercentage: 15
-        }
-      }
-    })
-
-    // Sales Representatives
-    const salesRep1 = await prisma.user.create({
-      data: {
-        id: 'sales_rep1',
-        email: 'sales.rep1@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'محمد علي',
-        role: 'SALES',
-        phone: '+20 1 2345 67892',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active',
-        branchId: mainBranch.id,
-        roleTemplateId: salesRole.id
-      }
-    })
-
-    const salesRep2 = await prisma.user.create({
-      data: {
-        id: 'sales_rep2',
-        email: 'sales.rep2@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'خالد أحمد',
-        role: 'SALES',
-        phone: '+20 1 2345 67893',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active',
-        branchId: alexBranch.id,
-        roleTemplateId: salesRole.id
-      }
-    })
-
-    // Service Advisors
-    const serviceAdvisor1 = await prisma.user.create({
-      data: {
-        id: 'service_adv1',
-        email: 'service.advisor1@elhamd-cars.com',
-        password: hashedPassword,
-        name: 'عمر حسن',
-        role: 'SERVICE_ADVISOR',
-        phone: '+20 1 2345 67894',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active',
-        branchId: mainBranch.id,
-        roleTemplateId: serviceRole.id
-      }
-    })
-
-    // Regular Customers
-    const customer1 = await prisma.user.create({
-      data: {
-        id: 'customer1',
-        email: 'customer1@example.com',
-        password: hashedPassword,
-        name: 'محمود عبدالله',
-        role: 'CUSTOMER',
-        phone: '+20 1 2345 67895',
-        isActive: true,
-        emailVerified: true,
-        segment: 'REGULAR',
-        status: 'active'
-      }
-    })
-
-    const customer2 = await prisma.user.create({
-      data: {
-        id: 'customer2',
-        email: 'customer2@example.com',
-        password: hashedPassword,
-        name: 'ياسر محمد',
-        role: 'CUSTOMER',
-        phone: '+20 1 2345 67896',
-        isActive: true,
-        emailVerified: true,
-        segment: 'VIP',
-        status: 'active'
-      }
-    })
-
-    console.log(`✅ Users created: 7 users with different roles`)
-
-    // 5. Create Site Settings
-    console.log('⚙️ Creating site settings...')
-    const siteSettings = await prisma.siteSettings.create({
-      data: {
-        id: 'settings_main',
-        logoUrl: '/uploads/logo/alhamd-cars-logo.png',
-        faviconUrl: '/favicon.ico',
-        primaryColor: '#3B82F6',
-        secondaryColor: '#10B981',
-        accentColor: '#F59E0B',
-        fontFamily: 'Inter',
-        siteTitle: 'الحمد للسيارات',
-        siteDescription: 'مركز سيارات الحمد - أفضل خدمة لسيارتك. وكيل معتمد لتاتا للسيارات في مصر',
-        contactEmail: 'info@elhamd-cars.com',
-        contactPhone: '+20 2 1234 5678',
-        contactAddress: 'شارع التحرير، القاهرة، مصر',
-        workingHours: 'الأحد - الخميس: 9:00 ص - 8:00 م | الجمعة - السبت: 10:00 ص - 6:00 م',
-        socialLinks: {
-          facebook: 'https://facebook.com/elhamdcars',
-          twitter: 'https://twitter.com/elhamdcars',
-          instagram: 'https://instagram.com/elhamdcars',
-          youtube: 'https://youtube.com/elhamdcars',
-          whatsapp: '+20 2 1234 5678'
+  // Give manager user specific permissions
+  const managerUser = users.find(u => u.role === 'BRANCH_MANAGER')
+  if (managerUser) {
+    const managerPermissions = permissions.filter(p => 
+      !p.name.includes('delete') && !p.name.includes('system.settings')
+    )
+    
+    for (const permission of managerPermissions) {
+      await prisma.userPermission.upsert({
+        where: {
+          userId_permissionId: {
+            userId: managerUser.id,
+            permissionId: permission.id,
+          },
         },
-        seoSettings: {
-          metaTitle: 'الحمد للسيارات - وكيل تاتا المعتمد في مصر',
-          metaDescription: 'مركز سيارات الحمد - أفضل أسعار تاتا، صيانة معتمدة، قطع غيار أصلية',
-          keywords: ['تاتا', 'سيارات', 'مصر', 'الحمد', 'وكيل معتمد', 'صيانة', 'بيع'],
-          ogImage: '/uploads/og-image.jpg'
+        update: {},
+        create: {
+          userId: managerUser.id,
+          permissionId: permission.id,
         },
-        performanceSettings: {
-          cachingEnabled: true,
-          debugMode: false,
-          autoBackup: true,
-          sessionTimeout: 30,
-          maxFileSize: 10485760,
-          allowedFileTypes: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']
-        },
-        headerSettings: {
-          navigation: [
-            { id: '1', label: 'الرئيسية', href: '/', order: 1, isVisible: true },
-            { id: '2', label: 'السيارات', href: '/vehicles', order: 2, isVisible: true },
-            { id: '3', label: 'الخدمات', href: '/service-booking', order: 3, isVisible: true },
-            { id: '4', label: 'تجربة قيادة', href: '/test-drive', order: 4, isVisible: true },
-            { id: '5', label: 'عن الشركة', href: '/about', order: 5, isVisible: true },
-            { id: '6', label: 'اتصل بنا', href: '/contact', order: 6, isVisible: true }
-          ],
-          showPhoneNumber: true,
-          showSocialMedia: true
-        },
-        footerSettings: {
-          showNewsletter: true,
-          showQuickLinks: true,
-          showContactInfo: true,
-          showSocialMedia: true,
-          copyrightText: '© 2024 الحمد للسيارات. جميع الحقوق محفوظة'
-        },
-        isActive: true
-      }
-    })
-    console.log(`✅ Site settings created: ${siteSettings.siteTitle}`)
-
-    // 6. Create Homepage Sliders
-    console.log('🎠 Creating homepage sliders...')
-    const sliders = [
-      {
-        id: 'slider1',
-        title: 'تاتا نيكسون 2024',
-        subtitle: 'SUV عائلية متطورة',
-        description: 'تجربة القيادة المثالية مع أحدث تقنيات السلامة والراحة. تمتع بأداء استثنائي وتصميم عصري يناسب جميع احتياجاتك. محرك قوي مع استهلاك وقود اقتصادي.',
-        imageUrl: '/uploads/banners/nexon-banner.jpg',
-        ctaText: 'اكتشف المزيد',
-        ctaLink: '/vehicles?model=nexon',
-        badge: 'جديد',
-        badgeColor: 'bg-green-500',
-        order: 0,
-        isActive: true
-      },
-      {
-        id: 'slider2',
-        title: 'تاتا بانش',
-        subtitle: 'SUV مدمجة للمدن',
-        description: 'سيارة المدينة المثالية بتصميم عملي وأسعار تنافسية. قوة ومتانة في حجم صغير يتناسب مع ازدحام المدن. مثالية للعائلات الصغيرة.',
-        imageUrl: '/uploads/banners/punch-banner.jpg',
-        ctaText: 'احجز الآن',
-        ctaLink: '/test-drive?model=punch',
-        badge: 'الأكثر مبيعاً',
-        badgeColor: 'bg-orange-500',
-        order: 1,
-        isActive: true
-      },
-      {
-        id: 'slider3',
-        title: 'تاتا تياجو إلكتريك',
-        subtitle: 'مستقبل الكهرباء',
-        description: 'انضم إلى ثورة السيارات الكهربائية مع تاتا تياجو إلكتريك. صديق للبيئة، اقتصادي في استهلاك الطاقة، هادئ وقوي في الأداء.',
-        imageUrl: '/uploads/banners/tiago-electric-banner.jpg',
-        ctaText: 'جرب القيادة',
-        ctaLink: '/test-drive?model=tiago-ev',
-        badge: 'كهربائي',
-        badgeColor: 'bg-blue-500',
-        order: 2,
-        isActive: true
-      },
-      {
-        id: 'slider4',
-        title: 'عرض خاص',
-        subtitle: 'تخفيضات تصل إلى 15%',
-        description: 'احصل على أفضل العروض على سيارات تاتا المختارة. شاملة ضمان وتأمين شامل. فرصة محدودة!',
-        imageUrl: '/uploads/banners/special-offer-banner.jpg',
-        ctaText: 'شاهد العروض',
-        ctaLink: '/offers',
-        badge: 'عرض محدود',
-        badgeColor: 'bg-red-500',
-        order: 3,
-        isActive: true
-      },
-      {
-        id: 'slider5',
-        title: 'تاتا هارير',
-        subtitle: 'SUV فاخرة',
-        description: 'تجربة الفخامة الحقيقية مع تاتا هارير. تصميم جريء، محرك قوي، تقنيات متطورة، ومساحة واسعة للعائلة.',
-        imageUrl: '/uploads/banners/harrier-banner.jpg',
-        ctaText: 'تعرف أكثر',
-        ctaLink: '/vehicles?model=harrier',
-        badge: 'فاخرة',
-        badgeColor: 'bg-purple-500',
-        order: 4,
-        isActive: true
-      }
-    ]
-
-    for (const sliderData of sliders) {
-      await prisma.slider.create({ data: sliderData })
+      })
     }
-    console.log(`✅ Sliders created: ${sliders.length} sliders`)
+  }
+}
 
-    // 7. Create Service Types
-    console.log('🔧 Creating service types...')
-    const serviceTypes = [
-      {
-        id: 'service_basic',
-        name: 'صيانة دورية أساسية',
-        description: 'تغيير زيت، فلاتر، فحص شامل للسيارة',
-        duration: 60,
-        price: 350,
-        category: 'MAINTENANCE'
-      },
-      {
-        id: 'service_comprehensive',
-        name: 'صيانة شاملة',
-        description: 'صيانة دورية كاملة مع فحص جميع الأنظمة',
-        duration: 120,
-        price: 750,
-        category: 'MAINTENANCE'
-      },
-      {
-        id: 'service_ac',
-        name: 'صيانة مكيف',
-        description: 'فحص وتنظيف وتعبئة غاز المكيف',
-        duration: 45,
-        price: 250,
-        category: 'REPAIR'
-      },
-      {
-        id: 'service_brakes',
-        name: 'صيانة فرامل',
-        description: 'فحص وتغيير تيل الفرامل والديسك',
-        duration: 90,
-        price: 600,
-        category: 'REPAIR'
-      },
-      {
-        id: 'service_oil',
-        name: 'تغيير زيت',
-        description: 'تغيير زيت المحرك والفلتر',
-        duration: 30,
-        price: 150,
-        category: 'MAINTENANCE'
-      },
-      {
-        id: 'service_diagnostic',
-        name: 'فحص تشخيصي',
-        description: 'فحص شامل بالكمبيوتر للكشف عن الأعطال',
-        duration: 60,
-        price: 200,
-        category: 'DIAGNOSTIC'
-      },
-      {
-        id: 'service_wash',
-        name: 'غسيل وتلميع',
-        description: 'غسيل داخلي وخارجي مع التلميع',
-        duration: 90,
-        price: 180,
-        category: 'DETAILING'
-      },
-      {
-        id: 'service_inspection',
-        name: 'فحص سنوي',
-        description: 'الفحص السنوي المعتمد للترخيص',
-        duration: 45,
-        price: 300,
-        category: 'INSPECTION'
-      }
-    ]
+async function seedVehicles() {
+  console.log('🚗 Seeding vehicles...')
 
-    for (const serviceData of serviceTypes) {
-      await prisma.serviceType.create({ data: serviceData })
-    }
-    console.log(`✅ Service types created: ${serviceTypes.length} services`)
+  const branches = await prisma.branch.findMany()
 
-    // 8. Create Vehicles
-    console.log('🚗 Creating vehicles...')
-    const vehicles = [
-      {
-        id: 'nexon_ev_2024',
-        make: 'Tata',
-        model: 'Nexon EV',
-        year: 2024,
-        price: 550000,
-        stockNumber: 'NEX-EV-2024-001',
-        vin: 'MAT6EV45678901234',
-        description: 'تاتا نيكسون إلكتريك 2024 - سيارة SUV عائلية كهربائية بمدى قيادة 312 كم، شحن سريع، وتصميم عصري',
-        category: 'SUV',
-        fuelType: 'ELECTRIC',
-        transmission: 'AUTOMATIC',
-        mileage: 0,
-        color: 'أبيض',
-        status: 'AVAILABLE',
-        featured: true,
-        branchId: mainBranch.id
-      },
-      {
-        id: 'nexon_petrol_2024',
-        make: 'Tata',
-        model: 'Nexon',
-        year: 2024,
-        price: 450000,
-        stockNumber: 'NEX-2024-001',
-        vin: 'MAT62345678901234',
-        description: 'تاتا نيكسون 2024 - سيارة SUV عائلية متطورة بمحرك قوي وتصميم عصري، مثالية للعائلات المصرية',
-        category: 'SUV',
-        fuelType: 'PETROL',
-        transmission: 'MANUAL',
-        mileage: 0,
-        color: 'أبيض',
-        status: 'AVAILABLE',
-        featured: true,
-        branchId: mainBranch.id
-      },
-      {
-        id: 'punch_2024',
-        make: 'Tata',
-        model: 'Punch',
-        year: 2024,
-        price: 320000,
-        stockNumber: 'PUN-2024-001',
-        vin: 'MAT62345678901235',
-        description: 'تاتا بانش 2024 - سيارة مدمجة للمدن بتصميم عملي وأسعار تنافسية، مثالية لشوارع المدن المزدحمة',
-        category: 'COMPACT',
-        fuelType: 'PETROL',
-        transmission: 'MANUAL',
-        mileage: 0,
-        color: 'رمادي',
-        status: 'AVAILABLE',
-        featured: true,
-        branchId: alexBranch.id
-      },
-      {
-        id: 'tiago_ev_2024',
-        make: 'Tata',
-        model: 'Tiago EV',
-        year: 2024,
-        price: 380000,
-        stockNumber: 'TIA-EV-2024-001',
-        vin: 'MAT6EV45678901236',
-        description: 'تاتا تياجو إلكتريك 2024 - سيارة هاتشباك كهربائية اقتصادية مثالية للمدن',
-        category: 'HATCHBACK',
-        fuelType: 'ELECTRIC',
-        transmission: 'AUTOMATIC',
-        mileage: 0,
-        color: 'أحمر',
-        status: 'AVAILABLE',
-        featured: false,
-        branchId: mainBranch.id
-      },
-      {
-        id: 'tiago_petrol_2024',
-        make: 'Tata',
-        model: 'Tiago',
-        year: 2024,
-        price: 280000,
-        stockNumber: 'TIA-2024-001',
-        vin: 'MAT62345678901236',
-        description: 'تاتا تياجو 2024 - سيارة هاتشباك عملية اقتصادية وموثوقة، خيار مثالي للعائلات الصغيرة',
-        category: 'HATCHBACK',
-        fuelType: 'PETROL',
-        transmission: 'MANUAL',
-        mileage: 0,
-        color: 'أحمر',
-        status: 'AVAILABLE',
-        featured: false,
-        branchId: alexBranch.id
-      },
-      {
-        id: 'altroz_2024',
-        make: 'Tata',
-        model: 'Altroz',
-        year: 2024,
-        price: 350000,
-        stockNumber: 'ALT-2024-001',
-        vin: 'MAT62345678901237',
-        description: 'تاتا ألتروز 2024 - سيارة بريميوم هاتشباك بتصميم أوروبي ومساحة واسعة',
-        category: 'HATCHBACK',
-        fuelType: 'PETROL',
-        transmission: 'MANUAL',
-        mileage: 0,
-        color: 'أزرق',
-        status: 'AVAILABLE',
-        featured: false,
-        branchId: mainBranch.id
-      },
-      {
-        id: 'harrier_2024',
-        make: 'Tata',
-        model: 'Harrier',
-        year: 2024,
-        price: 650000,
-        stockNumber: 'HAR-2024-001',
-        vin: 'MAT62345678901238',
-        description: 'تاتا هارير 2024 - سيارة SUV فاخرة بتصميم جريء ومحرك قوي، تجربة قيادة ممتازة',
-        category: 'SUV',
-        fuelType: 'DIESEL',
-        transmission: 'AUTOMATIC',
-        mileage: 0,
-        color: 'أسود',
-        status: 'AVAILABLE',
-        featured: true,
-        branchId: mainBranch.id
-      },
-      {
-        id: 'safari_2024',
-        make: 'Tata',
-        model: 'Safari',
-        year: 2024,
-        price: 750000,
-        stockNumber: 'SAF-2024-001',
-        vin: 'MAT62345678901239',
-        description: 'تاتا سفاري 2024 - سيارة SUV عائلية كبيرة بمساحة واسعة وراحة فائقة، 7 مقاعد',
-        category: 'SUV',
-        fuelType: 'DIESEL',
-        transmission: 'AUTOMATIC',
-        mileage: 0,
-        color: 'فضي',
-        status: 'AVAILABLE',
-        featured: true,
-        branchId: alexBranch.id
-      }
-    ]
+  const vehicles = [
+    {
+      make: 'TATA',
+      model: 'Nexon',
+      year: 2024,
+      price: 450000,
+      stockNumber: 'TNX-2024-001',
+      vin: 'MAT62543798765432',
+      description: 'سيارة SUV عائلية عصرية مع ميزات أمان متقدمة',
+      category: 'SUV',
+      fuelType: 'PETROL',
+      transmission: 'MANUAL',
+      mileage: 0,
+      color: 'أبيض',
+      status: 'AVAILABLE',
+      featured: true,
+      branchId: branches[0]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'Punch',
+      year: 2024,
+      price: 320000,
+      stockNumber: 'TPU-2024-002',
+      vin: 'MAT62543798765433',
+      description: 'سيارة SUV مدمجة مثالية للقيادة في المدينة',
+      category: 'SUV',
+      fuelType: 'PETROL',
+      transmission: 'MANUAL',
+      mileage: 0,
+      color: 'رمادي',
+      status: 'AVAILABLE',
+      featured: true,
+      branchId: branches[0]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'Tiago',
+      year: 2024,
+      price: 280000,
+      stockNumber: 'TTI-2024-003',
+      vin: 'MAT62543798765434',
+      description: 'سيارة هاتشباك اقتصادية مع استهلاك وقود ممتاز',
+      category: 'HATCHBACK',
+      fuelType: 'PETROL',
+      transmission: 'MANUAL',
+      mileage: 0,
+      color: 'أحمر',
+      status: 'AVAILABLE',
+      featured: false,
+      branchId: branches[1]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'Altroz',
+      year: 2024,
+      price: 350000,
+      stockNumber: 'TAL-2024-004',
+      vin: 'MAT62543798765435',
+      description: 'سيارة هاتشباك Premium مع تصميم عصري',
+      category: 'HATCHBACK',
+      fuelType: 'PETROL',
+      transmission: 'MANUAL',
+      mileage: 0,
+      color: 'أزرق',
+      status: 'AVAILABLE',
+      featured: false,
+      branchId: branches[1]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'Harrier',
+      year: 2024,
+      price: 550000,
+      stockNumber: 'THA-2024-005',
+      vin: 'MAT62543798765436',
+      description: 'سيارة SUV فاخرة بمحرك قوي وتصميم أنيق',
+      category: 'SUV',
+      fuelType: 'DIESEL',
+      transmission: 'AUTOMATIC',
+      mileage: 0,
+      color: 'أسود',
+      status: 'AVAILABLE',
+      featured: true,
+      branchId: branches[2]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'Safari',
+      year: 2024,
+      price: 650000,
+      stockNumber: 'TSA-2024-006',
+      vin: 'MAT62543798765437',
+      description: 'سيارة SUV عائلية كبيرة بـ 7 مقاعد',
+      category: 'SUV',
+      fuelType: 'DIESEL',
+      transmission: 'AUTOMATIC',
+      mileage: 0,
+      color: 'فضي',
+      status: 'SOLD',
+      featured: false,
+      branchId: branches[2]?.id,
+    },
+  ]
 
-    const createdVehicles = []
-    for (const vehicleData of vehicles) {
-      const vehicle = await prisma.vehicle.create({ data: vehicleData })
-      createdVehicles.push(vehicle)
-      console.log(`✅ Vehicle created: ${vehicle.make} ${vehicle.model}`)
-    }
+  for (const vehicle of vehicles) {
+    await prisma.vehicle.upsert({
+      where: { stockNumber: vehicle.stockNumber },
+      update: vehicle,
+      create: vehicle,
+    })
+  }
+}
 
-    // 9. Create Vehicle Pricing
-    console.log('💰 Creating vehicle pricing...')
-    for (const vehicle of createdVehicles) {
-      const pricingData = {
+async function seedVehicleImages() {
+  console.log('📸 Seeding vehicle images...')
+
+  const vehicles = await prisma.vehicle.findMany()
+
+  for (const vehicle of vehicles) {
+    const images = [
+      {
         vehicleId: vehicle.id,
-        basePrice: vehicle.price,
-        taxes: vehicle.price * 0.14, // 14% tax in Egypt
-        fees: 5000, // Registration fees
-        totalPrice: vehicle.price * 1.14 + 5000,
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Front`,
+        altText: `${vehicle.make} ${vehicle.model} - Front View`,
+        isPrimary: true,
+        order: 0,
+      },
+      {
+        vehicleId: vehicle.id,
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Side`,
+        altText: `${vehicle.make} ${vehicle.model} - Side View`,
+        isPrimary: false,
+        order: 1,
+      },
+      {
+        vehicleId: vehicle.id,
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Rear`,
+        altText: `${vehicle.make} ${vehicle.model} - Rear View`,
+        isPrimary: false,
+        order: 2,
+      },
+      {
+        vehicleId: vehicle.id,
+        imageUrl: `https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=${vehicle.make}+${vehicle.model}-Interior`,
+        altText: `${vehicle.make} ${vehicle.model} - Interior`,
+        isPrimary: false,
+        order: 3,
+      },
+    ]
+
+    for (const image of images) {
+      await prisma.vehicleImage.create({
+        data: image,
+      })
+    }
+  }
+}
+
+async function seedVehicleSpecifications() {
+  console.log('⚙️ Seeding vehicle specifications...')
+
+  const vehicles = await prisma.vehicle.findMany()
+
+  const specifications = [
+    { key: 'engine', label: 'المحرك', value: '1.2L Turbo', category: 'ENGINE' },
+    { key: 'power', label: 'القدرة الحصانية', value: '110 HP', category: 'ENGINE' },
+    { key: 'torque', label: 'عزم الدوران', value: '140 Nm', category: 'ENGINE' },
+    { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '35 لتر', category: 'ENGINE' },
+    { key: 'doors', label: 'عدد الأبواب', value: '4', category: 'EXTERIOR' },
+    { key: 'seats', label: 'عدد المقاعد', value: '5', category: 'INTERIOR' },
+    { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
+    { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
+    { key: 'touchscreen', label: 'شاشة لمس', value: '7 بوصة', category: 'TECHNOLOGY' },
+    { key: 'bluetooth', label: 'بلوتوث', value: 'متوفر', category: 'TECHNOLOGY' },
+  ]
+
+  for (const vehicle of vehicles) {
+    for (const spec of specifications) {
+      await prisma.vehicleSpecification.create({
+        data: {
+          vehicleId: vehicle.id,
+          ...spec,
+        },
+      })
+    }
+  }
+}
+
+async function seedVehiclePricing() {
+  console.log('💰 Seeding vehicle pricing...')
+
+  const vehicles = await prisma.vehicle.findMany()
+
+  for (const vehicle of vehicles) {
+    const basePrice = vehicle.price
+    const taxes = basePrice * 0.14 // 14% tax
+    const fees = 5000 // Fixed fees
+    const totalPrice = basePrice + taxes + fees
+
+    await prisma.vehiclePricing.create({
+      data: {
+        vehicleId: vehicle.id,
+        basePrice,
+        taxes,
+        fees,
+        totalPrice,
         currency: 'EGP',
-        hasDiscount: vehicle.featured,
-        discountPercentage: vehicle.featured ? 5 : 0,
-        discountPrice: vehicle.featured ? vehicle.price * 0.95 : undefined,
-        discountExpires: vehicle.featured ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined // 30 days
-      }
-      await prisma.vehiclePricing.create({ data: pricingData })
+        hasDiscount: Math.random() > 0.5,
+        discountPercentage: Math.random() > 0.5 ? Math.floor(Math.random() * 10) + 5 : null,
+        discountExpires: Math.random() > 0.5 ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null,
+      },
+    })
+  }
+}
+
+async function seedServiceTypes() {
+  console.log('🔧 Seeding service types...')
+
+  const services = [
+    {
+      name: 'صيانة دورية',
+      description: 'صيانة دورية شاملة للسيارة',
+      duration: 120,
+      price: 500,
+      category: 'MAINTENANCE',
+    },
+    {
+      name: 'تغيير زيت',
+      description: 'تغيير زيت المحرك والفلتر',
+      duration: 45,
+      price: 150,
+      category: 'MAINTENANCE',
+    },
+    {
+      name: 'فحص مكابح',
+      description: 'فحص وصيانة نظام المكابح',
+      duration: 60,
+      price: 200,
+      category: 'REPAIR',
+    },
+    {
+      name: 'تغيير إطارات',
+      description: 'تغيير وتوازن الإطارات',
+      duration: 90,
+      price: 800,
+      category: 'REPAIR',
+    },
+    {
+      name: 'فحص تكييف',
+      description: 'فحص وصيانة نظام التكييف',
+      duration: 75,
+      price: 250,
+      category: 'REPAIR',
+    },
+    {
+      name: 'غسيل وتلميع',
+      description: 'غسيل كامل وتلميع للسيارة',
+      duration: 180,
+      price: 300,
+      category: 'DETAILING',
+    },
+    {
+      name: 'فحص قبل الشراء',
+      description: 'فحص شامل للسيارة قبل الشراء',
+      duration: 150,
+      price: 400,
+      category: 'INSPECTION',
+    },
+  ]
+
+  for (const service of services) {
+    await prisma.serviceType.create({
+      data: service,
+    })
+  }
+}
+
+async function seedTimeSlots() {
+  console.log('⏰ Seeding time slots...')
+
+  const timeSlots = []
+  const weekDays = [1, 2, 3, 4, 5, 6] // 1=Saturday, 2=Sunday, etc.
+  
+  for (const day of weekDays) {
+    for (let hour = 9; hour <= 17; hour++) {
+      timeSlots.push({
+        dayOfWeek: day,
+        startTime: `${hour.toString().padStart(2, '0')}:00`,
+        endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
+        isAvailable: true,
+        maxBookings: 2,
+      })
     }
-    console.log(`✅ Vehicle pricing created for ${createdVehicles.length} vehicles`)
+  }
 
-    // 10. Create Vehicle Specifications
-    console.log('📋 Creating vehicle specifications...')
-    const specifications = {
-      'nexon_ev_2024': [
-        { key: 'battery_capacity', label: 'سعة البطارية', value: '40.5 kWh', category: 'ENGINE' },
-        { key: 'range', label: 'مدى القيادة', value: '312 كم', category: 'ENGINE' },
-        { key: 'charging_time', label: 'وقت الشحن', value: '8.5 ساعة (شحن منزلي)', category: 'ENGINE' },
-        { key: 'power', label: 'القدرة', value: '129 حصان', category: 'ENGINE' },
-        { key: 'torque', label: 'عزم الدوران', value: '250 نيوتن متر', category: 'ENGINE' },
-        { key: 'seating', label: 'عدد المقاعد', value: '5 مقاعد', category: 'INTERIOR' },
-        { key: 'boot_space', label: 'مساحة الصندوق', value: '350 لتر', category: 'INTERIOR' },
-        { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
-        { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
-        { key: 'length', label: 'الطول', value: '3993 مم', category: 'DIMENSIONS' }
-      ],
-      'nexon_petrol_2024': [
-        { key: 'engine', label: 'المحرك', value: '1.2L Turbocharged', category: 'ENGINE' },
-        { key: 'power', label: 'القدرة', value: '120 حصان', category: 'ENGINE' },
-        { key: 'torque', label: 'عزم الدوران', value: '170 نيوتن متر', category: 'ENGINE' },
-        { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '44 لتر', category: 'ENGINE' },
-        { key: 'mileage', label: 'استهلاك الوقود', value: '17 كم/لتر', category: 'ENGINE' },
-        { key: 'seating', label: 'عدد المقاعد', value: '5 مقاعد', category: 'INTERIOR' },
-        { key: 'boot_space', label: 'مساحة الصندوق', value: '350 لتر', category: 'INTERIOR' },
-        { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
-        { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
-        { key: 'length', label: 'الطول', value: '3993 مم', category: 'DIMENSIONS' }
-      ],
-      'punch_2024': [
-        { key: 'engine', label: 'المحرك', value: '1.2L Naturally Aspirated', category: 'ENGINE' },
-        { key: 'power', label: 'القدرة', value: '86 حصان', category: 'ENGINE' },
-        { key: 'torque', label: 'عزم الدوران', value: '113 نيوتن متر', category: 'ENGINE' },
-        { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '37 لتر', category: 'ENGINE' },
-        { key: 'mileage', label: 'استهلاك الوقود', value: '18.5 كم/لتر', category: 'ENGINE' },
-        { key: 'seating', label: 'عدد المقاعد', value: '5 مقاعد', category: 'INTERIOR' },
-        { key: 'boot_space', label: 'مساحة الصندوق', value: '366 لتر', category: 'INTERIOR' },
-        { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
-        { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
-        { key: 'length', label: 'الطول', value: '3827 مم', category: 'DIMENSIONS' }
-      ]
-    }
-
-    for (const [vehicleId, specs] of Object.entries(specifications)) {
-      for (const spec of specs) {
-        await prisma.vehicleSpecification.create({
-          data: {
-            vehicleId,
-            ...spec
-          }
-        })
-      }
-    }
-    console.log(`✅ Vehicle specifications created`)
-
-    // 11. Create Vehicle Images
-    console.log('📸 Creating vehicle images...')
-    const vehicleImages = [
-      // Nexon EV images
-      { vehicleId: 'nexon_ev_2024', imageUrl: '/uploads/vehicles/nexon-ev/nexon-ev-front.jpg', altText: 'تاتا نيكسون إلكتريك - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'nexon_ev_2024', imageUrl: '/uploads/vehicles/nexon-ev/nexon-ev-side.jpg', altText: 'تاتا نيكسون إلكتريك - جانب', isPrimary: false, order: 1 },
-      { vehicleId: 'nexon_ev_2024', imageUrl: '/uploads/vehicles/nexon-ev/nexon-ev-rear.jpg', altText: 'تاتا نيكسون إلكتريك - خلف', isPrimary: false, order: 2 },
-      { vehicleId: 'nexon_ev_2024', imageUrl: '/uploads/vehicles/nexon-ev/nexon-ev-interior.jpg', altText: 'تاتا نيكسون إلكتريك - داخلي', isPrimary: false, order: 3 },
-      
-      // Nexon Petrol images
-      { vehicleId: 'nexon_petrol_2024', imageUrl: '/uploads/vehicles/nexon/nexon-front.jpg', altText: 'تاتا نيكسون - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'nexon_petrol_2024', imageUrl: '/uploads/vehicles/nexon/nexon-side.jpg', altText: 'تاتا نيكسون - جانب', isPrimary: false, order: 1 },
-      { vehicleId: 'nexon_petrol_2024', imageUrl: '/uploads/vehicles/nexon/nexon-rear.jpg', altText: 'تاتا نيكسون - خلف', isPrimary: false, order: 2 },
-      
-      // Punch images
-      { vehicleId: 'punch_2024', imageUrl: '/uploads/vehicles/punch/punch-front.jpg', altText: 'تاتا بانش - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'punch_2024', imageUrl: '/uploads/vehicles/punch/punch-side.jpg', altText: 'تاتا بانش - جانب', isPrimary: false, order: 1 },
-      { vehicleId: 'punch_2024', imageUrl: '/uploads/vehicles/punch/punch-rear.jpg', altText: 'تاتا بانش - خلف', isPrimary: false, order: 2 },
-      
-      // Tiago EV images
-      { vehicleId: 'tiago_ev_2024', imageUrl: '/uploads/vehicles/tiago-ev/tiago-ev-front.jpg', altText: 'تاتا تياجو إلكتريك - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'tiago_ev_2024', imageUrl: '/uploads/vehicles/tiago-ev/tiago-ev-side.jpg', altText: 'تاتا تياجو إلكتريك - جانب', isPrimary: false, order: 1 },
-      
-      // Tiago Petrol images
-      { vehicleId: 'tiago_petrol_2024', imageUrl: '/uploads/vehicles/tiago/tiago-front.jpg', altText: 'تاتا تياجو - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'tiago_petrol_2024', imageUrl: '/uploads/vehicles/tiago/tiago-side.jpg', altText: 'تاتا تياجو - جانب', isPrimary: false, order: 1 },
-      
-      // Altroz images
-      { vehicleId: 'altroz_2024', imageUrl: '/uploads/vehicles/altroz/altroz-front.jpg', altText: 'تاتا ألتروز - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'altroz_2024', imageUrl: '/uploads/vehicles/altroz/altroz-side.jpg', altText: 'تاتا ألتروز - جانب', isPrimary: false, order: 1 },
-      
-      // Harrier images
-      { vehicleId: 'harrier_2024', imageUrl: '/uploads/vehicles/harrier/harrier-front.jpg', altText: 'تاتا هارير - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'harrier_2024', imageUrl: '/uploads/vehicles/harrier/harrier-side.jpg', altText: 'تاتا هارير - جانب', isPrimary: false, order: 1 },
-      { vehicleId: 'harrier_2024', imageUrl: '/uploads/vehicles/harrier/harrier-interior.jpg', altText: 'تاتا هارير - داخلي', isPrimary: false, order: 2 },
-      
-      // Safari images
-      { vehicleId: 'safari_2024', imageUrl: '/uploads/vehicles/safari/safari-front.jpg', altText: 'تاتا سفاري - أمام', isPrimary: true, order: 0 },
-      { vehicleId: 'safari_2024', imageUrl: '/uploads/vehicles/safari/safari-side.jpg', altText: 'تاتا سفاري - جانب', isPrimary: false, order: 1 },
-      { vehicleId: 'safari_2024', imageUrl: '/uploads/vehicles/safari/safari-rear.jpg', altText: 'تاتا سفاري - خلف', isPrimary: false, order: 2 }
-    ]
-
-    for (const imageData of vehicleImages) {
-      await prisma.vehicleImage.create({ data: imageData })
-    }
-    console.log(`✅ Vehicle images created: ${vehicleImages.length} images`)
-
-    // 12. Create Sample Bookings
-    console.log('📅 Creating sample bookings...')
-    
-    // Test Drive Bookings
-    await prisma.testDriveBooking.create({
+  for (const slot of timeSlots) {
+    await prisma.timeSlot.create({
       data: {
-        id: 'test_drive_1',
-        customerId: customer1.id,
-        vehicleId: 'nexon_petrol_2024',
+        dayOfWeek: slot.dayOfWeek,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        maxBookings: slot.maxBookings,
+        isActive: true,
+      },
+    })
+  }
+}
+
+async function seedTestDriveBookings() {
+  console.log('🚗 Seeding test drive bookings...')
+
+  const customers = await prisma.user.findMany({ where: { role: 'CUSTOMER' } })
+  const vehicles = await prisma.vehicle.findMany({ where: { status: 'AVAILABLE' } })
+
+  if (customers.length > 0 && vehicles.length > 0) {
+    const bookings = [
+      {
+        customerId: customers[0].id,
+        vehicleId: vehicles[0].id,
         date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-        timeSlot: '10:00 ص - 11:00 ص',
+        timeSlot: '10:00',
         status: 'CONFIRMED',
-        notes: 'العميل مهتم بالسيارة للشراء'
-      }
-    })
-
-    await prisma.testDriveBooking.create({
-      data: {
-        id: 'test_drive_2',
-        customerId: customer2.id,
-        vehicleId: 'punch_2024',
+        notes: 'العميل يريد تجربة القيادة في الطريق السريع',
+      },
+      {
+        customerId: customers[1].id,
+        vehicleId: vehicles[1].id,
         date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-        timeSlot: '2:00 م - 3:00 م',
+        timeSlot: '14:00',
         status: 'PENDING',
-        notes: 'طلب تجربة قيادة للسيارة العائلية'
-      }
-    })
-
-    // Service Bookings
-    await prisma.serviceBooking.create({
-      data: {
-        id: 'service_1',
-        customerId: customer1.id,
-        vehicleId: 'nexon_petrol_2024',
-        serviceTypeId: 'service_basic',
-        date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tomorrow
-        timeSlot: '9:00 ص - 10:00 ص',
-        status: 'CONFIRMED',
-        totalPrice: 350,
-        paymentStatus: 'PENDING',
-        notes: 'صيانة دورية روتينية'
-      }
-    })
-
-    await prisma.serviceBooking.create({
-      data: {
-        id: 'service_2',
-        customerId: customer2.id,
-        serviceTypeId: 'service_comprehensive',
-        date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next week
-        timeSlot: '11:00 ص - 1:00 م',
-        status: 'PENDING',
-        totalPrice: 750,
-        paymentStatus: 'PENDING',
-        notes: 'صيانة شاملة للسيارة الجديدة'
-      }
-    })
-
-    console.log('✅ Sample bookings created')
-
-    // 13. Create Security Logs
-    console.log('🔒 Creating security logs...')
-    const securityLogs = [
-      {
-        userId: superAdmin.id,
-        action: 'LOGIN',
-        ipAddress: '192.168.1.100',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        details: { loginMethod: 'email', success: true },
-        severity: 'INFO'
+        notes: 'العميل يفضل القيادة في المدينة',
       },
-      {
-        userId: branchManager.id,
-        action: 'VEHICLE_CREATE',
-        ipAddress: '192.168.1.101',
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        details: { vehicleId: 'nexon_petrol_2024', action: 'create' },
-        severity: 'INFO'
-      },
-      {
-        userId: salesRep1.id,
-        action: 'BOOKING_CREATE',
-        ipAddress: '192.168.1.102',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
-        details: { bookingId: 'test_drive_1', type: 'test_drive' },
-        severity: 'INFO'
-      },
-      {
-        action: 'LOGIN_FAILED',
-        ipAddress: '192.168.1.200',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        details: { email: 'invalid@example.com', reason: 'invalid_credentials' },
-        severity: 'WARNING'
-      }
     ]
 
-    for (const logData of securityLogs) {
-      await prisma.securityLog.create({ data: logData })
+    for (const booking of bookings) {
+      await prisma.testDriveBooking.create({
+        data: booking,
+      })
     }
-    console.log(`✅ Security logs created: ${securityLogs.length} logs`)
+  }
+}
 
-    console.log('\n🎉 Comprehensive database seeding completed successfully!')
-    console.log('\n📊 Summary:')
-    console.log(`   🏢 Branches: 2`)
-    console.log(`   🔐 Permissions: ${permissions.length}`)
-    console.log(`   👥 Role Templates: 4`)
-    console.log(`   👤 Users: 7 (with different roles)`)
-    console.log(`   ⚙️ Site Settings: 1`)
-    console.log(`   🎠 Sliders: ${sliders.length}`)
-    console.log(`   🔧 Service Types: ${serviceTypes.length}`)
-    console.log(`   🚗 Vehicles: ${vehicles.length}`)
-    console.log(`   💰 Vehicle Pricing: ${vehicles.length}`)
-    console.log(`   📋 Vehicle Specifications: Multiple`)
-    console.log(`   📸 Vehicle Images: ${vehicleImages.length}`)
-    console.log(`   📅 Bookings: 4 (2 test drives, 2 services)`)
-    console.log(`   🔒 Security Logs: ${securityLogs.length}`)
-    
-    console.log('\n🔑 Login Credentials:')
-    console.log('   Super Admin: admin@elhamd-cars.com / admin123')
-    console.log('   Manager: manager.cairo@elhamd-cars.com / admin123')
-    console.log('   Sales Rep 1: sales.rep1@elhamd-cars.com / admin123')
-    console.log('   Sales Rep 2: sales.rep2@elhamd-cars.com / admin123')
-    console.log('   Service Advisor: service.advisor1@elhamd-cars.com / admin123')
-    console.log('   Customer 1: customer1@example.com / admin123')
-    console.log('   Customer 2: customer2@example.com / admin123')
+async function seedServiceBookings() {
+  console.log('🔧 Seeding service bookings...')
 
-  } catch (error) {
-    console.error('❌ Error during seeding:', error)
-    throw error
-  } finally {
-    await prisma.$disconnect()
+  const customers = await prisma.user.findMany({ where: { role: 'CUSTOMER' } })
+  const vehicles = await prisma.vehicle.findMany({ take: 3 })
+  const services = await prisma.serviceType.findMany()
+
+  if (customers.length > 0 && vehicles.length > 0 && services.length > 0) {
+    const bookings = [
+      {
+        customerId: customers[0].id,
+        vehicleId: vehicles[0].id,
+        serviceTypeId: services[0].id,
+        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+        timeSlot: '09:00',
+        status: 'CONFIRMED',
+        totalPrice: services[0].price,
+        paymentStatus: 'PENDING',
+        notes: 'صيانة دورية بعد 10000 كم',
+      },
+      {
+        customerId: customers[1].id,
+        vehicleId: vehicles[1].id,
+        serviceTypeId: services[1].id,
+        date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day from now
+        timeSlot: '11:00',
+        status: 'CONFIRMED',
+        totalPrice: services[1].price,
+        paymentStatus: 'COMPLETED',
+        notes: 'تغيير زيت مع فلتر',
+      },
+    ]
+
+    for (const booking of bookings) {
+      await prisma.serviceBooking.create({
+        data: booking,
+      })
+    }
+  }
+}
+
+async function seedSecurityLogs() {
+  console.log('🔒 Seeding security logs...')
+
+  const users = await prisma.user.findMany()
+
+  const logs = [
+    {
+      userId: users[0]?.id,
+      action: 'LOGIN',
+      ipAddress: '192.168.1.100',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      details: { loginMethod: 'email' },
+      severity: 'INFO',
+    },
+    {
+      userId: users[0]?.id,
+      action: 'PASSWORD_CHANGE',
+      ipAddress: '192.168.1.100',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      details: { previousPasswordChanged: true },
+      severity: 'WARNING',
+    },
+    {
+      userId: users[1]?.id,
+      action: 'LOGIN_FAILED',
+      ipAddress: '192.168.1.101',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      details: { reason: 'invalid_password' },
+      severity: 'WARNING',
+    },
+  ]
+
+  for (const log of logs) {
+    await prisma.securityLog.create({
+      data: log,
+    })
+  }
+}
+
+async function seedNotifications() {
+  console.log('🔔 Seeding notifications...')
+
+  const users = await prisma.user.findMany()
+
+  const notifications = [
+    {
+      userId: users[0]?.id,
+      title: 'موعد صيانة قادم',
+      message: 'لديك موعد صيانة يوم الخميس القادم الساعة 10 صباحاً',
+      type: 'REMINDER',
+      isRead: false,
+      priority: 'MEDIUM',
+    },
+    {
+      userId: users[1]?.id,
+      title: 'تأكيد حجز اختبار قيادة',
+      message: 'تم تأكيد حجز اختبار القيادة لسيارة TATA Nexon',
+      type: 'BOOKING_CONFIRMED',
+      isRead: true,
+      priority: 'HIGH',
+    },
+    {
+      userId: users[2]?.id,
+      title: 'عرض خاص',
+      message: 'خصم 10% على جميع خدمات الصيانة هذا الشهر',
+      type: 'PROMOTION',
+      isRead: false,
+      priority: 'LOW',
+    },
+  ]
+
+  for (const notification of notifications) {
+    await prisma.notification.create({
+      data: notification,
+    })
+  }
+}
+
+async function seedActivityLogs() {
+  console.log('📝 Seeding activity logs...')
+
+  const users = await prisma.user.findMany()
+
+  const activities = [
+    {
+      userId: users[0]?.id,
+      action: 'VEHICLE_VIEWED',
+      entityType: 'VEHICLE',
+      entityId: '1',
+      details: { vehicleMake: 'TATA', vehicleModel: 'Nexon' },
+      ipAddress: '192.168.1.100',
+    },
+    {
+      userId: users[1]?.id,
+      action: 'BOOKING_CREATED',
+      entityType: 'BOOKING',
+      entityId: '1',
+      details: { bookingType: 'TEST_DRIVE', vehicleId: '2' },
+      ipAddress: '192.168.1.101',
+    },
+    {
+      userId: users[0]?.id,
+      action: 'PROFILE_UPDATED',
+      entityType: 'USER',
+      entityId: users[0]?.id,
+      details: { updatedFields: ['phone', 'address'] },
+      ipAddress: '192.168.1.100',
+    },
+  ]
+
+  for (const activity of activities) {
+    await prisma.activityLog.create({
+      data: activity,
+    })
   }
 }
 
 main()
   .catch((e) => {
-    console.error(e)
+    console.error('❌ Error seeding database:', e)
     process.exit(1)
   })
   .finally(async () => {
