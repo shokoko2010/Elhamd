@@ -11,7 +11,6 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params
-    
     const invoice = await db.invoice.findUnique({
       where: { id },
       include: {
@@ -20,24 +19,20 @@ export async function GET(
             id: true,
             name: true,
             email: true,
-            phone: true
+            phone: true,
+            company: true,
+            address: true
           }
         },
         items: true,
-        taxes: true,
+        taxes: {
+          include: {
+            taxRate: true
+          }
+        },
         payments: {
           include: {
-            payment: {
-              select: {
-                id: true,
-                amount: true,
-                createdAt: true,
-                paymentMethod: true,
-                status: true,
-                transactionId: true,
-                notes: true
-              }
-            }
+            payment: true
           },
           orderBy: {
             createdAt: 'desc'
@@ -57,10 +52,7 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching invoice:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch invoice',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Failed to fetch invoice' },
       { status: 500 }
     )
   }
