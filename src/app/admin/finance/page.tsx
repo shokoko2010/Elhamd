@@ -136,15 +136,6 @@ function FinanceContent() {
   const [dateRange, setDateRange] = useState('month')
   const { toast } = useToast()
 
-  // Handle tab parameter from URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const tab = urlParams.get('tab')
-    if (tab && ['overview', 'invoices', 'quotations', 'payments', 'reports'].includes(tab)) {
-      setActiveTab(tab)
-    }
-  }, [])
-
   useEffect(() => {
     fetchFinanceData()
   }, [dateRange])

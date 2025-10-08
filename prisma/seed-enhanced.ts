@@ -10,14 +10,23 @@ async function main() {
   await cleanDatabase()
   console.log('🧹 Cleaned existing data')
 
-  // Seed data in order of dependencies
+  // Seed core data in order of dependencies
   await seedPermissions()
   await seedRoleTemplates()
   await seedBranches()
   await seedUsers()
   await seedUserPermissions()
-  await seedMedia() // Add existing media first
-  await seedSliders() // Add sliders
+  await seedCompanyInfo()
+  await seedSiteSettings()
+  await seedHeaderContent()
+  await seedFooterContent()
+  await seedSliders()
+  await seedServiceItems()
+  await seedCompanyStats()
+  await seedCompanyValues()
+  await seedCompanyFeatures()
+  await seedTimelineEvents()
+  await seedContactInfo()
   await seedVehicles()
   await seedVehicleImages()
   await seedVehicleSpecifications()
@@ -26,34 +35,34 @@ async function main() {
   await seedTimeSlots()
   await seedTestDriveBookings()
   await seedServiceBookings()
-  await seedSecurityLogs()
   await seedNotifications()
+  await seedTasks()
   await seedActivityLogs()
+  await seedSecurityLogs()
 
   console.log('✅ Enhanced database seeding completed successfully!')
 }
 
 async function cleanDatabase() {
   // Delete in reverse order of dependencies
-  await prisma.securityLog.deleteMany()
-  await prisma.notification.deleteMany()
-  await prisma.activityLog.deleteMany()
-  await prisma.serviceBooking.deleteMany()
-  await prisma.testDriveBooking.deleteMany()
-  await prisma.timeSlot.deleteMany()
-  await prisma.vehiclePricing.deleteMany()
-  await prisma.vehicleSpecification.deleteMany()
-  await prisma.vehicleImage.deleteMany()
-  await prisma.vehicle.deleteMany()
-  await prisma.serviceType.deleteMany()
-  await prisma.slider.deleteMany() // Clean sliders
-  await prisma.media.deleteMany() // Clean media
-  await prisma.userPermission.deleteMany()
-  await prisma.user.deleteMany()
-  await prisma.branch.deleteMany()
-  await prisma.roleTemplatePermission.deleteMany()
-  await prisma.roleTemplate.deleteMany()
-  await prisma.permission.deleteMany()
+  const models = [
+    'securityLog', 'notification', 'activityLog', 'taskComment', 'task',
+    'serviceBooking', 'testDriveBooking', 'timeSlot',
+    'vehiclePricing', 'vehicleSpecification', 'vehicleImage', 'vehicle',
+    'serviceType', 'serviceItem',
+    'companyFeature', 'companyValue', 'companyStat', 'timelineEvent', 'contactInfo', 'companyInfo',
+    'slider', 'footerSocial', 'footerColumn', 'footerContent', 'headerSocial', 'headerNavigation', 'headerContent', 'siteSettings',
+    'userPermission', 'user',
+    'branch', 'roleTemplatePermission', 'roleTemplate', 'permission'
+  ]
+
+  for (const model of models) {
+    try {
+      await prisma[model].deleteMany()
+    } catch (error) {
+      console.log(`Note: Model ${model} might not exist or is already empty`)
+    }
+  }
 }
 
 async function seedPermissions() {
@@ -71,18 +80,6 @@ async function seedPermissions() {
     { name: 'vehicles.create', description: 'Create vehicles', category: 'VEHICLE_MANAGEMENT' },
     { name: 'vehicles.update', description: 'Update vehicles', category: 'VEHICLE_MANAGEMENT' },
     { name: 'vehicles.delete', description: 'Delete vehicles', category: 'VEHICLE_MANAGEMENT' },
-    
-    // Media Management
-    { name: 'media.view', description: 'View media', category: 'MEDIA_MANAGEMENT' },
-    { name: 'media.create', description: 'Create media', category: 'MEDIA_MANAGEMENT' },
-    { name: 'media.update', description: 'Update media', category: 'MEDIA_MANAGEMENT' },
-    { name: 'media.delete', description: 'Delete media', category: 'MEDIA_MANAGEMENT' },
-    
-    // Slider Management
-    { name: 'sliders.view', description: 'View sliders', category: 'CONTENT_MANAGEMENT' },
-    { name: 'sliders.create', description: 'Create sliders', category: 'CONTENT_MANAGEMENT' },
-    { name: 'sliders.update', description: 'Update sliders', category: 'CONTENT_MANAGEMENT' },
-    { name: 'sliders.delete', description: 'Delete sliders', category: 'CONTENT_MANAGEMENT' },
     
     // Booking Management
     { name: 'bookings.view', description: 'View bookings', category: 'BOOKING_MANAGEMENT' },
@@ -123,9 +120,7 @@ async function seedRoleTemplates() {
   const adminPermissions = permissions.map(p => p.id)
   await prisma.roleTemplate.upsert({
     where: { name: 'Admin Template' },
-    update: {
-      permissions: adminPermissions,
-    },
+    update: { permissions: adminPermissions },
     create: {
       name: 'Admin Template',
       description: 'Full system access',
@@ -142,9 +137,7 @@ async function seedRoleTemplates() {
   
   await prisma.roleTemplate.upsert({
     where: { name: 'Manager Template' },
-    update: {
-      permissions: managerPermissions,
-    },
+    update: { permissions: managerPermissions },
     create: {
       name: 'Manager Template',
       description: 'Manager access',
@@ -161,9 +154,7 @@ async function seedRoleTemplates() {
   
   await prisma.roleTemplate.upsert({
     where: { name: 'Employee Template' },
-    update: {
-      permissions: employeePermissions,
-    },
+    update: { permissions: employeePermissions },
     create: {
       name: 'Employee Template',
       description: 'Employee access',
@@ -181,7 +172,7 @@ async function seedBranches() {
     {
       name: 'الفرع الرئيسي - القاهرة',
       code: 'CAI-001',
-      address: 'شارع التحرير، وسط القاهرة',
+      address: 'شارع التحرير، وسط القاهرة، القاهرة',
       phone: '+20 2 2345 6789',
       email: 'cairo@elhamdimports.com',
       openingDate: new Date('2020-01-15'),
@@ -191,7 +182,7 @@ async function seedBranches() {
     {
       name: 'فرع الإسكندرية',
       code: 'ALEX-002',
-      address: 'شارع سعد زغلول، الإسكندرية',
+      address: 'شارع سعد زغلول، وسط الإسكندرية',
       phone: '+20 3 4567 8901',
       email: 'alexandria@elhamdimports.com',
       openingDate: new Date('2021-03-20'),
@@ -233,7 +224,7 @@ async function seedUsers() {
     {
       email: 'admin@elhamdimports.com',
       password: hashedPassword,
-      name: 'أحمد محمد',
+      name: 'أحمد محمد السيد',
       role: 'ADMIN',
       phone: '+20 10 1234 5678',
       isActive: true,
@@ -246,7 +237,7 @@ async function seedUsers() {
     {
       email: 'manager@elhamdimports.com',
       password: hashedPassword,
-      name: 'محمد علي',
+      name: 'محمد علي عبدالله',
       role: 'BRANCH_MANAGER',
       phone: '+20 10 2345 6789',
       isActive: true,
@@ -259,7 +250,7 @@ async function seedUsers() {
     {
       email: 'employee@elhamdimports.com',
       password: hashedPassword,
-      name: 'عمر حسن',
+      name: 'عمر حسن أحمد',
       role: 'STAFF',
       phone: '+20 10 3456 7890',
       isActive: true,
@@ -272,7 +263,7 @@ async function seedUsers() {
     {
       email: 'customer1@example.com',
       password: await bcrypt.hash('customer123', 10),
-      name: 'خالد أحمد',
+      name: 'خالد أحمد محمد',
       role: 'CUSTOMER',
       phone: '+20 11 1234 5678',
       isActive: true,
@@ -284,7 +275,7 @@ async function seedUsers() {
     {
       email: 'customer2@example.com',
       password: await bcrypt.hash('customer123', 10),
-      name: 'سارة محمد',
+      name: 'سارة محمد إبراهيم',
       role: 'CUSTOMER',
       phone: '+20 12 2345 6789',
       isActive: true,
@@ -355,70 +346,133 @@ async function seedUserPermissions() {
   }
 }
 
-async function seedMedia() {
-  console.log('📸 Seeding media from uploads folder...')
+async function seedCompanyInfo() {
+  console.log('🏢 Seeding company info...')
 
-  const mediaItems = [
-    // Vehicle images
-    { url: '/uploads/vehicles/1/nexon-front-new.jpg', category: 'vehicles', title: 'Tata Nexon Front', altText: 'Tata Nexon - Front View' },
-    { url: '/uploads/vehicles/1/nexon-side-new.jpg', category: 'vehicles', title: 'Tata Nexon Side', altText: 'Tata Nexon - Side View' },
-    { url: '/uploads/vehicles/2/punch-front-new.jpg', category: 'vehicles', title: 'Tata Punch Front', altText: 'Tata Punch - Front View' },
-    { url: '/uploads/vehicles/3/tiago-front-new.jpg', category: 'vehicles', title: 'Tata Tiago Front', altText: 'Tata Tiago - Front View' },
-    { url: '/uploads/vehicles/4/tigor-front.jpg', category: 'vehicles', title: 'Tata Tigor Front', altText: 'Tata Tigor - Front View' },
-    { url: '/uploads/vehicles/5/harrier-front.jpg', category: 'vehicles', title: 'Tata Harrier Front', altText: 'Tata Harrier - Front View' },
-    { url: '/uploads/vehicles/6/altroz-front.jpg', category: 'vehicles', title: 'Tata Altroz Front', altText: 'Tata Altroz - Front View' },
-    
-    // Banner images for sliders
-    { url: '/uploads/banners/nexon-banner.jpg', category: 'banner', title: 'Tata Nexon Banner', altText: 'Tata Nexon - Special Offer' },
-    { url: '/uploads/banners/punch-banner.jpg', category: 'banner', title: 'Tata Punch Banner', altText: 'Tata Punch - Compact SUV' },
-    { url: '/uploads/banners/tiago-electric-banner.jpg', category: 'banner', title: 'Tata Tiago EV Banner', altText: 'Tata Tiago EV - Electric Future' },
-    { url: '/uploads/banners/service-banner.jpg', category: 'banner', title: 'Service Banner', altText: 'Professional Service Center' },
-    { url: '/uploads/banners/showroom-banner.jpg', category: 'banner', title: 'Showroom Banner', altText: 'Modern Showroom' },
-    { url: '/uploads/banners/electric-banner.jpg', category: 'banner', title: 'Electric Banner', altText: 'Electric Vehicles' },
-    { url: '/uploads/banners/adventure-banner.jpg', category: 'banner', title: 'Adventure Banner', altText: 'Adventure Ready' },
-    
-    // Company images
-    { url: '/uploads/showroom-luxury.jpg', category: 'company', title: 'Luxury Showroom', altText: 'Luxury Car Showroom' },
-    { url: '/uploads/dealership-exterior.jpg', category: 'company', title: 'Dealership Exterior', altText: 'Dealership Building Exterior' },
-    { url: '/uploads/logo/alhamd-cars-logo.png', category: 'company', title: 'Alhamd Cars Logo', altText: 'Alhamd Cars Company Logo' },
-    
-    // Gallery images
-    { url: '/uploads/thumbnails/showroom-1_thumbnail.webp', category: 'gallery', title: 'Showroom Interior', altText: 'Showroom Interior View' },
-    { url: '/uploads/thumbnails/luxury-sedan-1_thumbnail.webp', category: 'gallery', title: 'Luxury Sedan', altText: 'Luxury Sedan Car' },
-    { url: '/uploads/thumbnails/sports-car-1_thumbnail.webp', category: 'gallery', title: 'Sports Car', altText: 'Sports Car View' },
-    { url: '/uploads/thumbnails/service-1_thumbnail.webp', category: 'gallery', title: 'Service Center', altText: 'Car Service Center' },
-    { url: '/uploads/thumbnails/banner-1_thumbnail.webp', category: 'gallery', title: 'Promotional Banner', altText: 'Promotional Car Banner' },
-  ]
-
-  for (const item of mediaItems) {
-    await prisma.media.create({
-      data: {
-        filename: item.url.split('/').pop() || 'image.jpg',
-        originalName: item.title,
-        path: item.url,
-        url: item.url,
-        thumbnailUrl: item.url,
-        mimeType: 'image/jpeg',
-        size: 500000, // Approximate size
-        width: 800,
-        height: 600,
-        altText: item.altText,
-        title: item.title,
-        description: '',
-        tags: JSON.stringify([item.category]),
-        category: item.category,
-        entityId: null,
-        isPublic: true,
-        isFeatured: item.category === 'banner',
-        order: 0,
-        metadata: JSON.stringify({
-          source: 'uploads-folder',
-          addedAt: new Date().toISOString()
-        }),
-        createdBy: 'system'
-      }
-    })
+  const companyInfo = {
+    title: 'الحمد للسيارات - وكيل تاتا المعتمد',
+    subtitle: 'الجودة والثقة في عالم السيارات',
+    description: 'نحن وكيل تاتا المعتمد في مصر، نقدم أحدث موديلات تاتا مع ضمان المصنع الكامل وخدمة ما بعد البيع المتميزة. خبرة تمتد لأكثر من 25 عاماً في تقديم أفضل الخدمات لعملائنا.',
+    imageUrl: '/uploads/showroom-luxury.jpg',
+    features: [
+      'وكيل معتمد لتاتا',
+      'ضمان المصنع الكامل',
+      'خدمة ما بعد البيع 24/7',
+      'تمويل سهل ومريح'
+    ],
+    ctaButtons: [
+      { text: 'استعرض السيارات', link: '/vehicles', variant: 'primary' },
+      { text: 'قيادة تجريبية', link: '/test-drive', variant: 'secondary' }
+    ],
+    isActive: true
   }
+
+  await prisma.companyInfo.upsert({
+    where: { id: 'default' },
+    update: companyInfo,
+    create: { id: 'default', ...companyInfo },
+  })
+}
+
+async function seedSiteSettings() {
+  console.log('⚙️ Seeding site settings...')
+
+  const settings = {
+    siteTitle: 'الحمد للسيارات',
+    siteDescription: 'وكيل تاتا المعتمد في مصر - أحدث سيارات تاتا بأفضل الأسعار وضمان المصنع الكامل',
+    logoUrl: '/uploads/logo/alhamd-cars-logo.png',
+    faviconUrl: '/favicon.ico',
+    contactEmail: 'info@elhamdimports.com',
+    contactPhone: '+20 2 2345 6789',
+    contactAddress: 'شارع التحرير، وسط القاهرة',
+    workingHours: 'الأحد - الخميس: 9:00 ص - 9:00 م',
+    socialLinks: {
+      facebook: 'https://facebook.com/elhamdcars',
+      twitter: 'https://twitter.com/elhamdcars',
+      instagram: 'https://instagram.com/elhamdcars',
+      youtube: 'https://youtube.com/elhamdcars'
+    },
+    seoSettings: {
+      metaTitle: 'الحمد للسيارات - وكيل تاتا المعتمد في مصر',
+      metaDescription: 'وكيل تاتا المعتمد في مصر - أحدث سيارات تاتا بأفضل الأسعار وضمان المصنع الكامل',
+      keywords: 'سيارات تاتا, وكيل تاتا, سيارات جديدة, سيارات مستعملة, تمويل سيارات'
+    },
+    isActive: true
+  }
+
+  await prisma.siteSettings.upsert({
+    where: { id: 'default' },
+    update: settings,
+    create: { id: 'default', ...settings },
+  })
+}
+
+async function seedHeaderContent() {
+  console.log('📱 Seeding header content...')
+
+  const headerContent = {
+    logoUrl: '/uploads/logo/alhamd-cars-logo.png',
+    siteName: 'الحمد للسيارات',
+    navigation: [
+      { label: 'الرئيسية', href: '/', order: 1 },
+      { label: 'السيارات', href: '/vehicles', order: 2 },
+      { label: 'عن الشركة', href: '/about', order: 3 },
+      { label: 'الخدمات', href: '/service-booking', order: 4 },
+      { label: 'اتصل بنا', href: '/contact', order: 5 }
+    ],
+    ctaButtons: [
+      { text: 'طلب قيادة تجريبية', href: '/test-drive', variant: 'primary' },
+      { text: 'تواصل معنا', href: '/contact', variant: 'secondary' }
+    ],
+    isActive: true
+  }
+
+  await prisma.headerContent.upsert({
+    where: { id: 'default' },
+    update: headerContent,
+    create: { id: 'default', ...headerContent },
+  })
+}
+
+async function seedFooterContent() {
+  console.log('📄 Seeding footer content...')
+
+  const footerContent = {
+    description: 'الحمد للسيارات - الوكيل المعتمد لسيارات تاتا في مصر. نقدم أحدث الموديلات مع ضمان الجودة وخدمة ما بعد البيع المتميزة.',
+    quickLinks: [
+      { label: 'الرئيسية', href: '/' },
+      { label: 'السيارات', href: '/vehicles' },
+      { label: 'عن الشركة', href: '/about' },
+      { label: 'الخدمات', href: '/service-booking' },
+      { label: 'اتصل بنا', href: '/contact' }
+    ],
+    services: [
+      { label: 'صيانة سيارات تاتا', href: '/service-booking' },
+      { label: 'قطع غيار أصلية', href: '/parts' },
+      { label: 'ضمان المصنع', href: '/warranty' },
+      { label: 'تمويل السيارات', href: '/financing' }
+    ],
+    contactInfo: {
+      address: 'شارع التحرير، وسط القاهرة',
+      phone: '+20 2 2345 6789',
+      email: 'info@elhamdimports.com',
+      workingHours: 'الأحد - الخميس: 9:00 ص - 9:00 م'
+    },
+    socialLinks: [
+      { platform: 'facebook', url: 'https://facebook.com/elhamdcars', icon: 'facebook' },
+      { platform: 'twitter', url: 'https://twitter.com/elhamdcars', icon: 'twitter' },
+      { platform: 'instagram', url: 'https://instagram.com/elhamdcars', icon: 'instagram' },
+      { platform: 'youtube', url: 'https://youtube.com/elhamdcars', icon: 'youtube' }
+    ],
+    copyright: '© 2024 الحمد للسيارات. جميع الحقوق محفوظة.',
+    isActive: true
+  }
+
+  await prisma.footerContent.upsert({
+    where: { id: 'default' },
+    update: footerContent,
+    create: { id: 'default', ...footerContent },
+  })
 }
 
 async function seedSliders() {
@@ -426,48 +480,296 @@ async function seedSliders() {
 
   const sliders = [
     {
-      title: 'Tata Nexon - SUV عائلية متطورة',
-      subtitle: 'الأمان والقوة في تصميم عصري',
-      description: 'اكتشف Tata Nexon، السيارة SUV التي تجمع بين التصميم الأنيق والأداء القوي والميزات الأمان المتقدمة. مثالية للعائلات المصرية.',
+      title: 'تاتا نيكسون 2024',
+      subtitle: 'سيارة SUV عائلية متطورة',
+      description: 'اكتشف تاتا نيكسون الجديدة تماماً بميزات أمان متقدمة وتصميم عصري',
       imageUrl: '/uploads/banners/nexon-banner.jpg',
-      ctaText: 'اطلب سيارتك الآن',
-      ctaLink: '/vehicles?model=nexon',
-      badge: 'الأكثر مبيعاً',
+      ctaText: 'استكشف الآن',
+      ctaLink: '/vehicles/nexon',
+      badge: 'جديد',
       badgeColor: 'bg-red-500',
       isActive: true,
-      order: 1,
+      order: 1
     },
     {
-      title: 'Tata Punch - SUV مدمجة للمدن',
-      subtitle: 'القوة والكفاءة في حجم مثالي',
-      description: 'Tata Punch هي السيارة المثالية للقيادة في المدن المصرية. تصميم مدمج قوي مع استهلاك وقود ممتاز وميزات ذكية.',
+      title: 'تاتا بنش 2024',
+      subtitle: 'السيارة المدمجة القوية',
+      description: 'مثالية للمدن بتصميم شبابي وأداء ممتاز',
       imageUrl: '/uploads/banners/punch-banner.jpg',
-      ctaText: 'جرب قيادة تجريبية',
-      ctaLink: '/test-drive',
-      badge: 'جديد',
+      ctaText: 'اعرف المزيد',
+      ctaLink: '/vehicles/punch',
+      badge: 'الأكثر مبيعاً',
       badgeColor: 'bg-green-500',
       isActive: true,
-      order: 2,
+      order: 2
     },
     {
-      title: 'Tata Tiago EV - مستقبل الكهرباء',
-      subtitle: 'سيارة كهربائية اقتصادية وصديقة للبيئة',
-      description: 'انضم إلى ثورة السيارات الكهربائية مع Tata Tiago EV. صفر انبعاثات، استهلاك طاقة منخفض، وتكاليف تشغيل اقتصادية.',
-      imageUrl: '/uploads/banners/tiago-electric-banner.jpg',
-      ctaText: 'اعرف المزيد',
-      ctaLink: '/vehicles?fuel=ELECTRIC',
-      badge: 'كهربائي',
-      badgeColor: 'bg-blue-500',
+      title: 'عروض التمويل',
+      subtitle: 'تمويل سيارتك بأفضل الشروط',
+      description: 'استفد من عروض التمويل المميزة على جميع سيارات تاتا',
+      imageUrl: '/uploads/banners/electric-banner.jpg',
+      ctaText: 'قدّم الآن',
+      ctaLink: '/financing',
+      badge: 'عرض خاص',
+      badgeColor: 'bg-yellow-500',
       isActive: true,
-      order: 3,
+      order: 3
     }
   ]
 
   for (const slider of sliders) {
-    await prisma.slider.create({
-      data: slider
-    })
+    await prisma.slider.create({ data: slider })
   }
+}
+
+async function seedServiceItems() {
+  console.log('🔧 Seeding service items...')
+
+  const services = [
+    {
+      title: 'صيانة دورية',
+      description: 'صيانة شاملة لسيارتك مع استخدام قطع غيار أصلية',
+      icon: 'wrench',
+      image: '/uploads/thumbnails/service-1_thumbnail.webp',
+      features: ['تغيير زيت المحرك', 'فحص الفرامل', 'فحص الإطارات', 'فحص البطارية'],
+      duration: '2-3 ساعات',
+      price: 500,
+      isActive: true,
+      order: 1
+    },
+    {
+      title: 'إصلاح المحركات',
+      description: 'إصلاح متخصص لمحركات تاتا بفنيين مدربين',
+      icon: 'settings',
+      image: '/uploads/thumbnails/service-2_thumbnail.webp',
+      features: ['تشخيص دقيق', 'إصلاح مضمون', 'قطع غيار أصلية', 'ضمان 6 أشهر'],
+      duration: 'يوم واحد',
+      price: 2000,
+      isActive: true,
+      order: 2
+    },
+    {
+      title: 'تنظيف وتلميع',
+      description: 'تنظيف شامل للسيارة داخلياً وخارجياً',
+      icon: 'sparkles',
+      image: '/uploads/thumbnails/service-3_thumbnail.webp',
+      features: ['غسيل خارجي', 'تنظيف داخلي', 'تلميع', 'تعطير'],
+      duration: '3-4 ساعات',
+      price: 300,
+      isActive: true,
+      order: 3
+    },
+    {
+      title: 'فحص ما قبل الشراء',
+      description: 'فحص شامل للسيارات المستعملة قبل الشراء',
+      icon: 'search',
+      image: '/uploads/thumbnails/service-4_thumbnail.webp',
+      features: ['فحص الميكانيكا', 'فحص الهيكل', 'فحص الإلكترونيات', 'تقرير مفصل'],
+      duration: 'ساعة واحدة',
+      price: 200,
+      isActive: true,
+      order: 4
+    }
+  ]
+
+  for (const service of services) {
+    await prisma.serviceItem.create({ data: service })
+  }
+}
+
+async function seedCompanyStats() {
+  console.log('📊 Seeding company stats...')
+
+  const stats = [
+    { label: 'سنة خبرة', number: '25+', description: 'خبرة في سوق السيارات المصري' },
+    { label: 'سيارة مبيعة', number: '10000+', description: 'سيارة تاتا مباعة' },
+    { label: 'عميل سعيد', number: '15000+', description: 'عميل راضٍ عن خدماتنا' },
+    { label: 'فرع', number: '3', description: 'فروع في جميع أنحاء مصر' },
+    { label: 'فني محترف', number: '50+', description: 'فني مدرب على سيارات تاتا' },
+    { label: 'سيارة في العرض', number: '100+', description: 'سيارة جديدة ومستعملة' }
+  ]
+
+  for (const stat of stats) {
+    await prisma.companyStat.create({ data: stat })
+  }
+}
+
+async function seedCompanyValues() {
+  console.log('💎 Seeding company values...')
+
+  const values = [
+    {
+      title: 'الجودة',
+      description: 'نلتزم بأعلى معايير الجودة في كل ما نقدمه',
+      icon: 'award',
+      order: 1
+    },
+    {
+      title: 'الثقة',
+      description: 'نبني علاقات طويلة الأمد مبنية على الثقة والشفافية',
+      icon: 'shield',
+      order: 2
+    },
+    {
+      title: 'الابتكار',
+      description: 'نسعى دائماً لتقديم أحدث الحلول والتقنيات',
+      icon: 'lightbulb',
+      order: 3
+    },
+    {
+      title: 'العميل أولاً',
+      description: 'رضا العملاء هو أولويتنا القصوى',
+      icon: 'heart',
+      order: 4
+    }
+  ]
+
+  for (const value of values) {
+    await prisma.companyValue.create({ data: value })
+  }
+}
+
+async function seedCompanyFeatures() {
+  console.log('⭐ Seeding company features...')
+
+  const features = [
+    {
+      title: 'ضمان المصنع الكامل',
+      description: 'جميع سياراتنا تأتي مع ضمان المصنع الكامل',
+      icon: 'shield-check',
+      order: 1
+    },
+    {
+      title: 'خدمة 24/7',
+      description: 'خدمة طوارئ على مدار الساعة طوال أيام الأسبوع',
+      icon: 'phone',
+      order: 2
+    },
+    {
+      title: 'تمويل معتمد',
+      description: 'شركات تمويل معتمدة مع أفضل الفوائد',
+      icon: 'credit-card',
+      order: 3
+    },
+    {
+      title: 'قطع غيار أصلية',
+      description: 'نستخدم فقط قطع الغيار الأصلية المعتمدة',
+      icon: 'package',
+      order: 4
+    },
+    {
+      title: 'فنيون مدربون',
+      description: 'فنيون محترفون مدربون من تاتا',
+      icon: 'users',
+      order: 5
+    },
+    {
+      title: 'أسعار تنافسية',
+      description: 'أفضل الأسعار في السوق المصري',
+      icon: 'tag',
+      order: 6
+    }
+  ]
+
+  for (const feature of features) {
+    await prisma.companyFeature.create({ data: feature })
+  }
+}
+
+async function seedTimelineEvents() {
+  console.log('📅 Seeding timeline events...')
+
+  const events = [
+    {
+      year: '1999',
+      title: 'تأسيس الشركة',
+      description: 'تأسست الحمد للسيارات كواحدة من أول الوكلاء المعتمدين لسيارات تاتا في مصر',
+      order: 1
+    },
+    {
+      year: '2005',
+      title: 'التوسع في القاهرة',
+      description: 'افتتاح الفرع الرئيسي في قلب القاهرة',
+      order: 2
+    },
+    {
+      year: '2010',
+      title: 'الجودة الذهبية',
+      description: 'حصولنا على شهادة الجودة الذهبية من تاتا',
+      order: 3
+    },
+    {
+      year: '2015',
+      title: 'التوسع في الإسكندرية',
+      description: 'افتتاح فرع الإسكندرية لتغطية الساحل الشمالي',
+      order: 4
+    },
+    {
+      year: '2020',
+      title: 'الرقمنة',
+      description: 'تحويل جميع خدماتنا إلى منصات رقمية متطورة',
+      order: 5
+    },
+    {
+      year: '2024',
+      title: 'الريادة',
+      description: 'أكبر وكلاء تاتا في مصر بأكثر من 10000 سيارة مبيعة',
+      order: 6
+    }
+  ]
+
+  for (const event of events) {
+    await prisma.timelineEvent.create({ data: event })
+  }
+}
+
+async function seedContactInfo() {
+  console.log('📞 Seeding contact info...')
+
+  const contactInfo = {
+    headquarters: {
+      address: 'شارع التحرير، وسط القاهرة',
+      phone: '+20 2 2345 6789',
+      email: 'info@elhamdimports.com',
+      mapUrl: 'https://maps.google.com/?q=Elhamd+Cars+Cairo'
+    },
+    branches: [
+      {
+        name: 'فرع الإسكندرية',
+        address: 'شارع سعد زغلول، وسط الإسكندرية',
+        phone: '+20 3 4567 8901',
+        email: 'alex@elhamdimports.com'
+      },
+      {
+        name: 'فرع الجيزة',
+        address: 'ميدان المحطة، الجيزة',
+        phone: '+20 2 3456 7890',
+        email: 'giza@elhamdimports.com'
+      }
+    ],
+    workingHours: {
+      weekdays: 'الأحد - الخميس: 9:00 ص - 9:00 م',
+      friday: 'الجمعة: 2:00 م - 8:00 م',
+      saturday: 'السبت: 10:00 ص - 6:00 م'
+    },
+    emergency: {
+      phone: '+20 10 9999 8888',
+      description: 'خدمة طوارئ 24/7'
+    },
+    socialMedia: {
+      facebook: 'https://facebook.com/elhamdcars',
+      twitter: 'https://twitter.com/elhamdcars',
+      instagram: 'https://instagram.com/elhamdcars',
+      youtube: 'https://youtube.com/elhamdcars',
+      whatsapp: '+20 10 1234 5678'
+    }
+  }
+
+  await prisma.contactInfo.upsert({
+    where: { id: 'default' },
+    update: contactInfo,
+    create: { id: 'default', ...contactInfo },
+  })
 }
 
 async function seedVehicles() {
@@ -483,7 +785,7 @@ async function seedVehicles() {
       price: 450000,
       stockNumber: 'TNX-2024-001',
       vin: 'MAT62543798765432',
-      description: 'سيارة SUV عائلية عصرية مع ميزات أمان متقدمة وتصميم أنيق',
+      description: 'سيارة SUV عائلية عصرية مع ميزات أمان متقدمة وتصميم رياضي أنيق',
       category: 'SUV',
       fuelType: 'PETROL',
       transmission: 'MANUAL',
@@ -500,7 +802,7 @@ async function seedVehicles() {
       price: 320000,
       stockNumber: 'TPU-2024-002',
       vin: 'MAT62543798765433',
-      description: 'سيارة SUV مدمجة مثالية للقيادة في المدينة',
+      description: 'سيارة SUV مدمجة مثالية للقيادة في المدينة بتصميم شبابي',
       category: 'SUV',
       fuelType: 'PETROL',
       transmission: 'MANUAL',
@@ -517,7 +819,7 @@ async function seedVehicles() {
       price: 280000,
       stockNumber: 'TTI-2024-003',
       vin: 'MAT62543798765434',
-      description: 'سيارة هاتشباك اقتصادية مع استهلاك وقود ممتاز',
+      description: 'سيارة هاتشباك اقتصادية مع استهلاك وقود ممتاز وتصميم عصري',
       category: 'HATCHBACK',
       fuelType: 'PETROL',
       transmission: 'MANUAL',
@@ -534,7 +836,7 @@ async function seedVehicles() {
       price: 350000,
       stockNumber: 'TAL-2024-004',
       vin: 'MAT62543798765435',
-      description: 'سيارة هاتشباك Premium مع تصميم عصري',
+      description: 'سيارة هاتشباك Premium مع تصميم عصري وميزات فاخرة',
       category: 'HATCHBACK',
       fuelType: 'PETROL',
       transmission: 'MANUAL',
@@ -551,7 +853,7 @@ async function seedVehicles() {
       price: 550000,
       stockNumber: 'THA-2024-005',
       vin: 'MAT62543798765436',
-      description: 'سيارة SUV فاخرة بمحرك قوي وتصميم أنيق',
+      description: 'سيارة SUV فاخرة بمحرك قوي وتصميم أنيق ومساحة واسعة',
       category: 'SUV',
       fuelType: 'DIESEL',
       transmission: 'AUTOMATIC',
@@ -568,7 +870,7 @@ async function seedVehicles() {
       price: 650000,
       stockNumber: 'TSA-2024-006',
       vin: 'MAT62543798765437',
-      description: 'سيارة SUV عائلية كبيرة بـ 7 مقاعد',
+      description: 'سيارة SUV عائلية كبيرة بـ 7 مقاعد وميزات أمان متقدمة',
       category: 'SUV',
       fuelType: 'DIESEL',
       transmission: 'AUTOMATIC',
@@ -578,6 +880,40 @@ async function seedVehicles() {
       featured: false,
       branchId: branches[2]?.id,
     },
+    {
+      make: 'TATA',
+      model: 'Tiago EV',
+      year: 2024,
+      price: 420000,
+      stockNumber: 'TTE-2024-007',
+      vin: 'MAT62543798765438',
+      description: 'سيارة كهربائية صديقة للبيئة بمدى 300 كم',
+      category: 'SUV',
+      fuelType: 'ELECTRIC',
+      transmission: 'AUTOMATIC',
+      mileage: 0,
+      color: 'أخضر',
+      status: 'AVAILABLE',
+      featured: true,
+      branchId: branches[0]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'Nexon EV',
+      year: 2024,
+      price: 580000,
+      stockNumber: 'TNX-2024-008',
+      vin: 'MAT62543798765439',
+      description: 'سيارة SUV كهربائية بتقنية متطورة وأداء ممتاز',
+      category: 'SUV',
+      fuelType: 'ELECTRIC',
+      transmission: 'AUTOMATIC',
+      mileage: 0,
+      color: 'أزرق',
+      status: 'AVAILABLE',
+      featured: true,
+      branchId: branches[1]?.id,
+    }
   ]
 
   for (const vehicle of vehicles) {
@@ -594,42 +930,19 @@ async function seedVehicleImages() {
 
   const vehicles = await prisma.vehicle.findMany()
 
-  const vehicleImageMap = {
-    'Nexon': [
-      '/uploads/vehicles/1/nexon-front-new.jpg',
-      '/uploads/vehicles/1/nexon-side-new.jpg',
-      '/uploads/vehicles/tata-nexon-1.jpg',
-      '/uploads/vehicles/tata-nexon-2.jpg',
-    ],
-    'Punch': [
-      '/uploads/vehicles/2/punch-front-new.jpg',
-      '/uploads/vehicles/tata-punch-1.jpg',
-      '/uploads/vehicles/tata-punch-2.jpg',
-    ],
-    'Tiago': [
-      '/uploads/vehicles/3/tiago-front-new.jpg',
-      '/uploads/vehicles/tata-tiago-1.jpg',
-      '/uploads/vehicles/tata-tiago-2.jpg',
-    ],
-    'Altroz': [
-      '/uploads/vehicles/6/altroz-front.jpg',
-      '/uploads/vehicles/tata-altroz-1.jpg',
-      '/uploads/vehicles/tata-altroz-2.jpg',
-    ],
-    'Harrier': [
-      '/uploads/vehicles/5/harrier-front.jpg',
-      '/uploads/vehicles/tata-harrier-1.jpg',
-      '/uploads/vehicles/tata-harrier-2.jpg',
-    ],
-    'Safari': [
-      '/uploads/vehicles/tata-safari-1.jpg',
-      '/uploads/vehicles/tata-safari-2.jpg',
-      '/uploads/vehicles/tata-safari-3.jpg',
-    ],
+  const imageMap = {
+    'Nexon': ['/uploads/vehicles/1/nexon-front.jpg', '/uploads/vehicles/1/nexon-side.jpg', '/uploads/vehicles/1/nexon-front-new.jpg'],
+    'Punch': ['/uploads/vehicles/2/punch-front.jpg', '/uploads/vehicles/2/punch-front-new.jpg'],
+    'Tiago': ['/uploads/vehicles/3/tiago-front.jpg', '/uploads/vehicles/3/tiago-front-new.jpg'],
+    'Altroz': ['/uploads/vehicles/6/altroz-front.jpg'],
+    'Harrier': ['/uploads/vehicles/5/harrier-front.jpg', '/uploads/vehicles/tata-harrier-1.jpg', '/uploads/vehicles/tata-harrier-2.jpg'],
+    'Safari': ['/uploads/vehicles/tata-safari-1.jpg', '/uploads/vehicles/tata-safari-2.jpg'],
+    'Tiago EV': ['/uploads/vehicles/tige2024001/tiago-ev-front.jpg'],
+    'Nexon EV': ['/uploads/vehicles/nxz2024001/nexon-ev-front.jpg']
   }
 
   for (const vehicle of vehicles) {
-    const images = vehicleImageMap[vehicle.model as keyof typeof vehicleImageMap] || []
+    const images = imageMap[vehicle.model] || []
     
     for (let i = 0; i < images.length; i++) {
       await prisma.vehicleImage.create({
@@ -650,21 +963,43 @@ async function seedVehicleSpecifications() {
 
   const vehicles = await prisma.vehicle.findMany()
 
-  const specifications = [
-    { key: 'engine', label: 'المحرك', value: '1.2L Turbo', category: 'ENGINE' },
-    { key: 'power', label: 'القدرة الحصانية', value: '110 HP', category: 'ENGINE' },
-    { key: 'torque', label: 'عزم الدوران', value: '140 Nm', category: 'ENGINE' },
-    { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '35 لتر', category: 'ENGINE' },
+  const specMap = {
+    'Nexon': [
+      { key: 'engine', label: 'المحرك', value: '1.2L Turbocharged', category: 'ENGINE' },
+      { key: 'power', label: 'القدرة الحصانية', value: '120 HP', category: 'ENGINE' },
+      { key: 'torque', label: 'عزم الدوران', value: '170 Nm', category: 'ENGINE' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '44 لتر', category: 'ENGINE' }
+    ],
+    'Punch': [
+      { key: 'engine', label: 'المحرك', value: '1.2L Naturally Aspirated', category: 'ENGINE' },
+      { key: 'power', label: 'القدرة الحصانية', value: '86 HP', category: 'ENGINE' },
+      { key: 'torque', label: 'عزم الدوران', value: '113 Nm', category: 'ENGINE' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '37 لتر', category: 'ENGINE' }
+    ],
+    'Tiago': [
+      { key: 'engine', label: 'المحرك', value: '1.2L Revotron', category: 'ENGINE' },
+      { key: 'power', label: 'القدرة الحصانية', value: '86 HP', category: 'ENGINE' },
+      { key: 'torque', label: 'عزم الدوران', value: '113 Nm', category: 'ENGINE' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '35 لتر', category: 'ENGINE' }
+    ]
+  }
+
+  const commonSpecs = [
     { key: 'doors', label: 'عدد الأبواب', value: '4', category: 'EXTERIOR' },
     { key: 'seats', label: 'عدد المقاعد', value: '5', category: 'INTERIOR' },
     { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
     { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
     { key: 'touchscreen', label: 'شاشة لمس', value: '7 بوصة', category: 'TECHNOLOGY' },
     { key: 'bluetooth', label: 'بلوتوث', value: 'متوفر', category: 'TECHNOLOGY' },
+    { key: 'ac', label: 'تكييف', value: 'أوتوماتيك', category: 'COMFORT' },
+    { key: 'power_windows', label: 'نوافذ كهربائية', value: 'الأربعة', category: 'COMFORT' }
   ]
 
   for (const vehicle of vehicles) {
-    for (const spec of specifications) {
+    const vehicleSpecs = specMap[vehicle.model] || []
+    const allSpecs = [...vehicleSpecs, ...commonSpecs]
+    
+    for (const spec of allSpecs) {
       await prisma.vehicleSpecification.create({
         data: {
           vehicleId: vehicle.id,
@@ -703,48 +1038,51 @@ async function seedVehiclePricing() {
 async function seedServiceTypes() {
   console.log('🔧 Seeding service types...')
 
-  const services = [
+  const serviceTypes = [
     {
-      name: 'تغيير زيت المحرك',
-      description: 'تغيير زيت المحرك وفلتر الزيت',
-      duration: 60,
-      price: 250,
-      category: 'MAINTENANCE',
-    },
-    {
-      name: 'فحص دوري',
-      description: 'فحص شامل للسيارة',
+      name: 'صيانة دورية',
+      description: 'صيانة دورية شاملة للسيارة',
       duration: 120,
-      price: 400,
+      price: 500,
       category: 'MAINTENANCE',
+      isActive: true
     },
     {
-      name: 'تغيير إطارات',
-      description: 'تغيير الإطارات وضغط الهواء',
+      name: 'تغيير زيت',
+      description: 'تغيير زيت المحرك والفلتر',
+      duration: 30,
+      price: 150,
+      category: 'MAINTENANCE',
+      isActive: true
+    },
+    {
+      name: 'فحص شامل',
+      description: 'فحص شامل لكافة أنظمة السيارة',
+      duration: 60,
+      price: 200,
+      category: 'INSPECTION',
+      isActive: true
+    },
+    {
+      name: 'إصلاح مكابح',
+      description: 'إصلاح وصيانة نظام الفرامل',
       duration: 90,
       price: 800,
       category: 'REPAIR',
+      isActive: true
     },
     {
-      name: 'غسيل وتلميع',
-      description: 'غسيل كامل وتلميع للسيارة',
-      duration: 180,
-      price: 300,
-      category: 'DETAILING',
-    },
-    {
-      name: 'فحص قبل الشراء',
-      description: 'فحص شامل للسيارة قبل الشراء',
-      duration: 150,
-      price: 400,
-      category: 'INSPECTION',
-    },
+      name: 'تكييف هواء',
+      description: 'صيانة وإصلاح نظام التكييف',
+      duration: 120,
+      price: 600,
+      category: 'REPAIR',
+      isActive: true
+    }
   ]
 
-  for (const service of services) {
-    await prisma.serviceType.create({
-      data: service,
-    })
+  for (const serviceType of serviceTypes) {
+    await prisma.serviceType.create({ data: serviceType })
   }
 }
 
@@ -752,99 +1090,197 @@ async function seedTimeSlots() {
   console.log('⏰ Seeding time slots...')
 
   const timeSlots = []
-  const weekDays = [1, 2, 3, 4, 5, 6] // 1=Saturday, 2=Sunday, etc.
-  
+  const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
+  const times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']
+
   for (const day of weekDays) {
-    for (let hour = 9; hour <= 17; hour++) {
+    for (const time of times) {
       timeSlots.push({
         dayOfWeek: day,
-        startTime: `${hour.toString().padStart(2, '0')}:00`,
-        endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
+        startTime: time,
+        endTime: `${parseInt(time) + 1}:00`,
         isAvailable: true,
-        maxBookings: 2,
+        maxBookings: 3
       })
     }
   }
 
   for (const slot of timeSlots) {
-    await prisma.timeSlot.create({
-      data: {
-        dayOfWeek: slot.dayOfWeek,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        maxBookings: slot.maxBookings,
-        isActive: true,
-      },
-    })
+    await prisma.timeSlot.create({ data: slot })
   }
 }
 
 async function seedTestDriveBookings() {
   console.log('🚗 Seeding test drive bookings...')
 
-  const customers = await prisma.user.findMany({ where: { role: 'CUSTOMER' } })
   const vehicles = await prisma.vehicle.findMany({ where: { status: 'AVAILABLE' } })
+  const customers = await prisma.user.findMany({ where: { role: 'CUSTOMER' } })
+  const timeSlots = await prisma.timeSlot.findMany({ take: 10 })
 
-  if (customers.length > 0 && vehicles.length > 0) {
-    const bookings = [
-      {
-        customerId: customers[0].id,
-        vehicleId: vehicles[0].id,
-        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-        timeSlot: '10:00',
-        status: 'CONFIRMED',
-        notes: 'العميل يريد تجربة القيادة في الطريق السريع',
-      },
-      {
-        customerId: customers[1].id,
-        vehicleId: vehicles[1].id,
-        date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-        timeSlot: '14:00',
-        status: 'PENDING',
-        notes: 'العميل يفضل القيادة في المدينة',
-      },
-    ]
+  for (let i = 0; i < 5; i++) {
+    const vehicle = vehicles[i % vehicles.length]
+    const customer = customers[i % customers.length]
+    const slot = timeSlots[i % timeSlots.length]
 
-    for (const booking of bookings) {
-      await prisma.testDriveBooking.create({
-        data: booking,
-      })
-    }
+    await prisma.testDriveBooking.create({
+      data: {
+        customerId: customer.id,
+        vehicleId: vehicle.id,
+        date: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000),
+        timeSlot: slot.startTime,
+        status: i < 3 ? 'CONFIRMED' : 'PENDING',
+        notes: `اختبار قيادة لسيارة ${vehicle.make} ${vehicle.model}`
+      }
+    })
   }
 }
 
 async function seedServiceBookings() {
   console.log('🔧 Seeding service bookings...')
 
+  const vehicles = await prisma.vehicle.findMany({ take: 5 })
   const customers = await prisma.user.findMany({ where: { role: 'CUSTOMER' } })
-  const vehicles = await prisma.vehicle.findMany({ take: 3 })
-  const services = await prisma.serviceType.findMany()
+  const serviceTypes = await prisma.serviceType.findMany()
+  const timeSlots = await prisma.timeSlot.findMany({ take: 10 })
 
-  if (customers.length > 0 && vehicles.length > 0 && services.length > 0) {
-    const bookings = [
-      {
-        customerId: customers[0].id,
-        vehicleId: vehicles[0].id,
-        serviceTypeId: services[0].id,
-        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        timeSlot: '09:00',
-        status: 'SCHEDULED',
-        notes: 'تغيير زيت دوري',
-      },
-      {
-        customerId: customers[1].id,
-        vehicleId: vehicles[1].id,
-        serviceTypeId: services[1].id,
-        date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
-        timeSlot: '11:00',
-        status: 'SCHEDULED',
-        notes: 'فحص شامل قبل السفر',
-      },
-    ]
+  for (let i = 0; i < 8; i++) {
+    const customer = customers[i % customers.length]
+    const serviceType = serviceTypes[i % serviceTypes.length]
+    const slot = timeSlots[i % timeSlots.length]
+    const vehicle = vehicles[i % vehicles.length]
 
-    for (const booking of bookings) {
-      await prisma.serviceBooking.create({
-        data: booking,
+    await prisma.serviceBooking.create({
+      data: {
+        customerId: customer.id,
+        vehicleId: vehicle.id,
+        serviceTypeId: serviceType.id,
+        timeSlotId: slot.id,
+        date: new Date(Date.now() + (i + 2) * 24 * 60 * 60 * 1000),
+        timeSlot: slot.startTime,
+        status: i < 5 ? 'CONFIRMED' : 'PENDING',
+        totalPrice: serviceType.price,
+        paymentStatus: 'PENDING',
+        notes: `حجز ${serviceType.name} للسيارة ${vehicle.make} ${vehicle.model}`
+      }
+    })
+  }
+}
+
+async function seedNotifications() {
+  console.log('🔔 Seeding notifications...')
+
+  const users = await prisma.user.findMany()
+
+  const notifications = [
+    {
+      title: 'ترحيب',
+      message: 'مرحباً بك في الحمد للسيارات',
+      type: 'INFO',
+      category: 'SYSTEM'
+    },
+    {
+      title: 'تذكير بالصيانة',
+      message: 'حان موعد الصيانة الدورية لسيارتك',
+      type: 'REMINDER',
+      category: 'MAINTENANCE'
+    },
+    {
+      title: 'عرض خاص',
+      message: 'استفد من العروض الحصرية على سيارات تاتا',
+      type: 'PROMOTION',
+      category: 'MARKETING'
+    }
+  ]
+
+  for (const user of users) {
+    for (let i = 0; i < notifications.length; i++) {
+      await prisma.notification.create({
+        data: {
+          userId: user.id,
+          ...notifications[i],
+          isRead: i === 0,
+          createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+        }
+      })
+    }
+  }
+}
+
+async function seedTasks() {
+  console.log('📋 Seeding tasks...')
+
+  const staffUsers = await prisma.user.findMany({ where: { role: { in: ['STAFF', 'BRANCH_MANAGER'] } } })
+
+  const tasks = [
+    {
+      title: 'متابعة العملاء',
+      description: 'الاتصال بالعملاء الجدد للاستفسار عن الخدمة',
+      priority: 'MEDIUM',
+      status: 'TODO',
+      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+    },
+    {
+      title: 'تحديث معرض السيارات',
+      description: 'تحديث أسعار ومواصفات السيارات المعروضة',
+      priority: 'HIGH',
+      status: 'IN_PROGRESS',
+      dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
+    },
+    {
+      title: 'تجهيز سيارة للتسليم',
+      description: 'تنظيف وفحص السيارة قبل تسليمها للعميل',
+      priority: 'HIGH',
+      status: 'TODO',
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+    }
+  ]
+
+  for (const user of staffUsers) {
+    for (let i = 0; i < tasks.length; i++) {
+      await prisma.task.create({
+        data: {
+          assignedUserId: user.id,
+          createdById: staffUsers[0].id,
+          ...tasks[i]
+        }
+      })
+    }
+  }
+}
+
+async function seedActivityLogs() {
+  console.log('📝 Seeding activity logs...')
+
+  const users = await prisma.user.findMany()
+
+  const activities = [
+    {
+      action: 'LOGIN',
+      description: 'تسجيل الدخول إلى النظام',
+      category: 'AUTHENTICATION'
+    },
+    {
+      action: 'VIEW_VEHICLES',
+      description: 'عرض قائمة السيارات',
+      category: 'VEHICLE_MANAGEMENT'
+    },
+    {
+      action: 'CREATE_BOOKING',
+      description: 'إنشاء حجز جديد',
+      category: 'BOOKING_MANAGEMENT'
+    }
+  ]
+
+  for (const user of users) {
+    for (let i = 0; i < activities.length; i++) {
+      await prisma.activityLog.create({
+        data: {
+          userId: user.id,
+          ...activities[i],
+          ipAddress: '192.168.1.1',
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          createdAt: new Date(Date.now() - i * 60 * 60 * 1000)
+        }
       })
     }
   }
@@ -855,58 +1291,36 @@ async function seedSecurityLogs() {
 
   const users = await prisma.user.findMany()
 
-  for (const user of users) {
-    await prisma.securityLog.create({
-      data: {
-        userId: user.id,
-        action: 'LOGIN',
-        ipAddress: '192.168.1.100',
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        severity: 'INFO',
-        details: JSON.stringify({ loginTime: new Date().toISOString() }),
-      },
-    })
-  }
-}
+  const securityEvents = [
+    {
+      action: 'LOGIN_SUCCESS',
+      description: 'تسجيل دخول ناجح',
+      severity: 'INFO'
+    },
+    {
+      action: 'PASSWORD_CHANGE',
+      description: 'تغيير كلمة المرور',
+      severity: 'WARNING'
+    },
+    {
+      action: 'FAILED_LOGIN',
+      description: 'محاولة تسجيل دخول فاشلة',
+      severity: 'DANGER'
+    }
+  ]
 
-async function seedNotifications() {
-  console.log('🔔 Seeding notifications...')
-
-  const users = await prisma.user.findMany({ where: { role: 'CUSTOMER' } })
-
-  for (const user of users) {
-    await prisma.notification.create({
-      data: {
-        userId: user.id,
-        title: 'مرحباً بك في الحمد للسيارات',
-        message: 'يسعدنا انضمامك إلينا. اطلع على أحدث عروض سيارات تاتا.',
-        type: 'WELCOME',
-        isRead: false,
-        data: JSON.stringify({ link: '/vehicles' }),
-      },
-    })
-  }
-}
-
-async function seedActivityLogs() {
-  console.log('📝 Seeding activity logs...')
-
-  const users = await prisma.user.findMany()
-
-  for (const user of users) {
-    await prisma.activityLog.create({
-      data: {
-        userId: user.id,
-        action: 'USER_LOGIN',
-        entityType: 'USER',
-        entityId: user.id,
-        details: JSON.stringify({ 
-          loginTime: new Date().toISOString(),
-          userAgent: 'System Seed'
-        }),
-        ipAddress: '192.168.1.100',
-      },
-    })
+  for (const user of users.slice(0, 3)) {
+    for (let i = 0; i < securityEvents.length; i++) {
+      await prisma.securityLog.create({
+        data: {
+          userId: user.id,
+          ...securityEvents[i],
+          ipAddress: '192.168.1.1',
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          details: { timestamp: new Date().toISOString() }
+        }
+      })
+    }
   }
 }
 

@@ -32,21 +32,14 @@ interface Customer {
   email: string
   phone?: string
   company?: string
-  segment?: string
-  status?: string
 }
 
 interface ServiceItem {
   id: string
-  name?: string
-  title?: string
+  name: string
   description: string
-  price?: number
-  category?: string
-  icon?: string
-  link?: string
-  order?: number
-  isActive?: boolean
+  price: number
+  category: string
 }
 
 interface InvoiceItem {
@@ -87,14 +80,6 @@ function CreateInvoiceContent() {
   const [notes, setNotes] = useState('')
   const [terms, setTerms] = useState('')
   const [items, setItems] = useState<InvoiceItem[]>([])
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false)
-  const [newCustomer, setNewCustomer] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: ''
-  })
-  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -119,13 +104,7 @@ function CreateInvoiceContent() {
       const serviceItemsResponse = await fetch('/api/service-items')
       if (serviceItemsResponse.ok) {
         const serviceItemsData = await serviceItemsResponse.json()
-        // Transform service items to have consistent structure
-        const transformedItems = serviceItemsData.map((item: any) => ({
-          ...item,
-          name: item.name || item.title || '',
-          price: item.price || 0
-        }))
-        setServiceItems(transformedItems || [])
+        setServiceItems(serviceItemsData || [])
       }
 
       // Fetch tax rates
@@ -133,13 +112,6 @@ function CreateInvoiceContent() {
       if (taxRatesResponse.ok) {
         const taxRatesData = await taxRatesResponse.json()
         setTaxRates(taxRatesData.rates || [])
-      } else {
-        // Set default tax rates if API fails
-        setTaxRates([
-          { id: '1', type: 'ضريبة القيمة المضافة', rate: 14, description: 'ضريبة القيمة المضافة القياسية', isActive: true },
-          { id: '2', type: 'ضريبة الخدمات', rate: 10, description: 'ضريبة على الخدمات', isActive: true },
-          { id: '3', type: 'معفى', rate: 0, description: 'معفى من الضريبة', isActive: true }
-        ])
       }
     } catch (error) {
       toast({
@@ -172,15 +144,10 @@ function CreateInvoiceContent() {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value }
         
-        // Ensure numeric values are properly initialized
-        const quantity = parseFloat(updatedItem.quantity) || 0
-        const unitPrice = parseFloat(updatedItem.unitPrice) || 0
-        const taxRate = parseFloat(updatedItem.taxRate) || 0
-        
         // Recalculate totals
         if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
-          updatedItem.totalPrice = quantity * unitPrice
-          updatedItem.taxAmount = updatedItem.totalPrice * (taxRate / 100)
+          updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice
+          updatedItem.taxAmount = updatedItem.totalPrice * (updatedItem.taxRate / 100)
         }
         
         return updatedItem
@@ -190,22 +157,21 @@ function CreateInvoiceContent() {
   }
 
   const addServiceItem = (serviceItem: ServiceItem) => {
-    const price = parseFloat(serviceItem.price?.toString()) || 0
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      description: serviceItem.name || serviceItem.title || '',
+      description: serviceItem.name,
       quantity: 1,
-      unitPrice: price,
-      totalPrice: price,
+      unitPrice: serviceItem.price,
+      totalPrice: serviceItem.price,
       taxRate: 14,
-      taxAmount: price * 0.14
+      taxAmount: serviceItem.price * 0.14
     }
     setItems([...items, newItem])
   }
 
   const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.totalPrice?.toString()) || 0), 0)
-    const taxAmount = items.reduce((sum, item) => sum + (parseFloat(item.taxAmount?.toString()) || 0), 0)
+    const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0)
+    const taxAmount = items.reduce((sum, item) => sum + item.taxAmount, 0)
     const totalAmount = subtotal + taxAmount
     
     return { subtotal, taxAmount, totalAmount }
@@ -217,58 +183,6 @@ function CreateInvoiceContent() {
 
   const sendInvoice = async () => {
     await saveInvoice('SENT')
-  }
-
-  const createNewCustomer = async () => {
-    if (!newCustomer.email || !newCustomer.name) {
-      toast({
-        title: 'خطأ',
-        description: 'يرجى إدخال اسم العميل والبريد الإلكتروني',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setIsCreatingCustomer(true)
-    
-    try {
-      const response = await fetch('/api/crm/customers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: newCustomer.name,
-          email: newCustomer.email,
-          phone: newCustomer.phone,
-          segment: 'CUSTOMER',
-          leadSource: 'Invoice Creation'
-        })
-      })
-
-      if (response.ok) {
-        const customer = await response.json()
-        setCustomers([...customers, customer])
-        setSelectedCustomer(customer.id)
-        setNewCustomer({ name: '', email: '', phone: '', company: '' })
-        setShowNewCustomerForm(false)
-        toast({
-          title: 'نجاح',
-          description: 'تم إنشاء العميل الجديد بنجاح'
-        })
-      } else {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create customer')
-      }
-    } catch (error) {
-      toast({
-        title: 'خطأ',
-        description: error instanceof Error ? error.message : 'فشل في إنشاء العميل',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsCreatingCustomer(false)
-    }
   }
 
   const saveInvoice = async (status: string) => {
@@ -379,103 +293,22 @@ function CreateInvoiceContent() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="customer">العميل</Label>
-                <div className="flex gap-2">
-                  <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="اختر العميل" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          <div>
-                            <p className="font-medium">{customer.name}</p>
-                            <p className="text-sm text-gray-500">{customer.email}</p>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowNewCustomerForm(!showNewCustomerForm)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر العميل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        <div>
+                          <p className="font-medium">{customer.name}</p>
+                          <p className="text-sm text-gray-500">{customer.email}</p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              
-              {/* New Customer Form */}
-              {showNewCustomerForm && (
-                <div className="border rounded-lg p-4 space-y-3 bg-blue-50">
-                  <h4 className="font-medium text-blue-900">إنشاء عميل جديد</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="newCustomerName" className="text-sm">الاسم *</Label>
-                      <Input
-                        id="newCustomerName"
-                        value={newCustomer.name}
-                        onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
-                        placeholder="اسم العميل"
-                        className="bg-white"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="newCustomerEmail" className="text-sm">البريد الإلكتروني *</Label>
-                      <Input
-                        id="newCustomerEmail"
-                        type="email"
-                        value={newCustomer.email}
-                        onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
-                        placeholder="example@email.com"
-                        className="bg-white"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="newCustomerPhone" className="text-sm">رقم الهاتف</Label>
-                      <Input
-                        id="newCustomerPhone"
-                        value={newCustomer.phone}
-                        onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
-                        placeholder="+20 1xx xxx xxxx"
-                        className="bg-white"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="newCustomerCompany" className="text-sm">الشركة</Label>
-                      <Input
-                        id="newCustomerCompany"
-                        value={newCustomer.company}
-                        onChange={(e) => setNewCustomer({...newCustomer, company: e.target.value})}
-                        placeholder="اسم الشركة (اختياري)"
-                        className="bg-white"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={createNewCustomer}
-                      disabled={isCreatingCustomer}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isCreatingCustomer ? 'جاري الإنشاء...' : 'إنشاء العميل'}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setShowNewCustomerForm(false)
-                        setNewCustomer({ name: '', email: '', phone: '', company: '' })
-                      }}
-                    >
-                      إلغاء
-                    </Button>
-                  </div>
-                </div>
-              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -533,29 +366,25 @@ function CreateInvoiceContent() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Quick Add Service Items */}
-              {serviceItems.length > 0 && (
-                <div>
-                  <Label className="text-sm text-gray-600">إضافة خدمة سريعة</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                    {serviceItems.slice(0, 4).map((serviceItem) => (
-                      <Button
-                        key={serviceItem.id}
-                        variant="outline"
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => addServiceItem(serviceItem)}
-                      >
-                        <div className="text-right">
-                          <p className="font-medium">{serviceItem.name || serviceItem.title}</p>
-                          <p className="text-xs text-gray-500">
-                            {serviceItem.price ? `${serviceItem.price} ج.م` : 'سعر عند الطلب'}
-                          </p>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
+              <div>
+                <Label className="text-sm text-gray-600">إضافة خدمة سريعة</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  {serviceItems.slice(0, 4).map((serviceItem) => (
+                    <Button
+                      key={serviceItem.id}
+                      variant="outline"
+                      size="sm"
+                      className="justify-start"
+                      onClick={() => addServiceItem(serviceItem)}
+                    >
+                      <div className="text-right">
+                        <p className="font-medium">{serviceItem.name}</p>
+                        <p className="text-xs text-gray-500">{serviceItem.price} ج.م</p>
+                      </div>
+                    </Button>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Items Table */}
               <div className="space-y-4">
@@ -631,14 +460,14 @@ function CreateInvoiceContent() {
                       <div>
                         <Label className="text-sm">المجموع</Label>
                         <div className="p-2 bg-gray-50 rounded font-medium">
-                          {(item.totalPrice || 0).toFixed(2)} ج.م
+                          {item.totalPrice.toFixed(2)} ج.م
                         </div>
                       </div>
                       
                       <div>
                         <Label className="text-sm">الضريبة</Label>
                         <div className="p-2 bg-gray-50 rounded font-medium">
-                          {(item.taxAmount || 0).toFixed(2)} ج.م
+                          {item.taxAmount.toFixed(2)} ج.م
                         </div>
                       </div>
                     </div>
@@ -702,16 +531,16 @@ function CreateInvoiceContent() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">الإجمالي الفرعي:</span>
-                  <span className="font-medium">{(subtotal || 0).toFixed(2)} ج.م</span>
+                  <span className="font-medium">{subtotal.toFixed(2)} ج.م</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">الضريبة:</span>
-                  <span className="font-medium">{(taxAmount || 0).toFixed(2)} ج.م</span>
+                  <span className="font-medium">{taxAmount.toFixed(2)} ج.م</span>
                 </div>
                 <div className="border-t pt-2">
                   <div className="flex justify-between text-lg font-bold">
                     <span>الإجمالي:</span>
-                    <span className="text-blue-600">{(totalAmount || 0).toFixed(2)} ج.م</span>
+                    <span className="text-blue-600">{totalAmount.toFixed(2)} ج.م</span>
                   </div>
                 </div>
               </div>

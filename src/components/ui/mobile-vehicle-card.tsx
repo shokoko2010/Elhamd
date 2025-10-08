@@ -18,7 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { SimpleImage } from '@/components/ui/SimpleImage'
+import { OptimizedImage } from '@/components/ui/OptimizedImage'
 import { EnhancedLoadingIndicator } from '@/components/ui/enhanced-loading'
 import Link from 'next/link'
 
@@ -95,7 +95,7 @@ export function MobileVehicleCard({
         <CardContent className="p-0 h-full">
           {/* Compact Image Section */}
           <div className="relative h-32">
-            <SimpleImage
+            <OptimizedImage
               src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
               alt={`${vehicle.make} ${vehicle.model}`}
               fill
@@ -198,7 +198,7 @@ export function MobileVehicleCard({
       <CardContent className="p-0 h-full">
         {/* Image Section */}
         <div className="relative h-48">
-          <SimpleImage
+          <OptimizedImage
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
             alt={`${vehicle.make} ${vehicle.model}`}
             fill
@@ -363,7 +363,7 @@ export function MobileVehicleCard({
               
               <div className="space-y-3">
                 <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                  <SimpleImage
+                  <OptimizedImage
                     src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
                     alt={`${vehicle.make} ${vehicle.model}`}
                     fill
@@ -496,7 +496,7 @@ export function MobileComparisonCard({
     } ${className}`}>
       <CardContent className="p-0">
         <div className="relative h-32">
-          <SimpleImage
+          <OptimizedImage
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
             alt={`${vehicle.make} ${vehicle.model}`}
             fill
