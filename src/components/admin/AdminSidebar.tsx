@@ -146,6 +146,11 @@ const sidebarItems = [
         icon: DollarSign,
       },
       {
+        title: 'الفواتير',
+        href: '/admin/invoices/dashboard',
+        icon: FileText,
+      },
+      {
         title: 'المدفوعات',
         href: '/admin/payments',
         icon: CreditCard,
