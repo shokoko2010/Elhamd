@@ -21,32 +21,38 @@ export function AdminRoute({
   requiredPermissions = [],
   redirectTo = '/login' 
 }: AdminRouteProps) {
-  const { user, loading, authenticated, hasAnyRole, hasAnyPermission } = useAuth()
+  const { user, isLoading, isAuthenticated, hasAnyPermission, hasAllPermissions } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading) {
+    if (!isLoading) {
       // Check if user is authenticated
-      if (!authenticated || !user) {
+      if (!isAuthenticated || !user) {
         router.push(redirectTo)
         return
       }
 
       // Check if user has required role
-      if (!hasAnyRole(requiredRoles)) {
+      if (!requiredRoles.includes(user.role)) {
         router.push('/')
         return
       }
 
       // Check if user has required permissions (if specified)
-      if (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any)) {
-        router.push('/')
-        return
+      if (requiredPermissions.length > 0) {
+        const hasRequired = requiredPermissions.length === 1 
+          ? hasAnyPermission(requiredPermissions)
+          : hasAllPermissions(requiredPermissions)
+        
+        if (!hasRequired) {
+          router.push('/')
+          return
+        }
       }
     }
-  }, [user, loading, authenticated, requiredRoles, requiredPermissions, redirectTo, router, hasAnyRole, hasAnyPermission])
+  }, [user, isLoading, isAuthenticated, requiredRoles, requiredPermissions, redirectTo, router, hasAnyPermission, hasAllPermissions])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -57,8 +63,8 @@ export function AdminRoute({
     )
   }
 
-  if (!authenticated || !user || !hasAnyRole(requiredRoles) || 
-      (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any))) {
+  if (!isAuthenticated || !user || !requiredRoles.includes(user.role) || 
+      (requiredPermissions.length > 0 && !hasAllPermissions(requiredPermissions))) {
     return null // Will redirect in useEffect
   }
 
