@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -16,8 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has permission to view cars
-    // User already available from requireUnifiedAuth
-
+    
     if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
@@ -109,8 +107,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // User already available from requireUnifiedAuth
-
+    
     if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }

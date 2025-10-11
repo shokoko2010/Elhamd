@@ -3,19 +3,18 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireUnifiedAuth(request)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to access promotions
-    if (session.session.user.role !== 'ADMIN' && session.session.user.role !== 'SUPER_ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -66,13 +65,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await requireUnifiedAuth(request)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to create promotions
-    if (session.session.user.role !== 'ADMIN' && session.session.user.role !== 'SUPER_ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -124,7 +123,7 @@ export async function POST(request: NextRequest) {
         usageLimit: parseInt(usageLimit),
         usedCount: 0,
         active,
-        createdBy: session.session.session.user.id
+        createdBy: user.id
       }
     })
 

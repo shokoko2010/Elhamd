@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function POST(
@@ -18,8 +17,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // User already available from requireUnifiedAuth
-
+    
     if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }

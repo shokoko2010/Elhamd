@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function PUT(
@@ -19,9 +18,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // User already available from requireUnifiedAuth
-
-    if (!user || (session.user.role !== 'STAFF' && session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+    
+    if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -95,14 +93,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // User already available from requireUnifiedAuth
-
-    if (!user || (session.user.role !== 'STAFF' && session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+    
+    if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     // Don't allow deleting the current user
-    if (id === session.session.user.id) {
+    if (id === user.id) {
       return NextResponse.json(
         { error: 'Cannot delete your own account' },
         { status: 400 }

@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 interface CommerceSettings {
@@ -124,13 +123,13 @@ const defaultSettings: CommerceSettings = {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireUnifiedAuth(request)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to access commerce settings
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -155,13 +154,13 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await requireUnifiedAuth(request)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to update commerce settings
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
