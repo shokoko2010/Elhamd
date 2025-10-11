@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if code already exists
-    const existingPromotion = await db.promotion.findUnique({
+    const existingPromotion = await db.promotion.findFirst({
       where: { code }
     })
 

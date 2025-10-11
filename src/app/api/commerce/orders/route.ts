@@ -43,29 +43,7 @@ export async function GET(request: NextRequest) {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  price: true
-                }
-              }
-            }
-          },
-          payments: true
-        }
+        orderBy: { createdAt: 'desc' }
       }),
       db.order.count({ where })
     ])
@@ -113,13 +91,14 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals
     const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
-    const taxAmount = subtotal * (settings.ecommerce?.taxRate || 0) / 100
-    const shippingAmount = subtotal >= (settings.ecommerce?.freeShippingThreshold || 0) ? 0 : (settings.ecommerce?.shippingFee || 0)
+    const settingsObj = settings as any
+    const taxAmount = subtotal * (settingsObj.ecommerce?.taxRate || 0) / 100
+    const shippingAmount = subtotal >= (settingsObj.ecommerce?.freeShippingThreshold || 0) ? 0 : (settingsObj.ecommerce?.shippingFee || 0)
     const total = subtotal + taxAmount + shippingAmount
 
     // Generate order number
-    const orderNumber = settings.orders?.autoGenerateNumber 
-      ? `${settings.orders?.numberPrefix || 'ORD-'}${Date.now()}`
+    const orderNumber = settingsObj.orders?.autoGenerateNumber 
+      ? `${settingsObj.orders?.numberPrefix || 'ORD-'}${Date.now()}`
       : `ORD-${Date.now()}`
 
     // Create order
@@ -127,7 +106,7 @@ export async function POST(request: NextRequest) {
       data: {
         orderNumber,
         customerId,
-        status: settings.ecommerce?.requireApproval ? 'pending' : 'confirmed',
+        status: settingsObj.ecommerce?.requireApproval ? 'PENDING' : 'CONFIRMED',
         subtotal,
         taxAmount,
         shippingAmount,
@@ -136,38 +115,22 @@ export async function POST(request: NextRequest) {
         billingAddress: billingAddress || shippingAddress,
         paymentMethod,
         notes,
-        createdBy: user.id,
-        items: {
-          create: items.map((item: any) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            totalPrice: item.price * item.quantity
-          }))
-        }
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                price: true
-              }
-            }
-          }
-        }
+        createdBy: user.id
       }
     })
+
+    // Create order items
+    for (const item of items) {
+      await db.orderItem.create({
+        data: {
+          orderId: order.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.price * item.quantity
+        }
+      })
+    }
 
     // Update product quantities
     for (const item of items) {

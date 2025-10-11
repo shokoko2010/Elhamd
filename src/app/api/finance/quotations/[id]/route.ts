@@ -12,16 +12,11 @@ export async function GET(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     const user = await getAuthUser()
     
-    if (!authenticatedUser) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.session.user.findUnique({
-      where: { id: user.id },
-      include: { role: true }
-    })
-
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -53,7 +48,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
 
     // Check branch permissions
-    if (user.role.name === UserRole.BRANCH_MANAGER && session.user.branchId && quotation.customer.branchId !== session.user.branchId) {
+    if (user.role === UserRole.BRANCH_MANAGER && user.branchId && quotation.customer.branchId !== user.branchId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
@@ -72,16 +67,11 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     const user = await getAuthUser()
     
-    if (!authenticatedUser) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.session.user.findUnique({
-      where: { id: user.id },
-      include: { role: true }
-    })
-
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -101,7 +91,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     // Check branch permissions
-    if (user.role.name === UserRole.BRANCH_MANAGER && session.user.branchId && existingQuotation.customer.branchId !== session.user.branchId) {
+    if (user.role === UserRole.BRANCH_MANAGER && user.branchId && existingQuotation.customer.branchId !== user.branchId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
@@ -188,16 +178,11 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     const user = await getAuthUser()
     
-    if (!authenticatedUser) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.session.user.findUnique({
-      where: { id: user.id },
-      include: { role: true }
-    })
-
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

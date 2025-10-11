@@ -51,10 +51,7 @@ export async function GET(request: NextRequest) {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          images: true
-        }
+        orderBy: { createdAt: 'desc' }
       }),
       db.product.count({ where })
     ])
@@ -117,9 +114,6 @@ export async function POST(request: NextRequest) {
         featured: featured || false,
         status,
         createdBy: user.id
-      },
-      include: {
-        images: true
       }
     })
 
