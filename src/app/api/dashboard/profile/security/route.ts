@@ -3,22 +3,23 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
     if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userId = user.id
+    const userId = session.session.user.id
     const { twoFactorEnabled, loginNotifications, emailNotifications } = await request.json()
 
     // Get current security settings
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.session.user.findUnique({
       where: { id: userId },
       select: { securitySettings: true }
     })
@@ -37,7 +38,7 @@ export async function PUT(request: NextRequest) {
       updatedAt: new Date().toISOString()
     }
 
-    const updatedUser = await db.user.update({
+    const updatedUser = await db.session.user.update({
       where: { id: userId },
       data: {
         securitySettings: updatedSettings

@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
     
     // Validate input data
     const validation = validationUtils.validateWithDetails(bookingSchemas.testDrive, sanitizedBody)
-    if (!validation.success) {
+    if (!validation.success || !validation.data) {
       return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: validation.errors },
+        { error: 'بيانات غير صالحة', details: validation.errors || ['Invalid data'] },
         { status: 400 }
       )
     }
@@ -93,14 +93,11 @@ export async function POST(request: NextRequest) {
       customerName: booking.customer.name,
       customerEmail: booking.customer.email,
       bookingType: 'test-drive',
-      vehicle: {
-        make: booking.vehicle.make,
-        model: booking.vehicle.model,
-        year: booking.vehicle.year
-      },
+      vehicleInfo: booking.vehicle ? 
+        `${booking.vehicle.make} ${booking.vehicle.model} (${booking.vehicle.year})` : 
+        undefined,
       date: format(new Date(date), 'PPP', { locale: ar }),
-      timeSlot,
-      bookingId: booking.id
+      time: timeSlot
     })
 
     // Send notification to admin
@@ -108,14 +105,11 @@ export async function POST(request: NextRequest) {
       customerName: booking.customer.name,
       customerEmail: booking.customer.email,
       bookingType: 'test-drive',
-      vehicle: {
-        make: booking.vehicle.make,
-        model: booking.vehicle.model,
-        year: booking.vehicle.year
-      },
+      vehicleInfo: booking.vehicle ? 
+        `${booking.vehicle.make} ${booking.vehicle.model} (${booking.vehicle.year})` : 
+        undefined,
       date: format(new Date(date), 'PPP', { locale: ar }),
-      timeSlot,
-      bookingId: booking.id
+      time: timeSlot
     })
 
     // Create response with security headers
@@ -130,11 +124,11 @@ export async function POST(request: NextRequest) {
           email: booking.customer.email,
           phone: booking.customer.phone
         },
-        vehicle: {
+        vehicle: booking.vehicle ? {
           make: booking.vehicle.make,
           model: booking.vehicle.model,
           year: booking.vehicle.year
-        }
+        } : null
       }
     }, { status: 201 })
 

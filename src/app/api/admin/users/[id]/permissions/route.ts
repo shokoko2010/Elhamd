@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { getServerSession } from 'next-auth';
+import { authOptions, getAuthUser } from '@/lib/auth';
 import { PermissionService } from '@/lib/permissions'
 
 export async function PUT(request: NextRequest, context: RouteParams) {

@@ -48,19 +48,7 @@ export async function GET(request: NextRequest) {
           isActive: true,
           lastLoginAt: true,
           createdAt: true,
-          updatedAt: true,
-          _count: {
-            select: {
-              testDriveBookings: true,
-              serviceBookings: true,
-              permissions: true
-            }
-          },
-          permissions: {
-            include: {
-              permission: true
-            }
-          }
+          updatedAt: true
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -70,11 +58,26 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate additional fields for the frontend
-    const usersWithStats = users.map(user => ({
-      ...user,
-      totalBookings: (user._count.testDriveBookings || 0) + (user._count.serviceBookings || 0),
-      totalSpent: 0 // TODO: Calculate from bookings/invoices when implemented
-    }))
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const [testDriveCount, serviceCount, permissionCount] = await Promise.all([
+          db.testDriveBooking.count({ where: { customerId: user.id } }),
+          db.serviceBooking.count({ where: { customerId: user.id } }),
+          db.userPermission.count({ where: { userId: user.id } })
+        ])
+
+        return {
+          ...user,
+          _count: {
+            testDriveBookings: testDriveCount,
+            serviceBookings: serviceCount,
+            permissions: permissionCount
+          },
+          totalBookings: testDriveCount + serviceCount,
+          totalSpent: 0 // TODO: Calculate from bookings/invoices when implemented
+        }
+      })
+    )
 
     return NextResponse.json({
       users: usersWithStats,

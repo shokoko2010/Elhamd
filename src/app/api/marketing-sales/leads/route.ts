@@ -3,15 +3,16 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { LeadSource, LeadStatus, LeadPriority } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -100,9 +101,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
         priority,
         estimatedValue,
         assignedTo,
-        assignedBy: user.id,
+        assignedBy: session.session.user.id,
         assignedAt: assignedTo ? new Date() : null,
         branchId,
         tags,
@@ -207,7 +208,7 @@ export async function POST(request: NextRequest) {
         type: 'NOTE',
         title: 'تم إنشاء العميل المحتمل',
         description: `تم إنشاء العميل المحتمال ${lead.firstName} ${lead.lastName || ''}`,
-        performedBy: user.id,
+        performedBy: session.session.user.id,
         metadata: {
           leadNumber: lead.leadNumber,
           source: lead.source,

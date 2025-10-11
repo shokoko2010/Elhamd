@@ -3,12 +3,14 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { authorize, UserRole } from '@/lib/unified-auth';
-
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] })
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER', 'STAFF'].includes(user.role as any)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branchId');
@@ -37,31 +39,8 @@ export async function GET(request: NextRequest) {
 
     const budgets = await db.branchBudget.findMany({
       where,
-      include: {
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
       orderBy: [
-        { branch: { name: 'asc' } },
+        { branchId: 'asc' },
         { year: 'desc' },
         { quarter: 'asc' },
         { month: 'asc' },
@@ -69,7 +48,28 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    return NextResponse.json(budgets);
+    // Fetch related data separately
+    const budgetsWithRelations = await Promise.all(
+      budgets.map(async (budget) => {
+        const [branch, creator, approver] = await Promise.all([
+          db.branch.findUnique({ 
+            where: { id: budget.branchId },
+            select: { id: true, name: true, code: true }
+          }),
+          db.user.findUnique({ 
+            where: { id: budget.createdBy },
+            select: { id: true, name: true, email: true }
+          }),
+          budget.approvedBy ? db.user.findUnique({ 
+            where: { id: budget.approvedBy },
+            select: { id: true, name: true, email: true }
+          }) : null
+        ]);
+        return { ...budget, branch, creator, approver };
+      })
+    );
+
+    return NextResponse.json(budgetsWithRelations);
   } catch (error) {
     console.error('Error fetching branch budgets:', error);
     return NextResponse.json(
@@ -81,9 +81,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] })
-
-    const user = auth.user
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER'].includes(user.role as any)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
 
     const body = await request.json();
     const {
@@ -106,15 +107,12 @@ export async function POST(request: NextRequest) {
     }
 
     // التحقق من صلاحية المستخدم في الفرع
-    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.ADMIN) {
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
       const userPermission = await db.branchPermission.findFirst({
         where: {
           userId: user.id,
           branchId,
-          permissions: {
-            path: '$',
-            array_contains: 'MANAGE_BUDGETS',
-          },
+          isActive: true,
         },
       });
 
@@ -164,25 +162,23 @@ export async function POST(request: NextRequest) {
         createdBy: user.id,
         status: 'ACTIVE',
       },
-      include: {
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
     });
 
-    return NextResponse.json(budget, { status: 201 });
+    // Fetch related data separately
+    const [branchData, creatorData] = await Promise.all([
+      db.branch.findUnique({ 
+        where: { id: budget.branchId },
+        select: { id: true, name: true, code: true }
+      }),
+      db.user.findUnique({ 
+        where: { id: budget.createdBy },
+        select: { id: true, name: true, email: true }
+      })
+    ]);
+
+    const budgetWithRelations = { ...budget, branch: branchData, creator: creatorData };
+
+    return NextResponse.json(budgetWithRelations, { status: 201 });
   } catch (error) {
     console.error('Error creating branch budget:', error);
     return NextResponse.json(

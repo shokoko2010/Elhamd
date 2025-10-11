@@ -361,7 +361,6 @@ export default function Home() {
                     <MobileVehicleCard
                       key={vehicle.id}
                       vehicle={vehicle}
-                      formatPrice={formatPrice}
                     />
                   ))}
                 </div>

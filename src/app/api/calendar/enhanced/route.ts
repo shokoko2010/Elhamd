@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getAuthUser } from '@/lib/auth';
 import { CalendarService } from '@/lib/calendar-service'
 import { z } from 'zod'
 
@@ -24,13 +24,13 @@ const calendarSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const user = await requireUnifiedAuth(request)
+    const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to view calendar
-    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role)) {
+    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role as any)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -93,13 +93,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const user = await requireUnifiedAuth(request)
+    const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to manage calendar
-    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role)) {
+    if (!['ADMIN', 'STAFF', 'MANAGER'].includes(user.role as any)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

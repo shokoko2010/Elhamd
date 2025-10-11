@@ -87,11 +87,16 @@ function PermissionsContent() {
   const [userPermissions, setUserPermissions] = useState<Permission[]>([])
   
   // Form state for template permissions
-  const [templateForm, setTemplateForm] = useState({
+  const [templateForm, setTemplateForm] = useState<{
+    name: string
+    description: string
+    role: UserRole
+    permissions: Permission[]
+  }>({
     name: '',
     description: '',
     role: UserRole.STAFF,
-    permissions: [] as Permission[]
+    permissions: []
   })
 
   // Permission groups for better organization

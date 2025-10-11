@@ -3,62 +3,57 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
+    const { id } = await context.params
+    const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
     const transfer = await db.branchTransfer.findUnique({
       where: { id },
-      include: {
-        fromBranch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            currency: true,
-          },
-        },
-        toBranch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            currency: true,
-          },
-        },
-        requester: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
     });
 
     if (!transfer) {
       return NextResponse.json({ error: 'التحويل غير موجود' }, { status: 404 });
     }
 
-    return NextResponse.json(transfer);
+    // Fetch related data separately
+    const [fromBranch, toBranch, requester, approver] = await Promise.all([
+      db.branch.findUnique({
+        where: { id: transfer.fromBranchId },
+        select: { id: true, name: true, code: true, currency: true }
+      }),
+      db.branch.findUnique({
+        where: { id: transfer.toBranchId },
+        select: { id: true, name: true, code: true, currency: true }
+      }),
+      db.user.findUnique({
+        where: { id: transfer.requestedBy },
+        select: { id: true, name: true, email: true, role: true }
+      }),
+      transfer.approvedBy ? db.user.findUnique({
+        where: { id: transfer.approvedBy },
+        select: { id: true, name: true, email: true, role: true }
+      }) : null
+    ]);
+
+    const transferWithRelations = { 
+      ...transfer, 
+      fromBranch, 
+      toBranch, 
+      requester, 
+      approver 
+    };
+
+    return NextResponse.json(transferWithRelations);
   } catch (error) {
     console.error('Error fetching branch transfer:', error);
     return NextResponse.json(
@@ -73,8 +68,9 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
+    const { id } = await context.params
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -84,10 +80,6 @@ export async function PUT(
     // التحقق من وجود التحويل
     const transfer = await db.branchTransfer.findUnique({
       where: { id },
-      include: {
-        fromBranch: true,
-        toBranch: true,
-      },
     });
 
     if (!transfer) {
@@ -95,7 +87,7 @@ export async function PUT(
     }
 
     // التحقق من حالة التحويل
-    if (transfer.status !== 'PENDING') {
+    if (transfer.status !== 'PENDING' as any) {
       return NextResponse.json(
         { error: 'لا يمكن تعديل تحويل تمت معالجته بالفعل' },
         { status: 400 }
@@ -108,15 +100,12 @@ export async function PUT(
     switch (action) {
       case 'approve':
         // التحقق من صلاحية الموافقة
-        if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
+        if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
           const hasPermission = await db.branchPermission.findFirst({
             where: {
               userId: user.id,
               branchId: transfer.toBranchId,
-              permissions: {
-                path: '$',
-                array_contains: 'APPROVE_TRANSFERS',
-              },
+              isActive: true,
             },
           });
 
@@ -135,37 +124,13 @@ export async function PUT(
             approvedBy: user.id,
             approvedAt: now,
           },
-          include: {
-            fromBranch: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-            toBranch: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-            requester: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            approver: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
         });
+
+        // Fetch branch names for transaction descriptions
+        const [fromBranch, toBranch] = await Promise.all([
+          db.branch.findUnique({ where: { id: transfer.fromBranchId }, select: { name: true } }),
+          db.branch.findUnique({ where: { id: transfer.toBranchId }, select: { name: true } })
+        ]);
 
         // إنشاء معاملات مالية للتحويل
         await Promise.all([
@@ -177,7 +142,7 @@ export async function PUT(
               category: 'TRANSFER_OUT',
               amount: transfer.amount,
               currency: transfer.currency,
-              description: `تحويل خارجي إلى ${transfer.toBranch.name}`,
+              description: `تحويل خارجي إلى ${toBranch?.name || 'فرع آخر'}`,
               date: now,
               paymentMethod: 'BANK_TRANSFER',
               metadata: {
@@ -194,7 +159,7 @@ export async function PUT(
               category: 'TRANSFER_IN',
               amount: transfer.amount,
               currency: transfer.currency,
-              description: `تحويل وارد من ${transfer.fromBranch.name}`,
+              description: `تحويل وارد من ${fromBranch?.name || 'فرع آخر'}`,
               date: now,
               paymentMethod: 'BANK_TRANSFER',
               metadata: {
@@ -208,15 +173,12 @@ export async function PUT(
 
       case 'reject':
         // التحقق من صلاحية الرفض
-        if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
+        if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
           const hasPermission = await db.branchPermission.findFirst({
             where: {
               userId: user.id,
               branchId: transfer.fromBranchId,
-              permissions: {
-                path: '$',
-                array_contains: 'REJECT_TRANSFERS',
-              },
+              isActive: true,
             },
           });
 
@@ -237,50 +199,17 @@ export async function PUT(
             rejectedAt: now,
             rejectionReason,
           },
-          include: {
-            fromBranch: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-            toBranch: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-            requester: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            approver: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
         });
         break;
 
       case 'complete':
         // التحقق من صلاحية الإكمال
-        if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
+        if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
           const hasPermission = await db.branchPermission.findFirst({
             where: {
               userId: user.id,
               branchId: transfer.toBranchId,
-              permissions: {
-                path: '$',
-                array_contains: 'COMPLETE_TRANSFERS',
-              },
+              isActive: true,
             },
           });
 
@@ -292,7 +221,7 @@ export async function PUT(
           }
         }
 
-        if (transfer.status !== 'APPROVED') {
+        if (transfer.status !== 'APPROVED' as any) {
           return NextResponse.json(
             { error: 'لا يمكن إكمال تحويل غير معتمد' },
             { status: 400 }
@@ -305,36 +234,6 @@ export async function PUT(
             status: 'COMPLETED',
             completedAt: now,
           },
-          include: {
-            fromBranch: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-            toBranch: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-            requester: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            approver: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
         });
         break;
 
@@ -342,7 +241,35 @@ export async function PUT(
         return NextResponse.json({ error: 'إجراء غير صالح' }, { status: 400 });
     }
 
-    return NextResponse.json(updatedTransfer);
+    // Fetch related data for the response
+    const [fromBranch, toBranch, requester, approver] = await Promise.all([
+      db.branch.findUnique({
+        where: { id: updatedTransfer.fromBranchId },
+        select: { id: true, name: true, code: true, currency: true }
+      }),
+      db.branch.findUnique({
+        where: { id: updatedTransfer.toBranchId },
+        select: { id: true, name: true, code: true, currency: true }
+      }),
+      db.user.findUnique({
+        where: { id: updatedTransfer.requestedBy },
+        select: { id: true, name: true, email: true, role: true }
+      }),
+      updatedTransfer.approvedBy ? db.user.findUnique({
+        where: { id: updatedTransfer.approvedBy },
+        select: { id: true, name: true, email: true, role: true }
+      }) : null
+    ]);
+
+    const transferWithRelations = { 
+      ...updatedTransfer, 
+      fromBranch, 
+      toBranch, 
+      requester, 
+      approver 
+    };
+
+    return NextResponse.json(transferWithRelations);
   } catch (error) {
     console.error('Error updating branch transfer:', error);
     return NextResponse.json(
@@ -357,8 +284,9 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    const { id } = await context.params
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -372,7 +300,7 @@ export async function DELETE(
     }
 
     // التحقق من حالة التحويل
-    if (transfer.status !== 'PENDING') {
+    if (transfer.status !== 'PENDING' as any) {
       return NextResponse.json(
         { error: 'لا يمكن حذف تحويل تمت معالجته بالفعل' },
         { status: 400 }

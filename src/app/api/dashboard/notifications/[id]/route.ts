@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function DELETE(
@@ -11,14 +12,14 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
     if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const notificationId = id
-    const userId = user.id
+    const userId = session.session.user.id
 
     // Check if notification belongs to user
     const notification = await db.notification.findFirst({
@@ -26,7 +27,7 @@ export async function DELETE(
         id: notificationId,
         OR: [
           { userId: userId },
-          { recipient: session.user.email! }
+          { recipient: session.session.user.email! }
         ]
       }
     })

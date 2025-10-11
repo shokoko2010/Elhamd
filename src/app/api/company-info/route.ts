@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -47,9 +48,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -57,8 +58,8 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if user is admin
-    const adminUser = await db.user.findUnique({
-      where: { id: user.id }
+    const adminUser = await db.session.user.findUnique({
+      where: { id: session.session.user.id }
     })
 
     if (!adminUser || adminUser.role !== 'ADMIN') {

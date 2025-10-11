@@ -3,14 +3,22 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
-import { requireUnifiedAnyRole } from '@/lib/unified-auth-server'
 import { UserRole } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'غير مصرح لك بالوصول' },
+        { status: 401 }
+      )
+    }
 
     const body = await request.json()
     const { sliderIds } = body

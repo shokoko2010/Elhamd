@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has permission to access promotions
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+    if (session.session.user.role !== 'ADMIN' && session.session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has permission to create promotions
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+    if (session.session.user.role !== 'ADMIN' && session.session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
         usageLimit: parseInt(usageLimit),
         usedCount: 0,
         active,
-        createdBy: session.user.id
+        createdBy: session.session.session.user.id
       }
     })
 

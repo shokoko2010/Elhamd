@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
@@ -15,12 +16,12 @@ export async function POST(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.user.findUnique({
+    const user = await db.session.user.findUnique({
       where: { id: authenticatedUser.id },
       include: { role: true }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(session.user.role.name as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
     }
 
     // Check branch permissions
-    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId && quotation.customer.branchId !== user.branchId) {
+    if (session.user.role.name === UserRole.BRANCH_MANAGER && session.user.branchId && quotation.customer.branchId !== session.user.branchId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
         currency: quotation.currency,
         notes: quotation.notes,
         terms: quotation.terms,
-        createdById: user.id,
+        createdById: session.session.user.id,
         items: {
           create: quotation.items.map(item => ({
             description: item.description,
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
         action: 'CONVERT_QUOTATION_TO_INVOICE',
         entityType: 'QUOTATION',
         entityId: id,
-        userId: user.id,
+        userId: session.session.user.id,
         details: {
           quotationNumber: quotation.quotationNumber,
           invoiceNumber: invoice.invoiceNumber,
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
         action: 'CREATE_INVOICE_FROM_QUOTATION',
         entityType: 'INVOICE',
         entityId: invoice.id,
-        userId: user.id,
+        userId: session.session.user.id,
         details: {
           invoiceNumber: invoice.invoiceNumber,
           quotationNumber: quotation.quotationNumber,

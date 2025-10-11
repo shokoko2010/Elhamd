@@ -3,8 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
-import { getApiUser } from '@/lib/api-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       }
       
       // Fetch user profile from database using API user
-      const userProfile = await db.user.findUnique({
+      const userProfile = await db.session.user.findUnique({
         where: { id: apiUser.id }
       })
 
@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch user profile from database
-    const userProfile = await db.user.findUnique({
-      where: { id: user.id }
+    const userProfile = await db.session.user.findUnique({
+      where: { id: session.session.user.id }
     })
 
     if (!userProfile) {
@@ -112,8 +112,8 @@ export async function PUT(request: NextRequest) {
     const { name, email, phone } = await request.json()
     
     // Update user profile
-    const updatedUser = await db.user.update({
-      where: { id: user.id },
+    const updatedUser = await db.session.user.update({
+      where: { id: session.session.user.id },
       data: {
         ...(name && { name }),
         ...(email && { email }),

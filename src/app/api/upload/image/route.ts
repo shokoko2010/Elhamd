@@ -3,9 +3,9 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { ImageOptimizationService } from '@/lib/image-optimization'
-import { getAuthUser } from '@/lib/auth-server'
-
 export async function POST(request: NextRequest) {
   try {
     // Check authentication

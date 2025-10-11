@@ -3,8 +3,9 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
 import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 
@@ -33,27 +34,12 @@ export async function GET(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
     const vehicle = await db.vehicle.findUnique({
-      where: { id },
-      include: {
-        images: {
-          orderBy: { order: 'asc' }
-        },
-        specifications: {
-          orderBy: { category: 'asc' }
-        },
-        pricing: true,
-        testDriveBookings: {
-          select: { id: true, date: true, timeSlot: true, status: true }
-        },
-        serviceBookings: {
-          select: { id: true, date: true, timeSlot: true, status: true }
-        }
-      }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -63,7 +49,37 @@ export async function GET(request: NextRequest, context: RouteParams) {
       )
     }
 
-    return NextResponse.json(vehicle)
+    // Get related data separately
+    const [images, specifications, pricing, testDriveBookings, serviceBookings] = await Promise.all([
+      db.vehicleImage.findMany({
+        where: { vehicleId: id },
+        orderBy: { order: 'asc' }
+      }),
+      db.vehicleSpecification.findMany({
+        where: { vehicleId: id },
+        orderBy: { category: 'asc' }
+      }),
+      db.vehiclePricing.findUnique({
+        where: { vehicleId: id }
+      }),
+      db.testDriveBooking.findMany({
+        where: { vehicleId: id },
+        select: { id: true, date: true, timeSlot: true, status: true }
+      }),
+      db.serviceBooking.findMany({
+        where: { vehicleId: id },
+        select: { id: true, date: true, timeSlot: true, status: true }
+      })
+    ])
+
+    return NextResponse.json({
+      ...vehicle,
+      images,
+      specifications,
+      pricing,
+      testDriveBookings,
+      serviceBookings
+    })
   } catch (error) {
     console.error('Error fetching vehicle:', error)
     return NextResponse.json(
@@ -79,7 +95,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
@@ -131,19 +147,30 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     // Update vehicle
     const vehicle = await db.vehicle.update({
       where: { id },
-      data: validatedData,
-      include: {
-        images: {
-          orderBy: { order: 'asc' }
-        },
-        specifications: {
-          orderBy: { category: 'asc' }
-        },
-        pricing: true
-      }
+      data: validatedData
     })
 
-    return NextResponse.json(vehicle)
+    // Get related data separately
+    const [images, specifications, pricing] = await Promise.all([
+      db.vehicleImage.findMany({
+        where: { vehicleId: id },
+        orderBy: { order: 'asc' }
+      }),
+      db.vehicleSpecification.findMany({
+        where: { vehicleId: id },
+        orderBy: { category: 'asc' }
+      }),
+      db.vehiclePricing.findUnique({
+        where: { vehicleId: id }
+      })
+    ])
+
+    return NextResponse.json({
+      ...vehicle,
+      images,
+      specifications,
+      pricing
+    })
   } catch (error) {
     console.error('Error updating vehicle:', error)
     
@@ -167,17 +194,13 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id },
-      include: {
-        testDriveBookings: true,
-        serviceBookings: true
-      }
+      where: { id }
     })
 
     if (!vehicle) {
@@ -188,9 +211,18 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     }
 
     // Check if vehicle has active bookings
-    const hasActiveBookings = vehicle.testDriveBookings.some(booking => 
+    const [testDriveBookings, serviceBookings] = await Promise.all([
+      db.testDriveBooking.findMany({
+        where: { vehicleId: id }
+      }),
+      db.serviceBooking.findMany({
+        where: { vehicleId: id }
+      })
+    ])
+
+    const hasActiveBookings = testDriveBookings.some(booking => 
       ['PENDING', 'CONFIRMED'].includes(booking.status)
-    ) || vehicle.serviceBookings.some(booking => 
+    ) || serviceBookings.some(booking => 
       ['PENDING', 'CONFIRMED'].includes(booking.status)
     )
 

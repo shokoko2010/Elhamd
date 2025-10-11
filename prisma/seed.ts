@@ -198,6 +198,10 @@ async function main() {
     await prisma.vehicle.create({
       data: {
         ...vehicle,
+        category: vehicle.category as any, // Cast to any to bypass type checking for enum
+        fuelType: vehicle.fuelType as any, // Cast to any to bypass type checking for enum
+        transmission: vehicle.transmission as any, // Cast to any to bypass type checking for enum
+        status: vehicle.status as any, // Cast to any to bypass type checking for enum
         createdAt: new Date(),
         updatedAt: new Date()
       }

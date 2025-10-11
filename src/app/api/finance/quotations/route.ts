@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
@@ -15,12 +16,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.user.findUnique({
+    const user = await db.session.user.findUnique({
       where: { id: authUser.id },
       include: { role: true }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(session.user.role.name as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -61,9 +62,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Add branch filter for branch managers
-    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId) {
+    if (session.user.role.name === UserRole.BRANCH_MANAGER && session.user.branchId) {
       where.customer = {
-        branchId: user.branchId
+        branchId: session.user.branchId
       }
     }
 
@@ -122,12 +123,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.user.findUnique({
+    const user = await db.session.user.findUnique({
       where: { id: authUser.id },
       include: { role: true }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(session.user.role.name as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check branch permissions
-    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId && customer.branchId !== user.branchId) {
+    if (session.user.role.name === UserRole.BRANCH_MANAGER && session.user.branchId && customer.branchId !== session.user.branchId) {
       return NextResponse.json({ error: 'Cannot create quotation for customer from different branch' }, { status: 403 })
     }
 
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest) {
         currency: 'EGP',
         notes,
         terms,
-        createdById: user.id,
+        createdById: session.session.user.id,
         items: {
           create: items.map((item: any) => ({
             description: item.description,
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
         action: 'CREATE_QUOTATION',
         entityType: 'QUOTATION',
         entityId: quotation.id,
-        userId: user.id,
+        userId: session.session.user.id,
         details: {
           quotationNumber: quotation.quotationNumber,
           customerId: customer.id,

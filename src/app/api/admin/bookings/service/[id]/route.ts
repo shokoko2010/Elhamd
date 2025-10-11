@@ -13,43 +13,7 @@ export async function GET(
   try {
     const { id } = await context.params
     const booking = await db.serviceBooking.findUnique({
-      where: { id },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        vehicle: {
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            year: true,
-            price: true,
-            category: true,
-            fuelType: true,
-            transmission: true,
-            images: {
-              where: { isPrimary: true },
-              take: 1
-            }
-          }
-        },
-        serviceType: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            duration: true,
-            price: true,
-            category: true
-          }
-        }
-      }
+      where: { id }
     })
 
     if (!booking) {
@@ -80,10 +44,7 @@ export async function PUT(
 
     // Check if booking exists
     const existingBooking = await db.serviceBooking.findUnique({
-      where: { id },
-      include: {
-        serviceType: true
-      }
+      where: { id }
     })
 
     if (!existingBooking) {
@@ -128,34 +89,6 @@ export async function PUT(
         date: date ? new Date(date) : undefined,
         timeSlot: timeSlot || undefined,
         totalPrice: totalPrice !== undefined ? (totalPrice ? parseFloat(totalPrice) : null) : undefined
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        vehicle: {
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            year: true,
-            stockNumber: true
-          }
-        },
-        serviceType: {
-          select: {
-            id: true,
-            name: true,
-            duration: true,
-            price: true,
-            category: true
-          }
-        }
       }
     })
 

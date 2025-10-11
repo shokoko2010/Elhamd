@@ -3,8 +3,9 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 import { z } from 'zod'
 
@@ -13,7 +14,7 @@ const specSchema = z.object({
   key: z.string().min(1, 'المفتاح مطلوب'),
   label: z.string().min(1, 'العلامة مطلوبة'),
   value: z.string().min(1, 'القيمة مطلوبة'),
-  category: z.enum(['engine', 'exterior', 'interior', 'safety', 'technology']).default('engine')
+  category: z.enum(['ENGINE', 'EXTERIOR', 'INTERIOR', 'SAFETY', 'TECHNOLOGY']).default('ENGINE')
 })
 
 const specsArraySchema = z.object({
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
@@ -117,7 +118,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 

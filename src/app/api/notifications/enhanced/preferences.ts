@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { enhancedNotificationService } from '@/lib/enhanced-notification-service'
-import { getAuthUser } from '@/lib/auth-server'
 import { SecurityService } from '@/lib/security-service'
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user notification preferences
-    const preferences = await enhancedNotificationService.getUserNotificationPreferences(user.id)
+    const preferences = await enhancedNotificationService.getUserNotificationPreferences(session.session.user.id)
 
     return NextResponse.json({
       success: true,
@@ -76,7 +77,7 @@ export async function PUT(request: NextRequest) {
 
     // Update user notification preferences
     const result = await enhancedNotificationService.updateUserNotificationPreferences(
-      user.id,
+      session.session.user.id,
       sanitizedPreferences
     )
 

@@ -52,9 +52,9 @@ export async function POST(request: NextRequest) {
     
     // Validate input data
     const validation = validationUtils.validateWithDetails(bookingSchemas.service, sanitizedBody)
-    if (!validation.success) {
+    if (!validation.success || !validation.data) {
       return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: validation.errors },
+        { error: 'بيانات غير صالحة', details: validation.errors || ['Invalid data'] },
         { status: 400 }
       )
     }
@@ -105,16 +105,12 @@ export async function POST(request: NextRequest) {
       customerName: bookings[0].customer.name,
       customerEmail: bookings[0].customer.email,
       bookingType: 'service',
-      vehicle: bookings[0].vehicle ? {
-        make: bookings[0].vehicle.make,
-        model: bookings[0].vehicle.model,
-        year: bookings[0].vehicle.year
-      } : undefined,
+      vehicleInfo: bookings[0].vehicle ? 
+        `${bookings[0].vehicle.make} ${bookings[0].vehicle.model} (${bookings[0].vehicle.year})` : 
+        undefined,
       date: format(new Date(date), 'PPP', { locale: ar }),
-      timeSlot,
-      services: serviceNames,
-      totalPrice: totalPrice > 0 ? totalPrice : undefined,
-      bookingId: bookings[0].id
+      time: timeSlot,
+      services: serviceNames
     })
 
     // Send notification to admin
@@ -122,16 +118,12 @@ export async function POST(request: NextRequest) {
       customerName: bookings[0].customer.name,
       customerEmail: bookings[0].customer.email,
       bookingType: 'service',
-      vehicle: bookings[0].vehicle ? {
-        make: bookings[0].vehicle.make,
-        model: bookings[0].vehicle.model,
-        year: bookings[0].vehicle.year
-      } : undefined,
+      vehicleInfo: bookings[0].vehicle ? 
+        `${bookings[0].vehicle.make} ${bookings[0].vehicle.model} (${bookings[0].vehicle.year})` : 
+        undefined,
       date: format(new Date(date), 'PPP', { locale: ar }),
-      timeSlot,
-      services: serviceNames,
-      totalPrice: totalPrice > 0 ? totalPrice : undefined,
-      bookingId: bookings[0].id
+      time: timeSlot,
+      services: serviceNames
     })
 
     // Create response with security headers

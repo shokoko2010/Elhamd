@@ -3,10 +3,10 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { PaymentService } from '@/lib/payment-service'
 import { PaymentMethod } from '@prisma/client'
-import { getAuthUser } from '@/lib/auth-server'
-
 export async function POST(request: NextRequest) {
   try {
     // Check authentication

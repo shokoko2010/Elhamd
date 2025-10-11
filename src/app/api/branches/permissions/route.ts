@@ -3,12 +3,12 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request);
+    const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
@@ -29,37 +29,34 @@ export async function GET(request: NextRequest) {
 
     const permissions = await db.branchPermission.findMany({
       where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        grantedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
       orderBy: [
-        { branch: { name: 'asc' } },
-        { user: { name: 'asc' } },
+        { branchId: 'asc' },
+        { userId: 'asc' },
       ],
     });
 
-    return NextResponse.json(permissions);
+    // Fetch related data separately
+    const permissionsWithRelations = await Promise.all(
+      permissions.map(async (permission) => {
+        const [userData, branchData, grantedByData] = await Promise.all([
+          db.user.findUnique({
+            where: { id: permission.userId },
+            select: { id: true, name: true, email: true, role: true }
+          }),
+          db.branch.findUnique({
+            where: { id: permission.branchId },
+            select: { id: true, name: true, code: true }
+          }),
+          permission.grantedBy ? db.user.findUnique({
+            where: { id: permission.grantedBy },
+            select: { id: true, name: true, email: true }
+          }) : null
+        ]);
+        return { ...permission, user: userData, branch: branchData, grantedByUser: grantedByData };
+      })
+    );
+
+    return NextResponse.json(permissionsWithRelations);
   } catch (error) {
     console.error('Error fetching branch permissions:', error);
     return NextResponse.json(
@@ -71,8 +68,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -123,33 +120,32 @@ export async function POST(request: NextRequest) {
         grantedBy: user.id,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        grantedByUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
     });
 
-    return NextResponse.json(permission, { status: 201 });
+    // Fetch related data separately
+    const [userData, branchData, grantedByData] = await Promise.all([
+      db.user.findUnique({
+        where: { id: permission.userId },
+        select: { id: true, name: true, email: true, role: true }
+      }),
+      db.branch.findUnique({
+        where: { id: permission.branchId },
+        select: { id: true, name: true, code: true }
+      }),
+      db.user.findUnique({
+        where: { id: permission.grantedBy! },
+        select: { id: true, name: true, email: true }
+      })
+    ]);
+
+    const permissionWithRelations = { 
+      ...permission, 
+      user: userData, 
+      branch: branchData, 
+      grantedByUser: grantedByData 
+    };
+
+    return NextResponse.json(permissionWithRelations, { status: 201 });
   } catch (error) {
     console.error('Error creating branch permission:', error);
     return NextResponse.json(

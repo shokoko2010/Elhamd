@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -70,8 +71,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
-    if (!user) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
         reference,
         dueDate: dueDate ? new Date(dueDate) : null,
         notes,
-        createdBy: user.id
+        createdBy: session.session.user.id
       },
       include: {
         policy: {

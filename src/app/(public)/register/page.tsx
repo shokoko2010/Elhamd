@@ -25,11 +25,11 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   
-  const { authenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
   const router = useRouter()
 
   // Redirect if already logged in
-  if (authenticated) {
+  if (isAuthenticated) {
     router.push('/')
     return null
   }

@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
@@ -16,12 +17,12 @@ export async function GET(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.user.findUnique({
+    const user = await db.session.user.findUnique({
       where: { id: authenticatedUser.id },
       include: { role: true }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(session.user.role.name as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
 
     // Check branch permissions
-    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId && quotation.customer.branchId !== user.branchId) {
+    if (session.user.role.name === UserRole.BRANCH_MANAGER && session.user.branchId && quotation.customer.branchId !== session.user.branchId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
@@ -76,12 +77,12 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.user.findUnique({
+    const user = await db.session.user.findUnique({
       where: { id: authenticatedUser.id },
       include: { role: true }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(session.user.role.name as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -101,7 +102,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     // Check branch permissions
-    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId && existingQuotation.customer.branchId !== user.branchId) {
+    if (session.user.role.name === UserRole.BRANCH_MANAGER && session.user.branchId && existingQuotation.customer.branchId !== session.user.branchId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
@@ -164,7 +165,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
         action: 'UPDATE_QUOTATION',
         entityType: 'QUOTATION',
         entityId: updatedQuotation.id,
-        userId: user.id,
+        userId: session.session.user.id,
         details: {
           quotationNumber: updatedQuotation.quotationNumber,
           status: updatedQuotation.status,
@@ -192,12 +193,12 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = await db.user.findUnique({
+    const user = await db.session.user.findUnique({
       where: { id: authenticatedUser.id },
       include: { role: true }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(session.user.role.name as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -236,7 +237,7 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
         action: 'DELETE_QUOTATION',
         entityType: 'QUOTATION',
         entityId: id,
-        userId: user.id,
+        userId: session.session.user.id,
         details: {
           quotationNumber: quotation.quotationNumber,
           status: quotation.status

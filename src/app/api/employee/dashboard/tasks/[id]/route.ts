@@ -8,7 +8,7 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
     if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

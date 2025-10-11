@@ -3,12 +3,14 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { authorize, UserRole } from '@/lib/unified-auth';
-
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] })
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'SUPER_ADMIN', 'BRANCH_MANAGER', 'STAFF'].includes(user.role as any)) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branchId');
@@ -23,16 +25,6 @@ export async function GET(request: NextRequest) {
     // احصل على إحصائيات جميع الفروع
     const branches = await db.branch.findMany({
       where: { isActive: true },
-      include: {
-        _count: {
-          select: {
-            users: true,
-            vehicles: true,
-            invoices: true,
-            payments: true,
-          },
-        },
-      },
     });
 
     const branchesWithStats = await Promise.all(
@@ -48,10 +40,6 @@ export async function GET(request: NextRequest) {
     // احسب الإجماليات
     const totals = {
       totalBranches: branches.length,
-      totalUsers: branches.reduce((sum, b) => sum + b._count.users, 0),
-      totalVehicles: branches.reduce((sum, b) => sum + b._count.vehicles, 0),
-      totalInvoices: branches.reduce((sum, b) => sum + b._count.invoices, 0),
-      totalPayments: branches.reduce((sum, b) => sum + b._count.payments, 0),
       totalRevenue: branchesWithStats.reduce((sum, b) => sum + b.stats.totalRevenue, 0),
       totalExpenses: branchesWithStats.reduce((sum, b) => sum + b.stats.totalExpenses, 0),
     };
@@ -141,9 +129,9 @@ async function getBranchStats(branchId: string, period: string) {
     .reduce((sum, t) => sum + t.amount, 0);
   
   const paidInvoices = invoices.filter(i => i.status === 'PAID').length;
-  const pendingInvoices = invoices.filter(i => i.status === 'PENDING').length;
+  const sentInvoices = invoices.filter(i => i.status === 'SENT').length;
   const overdueInvoices = invoices.filter(i => 
-    i.status === 'PENDING' && new Date(i.dueDate) < now
+    i.status === 'OVERDUE'
   ).length;
 
   const revenueByMonth = getRevenueByMonth(payments, period);
@@ -155,7 +143,7 @@ async function getBranchStats(branchId: string, period: string) {
     netProfit: totalRevenue - totalExpenses,
     totalInvoices: invoices.length,
     paidInvoices,
-    pendingInvoices,
+    sentInvoices,
     overdueInvoices,
     totalPayments: payments.length,
     activeUsers: users,

@@ -3,13 +3,14 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth, isStaff } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
     if (!isStaff(user)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
-    const users = await db.user.findMany({
+    const users = await db.session.user.findMany({
       where,
       select: {
         id: true,
@@ -56,14 +57,14 @@ export async function GET(request: NextRequest) {
 
     // Transform the data to match the expected format
     const transformedUsers = users.map(user => ({
-      id: user.id,
-      name: user.name || '',
-      email: user.email,
-      phone: user.phone || '',
-      role: user.role,
-      status: user.status,
-      createdAt: user.createdAt.toISOString(),
-      lastLogin: user.lastLoginAt?.toISOString()
+      id: session.session.user.id,
+      name: session.user.name || '',
+      email: session.user.email,
+      phone: session.user.phone || '',
+      role: session.user.role,
+      status: session.user.status,
+      createdAt: session.user.createdAt.toISOString(),
+      lastLogin: session.user.lastLoginAt?.toISOString()
     }))
 
     return NextResponse.json(transformedUsers)
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
     if (!isStaff(user)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await db.user.findUnique({
+    const existingUser = await db.session.user.findUnique({
       where: { email }
     })
 
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user
-    const newUser = await db.user.create({
+    const newUser = await db.session.user.create({
       data: {
         name,
         email,

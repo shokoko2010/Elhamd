@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { getServerSession } from 'next-auth';
+import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { PermissionService } from '@/lib/permissions'
 
@@ -61,12 +62,7 @@ export async function GET(request: NextRequest) {
         role: true,
         branchId: true,
         isActive: true,
-        createdAt: true,
-        branch: {
-          select: {
-            name: true
-          }
-        }
+        createdAt: true
       },
       skip,
       take: limit,
@@ -75,12 +71,23 @@ export async function GET(request: NextRequest) {
 
     // Get permissions for each user
     const usersWithPermissions = await Promise.all(
-      users.map(async (user) => {
-        const permissions = await PermissionService.getUserPermissions(user.id)
+      users.map(async (userItem) => {
+        const permissions = await PermissionService.getUserPermissions(userItem.id)
+        
+        // Get branch name if branchId exists
+        let branchName: string | null = null
+        if (userItem.branchId) {
+          const branch = await db.branch.findUnique({
+            where: { id: userItem.branchId },
+            select: { name: true }
+          })
+          branchName = branch?.name || null
+        }
+        
         return {
-          ...user,
+          ...userItem,
           permissions,
-          branchName: user.branch?.name
+          branchName
         }
       })
     )

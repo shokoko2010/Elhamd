@@ -3,15 +3,16 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -292,7 +293,7 @@ export async function GET(request: NextRequest) {
     // Fetch top performers (employees with best performance)
     const topPerformers = await Promise.all([
       // Top performers by revenue
-      db.user.findMany({
+      db.session.user.findMany({
         where: {
           role: {
             in: ['SALES', 'MANAGER']
@@ -333,18 +334,18 @@ export async function GET(request: NextRequest) {
     ])
 
     const topPerformersWithMetrics = topPerformers[0].map(user => {
-      const revenue = user.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
-      const satisfactionRatings = user.assignedTickets.map(ticket => ticket.satisfaction).filter(rating => rating !== null)
+      const revenue = session.user.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
+      const satisfactionRatings = session.user.assignedTickets.map(ticket => ticket.satisfaction).filter(rating => rating !== null)
       const avgSatisfaction = satisfactionRatings.length > 0 
         ? satisfactionRatings.reduce((sum, rating) => sum + rating!, 0) / satisfactionRatings.length 
         : 0
 
       return {
-        id: user.id,
-        name: user.name,
-        role: user.role,
+        id: session.session.user.id,
+        name: session.user.name,
+        role: session.user.role,
         revenue,
-        customers: user.invoices.length,
+        customers: session.user.invoices.length,
         satisfaction: avgSatisfaction
       }
     })

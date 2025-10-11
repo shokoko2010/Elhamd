@@ -195,23 +195,23 @@ function InventoryContent() {
       setLoading(true)
       
       // Fetch inventory items
-      const itemsData = await api.get('/api/inventory/items')
+      const itemsData = await api.get('/api/inventory/items') as { items?: any[] }
       setInventoryItems(itemsData.items || [])
 
       // Fetch warehouses
-      const warehousesData = await api.get('/api/inventory/warehouses')
+      const warehousesData = await api.get('/api/inventory/warehouses') as any[]
       setWarehouses(warehousesData)
 
       // Fetch branches
-      const branchesData = await api.get('/api/branches')
+      const branchesData = await api.get('/api/branches') as { branches?: any[] }
       setBranches(branchesData.branches || [])
 
       // Fetch suppliers
-      const suppliersData = await api.get('/api/inventory/suppliers')
+      const suppliersData = await api.get('/api/inventory/suppliers') as any[]
       setSuppliers(suppliersData)
 
       // Fetch alerts
-      const alertsData = await api.get('/api/inventory/alerts')
+      const alertsData = await api.get('/api/inventory/alerts') as any[]
       setAlerts(alertsData)
     } catch (error) {
       toast({
@@ -263,11 +263,11 @@ function InventoryContent() {
     try {
       setIsSyncingVehicles(true)
       
-      const result = await api.post('/api/inventory/sync-vehicles')
+      const result = await api.post('/api/inventory/sync-vehicles') as { syncedCount?: number; skippedCount?: number }
       
       toast({
         title: 'Success',
-        description: `Synced ${result.syncedCount} vehicles to inventory (${result.skippedCount} already synced)`
+        description: `Synced ${result.syncedCount || 0} vehicles to inventory (${result.skippedCount || 0} already synced)`
       })
       fetchInventoryData()
     } catch (error) {
@@ -285,11 +285,11 @@ function InventoryContent() {
     try {
       setIsInitializingData(true)
       
-      const result = await api.post('/api/inventory/initialize')
+      const result = await api.post('/api/inventory/initialize') as { warehousesCreated?: number; suppliersCreated?: number }
       
       toast({
         title: 'Success',
-        description: `Initialized ${result.warehousesCreated} warehouses and ${result.suppliersCreated} suppliers`
+        description: `Initialized ${result.warehousesCreated || 0} warehouses and ${result.suppliersCreated || 0} suppliers`
       })
       fetchInventoryData()
     } catch (error) {

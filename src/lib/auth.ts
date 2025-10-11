@@ -4,6 +4,21 @@ import { UserRole } from '@prisma/client'
 import { db } from '@/lib/db'
 import { PermissionService } from './permissions'
 import bcrypt from 'bcryptjs'
+import { getServerSession } from 'next-auth'
+
+// Utility functions for authentication
+export async function requireSimpleAuth() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) {
+    throw new Error('Authentication required')
+  }
+  return session.user
+}
+
+export async function getAuthUser() {
+  const session = await getServerSession(authOptions)
+  return session?.user || null
+}
 
 declare module 'next-auth' {
   interface Session {

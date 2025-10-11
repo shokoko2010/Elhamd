@@ -3,13 +3,13 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -25,17 +25,14 @@ export async function GET(request: NextRequest) {
         break;
       case 'my-approvals':
         // Transfers that need user's approval based on their role and permissions
-        if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN') {
+        if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
           where.status = 'PENDING';
         } else {
           // For managers, check branch permissions
           const userBranches = await db.branchPermission.findMany({
             where: {
               userId: user.id,
-              permissions: {
-                path: '$',
-                array_contains: 'APPROVE_TRANSFERS',
-              },
+              isActive: true,
             },
             select: { branchId: true },
           });
@@ -65,46 +62,37 @@ export async function GET(request: NextRequest) {
 
     const transfers = await db.branchTransfer.findMany({
       where,
-      include: {
-        fromBranch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            currency: true,
-          },
-        },
-        toBranch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            currency: true,
-          },
-        },
-        requester: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
       orderBy: [
         { status: 'asc' },
         { createdAt: 'desc' },
       ],
       take: 50, // Limit for performance
     });
+
+    // Fetch related data separately
+    const transfersWithRelations = await Promise.all(
+      transfers.map(async (transfer) => {
+        const [fromBranch, toBranch, requester, approver] = await Promise.all([
+          db.branch.findUnique({
+            where: { id: transfer.fromBranchId },
+            select: { id: true, name: true, code: true, currency: true }
+          }),
+          db.branch.findUnique({
+            where: { id: transfer.toBranchId },
+            select: { id: true, name: true, code: true, currency: true }
+          }),
+          db.user.findUnique({
+            where: { id: transfer.requestedBy },
+            select: { id: true, name: true, email: true, role: true }
+          }),
+          transfer.approvedBy ? db.user.findUnique({
+            where: { id: transfer.approvedBy },
+            select: { id: true, name: true, email: true, role: true }
+          }) : null
+        ]);
+        return { ...transfer, fromBranch, toBranch, requester, approver };
+      })
+    );
 
     // Calculate approval statistics
     const stats = await db.branchTransfer.groupBy({
@@ -126,7 +114,7 @@ export async function GET(request: NextRequest) {
     }, {} as Record<string, number>);
 
     return NextResponse.json({
-      transfers,
+      transfers: transfersWithRelations,
       stats: {
         pending: statsMap.PENDING || 0,
         approved: statsMap.APPROVED || 0,
@@ -145,8 +133,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
+    const user = await getAuthUser();
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -157,21 +145,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 });
     }
 
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: { transferId: any; error: string }[] = [];
 
     for (const transferId of transferIds) {
       try {
         const transfer = await db.branchTransfer.findUnique({
           where: { id: transferId },
-          include: {
-            fromBranch: true,
-            toBranch: true,
-          },
         });
 
         if (!transfer) {
           errors.push({ transferId, error: 'التحويل غير موجود' });
+          continue;
+        }
+
+        // Fetch related data separately
+        const [fromBranch, toBranch] = await Promise.all([
+          db.branch.findUnique({
+            where: { id: transfer.fromBranchId },
+            select: { id: true, name: true, code: true, currency: true }
+          }),
+          db.branch.findUnique({
+            where: { id: transfer.toBranchId },
+            select: { id: true, name: true, code: true, currency: true }
+          })
+        ]);
+
+        if (!fromBranch || !toBranch) {
+          errors.push({ transferId, error: 'الفرع غير موجود' });
           continue;
         }
 
@@ -186,20 +187,24 @@ export async function POST(request: NextRequest) {
               continue;
             }
             
-            if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN') {
+            if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
               canProceed = true;
             } else {
-              const hasPermission = await db.branchPermission.findFirst({
-                where: {
-                  userId: user.id,
-                  branchId: action === 'approve' ? transfer.toBranchId : transfer.fromBranchId,
-                  permissions: {
-                    path: '$',
-                    array_contains: action === 'approve' ? 'APPROVE_TRANSFERS' : 'REJECT_TRANSFERS',
-                  },
-                },
-              });
-              canProceed = !!hasPermission;
+              // For managers, check branch permissions
+            const userPermissions = await db.branchPermission.findFirst({
+              where: {
+                userId: user.id,
+                branchId: action === 'approve' ? transfer.toBranchId : transfer.fromBranchId,
+                isActive: true,
+              },
+            });
+            
+            if (userPermissions && Array.isArray(userPermissions.permissions)) {
+              const hasPermission = (userPermissions.permissions as any[]).includes(
+                action === 'approve' ? 'APPROVE_TRANSFERS' : 'REJECT_TRANSFERS'
+              );
+              canProceed = hasPermission;
+            }
             }
             break;
 
@@ -209,20 +214,22 @@ export async function POST(request: NextRequest) {
               continue;
             }
             
-            if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN') {
+            if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
               canProceed = true;
             } else {
-              const hasPermission = await db.branchPermission.findFirst({
-                where: {
-                  userId: user.id,
-                  branchId: transfer.toBranchId,
-                  permissions: {
-                    path: '$',
-                    array_contains: 'COMPLETE_TRANSFERS',
-                  },
-                },
-              });
-              canProceed = !!hasPermission;
+              // For managers, check branch permissions
+            const userPermissions = await db.branchPermission.findFirst({
+              where: {
+                userId: user.id,
+                branchId: transfer.toBranchId,
+                isActive: true,
+              },
+            });
+            
+            if (userPermissions && Array.isArray(userPermissions.permissions)) {
+              const hasPermission = (userPermissions.permissions as any[]).includes('COMPLETE_TRANSFERS');
+              canProceed = hasPermission;
+            }
             }
             break;
 
@@ -249,7 +256,7 @@ export async function POST(request: NextRequest) {
                 approvedBy: user.id,
                 approvedAt: now,
                 metadata: {
-                  ...transfer.metadata,
+                  ...(transfer.metadata as any || {}),
                   approvalComments: comments,
                   approvedAt: now.toISOString(),
                 },
@@ -266,7 +273,7 @@ export async function POST(request: NextRequest) {
                   category: 'TRANSFER_OUT',
                   amount: transfer.amount,
                   currency: transfer.currency,
-                  description: `تحويل خارجي إلى ${transfer.toBranch.name}`,
+                  description: `تحويل خارجي إلى ${toBranch.name}`,
                   date: now,
                   paymentMethod: 'BANK_TRANSFER',
                   metadata: {
@@ -284,7 +291,7 @@ export async function POST(request: NextRequest) {
                   category: 'TRANSFER_IN',
                   amount: transfer.amount,
                   currency: transfer.currency,
-                  description: `تحويل وارد من ${transfer.fromBranch.name}`,
+                  description: `تحويل وارد من ${fromBranch.name}`,
                   date: now,
                   paymentMethod: 'BANK_TRANSFER',
                   metadata: {
@@ -307,7 +314,7 @@ export async function POST(request: NextRequest) {
                 rejectedAt: now,
                 rejectionReason,
                 metadata: {
-                  ...transfer.metadata,
+                  ...(transfer.metadata as any || {}),
                   rejectionComments: comments,
                   rejectedAt: now.toISOString(),
                 },
@@ -322,7 +329,7 @@ export async function POST(request: NextRequest) {
                 status: 'COMPLETED',
                 completedAt: now,
                 metadata: {
-                  ...transfer.metadata,
+                  ...(transfer.metadata as any || {}),
                   completionComments: comments,
                   completedAt: now.toISOString(),
                 },

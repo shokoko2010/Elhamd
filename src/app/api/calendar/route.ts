@@ -3,16 +3,15 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authOptions'
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { CalendarEventType, EventStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await getAuthUser()
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -40,52 +39,6 @@ export async function GET(request: NextRequest) {
 
     const events = await db.calendarEvent.findMany({
       where,
-      include: {
-        booking: {
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            vehicle: {
-              select: {
-                make: true,
-                model: true,
-                year: true
-              }
-            },
-            serviceType: {
-              select: {
-                name: true,
-                category: true
-              }
-            }
-          }
-        },
-        task: {
-          include: {
-            assignee: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            }
-          }
-        }
-      },
       orderBy: {
         startTime: 'asc'
       }
@@ -103,9 +56,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await getAuthUser()
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -179,52 +132,6 @@ export async function POST(request: NextRequest) {
         bookingId,
         taskId,
         notes
-      },
-      include: {
-        booking: {
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            vehicle: {
-              select: {
-                make: true,
-                model: true,
-                year: true
-              }
-            },
-            serviceType: {
-              select: {
-                name: true,
-                category: true
-              }
-            }
-          }
-        },
-        task: {
-          include: {
-            assignee: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            }
-          }
-        }
       }
     })
 

@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUnifiedAuth } from '@/lib/unified-auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 export async function GET(
@@ -11,8 +12,8 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -53,8 +54,8 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -98,7 +99,7 @@ export async function PUT(
 
     // Handle approval
     if (approved && !existingRecord.approvedBy) {
-      updateData.approvedBy = user.id;
+      updateData.approvedBy = session.session.user.id;
     } else if (!approved && existingRecord.approvedBy) {
       updateData.approvedBy = null;
     }
@@ -134,8 +135,8 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
-    if (!user) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

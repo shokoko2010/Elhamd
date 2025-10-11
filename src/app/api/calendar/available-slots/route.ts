@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TimeSlot } from '@/lib/calendar-service'
-import { format, isToday, isPast, addDays } from 'date-fns'
+import { format, isToday, isPast } from 'date-fns'
+
+interface AvailableSlot {
+  id: string
+  date: Date
+  startTime: string
+  endTime: string
+  maxBookings: number
+  currentBookings: number
+  isAvailable: boolean
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate time slots for the selected date
-    const timeSlots: TimeSlot[] = []
+    const timeSlots: AvailableSlot[] = []
     const startHour = 9 // 9 AM
     const endHour = 17 // 5 PM
     const slotDuration = 1 // 1 hour per slot

@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 
 export async function PUT(
@@ -12,15 +13,15 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // User already available from requireUnifiedAuth
 
-    if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    if (!user || (session.user.role !== 'STAFF' && session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -35,7 +36,7 @@ export async function PUT(
 
     // Check if email is already used by another user
     if (email) {
-      const existingUser = await db.user.findFirst({
+      const existingUser = await db.session.user.findFirst({
         where: {
           email,
           NOT: { id }
@@ -51,7 +52,7 @@ export async function PUT(
     }
 
     // Update user
-    const updatedUser = await db.user.update({
+    const updatedUser = await db.session.user.update({
       where: { id },
       data: {
         name,
@@ -88,20 +89,20 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // User already available from requireUnifiedAuth
 
-    if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    if (!user || (session.user.role !== 'STAFF' && session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     // Don't allow deleting the current user
-    if (id === user.id) {
+    if (id === session.session.user.id) {
       return NextResponse.json(
         { error: 'Cannot delete your own account' },
         { status: 400 }
@@ -119,7 +120,7 @@ export async function DELETE(
 
     // If user has related records, don't delete but mark as inactive
     if (relatedOrders.length > 0 || relatedInvoices.length > 0) {
-      await db.user.update({
+      await db.session.user.update({
         where: { id },
         data: {
           status: 'inactive',
@@ -134,7 +135,7 @@ export async function DELETE(
     }
 
     // Delete user (only if no related records)
-    await db.user.delete({
+    await db.session.user.delete({
       where: { id }
     })
 

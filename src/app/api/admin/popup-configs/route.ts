@@ -3,8 +3,9 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions, requireSimpleAuth } from '@/lib/auth';
 import { db } from '@/lib/db'
-import { requireSimpleAuth } from '@/lib/simple-auth'
 import { z } from 'zod'
 
 const popupConfigSchema = z.object({
@@ -59,7 +60,7 @@ const popupConfigSchema = z.object({
 // GET /api/admin/popup-configs - Get all popup configurations
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireSimpleAuth(request)
+    const user = await requireSimpleAuth()
     if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/popup-configs - Create new popup configuration
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireSimpleAuth(request)
+    const user = await requireSimpleAuth()
     if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(popup, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation Error', details: error.errors }, { status: 400 })
+      return NextResponse.json({ error: 'Validation Error', details: error.issues }, { status: 400 })
     }
     console.error('Error creating popup config:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

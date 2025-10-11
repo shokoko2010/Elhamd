@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { EventStatus } from '@prisma/client'
 
@@ -12,60 +12,16 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const user = await getAuthUser()
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await context.params
+
     const event = await db.calendarEvent.findUnique({
       where: { id },
-      include: {
-        booking: {
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            vehicle: {
-              select: {
-                make: true,
-                model: true,
-                year: true
-              }
-            },
-            serviceType: {
-              select: {
-                name: true,
-                category: true
-              }
-            }
-          }
-        },
-        task: {
-          include: {
-            assignee: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            }
-          }
-        }
-      }
     })
 
     if (!event) {
@@ -87,11 +43,13 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const user = await getAuthUser()
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const { id } = await context.params
 
     const body = await request.json()
     const {
@@ -139,52 +97,6 @@ export async function PUT(
     const event = await db.calendarEvent.update({
       where: { id },
       data: updateData,
-      include: {
-        booking: {
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            vehicle: {
-              select: {
-                make: true,
-                model: true,
-                year: true
-              }
-            },
-            serviceType: {
-              select: {
-                name: true,
-                category: true
-              }
-            }
-          }
-        },
-        task: {
-          include: {
-            assignee: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            }
-          }
-        }
-      }
     })
 
     return NextResponse.json(event)
@@ -202,11 +114,13 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const user = await getAuthUser()
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const { id } = await context.params
 
     // Check if event exists
     const existingEvent = await db.calendarEvent.findUnique({

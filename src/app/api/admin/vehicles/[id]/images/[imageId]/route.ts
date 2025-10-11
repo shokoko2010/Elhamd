@@ -3,8 +3,9 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 
 // PUT /api/admin/vehicles/[id]/images/[imageId]/primary - Set image as primary
@@ -13,7 +14,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     const { id, imageId } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 
@@ -69,7 +70,7 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     const { id, imageId } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
+    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
       return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
     }
 

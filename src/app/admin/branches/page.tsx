@@ -66,7 +66,7 @@ interface Manager {
 }
 
 export default function BranchesPage() {
-  const { user, loading: authLoading, authenticated } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
@@ -88,14 +88,14 @@ export default function BranchesPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!authenticated) {
+      if (!isAuthenticated) {
         router.push('/login');
       } else {
         fetchBranches();
         fetchManagers();
       }
     }
-  }, [authLoading, authenticated, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('auth_token');

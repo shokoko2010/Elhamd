@@ -3,23 +3,24 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { PermissionService } from '@/lib/permissions'
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
     
     // For permissions initialization, we allow SUPER_ADMIN role to proceed
     // even if permissions don't exist yet (chicken-and-egg problem)
-    if (user.role !== 'SUPER_ADMIN') {
+    if (session.user.role !== 'SUPER_ADMIN') {
       // If permissions exist, check for the required permission
       try {
-        const hasPermission = await PermissionService.hasPermission(user.id, 'manage_system_settings')
+        const hasPermission = await PermissionService.hasPermission(session.user.id, 'manage_system_settings')
         if (!hasPermission) {
           return NextResponse.json({ error: 'Access denied' }, { status: 403 })
         }

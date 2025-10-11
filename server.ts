@@ -45,7 +45,6 @@ async function createCustomServer() {
       maxHttpBufferSize: 1e8,
       allowUpgrades: true,
       upgradeTimeout: 10000,
-      rememberUpgrade: true,
       addTrailingSlash: false,
       // Handle production WSS connections
       ...(process.env.NODE_ENV === 'production' && {

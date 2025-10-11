@@ -69,7 +69,7 @@ export default function AdminMediaPage() {
 }
 
 function MediaContent() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [folders, setFolders] = useState<MediaFolder[]>([])
   const [loading, setLoading] = useState(true)
@@ -238,8 +238,8 @@ function MediaContent() {
     } else if (sortBy === 'size') {
       return (((a.size || 0) - (b.size || 0))) * modifier
     } else {
-      const dateA = new Date(a[sortBy] || a.createdAt || Date.now()).getTime()
-      const dateB = new Date(b[sortBy] || b.createdAt || Date.now()).getTime()
+      const dateA = new Date(a[sortBy] || a.uploadedAt || Date.now()).getTime()
+      const dateB = new Date(b[sortBy] || b.uploadedAt || Date.now()).getTime()
       return (dateA - dateB) * modifier
     }
   })

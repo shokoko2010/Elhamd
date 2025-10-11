@@ -1,8 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { CalendarEvent, TimeSlot, CalendarDay, Holiday } from '@/lib/calendar-service'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isWeekend, isPast, addDays } from 'date-fns'
 import { ar } from 'date-fns/locale'
+
+interface CalendarEvent {
+  id: string
+  title: string
+  description?: string | null
+  start: Date
+  end: Date
+  type: 'booking' | 'holiday' | 'event'
+  status?: string | null
+  customerId?: string | null
+  vehicleId?: string | null
+  customerName?: string
+  customerEmail?: string
+  customerPhone?: string
+  vehicleName?: string
+  organizerId?: string | null
+  organizerName?: string
+  location?: string | null
+  allDay?: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+interface CalendarDay {
+  date: Date
+  events: CalendarEvent[]
+  bookingsCount: number
+  isToday: boolean
+  isWeekend: boolean
+  isPast: boolean
+  isHoliday: boolean
+  availableTimeSlots: any[]
+}
+
+interface Holiday {
+  id: string
+  name: string
+  date: Date
+  type: string
+  description?: string
+}
+
+interface TimeSlot {
+  id: string
+  date: Date
+  startTime: string
+  endTime: string
+  maxBookings: number
+  currentBookings: number
+  isAvailable: boolean
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +69,7 @@ export async function GET(request: NextRequest) {
     const monthEnd = endOfMonth(currentDate)
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-    // Fetch calendar data
+    // Fetch calendar data without customer references for now
     const [testDriveBookings, serviceBookings, calendarEvents] = await Promise.all([
       // Test drive bookings
       db.testDriveBooking.findMany({
@@ -27,24 +77,6 @@ export async function GET(request: NextRequest) {
           date: {
             gte: monthStart,
             lte: monthEnd
-          }
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true
-            }
           }
         },
         orderBy: [
@@ -61,32 +93,6 @@ export async function GET(request: NextRequest) {
             lte: monthEnd
           }
         },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          serviceType: {
-            select: {
-              id: true,
-              name: true,
-              duration: true,
-              price: true
-            }
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true
-            }
-          }
-        },
         orderBy: [
           { date: 'asc' },
           { timeSlot: 'asc' }
@@ -96,22 +102,12 @@ export async function GET(request: NextRequest) {
       // Calendar events
       db.calendarEvent.findMany({
         where: {
-          startDate: {
+          startTime: {
             gte: monthStart,
             lte: monthEnd
           }
         },
-        include: {
-          organizer: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          }
-        },
         orderBy: [
-          { startDate: 'asc' },
           { startTime: 'asc' }
         ]
       })
@@ -127,18 +123,14 @@ export async function GET(request: NextRequest) {
       
       const event: CalendarEvent = {
         id: `test-drive-${booking.id}`,
-        title: `اختبار قيادة - ${booking.vehicle?.make || 'غير محدد'} ${booking.vehicle?.model || ''}`,
-        description: `عميل: ${booking.customer.name}`,
+        title: `اختبار قيادة - حجز ${booking.id}`,
+        description: `حجز اختبار قيادة`,
         start: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${startTime}`),
         end: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${endTime}`),
         type: 'booking',
         status: booking.status as any,
         customerId: booking.customerId,
         vehicleId: booking.vehicleId,
-        customerName: booking.customer.name,
-        customerEmail: booking.customer.email,
-        customerPhone: booking.customer.phone,
-        vehicleName: `${booking.vehicle?.make || 'غير محدد'} ${booking.vehicle?.model || ''}`,
         allDay: false,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt
@@ -153,18 +145,14 @@ export async function GET(request: NextRequest) {
       
       const event: CalendarEvent = {
         id: `service-${booking.id}`,
-        title: `صيانة - ${booking.serviceType.name}`,
-        description: `عميل: ${booking.customer.name}`,
+        title: `صيانة - حجز ${booking.id}`,
+        description: `حجز صيانة`,
         start: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${startTime}`),
         end: new Date(`${format(eventDate, 'yyyy-MM-dd')}T${endTime}`),
         type: 'booking',
         status: booking.status as any,
         customerId: booking.customerId,
         vehicleId: booking.vehicleId,
-        customerName: booking.customer.name,
-        customerEmail: booking.customer.email,
-        customerPhone: booking.customer.phone,
-        vehicleName: booking.vehicle ? `${booking.vehicle.make} ${booking.vehicle.model}` : undefined,
         allDay: false,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt
@@ -178,14 +166,13 @@ export async function GET(request: NextRequest) {
         id: `event-${event.id}`,
         title: event.title,
         description: event.description,
-        start: new Date(`${format(event.startDate, 'yyyy-MM-dd')}T${event.startTime || '09:00'}`),
-        end: new Date(`${format(event.endDate, 'yyyy-MM-dd')}T${event.endTime || '10:00'}`),
+        start: event.startTime,
+        end: event.endTime,
         type: 'event',
-        status: 'CONFIRMED',
+        status: event.status,
         organizerId: event.organizerId,
-        organizerName: event.organizer?.name,
         location: event.location,
-        allDay: event.isAllDay,
+        allDay: event.isRecurring,
         createdAt: event.createdAt,
         updatedAt: event.updatedAt
       }

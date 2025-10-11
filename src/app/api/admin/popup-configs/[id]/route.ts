@@ -3,8 +3,9 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth';
+import { authOptions, requireSimpleAuth } from '@/lib/auth';
 import { db } from '@/lib/db'
-import { requireSimpleAuth } from '@/lib/simple-auth'
 import { z } from 'zod'
 
 const popupConfigSchema = z.object({
@@ -59,7 +60,7 @@ const popupConfigSchema = z.object({
 // GET /api/admin/popup-configs/[id] - Get specific popup configuration
 export async function GET(request: NextRequest, context: RouteParams) {
   try {
-    const user = await requireSimpleAuth(request)
+    const user = await requireSimpleAuth()
     if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
 // PUT /api/admin/popup-configs/[id] - Update popup configuration
 export async function PUT(request: NextRequest, context: RouteParams) {
   try {
-    const user = await requireSimpleAuth(request)
+    const user = await requireSimpleAuth()
     if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -126,11 +127,11 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     return NextResponse.json(popup)
   } catch (error) {
     console.error('Error updating popup config:', error)
-    console.error('Error stack:', error.stack)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack available')
     return NextResponse.json({ 
       error: 'Internal Server Error', 
-      details: error.message,
-      stack: error.stack 
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack available' 
     }, { status: 500 })
   }
 }
@@ -138,7 +139,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 // DELETE /api/admin/popup-configs/[id] - Delete popup configuration
 export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
-    const user = await requireSimpleAuth(request)
+    const user = await requireSimpleAuth()
     if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

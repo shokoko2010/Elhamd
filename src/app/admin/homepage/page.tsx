@@ -253,10 +253,12 @@ function HomepageContent() {
       const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
       if (newIndex < 0 || newIndex >= sliderItems.length) return
 
-      // Create new order array
-      const newOrder = [...sliderItems]
+      // Create new order array with proper typing
+      const newOrder: SliderItem[] = [...sliderItems]
       // Swap items
-      [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]]
+      const temp = newOrder[currentIndex]
+      newOrder[currentIndex] = newOrder[newIndex]
+      newOrder[newIndex] = temp
       
       // Get the IDs in the new order
       const sliderIds = newOrder.map(item => item.id)

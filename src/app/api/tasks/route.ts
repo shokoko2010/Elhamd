@@ -3,15 +3,16 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { TaskPriority, TaskStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -112,9 +113,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUnifiedAuth(request)
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if assignee exists
-    const assignee = await db.user.findUnique({
+    const assignee = await db.session.user.findUnique({
       where: { id: assignedTo }
     })
 
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     // Check if customer exists if provided
     if (customerId) {
-      const customer = await db.user.findUnique({
+      const customer = await db.session.user.findUnique({
         where: { id: customerId }
       })
 
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
         priority: priority || TaskPriority.MEDIUM,
         dueDate: dueDate ? new Date(dueDate) : null,
         assignedTo,
-        assignedBy: user.id,
+        assignedBy: session.session.user.id,
         customerId,
         bookingId,
         notes,

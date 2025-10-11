@@ -61,7 +61,26 @@ export default function PopupConfigsPage() {
   })
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string
+    content: string
+    imageUrl: string
+    linkUrl: string
+    buttonText: string
+    buttonColor: string
+    textColor: string
+    backgroundColor: string
+    position: "TOP_LEFT" | "TOP_CENTER" | "TOP_RIGHT" | "CENTER" | "BOTTOM_LEFT" | "BOTTOM_CENTER" | "BOTTOM_RIGHT"
+    showDelay: number
+    autoHide: boolean
+    hideDelay: number
+    isActive: boolean
+    showOnPages: string
+    targetAudience: string
+    startDate?: string
+    endDate?: string
+    priority: number
+  }>({
     title: '',
     content: '',
     imageUrl: '',
@@ -70,15 +89,13 @@ export default function PopupConfigsPage() {
     buttonColor: '#3b82f6',
     textColor: '#ffffff',
     backgroundColor: '#1f2937',
-    position: 'BOTTOM_RIGHT' as const,
+    position: 'BOTTOM_RIGHT',
     showDelay: 3000,
     autoHide: true,
     hideDelay: 10000,
     isActive: true,
     showOnPages: '["homepage"]',
-    targetAudience: 'all' as const,
-    startDate: '',
-    endDate: '',
+    targetAudience: 'all',
     priority: 0
   })
 

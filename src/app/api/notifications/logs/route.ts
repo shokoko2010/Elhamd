@@ -3,8 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { authorize, UserRole } from '@/lib/unified-auth'
-
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 const authHandler = async (request: NextRequest) => {
   return await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 }
