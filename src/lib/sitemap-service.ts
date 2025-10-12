@@ -427,7 +427,7 @@ Allow: /
     }
 
     // Check for required elements in each URL
-    const urlRegex = /<url>.*?<loc>(.*?)<\/loc>.*?<\/url>/gs
+    const urlRegex = /<url>.*?<loc>(.*?)<\/loc>.*?<\/url>/g
     const urls = sitemapContent.match(urlRegex) || []
     
     urls.forEach(url => {

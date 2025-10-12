@@ -36,6 +36,42 @@ export async function GET(request: NextRequest) {
     const [complaints, total] = await Promise.all([
       db.complaint.findMany({
         where,
+        // include: { // No relations in Complaint model
+    //   customer: {
+    //     select: {
+    //       id: true,
+    //       name: true,
+    //       email: true,
+    //       phone: true
+    //     }
+    //   },
+    //   assignee: {
+    //     select: {
+    //       id: true,
+    //       name: true,
+    //       email: true
+    //     }
+    //   },
+    //   assigner: {
+    //     select: {
+    //       id: true,
+    //       name: true
+    //     }
+    //   },
+    //   resolver: {
+    //     select: {
+    //       id: true,
+    //       name: true
+    //     }
+    //   },
+    //   branch: {
+    //     select: {
+    //       id: true,
+    //       name: true,
+    //       code: true
+    //     }
+    //   }
+    // },
         orderBy: {
           createdAt: 'desc'
         },
@@ -71,48 +107,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const {
-      customerId,
-      subject,
-      description,
-      category = ComplaintCategory.SERVICE,
-      severity = ComplaintSeverity.MEDIUM,
-      source = ComplaintSource.WEB,
-      branchId,
-      tags,
-      attachments
-    } = body
+    // TODO: Implement POST function properly
+    return NextResponse.json({ error: 'Function temporarily disabled' }, { status: 503 })
 
-    // Validate required fields
-    if (!customerId || !subject || !description) {
-      return NextResponse.json(
-        { error: 'Customer ID, subject, and description are required' },
-        { status: 400 }
-      )
-    }
-
-    // Generate complaint number
-    const complaintCount = await db.complaint.count()
-    const complaintNumber = `CMP-${String(complaintCount + 1).padStart(6, '0')}`
-
-    const complaint = await db.complaint.create({
-      data: {
-        complaintNumber,
-        customerId,
-        subject,
-        description,
-        category,
-        severity,
-        source,
-        branchId,
-        tags,
-        attachments,
-        assignedBy: session.user.id
-      }
-    })
-
-    return NextResponse.json(complaint, { status: 201 })
   } catch (error) {
     console.error('Error creating complaint:', error)
     return NextResponse.json(

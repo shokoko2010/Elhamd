@@ -235,7 +235,7 @@ export class PerformanceAnalyticsService {
   // Generate daily report
   private generateDailyReport(): void {
     const report = this.generateReport({
-      period: 'daily',
+      period: 'day',
       startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
       endDate: new Date()
     })

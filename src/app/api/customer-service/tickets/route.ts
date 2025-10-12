@@ -1,12 +1,7 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { TicketCategory, TicketPriority, TicketStatus, TicketSource } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,16 +17,13 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
     const category = searchParams.get('category')
-    const assignedTo = searchParams.get('assignedTo')
-
-    const skip = (page - 1) * limit
 
     const where: any = {}
-    
     if (status) where.status = status
     if (priority) where.priority = priority
     if (category) where.category = category
-    if (assignedTo) where.assignedTo = assignedTo
+
+    const skip = (page - 1) * limit
 
     const [tickets, total] = await Promise.all([
       db.supportTicket.findMany({
@@ -76,25 +68,20 @@ export async function POST(request: NextRequest) {
       customerId,
       subject,
       description,
-      category = TicketCategory.GENERAL,
-      priority = TicketPriority.MEDIUM,
-      source = TicketSource.WEB,
-      branchId,
-      tags,
+      category,
+      priority,
       attachments
     } = body
 
-    // Validate required fields
     if (!customerId || !subject || !description) {
       return NextResponse.json(
-        { error: 'Customer ID, subject, and description are required' },
+        { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
     // Generate ticket number
-    const ticketCount = await db.supportTicket.count()
-    const ticketNumber = `TCK-${String(ticketCount + 1).padStart(6, '0')}`
+    const ticketNumber = `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
 
     const ticket = await db.supportTicket.create({
       data: {
@@ -102,28 +89,10 @@ export async function POST(request: NextRequest) {
         customerId,
         subject,
         description,
-        category,
-        priority,
-        source,
-        branchId,
-        tags,
+        category: category || 'GENERAL',
+        priority: priority || 'MEDIUM',
         attachments,
         assignedBy: session.user.id
-      }
-    })
-
-    // Create timeline entry
-    await db.ticketTimeline.create({
-      data: {
-        ticketId: ticket.id,
-        action: 'CREATED',
-        description: 'تم إنشاء التذكرة',
-        performedBy: session.user.id,
-        metadata: {
-          ticketNumber: ticket.ticketNumber,
-          priority: ticket.priority,
-          category: ticket.category
-        }
       }
     })
 

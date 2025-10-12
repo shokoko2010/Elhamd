@@ -1,12 +1,7 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { EvaluationStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,15 +16,12 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const status = searchParams.get('status')
     const serviceType = searchParams.get('serviceType')
-    const customerId = searchParams.get('customerId')
-
-    const skip = (page - 1) * limit
 
     const where: any = {}
-    
     if (status) where.status = status
     if (serviceType) where.serviceType = serviceType
-    if (customerId) where.customerId = customerId
+
+    const skip = (page - 1) * limit
 
     const [evaluations, total] = await Promise.all([
       db.serviceEvaluation.findMany({
@@ -80,25 +72,13 @@ export async function POST(request: NextRequest) {
       staffRating,
       valueRating,
       recommendations,
-      wouldRecommend,
-      feedback,
-      tags,
       attachments,
-      isPublic = false
+      isPublic
     } = body
 
-    // Validate required fields
-    if (!customerId || !serviceType || overallRating === undefined) {
+    if (!customerId || !serviceType || !overallRating) {
       return NextResponse.json(
-        { error: 'Customer ID, service type, and overall rating are required' },
-        { status: 400 }
-      )
-    }
-
-    // Validate rating range
-    if (overallRating < 1 || overallRating > 5) {
-      return NextResponse.json(
-        { error: 'Overall rating must be between 1 and 5' },
+        { error: 'Missing required fields' },
         { status: 400 }
       )
     }
@@ -114,12 +94,9 @@ export async function POST(request: NextRequest) {
         staffRating,
         valueRating,
         recommendations,
-        wouldRecommend,
-        feedback,
-        tags,
         attachments,
         isPublic,
-        status: EvaluationStatus.PENDING
+        status: 'PENDING'
       }
     })
 

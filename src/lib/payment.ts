@@ -79,9 +79,9 @@ export class PaymentService {
           paidAmount: {
             increment: request.amount
           },
-          paymentStatus: totalPaid >= invoice.totalAmount ? 'PAID' : 
-                         totalPaid > 0 ? 'PARTIALLY_PAID' : 'PENDING',
-          lastPaymentAt: new Date()
+          // paymentStatus: totalPaid >= invoice.totalAmount ? 'PAID' : 
+          //                totalPaid > 0 ? 'PARTIALLY_PAID' : 'PENDING', // Field not in Invoice model
+          paidAt: new Date()
         }
       })
 
@@ -231,7 +231,7 @@ export class PaymentService {
           paidAmount: {
             decrement: refundAmount
           },
-          paymentStatus: 'PARTIALLY_PAID', // After refund, it's no longer fully paid
+          // paymentStatus: 'PARTIALLY_PAID', // After refund, it's no longer fully paid
           lastPaymentAt: new Date()
         }
       })

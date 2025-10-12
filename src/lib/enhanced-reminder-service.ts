@@ -225,7 +225,7 @@ class EnhancedReminderService {
   private loadRemindersFromCache(): void {
     const cached = enhancedCache.get('reminders')
     if (cached) {
-      this.reminders = cached
+      this.reminders = cached || []
     }
   }
 
@@ -585,23 +585,23 @@ class EnhancedReminderService {
 // Export singleton instance
 export const reminderService = new EnhancedReminderService()
 
-// React hook for reminder management
-export function useReminders() {
-  const [stats, setStats] = useState(reminderService.getReminderStats())
+// React hook for reminder management - moved to client-side
+// export function useReminders() {
+//   const [stats, setStats] = useState(reminderService.getReminderStats())
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStats(reminderService.getReminderStats())
-    }, 5000)
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       setStats(reminderService.getReminderStats())
+//     }, 5000)
 
-    return () => clearInterval(interval)
-  }, [])
+//     return () => clearInterval(interval)
+//   }, [])
 
-  return {
-    stats,
-    scheduleManualReminder: reminderService.scheduleManualReminder.bind(reminderService),
-    sendImmediateReminder: reminderService.sendImmediateReminder.bind(reminderService),
-    updateConfig: reminderService.updateConfig.bind(reminderService),
-    addTemplate: reminderService.addTemplate.bind(reminderService),
-  }
-}
+//   return {
+//     stats,
+//     scheduleManualReminder: reminderService.scheduleManualReminder.bind(reminderService),
+//     sendImmediateReminder: reminderService.sendImmediateReminder.bind(reminderService),
+//     updateConfig: reminderService.updateConfig.bind(reminderService),
+//     addTemplate: reminderService.addTemplate.bind(reminderService),
+//   }
+// }
