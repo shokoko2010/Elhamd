@@ -99,7 +99,7 @@ export async function PUT(
 
     // Handle approval
     if (approved && !existingRecord.approvedBy) {
-      updateData.approvedBy = session.session.user.id;
+      updateData.approvedBy = session.user.id;
     } else if (!approved && existingRecord.approvedBy) {
       updateData.approvedBy = null;
     }

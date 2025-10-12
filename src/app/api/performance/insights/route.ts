@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const employeeId = searchParams.get('employeeId') || session.session.user.id
+    const employeeId = searchParams.get('employeeId') || session.user.id
 
     // Get employee's performance metrics
     const metrics = await db.performanceMetric.findMany({

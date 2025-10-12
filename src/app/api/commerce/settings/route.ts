@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       // Create default settings if none exist
       settings = await db.commerceSettings.create({
         data: {
-          settings: defaultSettings
+          settings: defaultSettings as any
         }
       })
     }
@@ -176,7 +176,7 @@ export async function PUT(request: NextRequest) {
       const updatedSettings = await db.commerceSettings.update({
         where: { id: existingSettings.id },
         data: {
-          settings: newSettings,
+          settings: newSettings as any,
           updatedAt: new Date()
         }
       })
@@ -184,7 +184,7 @@ export async function PUT(request: NextRequest) {
     } else {
       const createdSettings = await db.commerceSettings.create({
         data: {
-          settings: newSettings
+          settings: newSettings as any
         }
       })
       return NextResponse.json(createdSettings.settings)

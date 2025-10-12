@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         overtime: parseFloat(overtime) || 0,
         bonus: parseFloat(bonus) || 0,
         netSalary,
-        createdBy: session.session.user.id
+        createdBy: session.user.id
       },
       include: {
         employee: {

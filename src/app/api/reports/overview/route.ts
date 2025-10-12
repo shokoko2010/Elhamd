@@ -341,7 +341,7 @@ export async function GET(request: NextRequest) {
         : 0
 
       return {
-        id: session.session.user.id,
+        id: session.user.id,
         name: session.user.name,
         role: session.user.role,
         revenue,

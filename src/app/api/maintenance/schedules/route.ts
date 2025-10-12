@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         estimatedCost,
         priority: priority as MaintenanceStatus || MaintenanceStatus.PENDING,
         isActive: true,
-        createdBy: session.session.user.id,
+        createdBy: session.user.id,
         nextService,
       },
       include: {

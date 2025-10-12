@@ -58,8 +58,8 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if user is admin
-    const adminUser = await db.session.user.findUnique({
-      where: { id: session.session.user.id }
+    const adminUser = await db.user.findUnique({
+      where: { id: session.user.id }
     })
 
     if (!adminUser || adminUser.role !== 'ADMIN') {

@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         reference,
         dueDate: dueDate ? new Date(dueDate) : null,
         notes,
-        createdBy: session.session.user.id
+        createdBy: session.user.id
       },
       include: {
         policy: {

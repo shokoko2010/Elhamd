@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const employeeId = searchParams.get('employeeId') || session.session.user.id
+    const employeeId = searchParams.get('employeeId') || session.user.id
     const period = searchParams.get('period') as PerformancePeriod || PerformancePeriod.MONTHLY
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if employee exists
-    const employee = await db.session.user.findUnique({
+    const employee = await db.user.findUnique({
       where: { id: employeeId }
     })
 

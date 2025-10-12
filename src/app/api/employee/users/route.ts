@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     // Transform the data to match the expected format
     const transformedUsers = users.map(user => ({
-      id: session.session.user.id,
+      id: session.user.id,
       name: session.user.name || '',
       email: session.user.email,
       phone: session.user.phone || '',
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await db.session.user.findUnique({
+    const existingUser = await db.user.findUnique({
       where: { email }
     })
 

@@ -19,7 +19,7 @@ export async function DELETE(
     }
 
     const notificationId = id
-    const userId = session.session.user.id
+    const userId = session.user.id
 
     // Check if notification belongs to user
     const notification = await db.notification.findFirst({

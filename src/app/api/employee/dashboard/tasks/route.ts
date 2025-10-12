@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
     const tasks = await db.task.findMany({
       where: {
         OR: [
-          { assignedToId: session.session.user.id },
-          { createdById: session.session.user.id }
+          { assignedToId: session.user.id },
+          { createdById: session.user.id }
         ]
       },
       include: {

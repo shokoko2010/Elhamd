@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
         branchId,
         tags,
         attachments,
-        assignedBy: session.session.user.id
+        assignedBy: session.user.id
       },
       include: {
         customer: {
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         ticketId: ticket.id,
         action: 'CREATED',
         description: 'تم إنشاء التذكرة',
-        performedBy: session.session.user.id,
+        performedBy: session.user.id,
         metadata: {
           ticketNumber: ticket.ticketNumber,
           priority: ticket.priority,

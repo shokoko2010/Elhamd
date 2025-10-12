@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         branchId,
         tags,
         attachments,
-        assignedBy: session.session.user.id
+        assignedBy: session.user.id
       },
       include: {
         customer: {

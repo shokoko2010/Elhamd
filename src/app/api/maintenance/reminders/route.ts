@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
         reminderDate: new Date(reminderDate),
         type: type || 'EMAIL',
         status: MaintenanceStatus.PENDING,
-        createdBy: session.session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         schedule: {

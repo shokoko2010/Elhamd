@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
         priority,
         estimatedValue,
         assignedTo,
-        assignedBy: session.session.user.id,
+        assignedBy: session.user.id,
         assignedAt: assignedTo ? new Date() : null,
         branchId,
         tags,
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
         type: 'NOTE',
         title: 'تم إنشاء العميل المحتمل',
         description: `تم إنشاء العميل المحتمال ${lead.firstName} ${lead.lastName || ''}`,
-        performedBy: session.session.user.id,
+        performedBy: session.user.id,
         metadata: {
           leadNumber: lead.leadNumber,
           source: lead.source,

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userId = session.session.user.id
+    const userId = session.user.id
 
     // Get test drive bookings
     const testDriveBookings = await db.testDriveBooking.findMany({

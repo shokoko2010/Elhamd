@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         claimDate: new Date(),
         estimatedCost: estimatedCost ? parseFloat(estimatedCost) : null,
         attachments,
-        createdBy: session.session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         warranty: {

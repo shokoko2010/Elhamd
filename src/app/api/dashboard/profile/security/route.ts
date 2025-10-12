@@ -15,11 +15,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userId = session.session.user.id
+    const userId = session.user.id
     const { twoFactorEnabled, loginNotifications, emailNotifications } = await request.json()
 
     // Get current security settings
-    const currentUser = await db.session.user.findUnique({
+    const currentUser = await db.user.findUnique({
       where: { id: userId },
       select: { securitySettings: true }
     })

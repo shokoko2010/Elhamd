@@ -86,7 +86,7 @@ export async function POST(
     const comment = await db.taskComment.create({
       data: {
         taskId: id,
-        authorId: session.session.user.id,
+        authorId: session.user.id,
         content: content.trim()
       },
       include: {

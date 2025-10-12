@@ -19,7 +19,7 @@ export async function GET(
     }
 
     const bookingId = id
-    const userId = session.session.user.id
+    const userId = session.user.id
 
     // Try to find test drive booking first
     let booking = await db.testDriveBooking.findUnique({

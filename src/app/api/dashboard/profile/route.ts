@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       }
       
       // Fetch user profile from database using API user
-      const userProfile = await db.session.user.findUnique({
+      const userProfile = await db.user.findUnique({
         where: { id: apiUser.id }
       })
 
@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch user profile from database
-    const userProfile = await db.session.user.findUnique({
-      where: { id: session.session.user.id }
+    const userProfile = await db.user.findUnique({
+      where: { id: session.user.id }
     })
 
     if (!userProfile) {
@@ -113,7 +113,7 @@ export async function PUT(request: NextRequest) {
     
     // Update user profile
     const updatedUser = await db.session.user.update({
-      where: { id: session.session.user.id },
+      where: { id: session.user.id },
       data: {
         ...(name && { name }),
         ...(email && { email }),

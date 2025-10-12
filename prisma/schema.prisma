@@ -39,6 +39,12 @@ model User {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
+  productReviews      ProductReview[]    @relation("ProductReviewCustomer")
+  approvedReviews      ProductReview[]    @relation("ProductReviewApprover")
+  customerContracts    Contract[]         @relation("CustomerContracts")
+  createdContracts     Contract[]         @relation("ContractCreator")
+  approvedContracts    Contract[]         @relation("ContractApprover")
+
   @@index([email])
   @@index([role])
   @@index([isActive])
@@ -59,6 +65,7 @@ model Branch {
   currency    String   @default("EGP")
   timezone    String   @default("Africa/Cairo")
   settings    Json?
+  contracts   Contract[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -84,6 +91,7 @@ model Vehicle {
   status       VehicleStatus    @default(AVAILABLE)
   featured     Boolean          @default(false)
   branchId     String?
+  contracts    Contract[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -1887,6 +1895,12 @@ model Contract {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
+  customer  User     @relation("CustomerContracts", fields: [customerId], references: [id])
+  creator   User     @relation("ContractCreator", fields: [createdBy], references: [id])
+  approver  User?    @relation("ContractApprover", fields: [approvedBy], references: [id])
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+
   @@index([contractNumber])
   @@index([type, status])
   @@map("contracts")
@@ -2172,6 +2186,8 @@ model Product {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  reviews ProductReview[]
+
   @@map("products")
 }
 
@@ -2268,6 +2284,10 @@ model ProductReview {
   helpful     Int          @default(0)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+
+  customer  User?   @relation("ProductReviewCustomer", fields: [customerId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+  approver  User?   @relation("ProductReviewApprover", fields: [approvedBy], references: [id])
 
   @@map("product_reviews")
 }

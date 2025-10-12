@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user notification preferences
-    const preferences = await enhancedNotificationService.getUserNotificationPreferences(session.session.user.id)
+    const preferences = await enhancedNotificationService.getUserNotificationPreferences(session.user.id)
 
     return NextResponse.json({
       success: true,
@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest) {
 
     // Update user notification preferences
     const result = await enhancedNotificationService.updateUserNotificationPreferences(
-      session.session.user.id,
+      session.user.id,
       sanitizedPreferences
     )
 

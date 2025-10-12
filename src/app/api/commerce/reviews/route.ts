@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     const existingReview = await db.productReview.findFirst({
       where: {
         productId,
-        customerId: session.session.user.id
+        customerId: session.user.id
       }
     })
 
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     // Get commerce settings to check if reviews require approval
     const commerceSettings = await db.commerceSettings.findFirst()
-    const settings = commerceSettings?.settings || {}
+    const settings = commerceSettings?.settings as any || {}
     const requireApproval = settings.reviews?.requireApproval ?? true
     const autoPublish = settings.reviews?.autoPublish ?? false
 
@@ -144,14 +144,14 @@ export async function POST(request: NextRequest) {
     const newReview = await db.productReview.create({
       data: {
         productId,
-        customerId: session.session.user.id,
+        customerId: session.user.id,
         rating: parseInt(rating),
         title,
         review,
         images: images || [],
         isAnonymous: isAnonymous || false,
         status: requireApproval && !autoPublish ? ReviewStatus.PENDING : ReviewStatus.APPROVED,
-        approvedBy: !requireApproval || autoPublish ? session.session.user.id : null,
+        approvedBy: !requireApproval || autoPublish ? session.user.id : null,
         approvedAt: !requireApproval || autoPublish ? new Date() : null
       },
       include: {

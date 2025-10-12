@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         status: status as PartStatus || PartStatus.AVAILABLE,
         barcode,
         imageUrl,
-        createdBy: session.session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         creator: {

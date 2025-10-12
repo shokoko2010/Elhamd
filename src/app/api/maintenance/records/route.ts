@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
         parts,
         laborHours,
         odometer,
-        createdBy: session.session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         vehicle: {

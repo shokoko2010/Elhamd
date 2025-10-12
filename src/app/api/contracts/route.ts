@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
         value: parseFloat(value),
         terms,
         attachments,
-        createdBy: session.session.user.id,
+        createdBy: session.user.id,
         branchId,
       },
       include: {

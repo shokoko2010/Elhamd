@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    const userId = session.session.user.id
+    const userId = session.user.id
 
     // Get all bookings for the user
     const [testDriveBookings, serviceBookings] = await Promise.all([

@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if assignee exists
-    const assignee = await db.session.user.findUnique({
+    const assignee = await db.user.findUnique({
       where: { id: assignedTo }
     })
 
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     // Check if customer exists if provided
     if (customerId) {
-      const customer = await db.session.user.findUnique({
+      const customer = await db.user.findUnique({
         where: { id: customerId }
       })
 
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         priority: priority || TaskPriority.MEDIUM,
         dueDate: dueDate ? new Date(dueDate) : null,
         assignedTo,
-        assignedBy: session.session.user.id,
+        assignedBy: session.user.id,
         customerId,
         bookingId,
         notes,

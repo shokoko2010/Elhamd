@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         currency: 'EGP',
         notes,
         terms,
-        createdById: session.session.user.id,
+        createdById: session.user.id,
         items: {
           create: items.map((item: any) => ({
             itemId: item.itemId,
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
         action: 'CREATE_PURCHASE_ORDER',
         entityType: 'PURCHASE_ORDER',
         entityId: order.id,
-        userId: session.session.user.id,
+        userId: session.user.id,
         details: {
           orderNumber: order.orderNumber,
           supplierId: supplier.id,

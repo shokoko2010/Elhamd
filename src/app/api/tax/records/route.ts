@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         documents,
         notes,
         branchId,
-        createdBy: session.session.user.id,
+        createdBy: session.user.id,
       },
       include: {
         creator: {
