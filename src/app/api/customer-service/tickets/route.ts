@@ -36,36 +36,6 @@ export async function GET(request: NextRequest) {
     const [tickets, total] = await Promise.all([
       db.supportTicket.findMany({
         where,
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          assignee: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          },
-          assigner: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          branch: {
-            select: {
-              id: true,
-              name: true,
-              code: true
-            }
-          }
-        },
         orderBy: {
           createdAt: 'desc'
         },
@@ -139,36 +109,6 @@ export async function POST(request: NextRequest) {
         tags,
         attachments,
         assignedBy: session.user.id
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        assigner: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true
-          }
-        }
       }
     })
 

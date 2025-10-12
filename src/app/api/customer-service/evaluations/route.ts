@@ -34,21 +34,6 @@ export async function GET(request: NextRequest) {
     const [evaluations, total] = await Promise.all([
       db.serviceEvaluation.findMany({
         where,
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          },
-          reviewer: {
-            select: {
-              id: true,
-              name: true
-            }
-          }
-        },
         orderBy: {
           createdAt: 'desc'
         },
@@ -135,21 +120,6 @@ export async function POST(request: NextRequest) {
         attachments,
         isPublic,
         status: EvaluationStatus.PENDING
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        reviewer: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
       }
     })
 
