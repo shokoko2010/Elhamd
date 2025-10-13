@@ -3,6 +3,45 @@ import { db } from '@/lib/db'
 // Define Permission type locally since we can't import from schema
 type Permission = string
 
+// Available permissions constants
+export const PERMISSIONS = {
+  // Bookings
+  VIEW_BOOKINGS: 'VIEW_BOOKINGS',
+  CREATE_BOOKINGS: 'CREATE_BOOKINGS',
+  EDIT_BOOKINGS: 'EDIT_BOOKINGS',
+  DELETE_BOOKINGS: 'DELETE_BOOKINGS',
+  
+  // Customer permissions
+  VIEW_OWN_BOOKINGS: 'VIEW_OWN_BOOKINGS',
+  CREATE_OWN_BOOKINGS: 'CREATE_OWN_BOOKINGS',
+  EDIT_OWN_BOOKINGS: 'EDIT_OWN_BOOKINGS',
+  VIEW_OWN_PROFILE: 'VIEW_OWN_PROFILE',
+  EDIT_OWN_PROFILE: 'EDIT_OWN_PROFILE',
+  
+  // Customers
+  VIEW_CUSTOMERS: 'VIEW_CUSTOMERS',
+  CREATE_CUSTOMERS: 'CREATE_CUSTOMERS',
+  EDIT_CUSTOMERS: 'EDIT_CUSTOMERS',
+  
+  // Vehicles
+  VIEW_VEHICLES: 'VIEW_VEHICLES',
+  CREATE_VEHICLES: 'CREATE_VEHICLES',
+  EDIT_VEHICLES: 'EDIT_VEHICLES',
+  
+  // Services
+  VIEW_SERVICES: 'VIEW_SERVICES',
+  CREATE_SERVICES: 'CREATE_SERVICES',
+  EDIT_SERVICES: 'EDIT_SERVICES',
+  
+  // Reports
+  VIEW_REPORTS: 'VIEW_REPORTS',
+  
+  // Admin
+  MANAGE_PERMISSIONS: 'MANAGE_PERMISSIONS',
+  MANAGE_USERS: 'MANAGE_USERS',
+  VIEW_SYSTEM: 'VIEW_SYSTEM'
+} as const
+
 export class PermissionsService {
   // Basic permission checking - simplified since we don't have the full relations
   static async hasPermission(userId: string, permission: Permission): Promise<boolean> {

@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { UserRole } from '@prisma/client'
 import { db } from '@/lib/db'
-import { PermissionService } from './permissions'
+import { PermissionsService } from './permissions'
 import bcrypt from 'bcryptjs'
 import { getServerSession } from 'next-auth'
 
