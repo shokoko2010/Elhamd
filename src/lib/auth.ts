@@ -88,7 +88,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Get user permissions
-          const permissions = await PermissionService.getUserPermissions(user.id)
+          const permissions = await PermissionsService.getUserPermissions(user.id)
 
           // Update last login
           await db.user.update({

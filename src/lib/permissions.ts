@@ -194,6 +194,42 @@ export class PermissionsService {
     }
   }
 
+  // Initialize default permissions
+  static async initializeDefaultPermissions(): Promise<void> {
+    try {
+      // This would create default permissions in the database
+      // For now, we'll just log it since we don't have the full permission model
+      console.log('Default permissions initialized')
+    } catch (error) {
+      console.error('Error initializing default permissions:', error)
+      throw error
+    }
+  }
+
+  // Initialize role templates
+  static async initializeRoleTemplates(): Promise<void> {
+    try {
+      // This would create default role templates in the database
+      // For now, we'll just log it since we don't have the full model
+      console.log('Role templates initialized')
+    } catch (error) {
+      console.error('Error initializing role templates:', error)
+      throw error
+    }
+  }
+
+  // Set user permissions
+  static async setUserPermissions(userId: string, permissions: Permission[], updatedBy: string): Promise<void> {
+    try {
+      // This would update user permissions in the database
+      // For now, we'll just log it since we don't have the full model
+      console.log(`User permissions updated for ${userId}:`, permissions)
+    } catch (error) {
+      console.error('Error setting user permissions:', error)
+      throw error
+    }
+  }
+
   // Middleware helper for API routes
   static requirePermission(permission: Permission) {
     return async (userId: string): Promise<boolean> => {

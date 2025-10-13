@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 // Define SecurityEvent type locally since model doesn't exist
@@ -19,6 +20,73 @@ export class SecurityService {
   private static readonly SALT_ROUNDS = 12
   private static readonly MAX_LOGIN_ATTEMPTS = 5
   private static readonly LOCKOUT_DURATION = 15 * 60 * 1000 // 15 minutes
+
+  // Singleton instance for middleware compatibility
+  private static instance: SecurityService
+
+  static getInstance(): SecurityService {
+    if (!SecurityService.instance) {
+      SecurityService.instance = new SecurityService()
+    }
+    return SecurityService.instance
+  }
+
+  // Rate limiting for middleware
+  async rateLimit(request: NextRequest, type: string): Promise<{
+    allowed: boolean
+    remaining: number
+    resetTime: number
+  }> {
+    const identifier = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const result = await SecurityService.checkRateLimit(
+      `${type}_${identifier}`,
+      100, // 100 requests
+      15 * 60 * 1000 // per 15 minutes
+    )
+    
+    return {
+      allowed: result.allowed,
+      remaining: result.remaining,
+      resetTime: result.resetTime.getTime()
+    }
+  }
+
+  // Add security headers to response
+  addSecurityHeaders(response: NextResponse): NextResponse {
+    // Content Security Policy
+    response.headers.set('Content-Security-Policy', this.getCSPHeader())
+    
+    // Other security headers
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    
+    // HSTS in production
+    if (process.env.NODE_ENV === 'production') {
+      response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
+    }
+    
+    return response
+  }
+
+  // Handle CORS
+  handleCors(request: NextRequest, response: NextResponse): NextResponse {
+    const origin = request.headers.get('origin')
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? ['https://elhamd-cars.com'] 
+      : ['http://localhost:3000']
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      response.headers.set('Access-Control-Allow-Origin', origin)
+    }
+    
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
+    
+    return response
+  }
 
   // Password hashing
   static async hashPassword(password: string): Promise<string> {

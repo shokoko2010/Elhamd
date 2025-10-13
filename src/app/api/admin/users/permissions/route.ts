@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth';
 import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
-import { PermissionService } from '@/lib/permissions'
+import { PermissionsService } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // For SUPER_ADMIN, allow access even if permissions don't exist yet
     if (user.role !== 'SUPER_ADMIN') {
       try {
-        const hasPermission = await PermissionService.hasPermission(user.id, 'view_users')
+        const hasPermission = await PermissionsService.hasPermission(user.id, 'view_users')
         if (!hasPermission) {
           return NextResponse.json({ error: 'Access denied' }, { status: 403 })
         }
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     // Get permissions for each user
     const usersWithPermissions = await Promise.all(
       users.map(async (userItem) => {
-        const permissions = await PermissionService.getUserPermissions(userItem.id)
+        const permissions = await PermissionsService.getUserPermissions(userItem.id)
         
         // Get branch name if branchId exists
         let branchName: string | null = null

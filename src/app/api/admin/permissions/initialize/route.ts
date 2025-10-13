@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PermissionService } from '@/lib/permissions'
+import { PermissionsService } from '@/lib/permissions'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (session.user.role !== 'SUPER_ADMIN') {
       // If permissions exist, check for the required permission
       try {
-        const hasPermission = await PermissionService.hasPermission(session.user.id, 'manage_system_settings')
+        const hasPermission = await PermissionsService.hasPermission(session.user.id, 'manage_system_settings')
         if (!hasPermission) {
           return NextResponse.json({ error: 'Access denied' }, { status: 403 })
         }
@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize default permissions
-    await PermissionService.initializeDefaultPermissions()
+    await PermissionsService.initializeDefaultPermissions()
     
     // Initialize default role templates
-    await PermissionService.initializeRoleTemplates()
+    await PermissionsService.initializeRoleTemplates()
 
     return NextResponse.json({ 
       message: 'Permissions and role templates initialized successfully' 

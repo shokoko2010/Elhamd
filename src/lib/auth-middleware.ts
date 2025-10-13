@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from './auth'
-import { PermissionService } from './permissions'
+import { PermissionsService } from './permissions'
 import { NextRequest, NextResponse } from 'next/server'
 import { UserRole } from '@prisma/client'
 
@@ -24,7 +24,7 @@ export async function requirePermission(permission: string, request: NextRequest
     return user // Error response
   }
   
-  const hasPermission = await PermissionService.hasPermission(user.id, permission as any)
+  const hasPermission = await PermissionsService.hasPermission(user.id, permission as any)
   
   if (!hasPermission) {
     return NextResponse.json(
