@@ -36,17 +36,17 @@ export async function POST(request: NextRequest) {
     
     // Sanitize input data
     const sanitizedBody = {
-      vehicleId: body.vehicleId ? securityService.sanitizeInput(body.vehicleId.toString()) : undefined,
-      serviceType: securityService.sanitizeInput(body.serviceType?.toString() || ''),
+      vehicleId: body.vehicleId ? SecurityService.sanitizeInput(body.vehicleId.toString()) : undefined,
+      serviceType: SecurityService.sanitizeInput(body.serviceType?.toString() || ''),
       date: body.date,
-      timeSlot: securityService.sanitizeInput(body.timeSlot?.toString() || ''),
+      timeSlot: SecurityService.sanitizeInput(body.timeSlot?.toString() || ''),
       customerInfo: {
-        name: securityService.sanitizeInput(body.customerInfo?.name?.toString() || ''),
-        email: securityService.sanitizeInput(body.customerInfo?.email?.toString() || '').toLowerCase(),
-        phone: securityService.sanitizeInput(body.customerInfo?.phone?.toString() || ''),
-        licenseNumber: body.customerInfo?.licenseNumber ? securityService.sanitizeInput(body.customerInfo.licenseNumber.toString()) : undefined
+        name: SecurityService.sanitizeInput(body.customerInfo?.name?.toString() || ''),
+        email: SecurityService.sanitizeInput(body.customerInfo?.email?.toString() || '').toLowerCase(),
+        phone: SecurityService.sanitizeInput(body.customerInfo?.phone?.toString() || ''),
+        licenseNumber: body.customerInfo?.licenseNumber ? SecurityService.sanitizeInput(body.customerInfo.licenseNumber.toString()) : undefined
       },
-      message: body.message ? securityService.sanitizeInput(body.message.toString()) : undefined,
+      message: body.message ? SecurityService.sanitizeInput(body.message.toString()) : undefined,
       urgency: body.urgency
     }
     
@@ -70,10 +70,10 @@ export async function POST(request: NextRequest) {
     } = validation.data
 
     // Additional security checks
-    if (!securityService.preventSqlInjection(serviceType) || 
-        !securityService.preventSqlInjection(timeSlot) ||
-        (vehicleId && !securityService.preventSqlInjection(vehicleId)) ||
-        (message && !securityService.preventSqlInjection(message))) {
+    if (!SecurityService.preventSqlInjection(serviceType) || 
+        !SecurityService.preventSqlInjection(timeSlot) ||
+        (vehicleId && !SecurityService.preventSqlInjection(vehicleId)) ||
+        (message && !SecurityService.preventSqlInjection(message))) {
       return NextResponse.json(
         { error: 'Invalid input detected' },
         { status: 400 }

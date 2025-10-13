@@ -129,6 +129,19 @@ export class SecurityService {
     return input.trim().replace(/[<>]/g, '')
   }
 
+  static preventSqlInjection(input: string): boolean {
+    // Basic SQL injection prevention
+    const sqlPatterns = [
+      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/i,
+      /(--|;|\/\*|\*\/|xp_|sp_)/,
+      /(\bOR\b.*=.*\bOR\b)/i,
+      /(\bAND\b.*=.*\bAND\b)/i,
+      /('|(\\')|('')|(%27)|(%22))/i
+    ]
+    
+    return !sqlPatterns.some(pattern => pattern.test(input))
+  }
+
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return emailRegex.test(email)

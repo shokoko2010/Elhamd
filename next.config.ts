@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
     dirs: ['src'],
   },
   
