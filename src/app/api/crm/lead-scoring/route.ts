@@ -155,29 +155,22 @@ async function getLeadScoringOverview() {
       where: {
         segment: {
           in: ['LEAD', 'PROSPECT']
-        },
-        // user: {
-          isActive: true
         }
+      }
     }),
     db.customerProfile.count({
       where: {
         segment: 'LEAD'
-        // user: {
-        //   isActive: true
-        // }
       }
     }),
     db.customerProfile.count({
       where: {
         segment: 'PROSPECT'
-        // user: {
-        //   isActive: true
-        // }
       }
     })
   ])
-    const avgScore = 65 // Placeholder - would calculate from actual scores
+
+  const avgScore = 65 // Placeholder - would calculate from actual scores
 
   return {
     totalLeads,
@@ -191,49 +184,59 @@ async function getLeadScoringOverview() {
 
 async function calculateLeadScore(customerId: string, forceRecalculate = false): Promise<LeadScoreCalculation> {
   const customer = await db.user.findUnique({
-    where: { id: customerId },
-    include: {
-      // Note: crmInteractions and bookings relations don't exist in User model
-      // Using placeholder data for lead scoring
-      productReviews: {
-        select: {
-          id: true,
-          rating: true,
-          createdAt: true
-        },
-        take: 5
-      }
-    }
+    where: { id: customerId }
   })
 
   if (!customer) {
     throw new Error('Customer not found')
   }
 
+  // Get customer profile separately
+  const customerProfile = await db.customerProfile.findUnique({
+    where: { userId: customerId }
+  })
+
+  // Get CRM interactions separately
+  const crmInteractions = await db.customerInteraction.findMany({
+    where: { customerId },
+    orderBy: { createdAt: 'desc' },
+    take: 10
+  })
+
+  // Get bookings separately
+  const bookings = await db.booking.findMany({
+    where: { customerId },
+    select: {
+      totalPrice: true,
+      status: true,
+      createdAt: true
+    }
+  })
+
   const factors = []
   let totalScore = 0
   let maxTotalScore = 0
 
   // Engagement Score (30% weight)
-  const engagementScore = calculateEngagementScore(customer)
+  const engagementScore = calculateEngagementScore(customer, crmInteractions, bookings)
   factors.push(engagementScore)
   totalScore += engagementScore.score * 0.3
   maxTotalScore += engagementScore.maxScore * 0.3
 
   // Demographics Score (20% weight)
-  const demographicsScore = calculateDemographicsScore(customer)
+  const demographicsScore = calculateDemographicsScore(customer, customerProfile)
   factors.push(demographicsScore)
   totalScore += demographicsScore.score * 0.2
   maxTotalScore += demographicsScore.maxScore * 0.2
 
   // Behavior Score (25% weight)
-  const behaviorScore = calculateBehaviorScore(customer)
+  const behaviorScore = calculateBehaviorScore(customer, customerProfile)
   factors.push(behaviorScore)
   totalScore += behaviorScore.score * 0.25
   maxTotalScore += behaviorScore.maxScore * 0.25
 
   // Budget Score (25% weight)
-  const budgetScore = calculateBudgetScore(customer)
+  const budgetScore = calculateBudgetScore(customer, customerProfile)
   factors.push(budgetScore)
   totalScore += budgetScore.score * 0.25
   maxTotalScore += budgetScore.maxScore * 0.25
@@ -243,19 +246,10 @@ async function calculateLeadScore(customerId: string, forceRecalculate = false):
   const recommendations = generateRecommendations(factors, level)
 
   // Update customer profile with lead score
-  try {
+  if (forceRecalculate || !customerProfile?.riskScore) {
     await db.customerProfile.update({
       where: { userId: customerId },
       data: {
-        riskScore: percentage,
-        lastContactDate: new Date()
-      }
-    })
-  } catch (error) {
-    // Customer profile might not exist, create it
-    await db.customerProfile.create({
-      data: {
-        userId: customerId,
         riskScore: percentage,
         lastContactDate: new Date()
       }
@@ -273,34 +267,35 @@ async function calculateLeadScore(customerId: string, forceRecalculate = false):
   }
 }
 
-function calculateEngagementScore(customer: any) {
-  // Use placeholder data since crmInteractions and bookings don't exist
-  const interactions = [] // customer.crmInteractions || []
-  const bookings = [] // customer.bookings || []
-  const reviews = customer.productReviews || []
+function calculateEngagementScore(customer: any, crmInteractions: any[], bookings: any[]) {
+  const interactions = crmInteractions || []
+  const customerBookings = bookings || []
   
   let score = 0
   const details = []
 
-  // Number of interactions (placeholder)
-  score += 15
-  details.push('تفاعلات مسجلة')
-
-  // Recent interaction (placeholder)
-  score += 15
-  details.push('تفاعل حديث')
-
-  // Booking history (placeholder)
-  score += 20
-  details.push('حجوزات سابقة')
-
-  // Product reviews
-  if (reviews.length > 0) {
-    score += Math.min(reviews.length * 5, 20)
-    details.push(`${reviews.length} تقييم منتج`)
+  // Number of interactions
+  if (interactions.length > 0) {
+    score += Math.min(interactions.length * 5, 25)
+    details.push(`${interactions.length} تفاعل`)
   }
 
-  // Response rate (placeholder)
+  // Recent interaction (last 30 days)
+  const recentInteraction = interactions.find(i => 
+    new Date(i.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  )
+  if (recentInteraction) {
+    score += 15
+    details.push('تفاعل حديث')
+  }
+
+  // Booking history
+  if (customerBookings.length > 0) {
+    score += Math.min(customerBookings.length * 10, 30)
+    details.push(`${customerBookings.length} حجز سابق`)
+  }
+
+  // Response rate (placeholder - would track email opens, etc.)
   score += 10
   details.push('معدل استجابة جيد')
 
@@ -312,7 +307,7 @@ function calculateEngagementScore(customer: any) {
   }
 }
 
-function calculateDemographicsScore(customer: any) {
+function calculateDemographicsScore(customer: any, customerProfile: any) {
   let score = 0
   const details = []
 
@@ -320,6 +315,12 @@ function calculateDemographicsScore(customer: any) {
   if (customer.name && customer.email && customer.phone) {
     score += 30
     details.push('ملف شخصي مكتمل')
+  }
+
+  // Customer profile completeness
+  if (customerProfile) {
+    score += 20
+    details.push('ملف العميل مكتمل')
   }
 
   // Professional info (placeholder)
@@ -342,7 +343,7 @@ function calculateDemographicsScore(customer: any) {
   }
 }
 
-function calculateBehaviorScore(customer: any) {
+function calculateBehaviorScore(customer: any, customerProfile: any) {
   let score = 0
   const details = []
 
@@ -370,13 +371,15 @@ function calculateBehaviorScore(customer: any) {
   }
 }
 
-function calculateBudgetScore(customer: any) {
+function calculateBudgetScore(customer: any, customerProfile: any) {
   let score = 0
   const details = []
 
-  // Budget indication (placeholder)
-  score += 30
-  details.push('ميزانية محددة')
+  // Budget indication from customer profile
+  if (customerProfile?.leadValue && customerProfile.leadValue > 0) {
+    score += 30
+    details.push('ميزانية محددة')
+  }
 
   // Vehicle interest (placeholder)
   score += 30
@@ -453,32 +456,30 @@ async function updateLeadScoringRule(ruleId: string, data: any) {
 }
 
 async function bulkRecalculateLeadScores() {
-  const customers = await db.user.findMany({
+  // Get users with customer profiles
+  const customerProfiles = await db.customerProfile.findMany({
     where: {
-      role: 'CUSTOMER',
-      // customerProfile: { // No relation in User model
-      //   segment: {
-      //     in: ['LEAD', 'PROSPECT']
-      //   }
-      // }
+      segment: {
+        in: ['LEAD', 'PROSPECT']
+      }
     },
     select: {
-      id: true
+      userId: true
     }
   })
 
   const results = []
-  for (const customer of customers) {
+  for (const profile of customerProfiles) {
     try {
-      const score = await calculateLeadScore(customer.id, true)
-      results.push({ customerId: customer.id, success: true, score: score.percentage })
+      const score = await calculateLeadScore(profile.userId, true)
+      results.push({ customerId: profile.userId, success: true, score: score.percentage })
     } catch (error) {
-      results.push({ customerId: customer.id, success: false, error: error.message })
+      results.push({ customerId: profile.userId, success: false, error: error.message })
     }
   }
 
   return {
-    processed: customers.length,
+    processed: customerProfiles.length,
     results
   }
 }

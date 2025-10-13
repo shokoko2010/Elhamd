@@ -1,28 +1,98 @@
-import crypto from 'crypto'
-import bcrypt from 'bcryptjs'
-import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { NextResponse, NextRequest } from 'next/server'
+import bcrypt from 'bcryptjs'
+import speakeasy from 'speakeasy' // For TOTP
+import qrcode from 'qrcode' // For QR code generation
 
-// Define SecurityEvent type locally since model doesn't exist
-interface SecurityEvent {
+// Types for security features
+export interface TwoFactorSetup {
+  secret: string
+  qrCodeUrl: string
+  backupCodes: string[]
+}
+
+export interface SecurityEvent {
   id: string
   userId: string
-  eventType: string
+  eventType: 'LOGIN' | 'LOGOUT' | 'PASSWORD_CHANGE' | '2FA_ENABLED' | '2FA_DISABLED' | 'SECURITY_SETTINGS_CHANGE' | 'DATA_ACCESS' | 'PERMISSION_CHANGE' | 'FAILED_LOGIN' | 'ACCOUNT_LOCKED' | 'SESSION_EXPIRED'
   eventDescription: string
-  severity: string
-  ipAddress?: string
-  userAgent?: string
+  ipAddress: string
+  userAgent: string
+  location?: string
+  device?: string
   timestamp: Date
-  metadata?: any
+  severity: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
+  metadata?: Record<string, any>
+}
+
+export interface AuditLog {
+  id: string
+  userId: string
+  action: string
+  entityType: string
+  entityId: string
+  changes: {
+    before: Record<string, any>
+    after: Record<string, any>
+  }
+  ipAddress: string
+  userAgent: string
+  timestamp: Date
+  status: 'SUCCESS' | 'FAILED' | 'PENDING'
+  errorMessage?: string
+}
+
+export interface SecuritySettings {
+  userId: string
+  twoFactorEnabled: boolean
+  twoFactorMethod: 'TOTP' | 'SMS' | 'EMAIL' | 'NONE'
+  passwordLastChanged: Date
+  sessionTimeout: number
+  loginAttempts: number
+  accountLocked: boolean
+  lockUntil?: Date
+  backupCodes: string[]
+  securityQuestions: Array<{
+    question: string
+    answer: string
+  }>
+  trustedDevices: Array<{
+    deviceId: string
+    deviceName: string
+    lastUsed: Date
+    trusted: boolean
+  }>
+}
+
+export interface PasswordPolicy {
+  minLength: number
+  requireUppercase: boolean
+  requireLowercase: boolean
+  requireNumbers: boolean
+  requireSpecialChars: boolean
+  preventReusedPasswords: number
+  passwordExpiryDays: number
+  accountLockoutThreshold: number
+  accountLockoutDuration: number // in minutes
 }
 
 export class SecurityService {
-  private static readonly SALT_ROUNDS = 12
-  private static readonly MAX_LOGIN_ATTEMPTS = 5
-  private static readonly LOCKOUT_DURATION = 15 * 60 * 1000 // 15 minutes
-
-  // Singleton instance for middleware compatibility
   private static instance: SecurityService
+  private passwordPolicy: PasswordPolicy
+
+  private constructor() {
+    this.passwordPolicy = {
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: true,
+      preventReusedPasswords: 5,
+      passwordExpiryDays: 90,
+      accountLockoutThreshold: 5,
+      accountLockoutDuration: 30
+    }
+  }
 
   static getInstance(): SecurityService {
     if (!SecurityService.instance) {
@@ -31,142 +101,184 @@ export class SecurityService {
     return SecurityService.instance
   }
 
-  // Rate limiting for middleware
-  async rateLimit(request: NextRequest, type: string): Promise<{
-    allowed: boolean
-    remaining: number
-    resetTime: number
-  }> {
-    const identifier = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
-    const result = await SecurityService.checkRateLimit(
-      `${type}_${identifier}`,
-      100, // 100 requests
-      15 * 60 * 1000 // per 15 minutes
-    )
-    
+  // Two-Factor Authentication Methods
+
+  // Generate TOTP secret and setup QR code
+  async setupTwoFactorAuth(userId: string): Promise<TwoFactorSetup> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user) {
+      throw new Error('User not found')
+    }
+
+    // Generate secret key
+    const secret = speakeasy.generateSecret({
+      name: `Al-Hamd Cars (${user.email})`,
+      issuer: 'Al-Hamd Cars',
+      length: 32
+    })
+
+    // Generate QR code URL
+    const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url)
+
+    // Generate backup codes
+    const backupCodes = this.generateBackupCodes()
+
+    // Store secret and backup codes (in real implementation, encrypt the secret)
+    await this.updateUserSecuritySettings(userId, {
+      twoFactorSecret: secret.base32,
+      backupCodes: backupCodes
+    })
+
     return {
-      allowed: result.allowed,
-      remaining: result.remaining,
-      resetTime: result.resetTime.getTime()
+      secret: secret.base32,
+      qrCodeUrl,
+      backupCodes
     }
   }
 
-  // Add security headers to response
-  addSecurityHeaders(response: NextResponse): NextResponse {
-    // Content Security Policy
-    response.headers.set('Content-Security-Policy', this.getCSPHeader())
-    
-    // Other security headers
-    response.headers.set('X-Content-Type-Options', 'nosniff')
-    response.headers.set('X-Frame-Options', 'DENY')
-    response.headers.set('X-XSS-Protection', '1; mode=block')
-    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-    
-    // HSTS in production
-    if (process.env.NODE_ENV === 'production') {
-      response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
+  // Verify TOTP token
+  async verifyTwoFactorToken(userId: string, token: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.securitySettings) {
+      return false
     }
-    
-    return response
-  }
 
-  // Handle CORS
-  handleCors(request: NextRequest, response: NextResponse): NextResponse {
-    const origin = request.headers.get('origin')
-    const allowedOrigins = process.env.NODE_ENV === 'production' 
-      ? ['https://elhamd-cars.com'] 
-      : ['http://localhost:3000']
-    
-    if (origin && allowedOrigins.includes(origin)) {
-      response.headers.set('Access-Control-Allow-Origin', origin)
+    const securitySettings = user.securitySettings as any
+    const secret = securitySettings.twoFactorSecret
+
+    if (!secret) {
+      return false
     }
+
+    const verified = speakeasy.totp.verify({
+      secret: secret,
+      encoding: 'base32',
+      token: token,
+      window: 2 // Allow 2 steps before/after for clock drift
+    })
+
+    return verified
+  }
+
+  // Verify backup code
+  async verifyBackupCode(userId: string, code: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.securitySettings) {
+      return false
+    }
+
+    const securitySettings = user.securitySettings as any
+    const backupCodes = securitySettings.backupCodes || []
+
+    const codeIndex = backupCodes.indexOf(code)
+    if (codeIndex === -1) {
+      return false
+    }
+
+    // Remove used backup code
+    backupCodes.splice(codeIndex, 1)
+    await this.updateUserSecuritySettings(userId, { backupCodes })
+
+    return true
+  }
+
+  // Enable 2FA for user
+  async enableTwoFactorAuth(userId: string, method: 'TOTP' | 'SMS' | 'EMAIL', token: string): Promise<boolean> {
+    const isValid = await this.verifyTwoFactorToken(userId, token)
     
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-    response.headers.set('Access-Control-Allow-Credentials', 'true')
-    
-    return response
+    if (!isValid) {
+      return false
+    }
+
+    await this.updateUserSecuritySettings(userId, {
+      twoFactorEnabled: true,
+      twoFactorMethod: method
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: '2FA_ENABLED',
+      eventDescription: `Two-factor authentication enabled using ${method}`,
+      severity: 'INFO'
+    })
+
+    return true
   }
 
-  // Password hashing
-  static async hashPassword(password: string): Promise<string> {
-    return await bcrypt.hash(password, this.SALT_ROUNDS)
+  // Disable 2FA for user
+  async disableTwoFactorAuth(userId: string, password: string): Promise<boolean> {
+    // Verify password before disabling 2FA
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.password) {
+      return false
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    if (!isPasswordValid) {
+      return false
+    }
+
+    await this.updateUserSecuritySettings(userId, {
+      twoFactorEnabled: false,
+      twoFactorMethod: 'NONE'
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: '2FA_DISABLED',
+      eventDescription: 'Two-factor authentication disabled',
+      severity: 'WARNING'
+    })
+
+    return true
   }
 
-  static async verifyPassword(password: string, hash: string): Promise<boolean> {
-    return await bcrypt.compare(password, hash)
+  // Generate backup codes
+  private generateBackupCodes(): string[] {
+    const codes = []
+    for (let i = 0; i < 10; i++) {
+      codes.push(Math.random().toString(36).substring(2, 15).toUpperCase())
+    }
+    return codes
   }
 
-  // Generate secure tokens
-  static generateSecureToken(length: number = 32): string {
-    return crypto.randomBytes(length).toString('hex')
-  }
+  // Password Management
 
-  static generateSessionToken(): string {
-    return this.generateSecureToken(64)
-  }
-
-  // Rate limiting
-  static async recordFailedLogin(identifier: string): Promise<void> {
-    // This would typically use Redis or another cache
-    // For now, we'll just log it
-    console.log(`Failed login recorded for: ${identifier}`)
-  }
-
-  static async isAccountLocked(identifier: string): Promise<boolean> {
-    // This would check against a cache or database
-    // For now, we'll return false
-    return false
-  }
-
-  static async resetFailedAttempts(identifier: string): Promise<void> {
-    // This would reset the failed login counter
-    console.log(`Failed login attempts reset for: ${identifier}`)
-  }
-
-  // Input validation and sanitization
-  static sanitizeInput(input: string): string {
-    return input.trim().replace(/[<>]/g, '')
-  }
-
-  static preventSqlInjection(input: string): boolean {
-    // Basic SQL injection prevention
-    const sqlPatterns = [
-      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/i,
-      /(--|;|\/\*|\*\/|xp_|sp_)/,
-      /(\bOR\b.*=.*\bOR\b)/i,
-      /(\bAND\b.*=.*\bAND\b)/i,
-      /('|(\\')|('')|(%27)|(%22))/i
-    ]
-    
-    return !sqlPatterns.some(pattern => pattern.test(input))
-  }
-
-  static validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  static validatePassword(password: string): { isValid: boolean; errors: string[] } {
+  // Validate password against policy
+  validatePassword(password: string): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
 
-    if (password.length < 8) {
-      errors.push('Password must be at least 8 characters long')
+    if (password.length < this.passwordPolicy.minLength) {
+      errors.push(`Password must be at least ${this.passwordPolicy.minLength} characters long`)
     }
 
-    if (!/[A-Z]/.test(password)) {
+    if (this.passwordPolicy.requireUppercase && !/[A-Z]/.test(password)) {
       errors.push('Password must contain at least one uppercase letter')
     }
 
-    if (!/[a-z]/.test(password)) {
+    if (this.passwordPolicy.requireLowercase && !/[a-z]/.test(password)) {
       errors.push('Password must contain at least one lowercase letter')
     }
 
-    if (!/\d/.test(password)) {
+    if (this.passwordPolicy.requireNumbers && !/\d/.test(password)) {
       errors.push('Password must contain at least one number')
     }
 
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    if (this.passwordPolicy.requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
       errors.push('Password must contain at least one special character')
     }
 
@@ -176,62 +288,193 @@ export class SecurityService {
     }
   }
 
-  // Two-factor authentication
-  static generate2FASecret(): string {
-    return this.generateSecureToken(20)
+  // Hash password
+  async hashPassword(password: string): Promise<string> {
+    const saltRounds = 12
+    return bcrypt.hash(password, saltRounds)
   }
 
-  static async enable2FA(userId: string, method: 'SMS' | 'EMAIL' | 'APP'): Promise<boolean> {
-    try {
-      const secret = this.generate2FASecret()
-      
-      // In a real implementation, this would save to database
-      console.log(`2FA enabled for user ${userId} using ${method} with secret ${secret}`)
-      
-      return true
-    } catch (error) {
-      console.error('Error enabling 2FA:', error)
+  // Verify password
+  async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword)
+  }
+
+  // Change password
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.password) {
       return false
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await this.verifyPassword(currentPassword, user.password)
+    if (!isCurrentPasswordValid) {
+      return false
+    }
+
+    // Validate new password
+    const validation = this.validatePassword(newPassword)
+    if (!validation.isValid) {
+      throw new Error(`Password validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Check if password was used before
+    if (await this.isPasswordReused(userId, newPassword)) {
+      throw new Error('This password has been used recently. Please choose a different password.')
+    }
+
+    // Hash new password
+    const hashedNewPassword = await this.hashPassword(newPassword)
+
+    // Update password
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedNewPassword,
+        updatedAt: new Date()
+      }
+    })
+
+    // Update security settings
+    await this.updateUserSecuritySettings(userId, {
+      passwordLastChanged: new Date()
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'PASSWORD_CHANGE',
+      eventDescription: 'Password changed successfully',
+      severity: 'INFO'
+    })
+
+    return true
+  }
+
+  // Check if password was reused
+  private async isPasswordReused(userId: string, newPassword: string): Promise<boolean> {
+    // This would check against previous passwords
+    // For now, return false
+    return false
+  }
+
+  // Account Lockout Management
+
+  // Record failed login attempt
+  async recordFailedLogin(userId: string, ipAddress: string): Promise<void> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user) {
+      return
+    }
+
+    const securitySettings = (user.securitySettings as any) || {}
+    const loginAttempts = (securitySettings.loginAttempts || 0) + 1
+
+    await this.updateUserSecuritySettings(userId, {
+      loginAttempts
+    })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'FAILED_LOGIN',
+      eventDescription: `Failed login attempt (${loginAttempts}/${this.passwordPolicy.accountLockoutThreshold})`,
+      severity: 'WARNING',
+      metadata: { attemptNumber: loginAttempts }
+    })
+
+    // Check if account should be locked
+    if (loginAttempts >= this.passwordPolicy.accountLockoutThreshold) {
+      const lockUntil = new Date(Date.now() + this.passwordPolicy.accountLockoutDuration * 60000)
+      
+      await this.updateUserSecuritySettings(userId, {
+        accountLocked: true,
+        lockUntil
+      })
+
+      // Log security event
+      await this.logSecurityEvent({
+        userId,
+        eventType: 'ACCOUNT_LOCKED',
+        eventDescription: `Account locked due to too many failed login attempts`,
+        severity: 'ERROR'
+      })
     }
   }
 
-  static async disable2FA(userId: string): Promise<boolean> {
-    try {
-      // In a real implementation, this would update database
-      console.log(`2FA disabled for user ${userId}`)
-      
-      return true
-    } catch (error) {
-      console.error('Error disabling 2FA:', error)
+  // Reset failed login attempts
+  async resetFailedLoginAttempts(userId: string): Promise<void> {
+    await this.updateUserSecuritySettings(userId, {
+      loginAttempts: 0,
+      accountLocked: false,
+      lockUntil: null
+    })
+  }
+
+  // Check if account is locked
+  async isAccountLocked(userId: string): Promise<boolean> {
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user || !user.securitySettings) {
       return false
     }
-  }
 
-  // Session management
-  static async createSession(userId: string, userAgent?: string): Promise<string> {
-    const sessionToken = this.generateSessionToken()
+    const securitySettings = user.securitySettings as any
     
-    // In a real implementation, this would save to database
-    console.log(`Session created for user ${userId} with token ${sessionToken}`)
-    
-    return sessionToken
+    if (!securitySettings.accountLocked) {
+      return false
+    }
+
+    // Check if lock has expired
+    if (securitySettings.lockUntil && new Date() > new Date(securitySettings.lockUntil)) {
+      await this.updateUserSecuritySettings(userId, {
+        accountLocked: false,
+        lockUntil: null
+      })
+      return false
+    }
+
+    return true
   }
 
-  static async validateSession(sessionToken: string): Promise<string | null> {
-    // In a real implementation, this would check database
-    console.log(`Session validation for token ${sessionToken}`)
-    
-    // For demo purposes, return a mock user ID
-    return sessionToken ? 'mock-user-id' : null
+  // Audit Trail Management
+
+  // Log audit event
+  async logAuditEvent(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
+    // This would save to database
+    console.log('Audit Event:', auditLog)
   }
 
-  static async revokeSession(sessionToken: string): Promise<void> {
-    // In a real implementation, this would remove from database
-    console.log(`Session revoked for token ${sessionToken}`)
+  // Get audit logs for user
+  async getUserAuditLogs(userId: string, limit: number = 100): Promise<AuditLog[]> {
+    // This would fetch from database
+    return []
   }
 
-  // Security logging (simplified since SecurityEvent model doesn't exist)
-  private static async logSecurityEvent(event: Omit<SecurityEvent, 'id' | 'timestamp'>): Promise<void> {
+  // Get system audit logs
+  async getSystemAuditLogs(filters: {
+    userId?: string
+    eventType?: string
+    dateFrom?: Date
+    dateTo?: Date
+    limit?: number
+  }): Promise<AuditLog[]> {
+    // This would fetch from database with filters
+    return []
+  }
+
+  // Security Event Logging
+
+  // Log security event
+  async logSecurityEvent(event: Omit<SecurityEvent, 'id' | 'timestamp'>): Promise<void> {
     const securityEvent: SecurityEvent = {
       ...event,
       id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -247,137 +490,261 @@ export class SecurityService {
     }
   }
 
-  private static async handleCriticalSecurityEvent(event: SecurityEvent): Promise<void> {
-    // In a real implementation, this would send alerts
+  // Get security events for user
+  async getUserSecurityEvents(userId: string, limit: number = 100): Promise<SecurityEvent[]> {
+    // This would fetch from database
+    return []
+  }
+
+  // Get system security events
+  async getSystemSecurityEvents(filters: {
+    userId?: string
+    eventType?: string
+    severity?: string
+    dateFrom?: Date
+    dateTo?: Date
+    limit?: number
+  }): Promise<SecurityEvent[]> {
+    // This would fetch from database with filters
+    return []
+  }
+
+  // Handle critical security events
+  private async handleCriticalSecurityEvent(event: SecurityEvent): Promise<void> {
+    // This would trigger alerts, notifications, or automatic responses
     console.error('CRITICAL SECURITY EVENT:', event)
+    
+    // Examples of automatic responses:
+    // - Lock user account
+    // - Force logout of all sessions
+    // - Send security alerts to administrators
+    // - Enable additional monitoring
   }
 
-  // CSRF protection
-  static generateCSRFToken(): string {
-    return this.generateSecureToken(32)
+  // Session Management
+
+  // Create secure session
+  async createSession(userId: string, deviceInfo: any): Promise<string> {
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // This would create session in database
+    console.log('Session created:', { userId, sessionId, deviceInfo })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'LOGIN',
+      eventDescription: 'User logged in successfully',
+      severity: 'INFO',
+      metadata: { sessionId, deviceInfo }
+    })
+
+    return sessionId
   }
 
-  static validateCSRFToken(token: string, sessionToken: string): boolean {
-    // In a real implementation, this would validate against stored token
-    return token.length > 0 && sessionToken.length > 0
+  // Validate session
+  async validateSession(sessionId: string): Promise<boolean> {
+    // This would validate session in database
+    return true
   }
 
-  // Content Security Policy
-  static getCSPHeader(): string {
-    return [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
-      "font-src 'self'",
-      "connect-src 'self'",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'"
-    ].join('; ')
+  // Invalidate session (logout)
+  async invalidateSession(sessionId: string, userId: string): Promise<void> {
+    // This would remove session from database
+    console.log('Session invalidated:', { sessionId, userId })
+
+    // Log security event
+    await this.logSecurityEvent({
+      userId,
+      eventType: 'LOGOUT',
+      eventDescription: 'User logged out',
+      severity: 'INFO',
+      metadata: { sessionId }
+    })
   }
 
-  // Rate limiting helpers
-  static async checkRateLimit(
-    identifier: string,
-    maxRequests: number,
-    windowMs: number
-  ): Promise<{ allowed: boolean; remaining: number; resetTime: Date }> {
-    // In a real implementation, this would use Redis or similar
-    const now = new Date()
-    const windowStart = new Date(now.getTime() - windowMs)
+  // Get user sessions
+  async getUserSessions(userId: string): Promise<any[]> {
+    // This would fetch user sessions from database
+    return []
+  }
+
+  // Device Management
+
+  // Register trusted device
+  async registerTrustedDevice(userId: string, deviceInfo: any): Promise<void> {
+    const deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // This would save to user's security settings
+    console.log('Trusted device registered:', { userId, deviceId, deviceInfo })
+  }
+
+  // Remove trusted device
+  async removeTrustedDevice(userId: string, deviceId: string): Promise<void> {
+    // This would remove from user's security settings
+    console.log('Trusted device removed:', { userId, deviceId })
+  }
+
+  // Helper methods
+
+  // Update user security settings
+  private async updateUserSecuritySettings(userId: string, updates: any): Promise<void> {
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        securitySettings: updates,
+        updatedAt: new Date()
+      }
+    })
+  }
+
+  // Get password policy
+  getPasswordPolicy(): PasswordPolicy {
+    return { ...this.passwordPolicy }
+  }
+
+  // Update password policy
+  updatePasswordPolicy(newPolicy: Partial<PasswordPolicy>): void {
+    this.passwordPolicy = { ...this.passwordPolicy, ...newPolicy }
+  }
+
+  // Security headers and middleware methods
+
+  // Add security headers to response
+  addSecurityHeaders(response: NextResponse): NextResponse {
+    // Add security headers
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    
+    // HSTS in production
+    if (process.env.NODE_ENV === 'production') {
+      response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
+    }
+    
+    // Content Security Policy
+    response.headers.set('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self' https:; " +
+      "frame-ancestors 'none';"
+    )
+    
+    // Remove headers that expose server information
+    response.headers.delete('x-powered-by')
+    response.headers.delete('server')
+    
+    return response
+  }
+
+  // Rate limiting method
+  async rateLimit(request: NextRequest, key: string): Promise<{
+    allowed: boolean
+    remaining: number
+    resetTime: number
+  }> {
+    // Simple in-memory rate limiting (in production, use Redis or similar)
+    const now = Date.now()
+    const windowMs = 15 * 60 * 1000 // 15 minutes
+    const maxRequests = key === 'api' ? 100 : key === 'booking-service' ? 20 : 10
+    
+    // Create a simple key for the rate limit
+    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const rateLimitKey = `${key}:${ip}`
+    
+    // In a real implementation, this would use a proper rate limiting store
+    // For now, we'll use a simple mock implementation
+    const mockData = {
+      requests: 5, // Mock current request count
+      resetTime: now + windowMs
+    }
+    
+    const remaining = Math.max(0, maxRequests - mockData.requests)
     
     return {
-      allowed: true,
-      remaining: maxRequests - 1,
-      resetTime: new Date(windowStart.getTime() + windowMs)
+      allowed: mockData.requests <= maxRequests,
+      remaining,
+      resetTime: mockData.resetTime
     }
   }
 
-  // Data encryption
-  static encryptSensitiveData(data: string, key: string): string {
-    const cipher = crypto.createCipher('aes-256-cbc', key)
-    let encrypted = cipher.update(data, 'utf8', 'hex')
-    encrypted += cipher.final('hex')
-    return encrypted
-  }
-
-  static decryptSensitiveData(encryptedData: string, key: string): string {
-    const decipher = crypto.createDecipher('aes-256-cbc', key)
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8')
-    decrypted += decipher.final('utf8')
-    return decrypted
-  }
-
-  // Audit logging
-  static async logAuditEvent(
-    userId: string,
-    action: string,
-    resource: string,
-    resourceId?: string,
-    metadata?: any
-  ): Promise<void> {
-    const auditEvent = {
-      id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId,
-      action,
-      resource,
-      resourceId,
-      metadata,
-      timestamp: new Date()
-    }
-
-    // This would save to audit log
-    console.log('Audit Event:', auditEvent)
-  }
-
-  // Password reset
-  static generatePasswordResetToken(): string {
-    return this.generateSecureToken(32)
-  }
-
-  static async createPasswordResetRequest(userId: string): Promise<string | null> {
-    try {
-      const token = this.generatePasswordResetToken()
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-      
-      // In a real implementation, this would save to database
-      console.log(`Password reset request created for user ${userId} with token ${token}`)
-      
-      return token
-    } catch (error) {
-      console.error('Error creating password reset request:', error)
-      return null
-    }
-  }
-
-  static async validatePasswordResetToken(token: string): Promise<string | null> {
-    // In a real implementation, this would check database
-    console.log(`Password reset token validation for ${token}`)
+  // CORS handling
+  handleCors(request: NextRequest, response: NextResponse): NextResponse {
+    const origin = request.headers.get('origin')
     
-    // For demo purposes, return a mock user ID
-    return token ? 'mock-user-id' : null
+    // Allow specific origins in production, all in development
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? ['https://elhamd-cars.com'] 
+      : ['http://localhost:3000', 'http://localhost:3001']
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      response.headers.set('Access-Control-Allow-Origin', origin || '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, X-CSRF-Token')
+      response.headers.set('Access-Control-Allow-Credentials', 'true')
+    }
+    
+    return response
   }
 
-  static async resetPassword(token: string, newPassword: string): Promise<boolean> {
-    try {
-      const userId = await this.validatePasswordResetToken(token)
-      
-      if (!userId) {
-        return false
-      }
+  // Input sanitization
+  sanitizeInput(input: string): string {
+    if (typeof input !== 'string') {
+      return ''
+    }
+    
+    // Remove potentially dangerous characters
+    return input
+      .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+      .replace(/['"]/g, '') // Remove quotes to prevent SQL injection
+      .replace(/[;&|`$]/g, '') // Remove shell command characters
+      .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+      .trim()
+  }
 
-      const hashedPassword = await this.hashPassword(newPassword)
-      
-      // In a real implementation, this would update database
-      console.log(`Password reset for user ${userId}`)
-      
-      return true
-    } catch (error) {
-      console.error('Error resetting password:', error)
+  // SQL injection prevention
+  preventSqlInjection(input: string): boolean {
+    if (typeof input !== 'string') {
       return false
+    }
+    
+    // Check for common SQL injection patterns
+    const sqlInjectionPatterns = [
+      /(\s|^)(OR|AND)\s+\d+\s*=\s*\d+/i, // OR 1=1
+      /(\s|^)(OR|AND)\s+['"]\w+['"]\s*=\s*['"]\w+['"]/i, // OR 'a'='a'
+      /(\s|^)(DROP|DELETE|INSERT|UPDATE|CREATE|ALTER|EXEC|UNION|SELECT)\s+/i, // SQL keywords
+      /(\s|^)(--|\/\*|\*\/|#)/i, // SQL comments
+      /['"]\s*;\s*['"]/i, // Separated statements
+      /(\s|^)(WAITFOR|DELAY|SLEEP)\s+/i, // Timing attacks
+      /(\s|^)(XP_|SP_)/i, // SQL Server extended procedures
+    ]
+    
+    return !sqlInjectionPatterns.some(pattern => pattern.test(input))
+  }
+
+  // Security health check
+  async getSecurityHealthCheck(): Promise<{
+    overallHealth: 'GOOD' | 'WARNING' | 'CRITICAL'
+    checks: {
+      accountLockouts: { status: 'OK' | 'WARNING'; count: number }
+      failedLogins: { status: 'OK' | 'WARNING'; count: number }
+      securityEvents: { status: 'OK' | 'WARNING'; criticalCount: number }
+      passwordExpiry: { status: 'OK' | 'WARNING'; expiredCount: number }
+    }
+  }> {
+    // This would perform comprehensive security health check
+    return {
+      overallHealth: 'GOOD',
+      checks: {
+        accountLockouts: { status: 'OK', count: 0 },
+        failedLogins: { status: 'OK', count: 0 },
+        securityEvents: { status: 'OK', criticalCount: 0 },
+        passwordExpiry: { status: 'OK', expiredCount: 0 }
+      }
     }
   }
 }
-
-export default SecurityService

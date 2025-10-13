@@ -20,10 +20,7 @@ export async function GET(request: NextRequest) {
       where: {
         segment: {
           in: ['LEAD', 'PROSPECT']
-        },
-        // user: { // Field should be userId
-    //   isActive: true
-    // }
+        }
       }
     })
 

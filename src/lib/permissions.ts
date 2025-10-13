@@ -1,371 +1,557 @@
 import { db } from '@/lib/db'
+import { UserRole, PermissionCategory } from '@prisma/client'
 
-// Define Permission type locally since we can't import from schema
-export type Permission = string
-
-// Available permissions constants
+// Permission constants
 export const PERMISSIONS = {
-  // Bookings
-  VIEW_BOOKINGS: 'VIEW_BOOKINGS',
-  CREATE_BOOKINGS: 'CREATE_BOOKINGS',
-  EDIT_BOOKINGS: 'EDIT_BOOKINGS',
-  DELETE_BOOKINGS: 'DELETE_BOOKINGS',
-  MANAGE_BOOKING_STATUS: 'MANAGE_BOOKING_STATUS',
+  // User Management
+  VIEW_USERS: 'view_users',
+  CREATE_USERS: 'create_users',
+  EDIT_USERS: 'edit_users',
+  DELETE_USERS: 'delete_users',
+  MANAGE_USER_ROLES: 'manage_user_roles',
+  MANAGE_USER_PERMISSIONS: 'manage_user_permissions',
   
-  // Customer permissions
-  VIEW_OWN_BOOKINGS: 'VIEW_OWN_BOOKINGS',
-  CREATE_OWN_BOOKINGS: 'CREATE_OWN_BOOKINGS',
-  EDIT_OWN_BOOKINGS: 'EDIT_OWN_BOOKINGS',
-  VIEW_OWN_PROFILE: 'VIEW_OWN_PROFILE',
-  EDIT_OWN_PROFILE: 'EDIT_OWN_PROFILE',
+  // Vehicle Management
+  VIEW_VEHICLES: 'view_vehicles',
+  CREATE_VEHICLES: 'create_vehicles',
+  EDIT_VEHICLES: 'edit_vehicles',
+  DELETE_VEHICLES: 'delete_vehicles',
+  MANAGE_VEHICLE_INVENTORY: 'manage_vehicle_inventory',
   
-  // Customers
-  VIEW_CUSTOMERS: 'VIEW_CUSTOMERS',
-  CREATE_CUSTOMERS: 'CREATE_CUSTOMERS',
-  EDIT_CUSTOMERS: 'EDIT_CUSTOMERS',
-  DELETE_CUSTOMERS: 'DELETE_CUSTOMERS',
-  MANAGE_CUSTOMER_PROFILES: 'MANAGE_CUSTOMER_PROFILES',
-  VIEW_CUSTOMER_HISTORY: 'VIEW_CUSTOMER_HISTORY',
+  // Booking Management
+  VIEW_BOOKINGS: 'view_bookings',
+  CREATE_BOOKINGS: 'create_bookings',
+  EDIT_BOOKINGS: 'edit_bookings',
+  DELETE_BOOKINGS: 'delete_bookings',
+  MANAGE_BOOKING_STATUS: 'manage_booking_status',
   
-  // Vehicles
-  VIEW_VEHICLES: 'VIEW_VEHICLES',
-  CREATE_VEHICLES: 'CREATE_VEHICLES',
-  EDIT_VEHICLES: 'EDIT_VEHICLES',
-  DELETE_VEHICLES: 'DELETE_VEHICLES',
-  MANAGE_VEHICLE_INVENTORY: 'MANAGE_VEHICLE_INVENTORY',
+  // Service Management
+  VIEW_SERVICES: 'view_services',
+  CREATE_SERVICES: 'create_services',
+  EDIT_SERVICES: 'edit_services',
+  DELETE_SERVICES: 'delete_services',
+  MANAGE_SERVICE_SCHEDULE: 'manage_service_schedule',
   
-  // Services
-  VIEW_SERVICES: 'VIEW_SERVICES',
-  CREATE_SERVICES: 'CREATE_SERVICES',
-  EDIT_SERVICES: 'EDIT_SERVICES',
-  DELETE_SERVICES: 'DELETE_SERVICES',
-  MANAGE_SERVICE_SCHEDULE: 'MANAGE_SERVICE_SCHEDULE',
+  // Inventory Management
+  VIEW_INVENTORY: 'view_inventory',
+  CREATE_INVENTORY_ITEMS: 'create_inventory_items',
+  EDIT_INVENTORY_ITEMS: 'edit_inventory_items',
+  DELETE_INVENTORY_ITEMS: 'delete_inventory_items',
+  MANAGE_WAREHOUSES: 'manage_warehouses',
+  MANAGE_SUPPLIERS: 'manage_suppliers',
+  SYNC_VEHICLES_TO_INVENTORY: 'sync_vehicles_to_inventory',
+  INITIALIZE_INVENTORY_DATA: 'initialize_inventory_data',
   
-  // Reports
-  VIEW_REPORTS: 'VIEW_REPORTS',
-  GENERATE_REPORTS: 'GENERATE_REPORTS',
-  VIEW_ANALYTICS: 'VIEW_ANALYTICS',
-  EXPORT_DATA: 'EXPORT_DATA',
+  // Financial Management
+  VIEW_FINANCIALS: 'view_financials',
+  CREATE_INVOICES: 'create_invoices',
+  EDIT_INVOICES: 'edit_invoices',
+  DELETE_INVOICES: 'delete_invoices',
+  MANAGE_PAYMENTS: 'manage_payments',
+  VIEW_REPORTS: 'view_reports',
+  EXPORT_FINANCIAL_DATA: 'export_financial_data',
   
-  // Users
-  VIEW_USERS: 'VIEW_USERS',
-  CREATE_USERS: 'CREATE_USERS',
-  EDIT_USERS: 'EDIT_USERS',
-  DELETE_USERS: 'DELETE_USERS',
-  MANAGE_USER_ROLES: 'MANAGE_USER_ROLES',
-  MANAGE_USER_PERMISSIONS: 'MANAGE_USER_PERMISSIONS',
+  // Branch Management
+  VIEW_BRANCHES: 'view_branches',
+  CREATE_BRANCHES: 'create_branches',
+  EDIT_BRANCHES: 'edit_branches',
+  DELETE_BRANCHES: 'delete_branches',
+  MANAGE_BRANCH_STAFF: 'manage_branch_staff',
+  MANAGE_BRANCH_BUDGET: 'manage_branch_budget',
+  APPROVE_BRANCH_TRANSFERS: 'approve_branch_transfers',
   
-  // Inventory
-  VIEW_INVENTORY: 'VIEW_INVENTORY',
-  CREATE_INVENTORY_ITEMS: 'CREATE_INVENTORY_ITEMS',
-  EDIT_INVENTORY_ITEMS: 'EDIT_INVENTORY_ITEMS',
-  DELETE_INVENTORY_ITEMS: 'DELETE_INVENTORY_ITEMS',
-  MANAGE_WAREHOUSES: 'MANAGE_WAREHOUSES',
-  MANAGE_SUPPLIERS: 'MANAGE_SUPPLIERS',
-  SYNC_VEHICLES_TO_INVENTORY: 'SYNC_VEHICLES_TO_INVENTORY',
-  INITIALIZE_INVENTORY_DATA: 'INITIALIZE_INVENTORY_DATA',
+  // Customer Management
+  VIEW_CUSTOMERS: 'view_customers',
+  CREATE_CUSTOMERS: 'create_customers',
+  EDIT_CUSTOMERS: 'edit_customers',
+  DELETE_CUSTOMERS: 'delete_customers',
+  MANAGE_CUSTOMER_PROFILES: 'manage_customer_profiles',
+  VIEW_CUSTOMER_HISTORY: 'view_customer_history',
   
-  // Financial
-  VIEW_FINANCIALS: 'VIEW_FINANCIALS',
-  CREATE_INVOICES: 'CREATE_INVOICES',
-  EDIT_INVOICES: 'EDIT_INVOICES',
-  DELETE_INVOICES: 'DELETE_INVOICES',
-  MANAGE_PAYMENTS: 'MANAGE_PAYMENTS',
-  EXPORT_FINANCIAL_DATA: 'EXPORT_FINANCIAL_DATA',
+  // Marketing Management
+  VIEW_CAMPAIGNS: 'view_campaigns',
+  CREATE_CAMPAIGNS: 'create_campaigns',
+  EDIT_CAMPAIGNS: 'edit_campaigns',
+  DELETE_CAMPAIGNS: 'delete_campaigns',
+  MANAGE_EMAIL_TEMPLATES: 'manage_email_templates',
   
-  // Branches
-  VIEW_BRANCHES: 'VIEW_BRANCHES',
-  CREATE_BRANCHES: 'CREATE_BRANCHES',
-  EDIT_BRANCHES: 'EDIT_BRANCHES',
-  DELETE_BRANCHES: 'DELETE_BRANCHES',
-  MANAGE_BRANCH_STAFF: 'MANAGE_BRANCH_STAFF',
-  MANAGE_BRANCH_BUDGET: 'MANAGE_BRANCH_BUDGET',
-  APPROVE_BRANCH_TRANSFERS: 'APPROVE_BRANCH_TRANSFERS',
+  // System Settings
+  VIEW_SYSTEM_SETTINGS: 'view_system_settings',
+  MANAGE_SYSTEM_SETTINGS: 'manage_system_settings',
+  MANAGE_ROLES_TEMPLATES: 'manage_roles_templates',
+  VIEW_SYSTEM_LOGS: 'view_system_logs',
+  MANAGE_BACKUPS: 'manage_backups',
   
-  // Marketing
-  VIEW_CAMPAIGNS: 'VIEW_CAMPAIGNS',
-  CREATE_CAMPAIGNS: 'CREATE_CAMPAIGNS',
-  EDIT_CAMPAIGNS: 'EDIT_CAMPAIGNS',
-  DELETE_CAMPAIGNS: 'DELETE_CAMPAIGNS',
-  MANAGE_EMAIL_TEMPLATES: 'MANAGE_EMAIL_TEMPLATES',
-  
-  // Admin
-  MANAGE_PERMISSIONS: 'MANAGE_PERMISSIONS',
-  MANAGE_USERS: 'MANAGE_USERS',
-  VIEW_SYSTEM: 'VIEW_SYSTEM',
-  VIEW_SYSTEM_SETTINGS: 'VIEW_SYSTEM_SETTINGS',
-  MANAGE_SYSTEM_SETTINGS: 'MANAGE_SYSTEM_SETTINGS',
-  MANAGE_ROLES_TEMPLATES: 'MANAGE_ROLES_TEMPLATES',
-  VIEW_SYSTEM_LOGS: 'VIEW_SYSTEM_LOGS',
-  MANAGE_BACKUPS: 'MANAGE_BACKUPS',
-  MANAGE_DASHBOARDS: 'MANAGE_DASHBOARDS'
+  // Reporting
+  GENERATE_REPORTS: 'generate_reports',
+  VIEW_ANALYTICS: 'view_analytics',
+  EXPORT_DATA: 'export_data',
+  MANAGE_DASHBOARDS: 'manage_dashboards'
 } as const
 
-export class PermissionsService {
-  // Basic permission checking - simplified since we don't have the full relations
-  static async hasPermission(userId: string, permission: Permission): Promise<boolean> {
-    try {
-      const user = await db.user.findUnique({
-        where: { id: userId }
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
+
+// Default role permissions
+export const DEFAULT_ROLE_PERMISSIONS = {
+  [UserRole.SUPER_ADMIN]: Object.values(PERMISSIONS),
+  [UserRole.ADMIN]: [
+    // User Management
+    PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.CREATE_USERS,
+    PERMISSIONS.EDIT_USERS,
+    PERMISSIONS.DELETE_USERS,
+    PERMISSIONS.MANAGE_USER_ROLES,
+    PERMISSIONS.MANAGE_USER_PERMISSIONS,
+    
+    // Vehicle Management
+    PERMISSIONS.VIEW_VEHICLES,
+    PERMISSIONS.CREATE_VEHICLES,
+    PERMISSIONS.EDIT_VEHICLES,
+    PERMISSIONS.DELETE_VEHICLES,
+    PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
+    
+    // Booking Management
+    PERMISSIONS.VIEW_BOOKINGS,
+    PERMISSIONS.CREATE_BOOKINGS,
+    PERMISSIONS.EDIT_BOOKINGS,
+    PERMISSIONS.DELETE_BOOKINGS,
+    PERMISSIONS.MANAGE_BOOKING_STATUS,
+    
+    // Service Management
+    PERMISSIONS.VIEW_SERVICES,
+    PERMISSIONS.CREATE_SERVICES,
+    PERMISSIONS.EDIT_SERVICES,
+    PERMISSIONS.DELETE_SERVICES,
+    PERMISSIONS.MANAGE_SERVICE_SCHEDULE,
+    
+    // Inventory Management
+    PERMISSIONS.VIEW_INVENTORY,
+    PERMISSIONS.CREATE_INVENTORY_ITEMS,
+    PERMISSIONS.EDIT_INVENTORY_ITEMS,
+    PERMISSIONS.DELETE_INVENTORY_ITEMS,
+    PERMISSIONS.MANAGE_WAREHOUSES,
+    PERMISSIONS.MANAGE_SUPPLIERS,
+    PERMISSIONS.SYNC_VEHICLES_TO_INVENTORY,
+    PERMISSIONS.INITIALIZE_INVENTORY_DATA,
+    
+    // Financial Management
+    PERMISSIONS.VIEW_FINANCIALS,
+    PERMISSIONS.CREATE_INVOICES,
+    PERMISSIONS.EDIT_INVOICES,
+    PERMISSIONS.DELETE_INVOICES,
+    PERMISSIONS.MANAGE_PAYMENTS,
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.EXPORT_FINANCIAL_DATA,
+    
+    // Branch Management
+    PERMISSIONS.VIEW_BRANCHES,
+    PERMISSIONS.CREATE_BRANCHES,
+    PERMISSIONS.EDIT_BRANCHES,
+    PERMISSIONS.DELETE_BRANCHES,
+    PERMISSIONS.MANAGE_BRANCH_STAFF,
+    PERMISSIONS.MANAGE_BRANCH_BUDGET,
+    PERMISSIONS.APPROVE_BRANCH_TRANSFERS,
+    
+    // Customer Management
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.CREATE_CUSTOMERS,
+    PERMISSIONS.EDIT_CUSTOMERS,
+    PERMISSIONS.DELETE_CUSTOMERS,
+    PERMISSIONS.MANAGE_CUSTOMER_PROFILES,
+    PERMISSIONS.VIEW_CUSTOMER_HISTORY,
+    
+    // Marketing Management
+    PERMISSIONS.VIEW_CAMPAIGNS,
+    PERMISSIONS.CREATE_CAMPAIGNS,
+    PERMISSIONS.EDIT_CAMPAIGNS,
+    PERMISSIONS.DELETE_CAMPAIGNS,
+    PERMISSIONS.MANAGE_EMAIL_TEMPLATES,
+    
+    // System Settings
+    PERMISSIONS.VIEW_SYSTEM_SETTINGS,
+    PERMISSIONS.MANAGE_SYSTEM_SETTINGS,
+    PERMISSIONS.MANAGE_ROLES_TEMPLATES,
+    PERMISSIONS.VIEW_SYSTEM_LOGS,
+    PERMISSIONS.MANAGE_BACKUPS,
+    
+    // Reporting
+    PERMISSIONS.GENERATE_REPORTS,
+    PERMISSIONS.VIEW_ANALYTICS,
+    PERMISSIONS.EXPORT_DATA,
+    PERMISSIONS.MANAGE_DASHBOARDS
+  ],
+  [UserRole.BRANCH_MANAGER]: [
+    // User Management (limited to branch)
+    PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.CREATE_USERS,
+    PERMISSIONS.EDIT_USERS,
+    PERMISSIONS.MANAGE_USER_ROLES,
+    
+    // Vehicle Management (limited to branch)
+    PERMISSIONS.VIEW_VEHICLES,
+    PERMISSIONS.CREATE_VEHICLES,
+    PERMISSIONS.EDIT_VEHICLES,
+    PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
+    
+    // Booking Management
+    PERMISSIONS.VIEW_BOOKINGS,
+    PERMISSIONS.CREATE_BOOKINGS,
+    PERMISSIONS.EDIT_BOOKINGS,
+    PERMISSIONS.MANAGE_BOOKING_STATUS,
+    
+    // Service Management
+    PERMISSIONS.VIEW_SERVICES,
+    PERMISSIONS.CREATE_SERVICES,
+    PERMISSIONS.EDIT_SERVICES,
+    PERMISSIONS.MANAGE_SERVICE_SCHEDULE,
+    
+    // Inventory Management
+    PERMISSIONS.VIEW_INVENTORY,
+    PERMISSIONS.CREATE_INVENTORY_ITEMS,
+    PERMISSIONS.EDIT_INVENTORY_ITEMS,
+    PERMISSIONS.MANAGE_WAREHOUSES,
+    PERMISSIONS.MANAGE_SUPPLIERS,
+    PERMISSIONS.SYNC_VEHICLES_TO_INVENTORY,
+    
+    // Financial Management (limited to branch)
+    PERMISSIONS.VIEW_FINANCIALS,
+    PERMISSIONS.CREATE_INVOICES,
+    PERMISSIONS.EDIT_INVOICES,
+    PERMISSIONS.MANAGE_PAYMENTS,
+    PERMISSIONS.VIEW_REPORTS,
+    
+    // Branch Management (limited to own branch)
+    PERMISSIONS.VIEW_BRANCHES,
+    PERMISSIONS.EDIT_BRANCHES,
+    PERMISSIONS.MANAGE_BRANCH_STAFF,
+    PERMISSIONS.MANAGE_BRANCH_BUDGET,
+    
+    // Customer Management
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.CREATE_CUSTOMERS,
+    PERMISSIONS.EDIT_CUSTOMERS,
+    PERMISSIONS.MANAGE_CUSTOMER_PROFILES,
+    PERMISSIONS.VIEW_CUSTOMER_HISTORY,
+    
+    // Marketing Management (limited)
+    PERMISSIONS.VIEW_CAMPAIGNS,
+    
+    // Reporting
+    PERMISSIONS.GENERATE_REPORTS,
+    PERMISSIONS.VIEW_ANALYTICS,
+    PERMISSIONS.EXPORT_DATA
+  ],
+  [UserRole.STAFF]: [
+    // User Management (very limited)
+    PERMISSIONS.VIEW_USERS,
+    
+    // Vehicle Management (view only)
+    PERMISSIONS.VIEW_VEHICLES,
+    
+    // Booking Management
+    PERMISSIONS.VIEW_BOOKINGS,
+    PERMISSIONS.CREATE_BOOKINGS,
+    PERMISSIONS.EDIT_BOOKINGS,
+    
+    // Service Management
+    PERMISSIONS.VIEW_SERVICES,
+    PERMISSIONS.CREATE_SERVICES,
+    PERMISSIONS.EDIT_SERVICES,
+    
+    // Inventory Management
+    PERMISSIONS.VIEW_INVENTORY,
+    PERMISSIONS.CREATE_INVENTORY_ITEMS,
+    PERMISSIONS.EDIT_INVENTORY_ITEMS,
+    
+    // Financial Management (view only)
+    PERMISSIONS.VIEW_FINANCIALS,
+    PERMISSIONS.VIEW_REPORTS,
+    
+    // Branch Management (view only)
+    PERMISSIONS.VIEW_BRANCHES,
+    
+    // Customer Management
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.CREATE_CUSTOMERS,
+    PERMISSIONS.EDIT_CUSTOMERS,
+    PERMISSIONS.VIEW_CUSTOMER_HISTORY,
+    
+    // Reporting (view only)
+    PERMISSIONS.GENERATE_REPORTS,
+    PERMISSIONS.VIEW_ANALYTICS
+  ],
+  [UserRole.CUSTOMER]: [
+    // Very limited permissions for customers
+    PERMISSIONS.VIEW_VEHICLES,
+    PERMISSIONS.CREATE_BOOKINGS,
+    PERMISSIONS.VIEW_BOOKINGS,
+    PERMISSIONS.VIEW_SERVICES,
+    PERMISSIONS.CREATE_SERVICES,
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.EDIT_CUSTOMERS,
+    PERMISSIONS.MANAGE_CUSTOMER_PROFILES
+  ]
+} as const
+
+// Permission service class
+export class PermissionService {
+  static async initializeDefaultPermissions() {
+    const permissions = Object.values(PERMISSIONS)
+    
+    for (const permissionName of permissions) {
+      const category = this.getPermissionCategory(permissionName)
+      
+      await db.permission.upsert({
+        where: { name: permissionName },
+        update: {},
+        create: {
+          name: permissionName,
+          description: this.getPermissionDescription(permissionName),
+          category
+        }
       })
-
-      if (!user) {
-        return false
-      }
-
-      // Simplified permission checking based on user role
-      // In a real implementation, this would check the full permission structure
-      switch (user.role) {
-        case 'ADMIN':
-          return true // Admin has all permissions
-        case 'MANAGER':
-          return this.hasManagerPermission(permission)
-        case 'EMPLOYEE':
-          return this.hasEmployeePermission(permission)
-        case 'CUSTOMER':
-          return this.hasCustomerPermission(permission)
-        default:
-          return false
-      }
-    } catch (error) {
-      console.error('Error checking permission:', error)
-      return false
     }
   }
 
-  private static hasManagerPermission(permission: Permission): boolean {
-    const managerPermissions = [
-      'VIEW_BOOKINGS',
-      'CREATE_BOOKINGS',
-      'EDIT_BOOKINGS',
-      'DELETE_BOOKINGS',
-      'VIEW_CUSTOMERS',
-      'CREATE_CUSTOMERS',
-      'EDIT_CUSTOMERS',
-      'VIEW_VEHICLES',
-      'CREATE_VEHICLES',
-      'EDIT_VEHICLES',
-      'VIEW_SERVICES',
-      'CREATE_SERVICES',
-      'EDIT_SERVICES',
-      'VIEW_REPORTS'
-    ]
-    return managerPermissions.includes(permission)
+  static async initializeRoleTemplates() {
+    const roles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF, UserRole.CUSTOMER]
+    
+    for (const role of roles) {
+      const permissions = DEFAULT_ROLE_PERMISSIONS[role]
+      const templateName = `${role}_TEMPLATE`
+      
+      await db.roleTemplate.upsert({
+        where: { name: templateName },
+        update: {},
+        create: {
+          name: templateName,
+          description: `Default permissions for ${role} role`,
+          role,
+          permissions: JSON.stringify(permissions),
+          isSystem: true
+        }
+      })
+    }
   }
 
-  private static hasEmployeePermission(permission: Permission): boolean {
-    const employeePermissions = [
-      'VIEW_BOOKINGS',
-      'CREATE_BOOKINGS',
-      'EDIT_BOOKINGS',
-      'VIEW_CUSTOMERS',
-      'EDIT_CUSTOMERS',
-      'VIEW_VEHICLES',
-      'VIEW_SERVICES'
-    ]
-    return employeePermissions.includes(permission)
+  static async getUserPermissions(userId: string): Promise<Permission[]> {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: {
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        roleTemplate: true,
+        branchPermissions: true
+      }
+    })
+
+    if (!user) {
+      return []
+    }
+
+    let permissions: Permission[] = []
+
+    // Start with role template permissions
+    if (user.roleTemplate?.permissions) {
+      try {
+        // Check if permissions are already stored as an array or as JSON string
+        let templatePermissions: string[] = []
+        if (typeof user.roleTemplate.permissions === 'string') {
+          templatePermissions = JSON.parse(user.roleTemplate.permissions)
+        } else if (Array.isArray(user.roleTemplate.permissions)) {
+          templatePermissions = user.roleTemplate.permissions
+        }
+        
+        // Convert permission IDs to Permission names
+        const permissionNames = await db.permission.findMany({
+          where: { id: { in: templatePermissions } },
+          select: { name: true }
+        })
+        
+        permissions = permissionNames.map(p => p.name as Permission)
+      } catch (error) {
+        console.error('Error parsing role template permissions:', error)
+      }
+    }
+
+    // Add custom permissions if they exist
+    if (user.customPermissions) {
+      try {
+        const customPermissions = JSON.parse(user.customPermissions)
+        permissions = [...permissions, ...customPermissions]
+      } catch (error) {
+        console.error('Error parsing custom permissions:', error)
+      }
+    }
+
+    // Add individual user permissions
+    const userPermissions = user.permissions.map(up => up.permission.name as Permission)
+    permissions = [...permissions, ...userPermissions]
+
+    // Add branch-specific permissions if user is assigned to a branch
+    if (user.branchId) {
+      const branchPermission = user.branchPermissions.find(bp => bp.branchId === user.branchId)
+      if (branchPermission?.permissions) {
+        try {
+          const branchPermissions = JSON.parse(branchPermission.permissions)
+          permissions = [...permissions, ...branchPermissions]
+        } catch (error) {
+          console.error('Error parsing branch permissions:', error)
+        }
+      }
+    }
+
+    // Remove duplicates
+    return [...new Set(permissions)]
   }
 
-  private static hasCustomerPermission(permission: Permission): boolean {
-    const customerPermissions = [
-      'VIEW_OWN_BOOKINGS',
-      'CREATE_OWN_BOOKINGS',
-      'EDIT_OWN_BOOKINGS',
-      'VIEW_OWN_PROFILE',
-      'EDIT_OWN_PROFILE'
-    ]
-    return customerPermissions.includes(permission)
+  static async hasPermission(userId: string, permission: Permission): Promise<boolean> {
+    const userPermissions = await this.getUserPermissions(userId)
+    return userPermissions.includes(permission)
   }
 
   static async hasAnyPermission(userId: string, permissions: Permission[]): Promise<boolean> {
-    for (const permission of permissions) {
-      if (await this.hasPermission(userId, permission)) {
-        return true
-      }
-    }
-    return false
+    const userPermissions = await this.getUserPermissions(userId)
+    return permissions.some(permission => userPermissions.includes(permission))
   }
 
   static async hasAllPermissions(userId: string, permissions: Permission[]): Promise<boolean> {
-    for (const permission of permissions) {
-      if (!(await this.hasPermission(userId, permission))) {
-        return false
-      }
-    }
-    return true
+    const userPermissions = await this.getUserPermissions(userId)
+    return permissions.every(permission => userPermissions.includes(permission))
   }
 
-  // Simplified user permissions - returns basic permissions based on role
-  static async getUserPermissions(userId: string): Promise<Permission[]> {
-    try {
-      const user = await db.user.findUnique({
-        where: { id: userId }
+  static async setUserPermissions(userId: string, permissions: Permission[], grantedBy?: string) {
+    // Clear existing permissions
+    await db.userPermission.deleteMany({
+      where: { userId }
+    })
+
+    // Add new permissions
+    for (const permissionName of permissions) {
+      const permission = await db.permission.findUnique({
+        where: { name: permissionName }
       })
 
-      if (!user) {
-        return []
+      if (permission) {
+        await db.userPermission.create({
+          data: {
+            userId,
+            permissionId: permission.id,
+            grantedBy
+          }
+        })
       }
+    }
+  }
 
-      switch (user.role) {
-        case 'ADMIN':
-          return ['*'] // All permissions
-        case 'MANAGER':
-          return [
-            'VIEW_BOOKINGS',
-            'CREATE_BOOKINGS', 
-            'EDIT_BOOKINGS',
-            'DELETE_BOOKINGS',
-            'VIEW_CUSTOMERS',
-            'CREATE_CUSTOMERS',
-            'EDIT_CUSTOMERS',
-            'VIEW_VEHICLES',
-            'CREATE_VEHICLES',
-            'EDIT_VEHICLES',
-            'VIEW_SERVICES',
-            'CREATE_SERVICES',
-            'EDIT_SERVICES',
-            'VIEW_REPORTS'
-          ]
-        case 'EMPLOYEE':
-          return [
-            'VIEW_BOOKINGS',
-            'CREATE_BOOKINGS',
-            'EDIT_BOOKINGS',
-            'VIEW_CUSTOMERS',
-            'EDIT_CUSTOMERS',
-            'VIEW_VEHICLES',
-            'VIEW_SERVICES'
-          ]
-        case 'CUSTOMER':
-          return [
-            'VIEW_OWN_BOOKINGS',
-            'CREATE_OWN_BOOKINGS',
-            'EDIT_OWN_BOOKINGS',
-            'VIEW_OWN_PROFILE',
-            'EDIT_OWN_PROFILE'
-          ]
-        default:
-          return []
+  static async setBranchPermissions(userId: string, branchId: string, permissions: Permission[], grantedBy?: string) {
+    await db.branchPermission.upsert({
+      where: {
+        userId_branchId: {
+          userId,
+          branchId
+        }
+      },
+      update: {
+        permissions: JSON.stringify(permissions),
+        grantedBy,
+        updatedAt: new Date()
+      },
+      create: {
+        userId,
+        branchId,
+        permissions: JSON.stringify(permissions),
+        grantedBy
       }
-    } catch (error) {
-      console.error('Error getting user permissions:', error)
-      return []
-    }
+    })
   }
 
-  // Initialize default permissions
-  static async initializeDefaultPermissions(): Promise<void> {
-    try {
-      // This would create default permissions in the database
-      // For now, we'll just log it since we don't have the full permission model
-      console.log('Default permissions initialized')
-    } catch (error) {
-      console.error('Error initializing default permissions:', error)
-      throw error
-    }
+  private static getPermissionCategory(permission: Permission): PermissionCategory {
+    if (permission.includes('user')) return PermissionCategory.USER_MANAGEMENT
+    if (permission.includes('vehicle')) return PermissionCategory.VEHICLE_MANAGEMENT
+    if (permission.includes('booking')) return PermissionCategory.BOOKING_MANAGEMENT
+    if (permission.includes('service')) return PermissionCategory.SERVICE_MANAGEMENT
+    if (permission.includes('inventory') || permission.includes('warehouse') || permission.includes('supplier')) return PermissionCategory.INVENTORY_MANAGEMENT
+    if (permission.includes('financial') || permission.includes('invoice') || permission.includes('payment')) return PermissionCategory.FINANCIAL_MANAGEMENT
+    if (permission.includes('branch')) return PermissionCategory.BRANCH_MANAGEMENT
+    if (permission.includes('customer')) return PermissionCategory.CUSTOMER_MANAGEMENT
+    if (permission.includes('campaign') || permission.includes('marketing') || permission.includes('email')) return PermissionCategory.MARKETING_MANAGEMENT
+    if (permission.includes('system') || permission.includes('setting') || permission.includes('log') || permission.includes('backup')) return PermissionCategory.SYSTEM_SETTINGS
+    if (permission.includes('report') || permission.includes('analytics') || permission.includes('export') || permission.includes('dashboard')) return PermissionCategory.REPORTING
+    
+    return PermissionCategory.SYSTEM_SETTINGS
   }
 
-  // Initialize role templates
-  static async initializeRoleTemplates(): Promise<void> {
-    try {
-      // This would create default role templates in the database
-      // For now, we'll just log it since we don't have the full model
-      console.log('Role templates initialized')
-    } catch (error) {
-      console.error('Error initializing role templates:', error)
-      throw error
-    }
-  }
-
-  // Set user permissions
-  static async setUserPermissions(userId: string, permissions: Permission[], updatedBy: string): Promise<void> {
-    try {
-      // This would update user permissions in the database
-      // For now, we'll just log it since we don't have the full model
-      console.log(`User permissions updated for ${userId}:`, permissions)
-    } catch (error) {
-      console.error('Error setting user permissions:', error)
-      throw error
-    }
-  }
-
-  // Middleware helper for API routes
-  static requirePermission(permission: Permission) {
-    return async (userId: string): Promise<boolean> => {
-      return await this.hasPermission(userId, permission)
-    }
-  }
-
-  // Check if user can access a specific resource
-  static async canAccessResource(
-    userId: string,
-    resourceType: string,
-    resourceId: string,
-    action: string
-  ): Promise<boolean> {
-    try {
-      const user = await db.user.findUnique({
-        where: { id: userId }
-      })
-
-      if (!user) {
-        return false
-      }
-
-      // Admin can access everything
-      if (user.role === 'ADMIN') {
-        return true
-      }
-
-      // Check specific resource access
-      switch (resourceType) {
-        case 'booking':
-          return await this.canAccessBooking(userId, resourceId, action)
-        case 'customer':
-          return await this.canAccessCustomer(userId, resourceId, action)
-        case 'vehicle':
-          return await this.canAccessVehicle(userId, resourceId, action)
-        default:
-          return false
-      }
-    } catch (error) {
-      console.error('Error checking resource access:', error)
-      return false
-    }
-  }
-
-  private static async canAccessBooking(
-    userId: string,
-    bookingId: string,
-    action: string
-  ): Promise<boolean> {
-    // Simplified booking access check
-    const hasPermission = await this.hasPermission(userId, `${action}_BOOKINGS` as Permission)
-    return hasPermission
-  }
-
-  private static async canAccessCustomer(
-    userId: string,
-    customerId: string,
-    action: string
-  ): Promise<boolean> {
-    // Users can access their own profile
-    if (userId === customerId) {
-      return true
+  private static getPermissionDescription(permission: Permission): string {
+    const descriptions = {
+      [PERMISSIONS.VIEW_USERS]: 'View user list and details',
+      [PERMISSIONS.CREATE_USERS]: 'Create new users',
+      [PERMISSIONS.EDIT_USERS]: 'Edit user information',
+      [PERMISSIONS.DELETE_USERS]: 'Delete users',
+      [PERMISSIONS.MANAGE_USER_ROLES]: 'Manage user roles and assignments',
+      [PERMISSIONS.MANAGE_USER_PERMISSIONS]: 'Manage user permissions and access',
+      [PERMISSIONS.VIEW_VEHICLES]: 'View vehicle inventory and details',
+      [PERMISSIONS.CREATE_VEHICLES]: 'Add new vehicles to inventory',
+      [PERMISSIONS.EDIT_VEHICLES]: 'Edit vehicle information',
+      [PERMISSIONS.DELETE_VEHICLES]: 'Remove vehicles from inventory',
+      [PERMISSIONS.MANAGE_VEHICLE_INVENTORY]: 'Manage vehicle inventory levels',
+      [PERMISSIONS.VIEW_BOOKINGS]: 'View booking list and details',
+      [PERMISSIONS.CREATE_BOOKINGS]: 'Create new bookings',
+      [PERMISSIONS.EDIT_BOOKINGS]: 'Edit booking information',
+      [PERMISSIONS.DELETE_BOOKINGS]: 'Cancel or delete bookings',
+      [PERMISSIONS.MANAGE_BOOKING_STATUS]: 'Change booking statuses',
+      [PERMISSIONS.VIEW_SERVICES]: 'View service list and details',
+      [PERMISSIONS.CREATE_SERVICES]: 'Create new services',
+      [PERMISSIONS.EDIT_SERVICES]: 'Edit service information',
+      [PERMISSIONS.DELETE_SERVICES]: 'Delete services',
+      [PERMISSIONS.MANAGE_SERVICE_SCHEDULE]: 'Manage service schedules and time slots',
+      [PERMISSIONS.VIEW_INVENTORY]: 'View inventory items and stock levels',
+      [PERMISSIONS.CREATE_INVENTORY_ITEMS]: 'Add new inventory items',
+      [PERMISSIONS.EDIT_INVENTORY_ITEMS]: 'Edit inventory item information',
+      [PERMISSIONS.DELETE_INVENTORY_ITEMS]: 'Remove inventory items',
+      [PERMISSIONS.MANAGE_WAREHOUSES]: 'Manage warehouse information and settings',
+      [PERMISSIONS.MANAGE_SUPPLIERS]: 'Manage supplier information and relationships',
+      [PERMISSIONS.SYNC_VEHICLES_TO_INVENTORY]: 'Sync vehicles with inventory system',
+      [PERMISSIONS.INITIALIZE_INVENTORY_DATA]: 'Initialize inventory with default data',
+      [PERMISSIONS.VIEW_FINANCIALS]: 'View financial reports and data',
+      [PERMISSIONS.CREATE_INVOICES]: 'Create new invoices',
+      [PERMISSIONS.EDIT_INVOICES]: 'Edit invoice information',
+      [PERMISSIONS.DELETE_INVOICES]: 'Delete invoices',
+      [PERMISSIONS.MANAGE_PAYMENTS]: 'Manage payment processing and records',
+      [PERMISSIONS.VIEW_REPORTS]: 'View system reports',
+      [PERMISSIONS.EXPORT_FINANCIAL_DATA]: 'Export financial data and reports',
+      [PERMISSIONS.VIEW_BRANCHES]: 'View branch information and details',
+      [PERMISSIONS.CREATE_BRANCHES]: 'Create new branches',
+      [PERMISSIONS.EDIT_BRANCHES]: 'Edit branch information',
+      [PERMISSIONS.DELETE_BRANCHES]: 'Delete branches',
+      [PERMISSIONS.MANAGE_BRANCH_STAFF]: 'Manage branch staff assignments',
+      [PERMISSIONS.MANAGE_BRANCH_BUDGET]: 'Manage branch budgets and expenses',
+      [PERMISSIONS.APPROVE_BRANCH_TRANSFERS]: 'Approve branch transfer requests',
+      [PERMISSIONS.VIEW_CUSTOMERS]: 'View customer list and details',
+      [PERMISSIONS.CREATE_CUSTOMERS]: 'Create new customer profiles',
+      [PERMISSIONS.EDIT_CUSTOMERS]: 'Edit customer information',
+      [PERMISSIONS.DELETE_CUSTOMERS]: 'Delete customer profiles',
+      [PERMISSIONS.MANAGE_CUSTOMER_PROFILES]: 'Manage customer profile information',
+      [PERMISSIONS.VIEW_CUSTOMER_HISTORY]: 'View customer interaction history',
+      [PERMISSIONS.VIEW_CAMPAIGNS]: 'View marketing campaigns',
+      [PERMISSIONS.CREATE_CAMPAIGNS]: 'Create new marketing campaigns',
+      [PERMISSIONS.EDIT_CAMPAIGNS]: 'Edit marketing campaign information',
+      [PERMISSIONS.DELETE_CAMPAIGNS]: 'Delete marketing campaigns',
+      [PERMISSIONS.MANAGE_EMAIL_TEMPLATES]: 'Manage email templates and content',
+      [PERMISSIONS.VIEW_SYSTEM_SETTINGS]: 'View system configuration settings',
+      [PERMISSIONS.MANAGE_SYSTEM_SETTINGS]: 'Modify system configuration settings',
+      [PERMISSIONS.MANAGE_ROLES_TEMPLATES]: 'Manage role templates and permissions',
+      [PERMISSIONS.VIEW_SYSTEM_LOGS]: 'View system logs and activities',
+      [PERMISSIONS.MANAGE_BACKUPS]: 'Manage system backups and recovery',
+      [PERMISSIONS.GENERATE_REPORTS]: 'Generate system reports',
+      [PERMISSIONS.VIEW_ANALYTICS]: 'View analytics and dashboards',
+      [PERMISSIONS.EXPORT_DATA]: 'Export system data',
+      [PERMISSIONS.MANAGE_DASHBOARDS]: 'Manage dashboard configurations'
     }
 
-    const hasPermission = await this.hasPermission(userId, `${action}_CUSTOMERS` as Permission)
-    return hasPermission
-  }
-
-  private static async canAccessVehicle(
-    userId: string,
-    vehicleId: string,
-    action: string
-  ): Promise<boolean> {
-    const hasPermission = await this.hasPermission(userId, `${action}_VEHICLES` as Permission)
-    return hasPermission
+    return descriptions[permission] || `${permission.replace(/_/g, ' ')}`
   }
 }
-
-export default PermissionsService

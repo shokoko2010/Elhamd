@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth';
 import { authOptions, getAuthUser } from '@/lib/auth';
-import { PermissionsService } from '@/lib/permissions'
+import { PermissionService } from '@/lib/permissions'
 
 export async function PUT(request: NextRequest, context: RouteParams) {
   try {
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     // For SUPER_ADMIN, allow access even if permissions don't exist yet
     if (user.role !== 'SUPER_ADMIN') {
       try {
-        const hasPermission = await PermissionsService.hasPermission(user.id, 'manage_user_permissions')
+        const hasPermission = await PermissionService.hasPermission(user.id, 'manage_user_permissions')
         if (!hasPermission) {
           return NextResponse.json({ error: 'Access denied' }, { status: 403 })
         }
@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     // Update user permissions
-    await PermissionsService.setUserPermissions(targetUserId, permissions, user.id)
+    await PermissionService.setUserPermissions(targetUserId, permissions, user.id)
 
     return NextResponse.json({ 
       message: 'User permissions updated successfully',
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     // For SUPER_ADMIN, allow access even if permissions don't exist yet
     if (user.role !== 'SUPER_ADMIN') {
       try {
-        const hasPermission = await PermissionsService.hasPermission(user.id, 'view_users')
+        const hasPermission = await PermissionService.hasPermission(user.id, 'view_users')
         if (!hasPermission) {
           return NextResponse.json({ error: 'Access denied' }, { status: 403 })
         }
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
 
     // Get user permissions
-    const permissions = await PermissionsService.getUserPermissions(targetUserId)
+    const permissions = await PermissionService.getUserPermissions(targetUserId)
 
     return NextResponse.json({ permissions })
   } catch (error) {

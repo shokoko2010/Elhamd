@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { UserRole } from '@prisma/client'
 import { db } from '@/lib/db'
-import { PermissionsService } from './permissions'
+import { PermissionService } from './permissions'
 import bcrypt from 'bcryptjs'
 import { getServerSession } from 'next-auth'
 
@@ -88,7 +88,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Get user permissions
-          const permissions = await PermissionsService.getUserPermissions(user.id)
+          const permissions = await PermissionService.getUserPermissions(user.id)
 
           // Update last login
           await db.user.update({

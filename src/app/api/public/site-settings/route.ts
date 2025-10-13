@@ -1,28 +1,18 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { monitorDbQuery } from '@/lib/performance-monitor'
-
-// Simple cache for site settings (changes rarely)
-let cachedSettings: any = null
-let cacheTimestamp = 0
-const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
 export async function GET(request: NextRequest) {
   try {
-    // Check cache first
-    const now = Date.now()
-    if (cachedSettings && (now - cacheTimestamp) < CACHE_TTL) {
-      return NextResponse.json(cachedSettings)
-    }
-
-    const settings = await monitorDbQuery('siteSettings-findFirst', () =>
-      db.siteSettings.findFirst({
-        where: { isActive: true },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      })
-    )
+    const settings = await db.siteSettings.findFirst({
+      where: { isActive: true },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
 
     if (!settings) {
       // Return default settings if none exist
@@ -83,11 +73,6 @@ export async function GET(request: NextRequest) {
           columns: 4
         }
       }
-      
-      // Cache default settings
-      cachedSettings = defaultSettings
-      cacheTimestamp = now
-      
       return NextResponse.json(defaultSettings)
     }
 
@@ -100,10 +85,6 @@ export async function GET(request: NextRequest) {
       headerSettings: settings.headerSettings || {},
       footerSettings: settings.footerSettings || {}
     }
-
-    // Cache the processed settings
-    cachedSettings = processedSettings
-    cacheTimestamp = now
 
     return NextResponse.json(processedSettings)
   } catch (error) {

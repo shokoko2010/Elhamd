@@ -36,16 +36,16 @@ export async function POST(request: NextRequest) {
     
     // Sanitize input data
     const sanitizedBody = {
-      vehicleId: SecurityService.sanitizeInput(body.vehicleId?.toString() || ''),
+      vehicleId: securityService.sanitizeInput(body.vehicleId?.toString() || ''),
       date: body.date,
-      timeSlot: SecurityService.sanitizeInput(body.timeSlot?.toString() || ''),
+      timeSlot: securityService.sanitizeInput(body.timeSlot?.toString() || ''),
       customerInfo: {
-        name: SecurityService.sanitizeInput(body.customerInfo?.name?.toString() || ''),
-        email: SecurityService.sanitizeInput(body.customerInfo?.email?.toString() || '').toLowerCase(),
-        phone: SecurityService.sanitizeInput(body.customerInfo?.phone?.toString() || ''),
-        licenseNumber: SecurityService.sanitizeInput(body.customerInfo?.licenseNumber?.toString() || '')
+        name: securityService.sanitizeInput(body.customerInfo?.name?.toString() || ''),
+        email: securityService.sanitizeInput(body.customerInfo?.email?.toString() || '').toLowerCase(),
+        phone: securityService.sanitizeInput(body.customerInfo?.phone?.toString() || ''),
+        licenseNumber: securityService.sanitizeInput(body.customerInfo?.licenseNumber?.toString() || '')
       },
-      message: body.message ? SecurityService.sanitizeInput(body.message.toString()) : undefined
+      message: body.message ? securityService.sanitizeInput(body.message.toString()) : undefined
     }
     
     // Validate input data
@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
     } = validation.data
 
     // Additional security checks
-    if (!SecurityService.preventSqlInjection(vehicleId) || 
-        !SecurityService.preventSqlInjection(timeSlot) ||
-        (message && !SecurityService.preventSqlInjection(message))) {
+    if (!securityService.preventSqlInjection(vehicleId) || 
+        !securityService.preventSqlInjection(timeSlot) ||
+        (message && !securityService.preventSqlInjection(message))) {
       return NextResponse.json(
         { error: 'Invalid input detected' },
         { status: 400 }
