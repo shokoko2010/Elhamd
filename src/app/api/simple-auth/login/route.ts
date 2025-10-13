@@ -4,9 +4,13 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    console.log('Login attempt:', { email: body.email, hasPassword: !!body.password });
+    
+    const { email, password } = body;
 
     if (!email || !password) {
+      console.log('Missing credentials');
       return NextResponse.json(
         { error: 'البريد الإلكتروني وكلمة المرور مطلوبان' },
         { status: 400 }
@@ -18,7 +22,10 @@ export async function POST(request: NextRequest) {
       where: { email }
     });
 
+    console.log('User found:', !!user, user?.role, user?.isActive);
+
     if (!user) {
+      console.log('User not found:', email);
       return NextResponse.json(
         { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' },
         { status: 401 }
@@ -27,8 +34,10 @@ export async function POST(request: NextRequest) {
 
     // التحقق من كلمة المرور
     const isPasswordValid = await bcrypt.compare(password, user.password || '');
+    console.log('Password valid:', isPasswordValid);
     
     if (!isPasswordValid) {
+      console.log('Invalid password for:', email);
       return NextResponse.json(
         { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' },
         { status: 401 }
@@ -37,6 +46,7 @@ export async function POST(request: NextRequest) {
 
     // التحقق من أن المستخدم نشط
     if (!user.isActive) {
+      console.log('User not active:', email);
       return NextResponse.json(
         { error: 'الحساب غير نشط' },
         { status: 401 }
@@ -50,7 +60,7 @@ export async function POST(request: NextRequest) {
     });
 
     // إعداد جلسة المستخدم
-    const response = NextResponse.json({
+    const responseData = {
       user: {
         id: user.id,
         name: user.name,
@@ -60,7 +70,11 @@ export async function POST(request: NextRequest) {
         branchId: user.branchId
       },
       message: 'تم تسجيل الدخول بنجاح'
-    });
+    };
+
+    console.log('Login successful for:', email);
+
+    const response = NextResponse.json(responseData);
 
     // تعيين الكوكيز مع إعدادات مناسبة لـ Vercel و HTTPS
     const isProduction = process.env.NODE_ENV === 'production';
@@ -76,7 +90,13 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      env: process.env.NODE_ENV,
+      dbUrl: process.env.DATABASE_URL ? 'Set' : 'Not set'
+    });
+    
     return NextResponse.json(
       { error: 'حدث خطأ في تسجيل الدخول' },
       { status: 500 }

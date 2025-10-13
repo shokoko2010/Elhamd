@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model SecurityLog {
@@ -2350,16 +2350,16 @@ model MaintenancePartToMaintenanceRecord {
   A String
   B String
 
-  @@id([A, B], map: "_MaintenancePartToMaintenanceRecord_AB_pkey")
-  @@map("_MaintenancePartToMaintenanceRecord")
+  @@id([A, B])
+  @@map("maintenance_part_to_maintenance_record")
 }
 
 model TicketArticles {
   A String
   B String
 
-  @@id([A, B], map: "_TicketArticles_AB_pkey")
-  @@map("_TicketArticles")
+  @@id([A, B])
+  @@map("ticket_articles")
 }
 
 enum VehicleSpecCategory {
