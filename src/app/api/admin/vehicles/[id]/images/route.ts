@@ -7,6 +7,7 @@ import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 import { z } from 'zod'
+import { PERMISSIONS } from '@/lib/permissions'
 
 // Validation schemas
 const imageSchema = z.object({
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('EDIT_VEHICLES')
+                      user.permissions.includes(PERMISSIONS.EDIT_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('EDIT_VEHICLES')
+                      user.permissions.includes(PERMISSIONS.EDIT_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -155,7 +156,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('EDIT_VEHICLES')
+                      user.permissions.includes(PERMISSIONS.EDIT_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })

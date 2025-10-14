@@ -33,6 +33,94 @@ export default function TestAuthSimplePage() {
     }
   }
 
+  const initializePermissions = async () => {
+    try {
+      setTestResult('🔄 Initializing permissions...')
+      const response = await fetch('/api/admin/permissions/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      const data = await response.json()
+      
+      if (response.ok) {
+        setTestResult(`✅ Permissions initialized! Stats: ${JSON.stringify(data.stats, null, 2)}`)
+      } else {
+        setTestResult(`❌ Permission init failed: ${data.error || response.statusText}`)
+      }
+    } catch (error) {
+      setTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const checkPermissions = async () => {
+    try {
+      setTestResult('🔄 Checking permissions...')
+      const response = await fetch('/api/debug/auth/permissions-check')
+      const data = await response.json()
+      
+      if (response.ok) {
+        setTestResult(`✅ Permissions check complete! Admin has ${data.adminUser?.permissions?.length || 0} permissions. Edit vehicles: ${data.adminUser?.permissions?.includes('edit_vehicles') ? '✅' : '❌'}`)
+      } else {
+        setTestResult(`❌ Permission check failed: ${data.error || response.statusText}`)
+      }
+    } catch (error) {
+      setTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const testImageUpload = async () => {
+    try {
+      setTestResult('🔄 Testing image upload permissions...')
+      
+      // First check auth
+      const authResponse = await fetch('/api/test-auth')
+      const authData = await authResponse.json()
+      
+      if (!authData.success) {
+        setTestResult('❌ You must be logged in to test image upload')
+        return
+      }
+      
+      // Get first vehicle
+      const vehiclesResponse = await fetch('/api/vehicles')
+      const vehiclesData = await vehiclesResponse.json()
+      
+      if (!vehiclesData.success || !vehiclesData.data || vehiclesData.data.length === 0) {
+        setTestResult('❌ No vehicles found for testing')
+        return
+      }
+      
+      const vehicle = vehiclesData.data[0]
+      
+      // Test image upload
+      const testImageData = {
+        imageUrl: 'https://via.placeholder.com/300x200.png?text=Test+Image',
+        altText: 'Test Image',
+        isPrimary: false
+      }
+      
+      const uploadResponse = await fetch(`/api/admin/vehicles/${vehicle.id}/images`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testImageData)
+      })
+      
+      const uploadData = await uploadResponse.json()
+      
+      if (uploadResponse.ok) {
+        setTestResult(`✅ Image upload test successful! Vehicle: ${vehicle.title}, Image ID: ${uploadData.id}`)
+      } else {
+        setTestResult(`❌ Image upload failed: ${uploadData.error || 'Permission denied'}. User role: ${authData.user.role}, Permissions: ${authData.user.permissions?.join(', ') || 'None'}`)
+      }
+    } catch (error) {
+      setTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-2xl mx-auto">
@@ -68,6 +156,27 @@ export default function TestAuthSimplePage() {
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
               Test Media API
+            </button>
+            
+            <button
+              onClick={initializePermissions}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ml-2"
+            >
+              Initialize Permissions
+            </button>
+            
+            <button
+              onClick={checkPermissions}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 ml-2"
+            >
+              Check Permissions
+            </button>
+            
+            <button
+              onClick={testImageUpload}
+              className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 ml-2"
+            >
+              Test Image Upload
             </button>
             
             <div className="text-sm text-gray-600">
