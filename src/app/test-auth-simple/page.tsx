@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function TestAuthSimplePage() {
+function TestAuthSimpleContent() {
   const { user, loading } = useAuth()
   const [testResult, setTestResult] = useState<string>('')
   const [analysisResult, setAnalysisResult] = useState<any>(null)
@@ -377,52 +378,48 @@ export default function TestAuthSimplePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {Object.entries(analysisResult.users.byRole || {}).map(([role, data]: [string, any]) => (
                           <div key={role} className="border rounded-lg p-4">
-                            <div className="font-semibold text-lg">{role}</div>
+                            <div className="font-semibold">{role}</div>
                             <div className="text-sm text-gray-600">{data.count} مستخدم</div>
-                            <div className="mt-2 space-y-1">
-                              {data.users.map((user: any, index: number) => (
-                                <div key={index} className="text-xs text-gray-500">
-                                  • {user.email} ({user.permissionsCount} صلاحية)
-                                </div>
-                              ))}
+                            <div className="text-xs text-gray-500">
+                              صلاحيات: {data.permissionsCount}
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* تفاصيل المستخدمين */}
+                    {/* المستخدمون المفصلون */}
                     <div>
                       <h3 className="text-lg font-semibold mb-3">تفاصيل المستخدمين</h3>
                       <div className="overflow-x-auto">
-                        <table className="min-w-full table-auto">
-                          <thead className="bg-gray-50">
-                            <tr>
+                        <table className="min-w-full bg-white border border-gray-300">
+                          <thead>
+                            <tr className="bg-gray-100">
                               <th className="px-4 py-2 text-right">البريد الإلكتروني</th>
-                              <th className="px-4 py-2 text-right">الاسم</th>
                               <th className="px-4 py-2 text-right">الدور</th>
-                              <th className="px-4 py-2 text-right">عدد الصلاحيات</th>
-                              <th className="px-4 py-2 text-right">قالب الدور</th>
+                              <th className="px-4 py-2 text-right">الصلاحيات</th>
+                              <th className="px-4 py-2 text-right">الحالة</th>
                             </tr>
                           </thead>
                           <tbody>
                             {analysisResult.users.details?.map((user: any, index: number) => (
                               <tr key={index} className="border-b">
                                 <td className="px-4 py-2">{user.email}</td>
-                                <td className="px-4 py-2">{user.name || '-'}</td>
                                 <td className="px-4 py-2">
                                   <span className={`px-2 py-1 rounded text-xs ${
-                                    user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
-                                    user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800' :
-                                    user.role === 'BRANCH_MANAGER' ? 'bg-blue-100 text-blue-800' :
-                                    user.role === 'STAFF' ? 'bg-green-100 text-green-800' :
-                                    'bg-gray-100 text-gray-800'
+                                    user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
                                   }`}>
                                     {user.role}
                                   </span>
                                 </td>
-                                <td className="px-4 py-2">{user.permissionsCount}</td>
-                                <td className="px-4 py-2">{user.roleTemplate || '-'}</td>
+                                <td className="px-4 py-2 text-sm">{user.permissionsCount}</td>
+                                <td className="px-4 py-2">
+                                  {user.hasRequiredPermissions ? (
+                                    <span className="text-green-600">✅</span>
+                                  ) : (
+                                    <span className="text-red-600">❌</span>
+                                  )}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -432,60 +429,55 @@ export default function TestAuthSimplePage() {
                   </div>
                 )}
 
-                {/* اختبارات الصلاحيات */}
-                {analysisResult.tests && (
+                {/* تحليل الصلاحيات */}
+                {analysisResult.permissions && (
                   <div className="bg-white rounded-lg shadow p-6">
-                    <h2 className="text-2xl font-bold mb-4">🧪 اختبارات الصلاحيات</h2>
+                    <h2 className="text-2xl font-bold mb-4">🔑 تحليل الصلاحيات</h2>
                     
-                    {/* المستخدم المدير */}
-                    {analysisResult.tests.adminUser && (
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold mb-3">معلومات المدير</h3>
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <div><strong>البريد:</strong> {analysisResult.tests.adminUser.email}</div>
-                          <div><strong>عدد الصلاحيات:</strong> {analysisResult.tests.adminUser.permissionsCount}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* الصلاحيات الحرجة */}
-                    {analysisResult.tests.criticalPermissions && (
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold mb-3">الصلاحيات الحرجة</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {Object.entries(analysisResult.tests.criticalPermissions).map(([permission, hasPermission]: [string, boolean]) => (
-                            <div key={permission} className={`p-3 rounded-lg ${hasPermission ? 'bg-green-100' : 'bg-red-100'}`}>
-                              <div className="font-semibold">{permission}</div>
-                              <div className={`text-sm ${hasPermission ? 'text-green-600' : 'text-red-600'}`}>
-                                {hasPermission ? '✅ متاحة' : '❌ غير متاحة'}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* اختبار تعديل المركبات */}
-                    {analysisResult.tests.vehicleEditTest && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-3">اختبار تعديل المركبات</h3>
-                        <div className={`p-4 rounded-lg ${analysisResult.tests.vehicleEditTest.success ? 'bg-green-100' : 'bg-red-100'}`}>
-                          <div className={`font-semibold ${analysisResult.tests.vehicleEditTest.success ? 'text-green-800' : 'text-red-800'}`}>
-                            {analysisResult.tests.vehicleEditTest.success ? '✅ نجح الاختبار' : '❌ فشل الاختبار'}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-3">الصلاحيات المتاحة</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {analysisResult.permissions.available?.map((permission: any, index: number) => (
+                          <div key={index} className="bg-gray-50 p-3 rounded border">
+                            <div className="font-medium text-sm">{permission.name}</div>
+                            <div className="text-xs text-gray-500">{permission.description}</div>
                           </div>
-                          {analysisResult.tests.vehicleEditTest.vehicleId && (
-                            <div className="text-sm text-gray-600 mt-1">
-                              معرف المركبة: {analysisResult.tests.vehicleEditTest.vehicleId}
-                            </div>
-                          )}
-                          {analysisResult.tests.vehicleEditTest.error && (
-                            <div className="text-sm text-red-600 mt-1">
-                              الخطأ: {analysisResult.tests.vehicleEditTest.error}
-                            </div>
-                          )}
-                        </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">الصلاحيات المطلوبة للنظام</h3>
+                      <div className="space-y-2">
+                        {analysisResult.permissions.required?.map((permission: string, index: number) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                            <span className="font-medium">{permission}</span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              analysisResult.permissions.available?.some((p: any) => p.name === permission)
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {analysisResult.permissions.available?.some((p: any) => p.name === permission) ? 'متاحة' : 'مفقودة'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* التوصيات */}
+                {analysisResult.recommendations && (
+                  <div className="bg-blue-50 rounded-lg shadow p-6">
+                    <h2 className="text-2xl font-bold mb-4 text-blue-800">💡 التوصيات</h2>
+                    <ul className="space-y-3">
+                      {analysisResult.recommendations.map((recommendation: string, index: number) => (
+                        <li key={index} className="flex items-start">
+                          <span className="text-blue-600 ml-2">•</span>
+                          <span>{recommendation}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
@@ -494,5 +486,18 @@ export default function TestAuthSimplePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function TestAuthSimplePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p>Loading...</p>
+      </div>
+    </div>}>
+      <TestAuthSimpleContent />
+    </Suspense>
   )
 }
