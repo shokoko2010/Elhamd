@@ -799,13 +799,13 @@ async function seedContactInfo() {
         name: 'فرع الإسكندرية',
         address: 'شارع سعد زغلول، وسط الإسكندرية',
         phone: '+20 3 4567 8901',
-        email: 'alex@elhamdimports.com'
+        email: 'alex@elhamdimport.online'
       },
       {
         name: 'فرع الجيزة',
         address: 'ميدان المحطة، الجيزة',
         phone: '+20 2 3456 7890',
-        email: 'giza@elhamdimports.com'
+        email: 'giza@elhamdimport.com'
       }
     ],
     workingHours: {
