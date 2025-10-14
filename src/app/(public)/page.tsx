@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon } from 'lucide-react'
+import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Bus, Van, Search, Gift } from 'lucide-react'
 import Link from 'next/link'
 import { VehicleCardSkeleton, HeroSliderSkeleton } from '@/components/ui/skeleton'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
@@ -197,6 +197,21 @@ export default function Home() {
       currency: 'EGP',
       minimumFractionDigits: 0
     }).format(price)
+  }
+
+  const getIconForService = (iconName: string) => {
+    const iconMap: { [key: string]: React.ReactNode } = {
+      truck: <Truck className="h-8 w-8 text-white" />,
+      bus: <Bus className="h-8 w-8 text-white" />,
+      van: <Van className="h-8 w-8 text-white" />,
+      pickup: <Car className="h-8 w-8 text-white" />,
+      'shield-check': <Shield className="h-8 w-8 text-white" />,
+      phone: <Phone className="h-8 w-8 text-white" />,
+      search: <Search className="h-8 w-8 text-white" />,
+      gift: <Gift className="h-8 w-8 text-white" />,
+      wrench: <Wrench className="h-8 w-8 text-white" />
+    }
+    return iconMap[iconName] || <Wrench className="h-8 w-8 text-white" />
   }
 
   return (
@@ -448,7 +463,7 @@ export default function Home() {
                     <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
                       <CardHeader className="text-center pb-4">
                         <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                          <Wrench className="h-8 w-8 text-white" />
+                          {getIconForService(service.icon)}
                         </div>
                         <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
                           {service.title}
@@ -458,34 +473,12 @@ export default function Home() {
                         <p className="text-gray-600 mb-6 leading-relaxed">
                           {service.description}
                         </p>
-                        {service.features && (
-                          <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
-                            {service.features.slice(0, 3).map((feature: string, idx: number) => (
-                              <li key={idx} className="flex items-center justify-end gap-2">
-                                <span>{feature}</span>
-                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-sm text-gray-500">المدة:</span>
-                          <span className="text-sm font-medium text-gray-700">{service.duration}</span>
-                        </div>
-                        {service.price && (
-                          <div className="flex items-center justify-between mb-6">
-                            <span className="text-sm text-gray-500">السعر:</span>
-                            <span className="text-lg font-bold text-green-600">
-                              {formatPrice(service.price)}
-                            </span>
-                          </div>
-                        )}
-                        <Link href="/service-booking">
+                        <Link href={service.link || '/service-booking'}>
                           <TouchButton 
                             variant="outline" 
                             className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
                           >
-                            احجز الآن
+                            اعرف المزيد
                           </TouchButton>
                         </Link>
                       </CardContent>

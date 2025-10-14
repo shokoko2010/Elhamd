@@ -196,7 +196,7 @@ async function seedBranches() {
       code: 'CAI-001',
       address: 'شارع التحرير، وسط القاهرة، القاهرة',
       phone: '+20 2 2345 6789',
-      email: 'cairo@elhamdimports.com',
+      email: 'cairo@elhamdimport.online',
       openingDate: new Date('2020-01-15'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -210,7 +210,7 @@ async function seedBranches() {
       code: 'ALEX-002',
       address: 'شارع سعد زغلول، وسط الإسكندرية',
       phone: '+20 3 4567 8901',
-      email: 'alexandria@elhamdimports.com',
+      email: 'alexandria@elhamdimport.online',
       openingDate: new Date('2021-03-20'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -224,7 +224,7 @@ async function seedBranches() {
       code: 'GIZ-003',
       address: 'ميدان المحطة، الجيزة',
       phone: '+20 2 3456 7890',
-      email: 'giza@elhamdimports.com',
+      email: 'giza@elhamdimport.online',
       openingDate: new Date('2022-06-10'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
@@ -256,7 +256,7 @@ async function seedUsers() {
 
   const users = [
     {
-      email: 'admin@elhamdimports.com',
+      email: 'admin@elhamdimport.online',
       password: hashedPassword,
       name: 'أحمد محمد السيد',
       role: 'ADMIN',
@@ -269,7 +269,7 @@ async function seedUsers() {
       roleTemplateId: adminTemplate?.id,
     },
     {
-      email: 'manager@elhamdimports.com',
+      email: 'manager@elhamdimport.online',
       password: hashedPassword,
       name: 'محمد علي عبدالله',
       role: 'BRANCH_MANAGER',
@@ -282,7 +282,7 @@ async function seedUsers() {
       roleTemplateId: managerTemplate?.id,
     },
     {
-      email: 'employee@elhamdimports.com',
+      email: 'employee@elhamdimport.online',
       password: hashedPassword,
       name: 'عمر حسن أحمد',
       role: 'STAFF',
@@ -295,7 +295,7 @@ async function seedUsers() {
       roleTemplateId: employeeTemplate?.id,
     },
     {
-      email: 'customer1@example.com',
+      email: 'customer1@elhamdimport.online',
       password: await bcrypt.hash('customer123', 10),
       name: 'خالد أحمد محمد',
       role: 'CUSTOMER',
@@ -307,7 +307,7 @@ async function seedUsers() {
       branchId: branches[0]?.id,
     },
     {
-      email: 'customer2@example.com',
+      email: 'customer2@elhamdimport.online',
       password: await bcrypt.hash('customer123', 10),
       name: 'سارة محمد إبراهيم',
       role: 'CUSTOMER',
@@ -384,12 +384,12 @@ async function seedCompanyInfo() {
   console.log('🏢 Seeding company info...')
 
   const companyInfo = {
-    title: 'الحمد للسيارات - وكيل تاتا المعتمد',
+    title: 'الحمد لاستيراد السيارات - الوكيل الحصري لشركة تاتا موتورز',
     subtitle: 'الجودة والثقة في عالم السيارات',
-    description: 'نحن وكيل تاتا المعتمد في مصر، نقدم أحدث موديلات تاتا مع ضمان المصنع الكامل وخدمة ما بعد البيع المتميزة. خبرة تمتد لأكثر من 25 عاماً في تقديم أفضل الخدمات لعملائنا.',
+    description: 'نحن الحمد لاستيراد السيارات، الوكيل الحصري لشركة تاتا موتورز في مصر. نقدم أحدث موديلات تاتا مع ضمان المصنع الكامل وخدمة ما بعد البيع المتميزة. خبرة تمتد لأكثر من 25 عاماً في تقديم أفضل الخدمات لعملائنا.',
     imageUrl: '/uploads/showroom-luxury.jpg',
     features: [
-      'وكيل معتمد لتاتا',
+      'الوكيل الحصري لشركة تاتا موتورز',
       'ضمان المصنع الكامل',
       'خدمة ما بعد البيع 24/7',
       'تمويل سهل ومريح'
@@ -412,11 +412,11 @@ async function seedSiteSettings() {
   console.log('⚙️ Seeding site settings...')
 
   const settings = {
-    siteTitle: 'الحمد للسيارات',
-    siteDescription: 'وكيل تاتا المعتمد في مصر - أحدث سيارات تاتا بأفضل الأسعار وضمان المصنع الكامل',
+    siteTitle: 'الحمد لاستيراد السيارات',
+    siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - أحدث سيارات تاتا بأفضل الأسعار وضمان المصنع الكامل',
     logoUrl: '/uploads/logo/alhamd-cars-logo.png',
     faviconUrl: '/favicon.ico',
-    contactEmail: 'info@elhamdimports.com',
+    contactEmail: 'info@elhamdimport.online',
     contactPhone: '+20 2 2345 6789',
     contactAddress: 'شارع التحرير، وسط القاهرة',
     workingHours: 'الأحد - الخميس: 9:00 ص - 9:00 م',
@@ -427,9 +427,9 @@ async function seedSiteSettings() {
       youtube: 'https://youtube.com/elhamdcars'
     },
     seoSettings: {
-      metaTitle: 'الحمد للسيارات - وكيل تاتا المعتمد في مصر',
-      metaDescription: 'وكيل تاتا المعتمد في مصر - أحدث سيارات تاتا بأفضل الأسعار وضمان المصنع الكامل',
-      keywords: 'سيارات تاتا, وكيل تاتا, سيارات جديدة, سيارات مستعملة, تمويل سيارات'
+      metaTitle: 'الحمد لاستيراد السيارات - الوكيل الحصري لشركة تاتا موتورز',
+      metaDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - أحدث سيارات تاتا بأفضل الأسعار وضمان المصنع الكامل',
+      keywords: 'سيارات تاتا, وكيل تاتا موتورز, سيارات جديدة, سيارات مستعملة, تمويل سيارات'
     },
     isActive: true
   }
@@ -445,20 +445,17 @@ async function seedHeaderContent() {
   console.log('📱 Seeding header content...')
 
   const headerContent = {
-    logo: '/uploads/logo/alhamd-cars-logo.png',
-    title: 'الحمد للسيارات',
-    navigation: [
-      { label: 'الرئيسية', href: '/', order: 1 },
-      { label: 'السيارات', href: '/vehicles', order: 2 },
-      { label: 'عن الشركة', href: '/about', order: 3 },
-      { label: 'الخدمات', href: '/service-booking', order: 4 },
-      { label: 'اتصل بنا', href: '/contact', order: 5 }
-    ],
-    ctaButtons: [
+    logoUrl: '/uploads/logo/alhamd-cars-logo.png',
+    logoText: 'الحمد لاستيراد السيارات',
+    tagline: 'الوكيل الحصري لشركة تاتا موتورز',
+    primaryPhone: '+20 2 2345 6789',
+    primaryEmail: 'info@elhamdimport.online',
+    address: 'شارع التحرير، وسط القاهرة',
+    workingHours: 'الأحد - الخميس: 9:00 ص - 9:00 م',
+    ctaButton: [
       { text: 'طلب قيادة تجريبية', href: '/test-drive', variant: 'primary' },
       { text: 'تواصل معنا', href: '/contact', variant: 'secondary' }
-    ],
-    isActive: true
+    ]
   }
 
   await prisma.headerContent.upsert({
@@ -472,34 +469,16 @@ async function seedFooterContent() {
   console.log('📄 Seeding footer content...')
 
   const footerContent = {
-    description: 'الحمد للسيارات - الوكيل المعتمد لسيارات تاتا في مصر. نقدم أحدث الموديلات مع ضمان الجودة وخدمة ما بعد البيع المتميزة.',
-    quickLinks: [
-      { label: 'الرئيسية', href: '/' },
-      { label: 'السيارات', href: '/vehicles' },
-      { label: 'عن الشركة', href: '/about' },
-      { label: 'الخدمات', href: '/service-booking' },
-      { label: 'اتصل بنا', href: '/contact' }
-    ],
-    services: [
-      { label: 'صيانة سيارات تاتا', href: '/service-booking' },
-      { label: 'قطع غيار أصلية', href: '/parts' },
-      { label: 'ضمان المصنع', href: '/warranty' },
-      { label: 'تمويل السيارات', href: '/financing' }
-    ],
-    contactInfo: {
-      address: 'شارع التحرير، وسط القاهرة',
-      phone: '+20 2 2345 6789',
-      email: 'info@elhamdimports.com',
-      workingHours: 'الأحد - الخميس: 9:00 ص - 9:00 م'
-    },
-    socialLinks: [
-      { platform: 'facebook', url: 'https://facebook.com/elhamdcars', icon: 'facebook' },
-      { platform: 'twitter', url: 'https://twitter.com/elhamdcars', icon: 'twitter' },
-      { platform: 'instagram', url: 'https://instagram.com/elhamdcars', icon: 'instagram' },
-      { platform: 'youtube', url: 'https://youtube.com/elhamdcars', icon: 'youtube' }
-    ],
-    copyright: '© 2024 الحمد للسيارات. جميع الحقوق محفوظة.',
-    isActive: true
+    logoUrl: '/uploads/logo/alhamd-cars-logo.png',
+    logoText: 'الحمد لاستيراد السيارات',
+    tagline: 'الوكيل الحصري لشركة تاتا موتورز',
+    primaryPhone: '+20 2 2345 6789',
+    primaryEmail: 'info@elhamdimport.online',
+    address: 'شارع التحرير، وسط القاهرة',
+    workingHours: 'الأحد - الخميس: 9:00 ص - 9:00 م',
+    copyrightText: '© 2024 الحمد للسيارات. جميع الحقوق محفوظة.',
+    newsletterText: 'اشترك في نشرتنا البريدية للحصول على آخر العروض والأخبار',
+    backToTopText: 'العودة للأعلى'
   }
 
   await prisma.footerContent.upsert({
@@ -514,40 +493,76 @@ async function seedSliders() {
 
   const sliders = [
     {
-      title: 'تاتا نيكسون 2024',
-      subtitle: 'سيارة SUV عائلية متطورة',
-      description: 'اكتشف تاتا نيكسون الجديدة تماماً بميزات أمان متقدمة وتصميم عصري',
-      imageUrl: '/uploads/banners/nexon-banner.jpg',
+      title: 'PRIMA 3328.K - القوة المتفوقة',
+      subtitle: 'شاحنة ثقيلة للأعمال الصعبة',
+      description: 'شاحنة Tata Motors Prima 3328.K بقوة 269 حصان وعزم دوران 970 نيوتن.متر، مصممة لأصعب المهام',
+      imageUrl: '/uploads/banners/heavy-truck-banner.jpg',
       ctaText: 'استكشف الآن',
-      ctaLink: '/vehicles/nexon',
-      badge: 'جديد',
-      badgeColor: 'bg-red-500',
+      ctaLink: '/vehicles/PRIMA-3328.K',
+      badge: 'شاحنة ثقيلة',
+      badgeColor: 'bg-blue-600',
       isActive: true,
       order: 1
     },
     {
-      title: 'تاتا بنش 2024',
-      subtitle: 'السيارة المدمجة القوية',
-      description: 'مثالية للمدن بتصميم شبابي وأداء ممتاز',
-      imageUrl: '/uploads/banners/punch-banner.jpg',
+      title: 'LP 613 - حافلة متعددة الاستخدامات',
+      subtitle: 'مثالية للنقل والمواصلات',
+      description: 'حافلة تاتا LP 613 بمحرك 130 حصان، مثالية لتنقلات الموظفين والمدارس والرحلات',
+      imageUrl: '/uploads/banners/bus-banner.jpg',
       ctaText: 'اعرف المزيد',
-      ctaLink: '/vehicles/punch',
-      badge: 'الأكثر مبيعاً',
-      badgeColor: 'bg-green-500',
+      ctaLink: '/vehicles/LP-613',
+      badge: 'حافلة',
+      badgeColor: 'bg-green-600',
       isActive: true,
       order: 2
     },
     {
-      title: 'عروض التمويل',
-      subtitle: 'تمويل سيارتك بأفضل الشروط',
-      description: 'استفد من عروض التمويل المميزة على جميع سيارات تاتا',
-      imageUrl: '/uploads/banners/electric-banner.jpg',
+      title: 'ULTRA T.9 - الأداء اللوجستي',
+      subtitle: 'شاحنة خفيفة متطورة',
+      description: 'شاحنة Tata Ultra T.9 بمحرك 155 حصان وتقنية متقدمة للنقل والخدمات اللوجستية',
+      imageUrl: '/uploads/banners/logistics-banner.jpg',
       ctaText: 'قدّم الآن',
-      ctaLink: '/financing',
-      badge: 'عرض خاص',
-      badgeColor: 'bg-yellow-500',
+      ctaLink: '/vehicles/ULTRA-T.9',
+      badge: 'شاحنة خفيفة',
+      badgeColor: 'bg-orange-600',
       isActive: true,
       order: 3
+    },
+    {
+      title: 'XENON SC - بيكار قوي',
+      subtitle: 'القوة والمتانة في سيارة واحدة',
+      description: 'تاتا زينون X2 SC بمحرك 150 حصان، تجمع بين القوة والمتانة للأعمال التجارية',
+      imageUrl: '/uploads/banners/pickup-banner.jpg',
+      ctaText: 'اكتشف المواصفات',
+      ctaLink: '/vehicles/XENON-SC',
+      badge: 'بيكار',
+      badgeColor: 'bg-purple-600',
+      isActive: true,
+      order: 4
+    },
+    {
+      title: 'خدمات الصيانة المتكاملة',
+      subtitle: 'صيانة معتمدة لجميع موديلات تاتا',
+      description: 'نقدم خدمات صيانة شاملة بفنيين مدربين وقطع غيار أصلية لضمان أفضل أداء',
+      imageUrl: '/uploads/banners/service-banner.jpg',
+      ctaText: 'احجز موعد',
+      ctaLink: '/service-booking',
+      badge: 'خدمة مميزة',
+      badgeColor: 'bg-red-600',
+      isActive: true,
+      order: 5
+    },
+    {
+      title: 'الحمد لاستيراد السيارات',
+      subtitle: 'الوكيل الحصري لشركة تاتا موتورز',
+      description: 'نقدم أحدث موديلات تاتا مع ضمان المصنع الكامل وخدمة ما بعد البيع المتميزة',
+      imageUrl: '/uploads/banners/showroom-banner.jpg',
+      ctaText: 'تواصل معنا',
+      ctaLink: '/contact',
+      badge: 'وكيل حصري',
+      badgeColor: 'bg-indigo-600',
+      isActive: true,
+      order: 6
     }
   ]
 
@@ -561,48 +576,60 @@ async function seedServiceItems() {
 
   const services = [
     {
-      title: 'صيانة دورية',
-      description: 'صيانة شاملة لسيارتك مع استخدام قطع غيار أصلية',
-      icon: 'wrench',
-      image: '/uploads/thumbnails/service-1_thumbnail.webp',
-      features: ['تغيير زيت المحرك', 'فحص الفرامل', 'فحص الإطارات', 'فحص البطارية'],
-      duration: '2-3 ساعات',
-      price: 500,
-      isActive: true,
+      title: 'صيانة الشاحنات الثقيلة',
+      description: 'صيانة متخصصة للشاحنات الثقيلة مثل PRIMA 3328.K بفنيين مدربين',
+      icon: 'truck',
+      link: '/service-booking/heavy-trucks',
       order: 1
     },
     {
-      title: 'إصلاح المحركات',
-      description: 'إصلاح متخصص لمحركات تاتا بفنيين مدربين',
-      icon: 'settings',
-      image: '/uploads/thumbnails/service-2_thumbnail.webp',
-      features: ['تشخيص دقيق', 'إصلاح مضمون', 'قطع غيار أصلية', 'ضمان 6 أشهر'],
-      duration: 'يوم واحد',
-      price: 2000,
-      isActive: true,
+      title: 'صيانة الحافلات',
+      description: 'صيانة شاملة للحافلات ومركبات النقل الجماعي',
+      icon: 'bus',
+      link: '/service-booking/buses',
       order: 2
     },
     {
-      title: 'تنظيف وتلميع',
-      description: 'تنظيف شامل للسيارة داخلياً وخارجياً',
-      icon: 'sparkles',
-      image: '/uploads/thumbnails/service-3_thumbnail.webp',
-      features: ['غسيل خارجي', 'تنظيف داخلي', 'تلميع', 'تعطير'],
-      duration: '3-4 ساعات',
-      price: 300,
-      isActive: true,
+      title: 'صيانة الشاحنات الخفيفة',
+      description: 'صيانة متخصصة لشاحنات Ultra وLPT بمحركات NG الحديثة',
+      icon: 'van',
+      link: '/service-booking/light-trucks',
       order: 3
     },
     {
-      title: 'فحص ما قبل الشراء',
-      description: 'فحص شامل للسيارات المستعملة قبل الشراء',
-      icon: 'search',
-      image: '/uploads/thumbnails/service-4_thumbnail.webp',
-      features: ['فحص الميكانيكا', 'فحص الهيكل', 'فحص الإلكترونيات', 'تقرير مفصل'],
-      duration: 'ساعة واحدة',
-      price: 200,
-      isActive: true,
+      title: 'صيانة البيكار والسيارات التجارية',
+      description: 'صيانة متخصصة لبيكار XENON والسيارات التجارية الصغيرة',
+      icon: 'pickup',
+      link: '/service-booking/pickups',
       order: 4
+    },
+    {
+      title: 'برنامج الصيانة الوقائية',
+      description: 'برنامج شامل للصيانة الدورية لضمان أفضل أداء وطول عمر المركبات',
+      icon: 'shield-check',
+      link: '/service-booking/preventive',
+      order: 5
+    },
+    {
+      title: 'خدمة الطوارئ على الطريق',
+      description: 'خدمة سريعة للطوارئ متوفرة 24/7 لجميع موديلات تاتا',
+      icon: 'phone',
+      link: '/service-booking/emergency',
+      order: 6
+    },
+    {
+      title: 'فحص ما قبل الشراء',
+      description: 'فحص شامل للمركبات المستعملة قبل الشراء',
+      icon: 'search',
+      link: '/service-booking/inspection',
+      order: 7
+    },
+    {
+      title: 'تجهيز المركبات الجديدة',
+      description: 'خدمة تجهيز المركبات الجديدة قبل التسليم',
+      icon: 'gift',
+      link: '/service-booking/new-vehicle',
+      order: 8
     }
   ]
 
@@ -764,7 +791,7 @@ async function seedContactInfo() {
     headquarters: {
       address: 'شارع التحرير، وسط القاهرة',
       phone: '+20 2 2345 6789',
-      email: 'info@elhamdimports.com',
+      email: 'info@elhamdimport.online',
       mapUrl: 'https://maps.google.com/?q=Elhamd+Cars+Cairo'
     },
     branches: [
@@ -814,14 +841,14 @@ async function seedVehicles() {
   const vehicles = [
     {
       make: 'TATA',
-      model: 'Nexon',
+      model: 'PRIMA 3328.K',
       year: 2024,
-      price: 450000,
-      stockNumber: 'TNX-2024-001',
-      vin: 'MAT62543798765432',
-      description: 'سيارة SUV عائلية عصرية مع ميزات أمان متقدمة وتصميم رياضي أنيق',
-      category: 'SUV',
-      fuelType: 'PETROL',
+      price: 2800000,
+      stockNumber: 'TPR-2024-001',
+      vin: 'MAT6254379PRIMA001',
+      description: 'شاحنة Tata Motors Prima 3328.K هي شاحنة قوية صُممت للتعامل مع أصعب المهام، مما يضمن سرعة في الإنجاز وتقليل تكاليف الصيانة. تعمل الشاحنة بمحرك Cummins ISBe مبرد بالماء، بحقن مباشر، مزود بشاحن توربيني ومبرد لاحق، ديزل، يولد قدرة قصوى تبلغ 269 حصان عند 2500 دورة/دقيقة، وعزم دوران أقصى 970 نيوتن.متر.',
+      category: 'HEAVY_COMMERCIAL',
+      fuelType: 'DIESEL',
       transmission: 'MANUAL',
       mileage: 0,
       color: 'أبيض',
@@ -831,48 +858,31 @@ async function seedVehicles() {
     },
     {
       make: 'TATA',
-      model: 'Punch',
+      model: 'LP 613',
       year: 2024,
-      price: 320000,
-      stockNumber: 'TPU-2024-002',
-      vin: 'MAT62543798765433',
-      description: 'سيارة SUV مدمجة مثالية للقيادة في المدينة بتصميم شبابي',
-      category: 'SUV',
-      fuelType: 'PETROL',
+      price: 1200000,
+      stockNumber: 'TLP-2024-002',
+      vin: 'MAT6254379LP613002',
+      description: 'صُممت حافلة تاتا LP 613 لتناسب تنقلات الموظفين والمدارس والرحلات داخل المدينة، وهي مزوّدة بمحرك تاتا 697 TCIC Euro 3 الذي ينتج قوة قصوى تبلغ 130 حصانًا وعزم دوران يصل إلى 430 نيوتن.متر عند 1800 دورة في الدقيقة.',
+      category: 'LIGHT_COMMERCIAL',
+      fuelType: 'DIESEL',
       transmission: 'MANUAL',
       mileage: 0,
-      color: 'رمادي',
+      color: 'أصفر',
       status: 'AVAILABLE',
       featured: true,
       branchId: branches[0]?.id,
     },
     {
       make: 'TATA',
-      model: 'Tiago',
+      model: 'LPT 1618',
       year: 2024,
-      price: 280000,
-      stockNumber: 'TTI-2024-003',
-      vin: 'MAT62543798765434',
-      description: 'سيارة هاتشباك اقتصادية مع استهلاك وقود ممتاز وتصميم عصري',
-      category: 'HATCHBACK',
-      fuelType: 'PETROL',
-      transmission: 'MANUAL',
-      mileage: 0,
-      color: 'أحمر',
-      status: 'AVAILABLE',
-      featured: false,
-      branchId: branches[1]?.id,
-    },
-    {
-      make: 'TATA',
-      model: 'Altroz',
-      year: 2024,
-      price: 350000,
-      stockNumber: 'TAL-2024-004',
-      vin: 'MAT62543798765435',
-      description: 'سيارة هاتشباك Premium مع تصميم عصري وميزات فاخرة',
-      category: 'HATCHBACK',
-      fuelType: 'PETROL',
+      price: 950000,
+      stockNumber: 'TLT-2024-003',
+      vin: 'MAT6254379LPT1618003',
+      description: 'تم تصميم تاتا LPT 1618 لإعادة تعريف الأداء والموثوقية، ويجسد القوة والدقة. مدعوم بمحرك تاتا كمنز B5.9، 6 أسطوانات يورو II المثبت، يولد هذا المحرك قوة عالية قدرها 179 حصان عند 2500 دورة في الدقيقة وعزم دوران أقصى قدره 650 نيوتن متر.',
+      category: 'LIGHT_COMMERCIAL',
+      fuelType: 'DIESEL',
       transmission: 'MANUAL',
       mileage: 0,
       color: 'أزرق',
@@ -882,49 +892,66 @@ async function seedVehicles() {
     },
     {
       make: 'TATA',
-      model: 'Harrier',
+      model: 'LPT 613',
       year: 2024,
-      price: 550000,
-      stockNumber: 'THA-2024-005',
-      vin: 'MAT62543798765436',
-      description: 'سيارة SUV فاخرة بمحرك قوي وتصميم أنيق ومساحة واسعة',
-      category: 'SUV',
+      price: 650000,
+      stockNumber: 'TLT-2024-004',
+      vin: 'MAT6254379LPT613004',
+      description: 'تاتا LPT 613 هي مركبة تجارية قوية ومتعددة الاستخدامات مصممة لإعادة تعريف الأداء والموثوقية في مشهد النقل. مدعومة بمحرك تاتا 697 TCIC مبرد بالماء، حقن مباشر، ذو شاحن توربيني، والذي ينتج قوة قصوى قدرها 130 حصان عند 2400 دورة في الدقيقة وعزم دوران أقصى قدره 416 نيوتن متر.',
+      category: 'LIGHT_COMMERCIAL',
       fuelType: 'DIESEL',
-      transmission: 'AUTOMATIC',
+      transmission: 'MANUAL',
       mileage: 0,
-      color: 'أسود',
+      color: 'أبيض',
+      status: 'AVAILABLE',
+      featured: false,
+      branchId: branches[1]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'LPT613 TIPPER',
+      year: 2024,
+      price: 720000,
+      stockNumber: 'TLT-2024-005',
+      vin: 'MAT6254379LPT613T005',
+      description: 'تعد تاتا LPT 613 صندوق القلاب شاحنة تجارية خفيفة استثنائية مصممة لتعزيز قدراتك في النقل. تتميز هذه الشاحنة بمحرك Cummins B5.9 مبرد بالماء، حقن مباشر، ديزل، والذي ينتج قوة قصوى قدرها 130 حصان عند 2400 دورة في الدقيقة وعزم دوران قدره 416 نيوتن متر.',
+      category: 'LIGHT_COMMERCIAL',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      mileage: 0,
+      color: 'برتقالي',
+      status: 'AVAILABLE',
+      featured: false,
+      branchId: branches[2]?.id,
+    },
+    {
+      make: 'TATA',
+      model: 'ULTRA T.7',
+      year: 2024,
+      price: 850000,
+      stockNumber: 'TUL-2024-006',
+      vin: 'MAT6254379ULTT7006',
+      description: 'وجّه نجاح أعمالك مع Tata Ultra T.7 مدعومة بمحرك NG3.3L CR EIV المجرب، تولد قوة قدرها 155 حصان عند 2600 دورة/دقيقة، وعزم دوران يبلغ 450 نيوتن.متر، ما يضمن أداءً استثنائيًا في عمليات النقل والخدمات اللوجستية.',
+      category: 'LIGHT_COMMERCIAL',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      mileage: 0,
+      color: 'رمادي',
       status: 'AVAILABLE',
       featured: true,
       branchId: branches[2]?.id,
     },
     {
       make: 'TATA',
-      model: 'Safari',
+      model: 'ULTRA T.9',
       year: 2024,
-      price: 650000,
-      stockNumber: 'TSA-2024-006',
-      vin: 'MAT62543798765437',
-      description: 'سيارة SUV عائلية كبيرة بـ 7 مقاعد وميزات أمان متقدمة',
-      category: 'SUV',
+      price: 920000,
+      stockNumber: 'TUL-2024-007',
+      vin: 'MAT6254379ULTT9007',
+      description: 'تخطَّ أصعب المهام مع الاعتمادية العالية لشاحنة Tata Ultra T.9، المصممة لرحلات لا تتوقف وسرعة دوران أعلى. مزوّدة بمحرك 3.3L NG Common Rail TCIC يولّد 155 حصان عند 2600 دورة/دقيقة، مع 450 نيوتن.متر من عزم الدوران لتحقيق أداء عالي في مختلف العمليات.',
+      category: 'LIGHT_COMMERCIAL',
       fuelType: 'DIESEL',
-      transmission: 'AUTOMATIC',
-      mileage: 0,
-      color: 'فضي',
-      status: 'SOLD',
-      featured: false,
-      branchId: branches[2]?.id,
-    },
-    {
-      make: 'TATA',
-      model: 'Tiago EV',
-      year: 2024,
-      price: 420000,
-      stockNumber: 'TTE-2024-007',
-      vin: 'MAT62543798765438',
-      description: 'سيارة كهربائية صديقة للبيئة بمدى 300 كم',
-      category: 'SUV',
-      fuelType: 'ELECTRIC',
-      transmission: 'AUTOMATIC',
+      transmission: 'MANUAL',
       mileage: 0,
       color: 'أخضر',
       status: 'AVAILABLE',
@@ -933,21 +960,21 @@ async function seedVehicles() {
     },
     {
       make: 'TATA',
-      model: 'Nexon EV',
+      model: 'XENON SC',
       year: 2024,
-      price: 580000,
-      stockNumber: 'TNX-2024-008',
-      vin: 'MAT62543798765439',
-      description: 'سيارة SUV كهربائية بتقنية متطورة وأداء ممتاز',
-      category: 'SUV',
-      fuelType: 'ELECTRIC',
-      transmission: 'AUTOMATIC',
+      price: 450000,
+      stockNumber: 'TXE-2024-008',
+      vin: 'MAT6254379XENON008',
+      description: 'يجمع تاتا زينون X2 SC بين القوة والمتانة، ما يوفّر أداءً معززًا ويساهم في زيادة الأرباح. مدعوم بمحرك تاتا 2.2 لتر DICOR يورو IV، ديزل، حقن مباشر، سكة وقود مشتركة، مزود بشاحن توربيني ومبرد داخلي، يولد 150 حصان عند 4000 دورة/دقيقة وعزم دوران أقصى يبلغ 320 نيوتن.متر.',
+      category: 'PICKUP',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
       mileage: 0,
-      color: 'أزرق',
+      color: 'أسود',
       status: 'AVAILABLE',
-      featured: true,
+      featured: false,
       branchId: branches[1]?.id,
-    }
+    },
   ]
 
   for (const vehicle of vehicles) {
@@ -998,42 +1025,127 @@ async function seedVehicleSpecifications() {
   const vehicles = await prisma.vehicle.findMany()
 
   const specMap = {
-    'Nexon': [
-      { key: 'engine', label: 'المحرك', value: '1.2L Turbocharged', category: 'ENGINE' },
-      { key: 'power', label: 'القدرة الحصانية', value: '120 HP', category: 'ENGINE' },
-      { key: 'torque', label: 'عزم الدوران', value: '170 Nm', category: 'ENGINE' },
-      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '44 لتر', category: 'ENGINE' }
+    'PRIMA 3328.K': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'محرك CUMMINS ISBe 270 - ديزل مبرد بالماء، حقن مباشر، مزود بشاحن توربيني ومبرد بعدي.', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '6700 سم³', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '266 حصان عند 2500 دورة/دقيقة', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '970 نيوتن.متر عند 1500 دورة/دقيقة', category: 'ENGINE' },
+      { key: 'transmission', label: 'علبة التروس', value: 'ZF، عدد 9 أمامي + 1 خلفي', category: 'TRANSMISSION' },
+      { key: 'clutch', label: 'القابض', value: '430 ملم', category: 'TRANSMISSION' },
+      { key: 'steering', label: 'نظام التوجيه', value: 'هيدروليكي', category: 'STEERING' },
+      { key: 'brakes', label: 'الفرامل', value: 'هواء مزدوج الدائرة بالكامل - نوع S Cam', category: 'BRAKES' },
+      { key: 'front_suspension', label: 'نظام التعليق الأمامي', value: 'نوابض ورقية شبه بيضاوية (Parabolic leaf spring)', category: 'SUSPENSION' },
+      { key: 'rear_suspension', label: 'نظام التعليق الخلفي', value: 'نوابض شعاعية مع قضبان مطاطية متعددة ونظام عزم دوران & قضيب V', category: 'SUSPENSION' },
+      { key: 'tires', label: 'مقاس الإطارات', value: '12R24 - 18PR', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '260 لتر', category: 'FUEL' },
+      { key: 'gvw', label: 'الوزن الإجمالي المسموح به', value: '28500 كجم', category: 'WEIGHTS' },
+      { key: 'payload', label: 'حمولة الصندوق', value: '21000 كجم', category: 'WEIGHTS' }
     ],
-    'Punch': [
-      { key: 'engine', label: 'المحرك', value: '1.2L Naturally Aspirated', category: 'ENGINE' },
-      { key: 'power', label: 'القدرة الحصانية', value: '86 HP', category: 'ENGINE' },
-      { key: 'torque', label: 'عزم الدوران', value: '113 Nm', category: 'ENGINE' },
-      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '37 لتر', category: 'ENGINE' }
+    'LP 613': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'Tata 697 TCIC E3', category: 'ENGINE' },
+      { key: 'engine_type', label: 'نوع المحرك', value: 'ديزل', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '5675 سم³', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '130 حصان عند 2400 دورة/دقيقة', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '430 نيوتن.متر عند 1400-1800 دورة/دقيقة', category: 'ENGINE' },
+      { key: 'transmission', label: 'علبة التروس', value: 'Tata GBS40، يدوي', category: 'TRANSMISSION' },
+      { key: 'gears', label: 'عدد التروس', value: '5 أمامي + 1 خلفي', category: 'TRANSMISSION' },
+      { key: 'clutch', label: 'القابض', value: 'نوع جاف، صفيحة واحدة', category: 'TRANSMISSION' },
+      { key: 'clutch_diameter', label: 'قطر بطانة القابض', value: '310 مم', category: 'TRANSMISSION' },
+      { key: 'steering', label: 'نظام التوجيه', value: 'نظام توجيه هيدروليكي متكامل', category: 'STEERING' },
+      { key: 'brakes', label: 'الفرامل', value: 'فرامل هوائية مزدوجة الدائرة مع ABS', category: 'BRAKES' },
+      { key: 'max_speed', label: 'السرعة القصوى', value: '112 كم/ساعة', category: 'PERFORMANCE' },
+      { key: 'gradeability', label: 'أقصى قدرة على الصعود', value: '25%', category: 'PERFORMANCE' },
+      { key: 'tires', label: 'الإطارات', value: '215/75 R17.5', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '120 لتر', category: 'FUEL' }
     ],
-    'Tiago': [
-      { key: 'engine', label: 'المحرك', value: '1.2L Revotron', category: 'ENGINE' },
-      { key: 'power', label: 'القدرة الحصانية', value: '86 HP', category: 'ENGINE' },
-      { key: 'torque', label: 'عزم الدوران', value: '113 Nm', category: 'ENGINE' },
-      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '35 لتر', category: 'ENGINE' }
+    'LPT 1618': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'CUMMINS B5.9-180 20', category: 'ENGINE' },
+      { key: 'engine_type', label: 'نوع المحرك', value: 'محرك ديزل بالحقن المباشر مبرد بالماء مع مبرد داخلي', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '5883 سم³', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '176.9 حصان عند 2500 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '650 نيوتن متر عند 1500 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_speed', label: 'السرعة القصوى', value: '120 كم/ساعة', category: 'PERFORMANCE' },
+      { key: 'gradeability', label: 'أقصى قدرة على الصعود', value: '27%', category: 'PERFORMANCE' },
+      { key: 'transmission', label: 'علبة التروس', value: 'Tata G600-6/6.58', category: 'TRANSMISSION' },
+      { key: 'gears', label: 'عدد التروس', value: '6 للأمام + 1 للخلف', category: 'TRANSMISSION' },
+      { key: 'clutch', label: 'القابض', value: 'لوحة واحدة من نوع الاحتكاك الجاف، بمساعدة المعزز', category: 'TRANSMISSION' },
+      { key: 'clutch_diameter', label: 'قطر بطانة القابض', value: '352 ملم', category: 'TRANSMISSION' },
+      { key: 'steering', label: 'نظام التوجيه', value: 'طاقة هيدروليكية متكاملة', category: 'STEERING' },
+      { key: 'brakes', label: 'الفرامل', value: 'مكابح S - Cam هوائية كاملة مزدوجة الدائرة', category: 'BRAKES' },
+      { key: 'suspension', label: 'التعليق', value: 'نابض صفائحي شبه بيضاوي في الأمام والخلف', category: 'SUSPENSION' },
+      { key: 'tires', label: 'الإطارات', value: '11R22.5- 16PR', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '350 لتر', category: 'FUEL' }
+    ],
+    'LPT 613': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'TATA 697 TCIC', category: 'ENGINE' },
+      { key: 'engine_type', label: 'نوع المحرك', value: 'محرك ديزل بالحقن المباشر مبرد بالماء مع مبرد داخلي', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '5675 سم³', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '130 Ps@ 2400rpm', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '430 نيوتن متر @ 1350-1800 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_speed', label: 'السرعة القصوى', value: '112 كم/ساعة', category: 'PERFORMANCE' },
+      { key: 'gradeability', label: 'أقصى قدرة على الصعود', value: '36%', category: 'PERFORMANCE' },
+      { key: 'transmission', label: 'علبة التروس', value: 'GBS 40 synchromesh', category: 'TRANSMISSION' },
+      { key: 'gears', label: 'عدد التروس', value: '5 للأمام + 1 للخلف', category: 'TRANSMISSION' },
+      { key: 'tires', label: 'الإطارات', value: '7.50R16 14PR طبقة شعاعية', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '90 لتر', category: 'FUEL' }
+    ],
+    'LPT613 TIPPER': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'CUMMINS B5.9-180 20', category: 'ENGINE' },
+      { key: 'engine_type', label: 'نوع المحرك', value: 'ديزل بحقن مباشر وتبريد بالماء مع مبرّد داخلي (Intercooler)', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '5675 سم³', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '95 كيلوواط عند 2400 دورة/دقيقة', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '416 نيوتن متر عند 1400–1700 دورة/دقيقة', category: 'ENGINE' },
+      { key: 'max_speed', label: 'السرعة القصوى', value: '112 كم/س', category: 'PERFORMANCE' },
+      { key: 'gradeability', label: 'أقصى قدرة على الصعود', value: '36%', category: 'PERFORMANCE' },
+      { key: 'transmission', label: 'علبة التروس', value: 'GBS 40 سنكروميش', category: 'TRANSMISSION' },
+      { key: 'gears', label: 'عدد التروس', value: '5 أمامية + 1 خلفية', category: 'TRANSMISSION' },
+      { key: 'tires', label: 'الإطارات', value: '7.50R16 14PR، نوع شعاعي', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '90 لتر', category: 'FUEL' }
+    ],
+    'ULTRA T.7': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'NG3.3L CR EIV', category: 'ENGINE' },
+      { key: 'engine_type', label: 'نوع المحرك', value: 'اشتعال الضغط، EURO-4', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '3300 سي سي', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '155 Ps @ 2600 rpm', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '450 نيوتن متر عند 2200-1500 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_speed', label: 'السرعة القصوى', value: '105 كم في الساعة', category: 'PERFORMANCE' },
+      { key: 'gradeability', label: 'أقصى قدرة على الصعود', value: '45%', category: 'PERFORMANCE' },
+      { key: 'transmission', label: 'علبة التروس', value: 'Tata G550 متزامن', category: 'TRANSMISSION' },
+      { key: 'gears', label: 'عدد التروس', value: '6 للأمام +1 للخلف', category: 'TRANSMISSION' },
+      { key: 'tires', label: 'الإطارات', value: '215/75R 17.5', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '90 لتر', category: 'FUEL' }
+    ],
+    'ULTRA T.9': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'NG3.3L CR EIV', category: 'ENGINE' },
+      { key: 'engine_type', label: 'نوع المحرك', value: 'EURO- 4', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '3300 سي سي', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '155 Ps عند 2600 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '450 نيوتن متر عند 2200-1500 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_speed', label: 'السرعة القصوى', value: '105 كم في الساعة', category: 'PERFORMANCE' },
+      { key: 'gradeability', label: 'أقصى قدرة على الصعود', value: '37%', category: 'PERFORMANCE' },
+      { key: 'transmission', label: 'علبة التروس', value: 'Tata G550 متزامن', category: 'TRANSMISSION' },
+      { key: 'gears', label: 'عدد التروس', value: '6 للأمام +1 للخلف', category: 'TRANSMISSION' },
+      { key: 'tires', label: 'الإطارات', value: '215/75R 17.5', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '120 لتر', category: 'FUEL' }
+    ],
+    'XENON SC': [
+      { key: 'engine_model', label: 'موديل المحرك', value: 'محرك ديزل TATA 2.2L DICOR Euro IV بالحقن المباشر للسكك الحديدية المشتركة بشاحن توربيني', category: 'ENGINE' },
+      { key: 'engine_capacity', label: 'سعة المحرك', value: '2179', category: 'ENGINE' },
+      { key: 'engine_power', label: 'قوة المحرك', value: '150 حصان عند 4000 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_torque', label: 'أقصى عزم الدوران', value: '320 نيوتن متر @ 1500-3000 دورة في الدقيقة', category: 'ENGINE' },
+      { key: 'max_speed', label: 'السرعة القصوى', value: '160 كم/ساعة', category: 'PERFORMANCE' },
+      { key: 'gradeability', label: 'أقصى قدرة على الصعود', value: '41%', category: 'PERFORMANCE' },
+      { key: 'gears', label: 'عدد التروس', value: '5 للأمام + 1 للخلف', category: 'TRANSMISSION' },
+      { key: 'transmission', label: 'علبة التروس', value: 'GBS -76-5/4.10 - علبة تروس MK - II مع زيادة السرعة', category: 'TRANSMISSION' },
+      { key: 'tires', label: 'الإطارات', value: '235/70 R16 إطارات بدون أنابيب', category: 'WHEELS' },
+      { key: 'fuel_tank', label: 'سعة خزان الوقود', value: '70 لتر', category: 'FUEL' }
     ]
   }
 
-  const commonSpecs = [
-    { key: 'doors', label: 'عدد الأبواب', value: '4', category: 'EXTERIOR' },
-    { key: 'seats', label: 'عدد المقاعد', value: '5', category: 'INTERIOR' },
-    { key: 'airbags', label: 'وسائد هوائية', value: '2', category: 'SAFETY' },
-    { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' },
-    { key: 'touchscreen', label: 'شاشة لمس', value: '7 بوصة', category: 'TECHNOLOGY' },
-    { key: 'bluetooth', label: 'بلوتوث', value: 'متوفر', category: 'TECHNOLOGY' },
-    { key: 'ac', label: 'تكييف', value: 'أوتوماتيك', category: 'COMFORT' },
-    { key: 'power_windows', label: 'نوافذ كهربائية', value: 'الأربعة', category: 'COMFORT' }
-  ]
-
   for (const vehicle of vehicles) {
     const vehicleSpecs = specMap[vehicle.model] || []
-    const allSpecs = [...vehicleSpecs, ...commonSpecs]
     
-    for (const spec of allSpecs) {
+    for (const spec of vehicleSpecs) {
       await prisma.vehicleSpecification.create({
         data: {
           vehicleId: vehicle.id,
