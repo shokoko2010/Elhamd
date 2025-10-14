@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 

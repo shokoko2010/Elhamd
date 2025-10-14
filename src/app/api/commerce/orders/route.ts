@@ -3,18 +3,18 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const session = await requireUnifiedAuth(request)
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to access orders
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -43,7 +43,29 @@ export async function GET(request: NextRequest) {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true
+                }
+              }
+            }
+          },
+          payments: true
+        }
       }),
       db.order.count({ where })
     ])
@@ -65,8 +87,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const session = await requireUnifiedAuth(request)
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -91,14 +113,13 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals
     const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
-    const settingsObj = settings as any
-    const taxAmount = subtotal * (settingsObj.ecommerce?.taxRate || 0) / 100
-    const shippingAmount = subtotal >= (settingsObj.ecommerce?.freeShippingThreshold || 0) ? 0 : (settingsObj.ecommerce?.shippingFee || 0)
+    const taxAmount = subtotal * (settings.ecommerce?.taxRate || 0) / 100
+    const shippingAmount = subtotal >= (settings.ecommerce?.freeShippingThreshold || 0) ? 0 : (settings.ecommerce?.shippingFee || 0)
     const total = subtotal + taxAmount + shippingAmount
 
     // Generate order number
-    const orderNumber = settingsObj.orders?.autoGenerateNumber 
-      ? `${settingsObj.orders?.numberPrefix || 'ORD-'}${Date.now()}`
+    const orderNumber = settings.orders?.autoGenerateNumber 
+      ? `${settings.orders?.numberPrefix || 'ORD-'}${Date.now()}`
       : `ORD-${Date.now()}`
 
     // Create order
@@ -106,7 +127,7 @@ export async function POST(request: NextRequest) {
       data: {
         orderNumber,
         customerId,
-        status: settingsObj.ecommerce?.requireApproval ? 'PENDING' : 'CONFIRMED',
+        status: settings.ecommerce?.requireApproval ? 'pending' : 'confirmed',
         subtotal,
         taxAmount,
         shippingAmount,
@@ -115,22 +136,38 @@ export async function POST(request: NextRequest) {
         billingAddress: billingAddress || shippingAddress,
         paymentMethod,
         notes,
-        createdBy: user.id
+        createdBy: session.user.id,
+        items: {
+          create: items.map((item: any) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            totalPrice: item.price * item.quantity
+          }))
+        }
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true
+              }
+            }
+          }
+        }
       }
     })
-
-    // Create order items
-    for (const item of items) {
-      await db.orderItem.create({
-        data: {
-          orderId: order.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          totalPrice: item.price * item.quantity
-        }
-      })
-    }
 
     // Update product quantities
     for (const item of items) {

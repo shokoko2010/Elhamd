@@ -3,13 +3,14 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
+    const user = await requireUnifiedAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -39,6 +40,36 @@ export async function GET(request: NextRequest) {
     const [transfers, total] = await Promise.all([
       db.branchTransfer.findMany({
         where,
+        include: {
+          fromBranch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          toBranch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          requester: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          approver: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
         orderBy: [
           { status: 'asc' },
           { createdAt: 'desc' },
@@ -49,33 +80,8 @@ export async function GET(request: NextRequest) {
       db.branchTransfer.count({ where }),
     ]);
 
-    // Fetch related data separately
-    const transfersWithRelations = await Promise.all(
-      transfers.map(async (transfer) => {
-        const [fromBranch, toBranch, requester, approver] = await Promise.all([
-          db.branch.findUnique({
-            where: { id: transfer.fromBranchId },
-            select: { id: true, name: true, code: true }
-          }),
-          db.branch.findUnique({
-            where: { id: transfer.toBranchId },
-            select: { id: true, name: true, code: true }
-          }),
-          db.user.findUnique({
-            where: { id: transfer.requestedBy },
-            select: { id: true, name: true, email: true }
-          }),
-          transfer.approvedBy ? db.user.findUnique({
-            where: { id: transfer.approvedBy },
-            select: { id: true, name: true, email: true }
-          }) : null
-        ]);
-        return { ...transfer, fromBranch, toBranch, requester, approver };
-      })
-    );
-
     return NextResponse.json({
-      transfers: transfersWithRelations,
+      transfers,
       pagination: {
         total,
         page,
@@ -94,8 +100,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
+    const user = await requireUnifiedAuth(request);
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -130,7 +136,7 @@ export async function POST(request: NextRequest) {
     }
 
     // التحقق من صلاحية المستخدم في الفرع المصدر
-    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+    if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
       const userPermission = await db.branchPermission.findFirst({
         where: {
           userId: user.id,
@@ -165,32 +171,32 @@ export async function POST(request: NextRequest) {
         requestedBy: user.id,
         status: 'PENDING',
       },
+      include: {
+        fromBranch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        toBranch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
-    // Fetch related data separately
-    const [transferFromBranch, transferToBranch, requester] = await Promise.all([
-      db.branch.findUnique({
-        where: { id: transfer.fromBranchId },
-        select: { id: true, name: true, code: true }
-      }),
-      db.branch.findUnique({
-        where: { id: transfer.toBranchId },
-        select: { id: true, name: true, code: true }
-      }),
-      db.user.findUnique({
-        where: { id: transfer.requestedBy },
-        select: { id: true, name: true, email: true }
-      })
-    ]);
-
-    const transferWithRelations = {
-      ...transfer,
-      fromBranch: transferFromBranch,
-      toBranch: transferToBranch,
-      requester
-    };
-
-    return NextResponse.json(transferWithRelations, { status: 201 });
+    return NextResponse.json(transfer, { status: 201 });
   } catch (error) {
     console.error('Error creating branch transfer:', error);
     return NextResponse.json(

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     // Get interactions with pagination
     const [interactions, total] = await Promise.all([
-      (db.customerInteraction as any).findMany({
+      db.customerInteraction.findMany({
         where,
         include: {
           customer: {
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
           }
         },
         orderBy: {
-          createdAt: 'desc'
-        } as any,
+          date: 'desc'
+        },
         skip,
         take: limit
       }),
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create interaction
-    const interaction = await (db.customerInteraction as any).create({
+    const interaction = await db.customerInteraction.create({
       data: {
         customerId: customer.id,
         type,

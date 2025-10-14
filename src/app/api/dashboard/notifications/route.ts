@@ -3,26 +3,25 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
     if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Get notifications for the user
     const notifications = await db.notification.findMany({
       where: { 
         OR: [
           { userId: userId },
-          { recipient: session.session.user.email! }
+          { recipient: session.user.email! }
         ]
       },
       orderBy: { createdAt: 'desc' },
@@ -52,7 +51,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
     if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

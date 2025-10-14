@@ -11,7 +11,7 @@ import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
 import { OptimizedImage, ResponsiveImage, BackgroundImage } from '@/components/ui/OptimizedImage'
 import { LoadingIndicator, LoadingCard, ErrorState } from '@/components/ui/LoadingIndicator'
 import { WorkingSlider } from '@/components/ui/WorkingSlider'
-import { MobileVehicleCard, MobileVehicleGrid } from '@/components/ui/mobile-vehicle-card'
+import { EnhancedVehicleCard } from '@/components/ui/EnhancedVehicleCard'
 import { cache } from '@/lib/cache'
 import { ErrorHandler, useErrorHandler } from '@/lib/errorHandler'
 import { toast } from 'sonner'
@@ -358,7 +358,7 @@ export default function Home() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {featuredVehicles.map((vehicle) => (
-                    <MobileVehicleCard
+                    <EnhancedVehicleCard
                       key={vehicle.id}
                       vehicle={vehicle}
                     />

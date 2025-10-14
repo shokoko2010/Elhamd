@@ -3,19 +3,24 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
 export async function POST(request: NextRequest, context: RouteParams) {
   try {
-    const user = await getAuthUser()
+    const authenticatedUser = await requireUnifiedAuth(request)
     
-    if (!user) {
+    if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role as UserRole)) {
+    const user = await db.user.findUnique({
+      where: { id: authenticatedUser.id },
+      include: { role: true }
+    })
+
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -33,7 +38,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
     }
 
     // Check branch permissions
-    if (user.role === UserRole.BRANCH_MANAGER && user.branchId && quotation.customer.branchId !== user.branchId) {
+    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId && quotation.customer.branchId !== user.branchId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 

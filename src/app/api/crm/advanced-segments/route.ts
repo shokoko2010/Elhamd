@@ -505,7 +505,7 @@ async function predictCustomerSegment(data: any) {
 
 async function bulkUpdateSegments() {
   const segments = await getCustomerSegments()
-  const results: any[] = []
+  const results = []
 
   for (const segment of segments) {
     if (segment.autoUpdate) {
@@ -520,7 +520,7 @@ async function bulkUpdateSegments() {
         results.push({
           segmentId: segment.id,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error.message
         })
       }
     }

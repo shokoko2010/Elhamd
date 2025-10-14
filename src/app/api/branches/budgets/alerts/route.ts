@@ -3,8 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 interface BudgetAlert {
   id: string;
@@ -37,7 +37,7 @@ interface AlertSummary {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser();
+    const user = await requireUnifiedAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
@@ -55,29 +55,23 @@ export async function GET(request: NextRequest) {
 
     const budgets = await db.branchBudget.findMany({
       where,
-      orderBy: [
-        { branchId: 'asc' },
-        { year: 'desc' },
-        { quarter: 'asc' },
-        { month: 'asc' },
-      ],
-    });
-
-    // Fetch branch data separately
-    const budgetsWithBranches = await Promise.all(
-      budgets.map(async (budget) => {
-        const branch = await db.branch.findUnique({
-          where: { id: budget.branchId },
+      include: {
+        branch: {
           select: {
             id: true,
             name: true,
             code: true,
             currency: true,
           },
-        });
-        return { ...budget, branch };
-      })
-    );
+        },
+      },
+      orderBy: [
+        { branch: { name: 'asc' } },
+        { year: 'desc' },
+        { quarter: 'asc' },
+        { month: 'asc' },
+      ],
+    });
 
     // Calculate budget usage and generate alerts
     const alerts: BudgetAlert[] = [];
@@ -85,7 +79,7 @@ export async function GET(request: NextRequest) {
     const currentMonth = new Date().getMonth() + 1;
     const currentQuarter = Math.ceil(currentMonth / 3);
 
-    for (const budget of budgetsWithBranches) {
+    for (const budget of budgets) {
       // Skip budgets for future periods
       if (budget.year > currentYear) continue;
       if (budget.year === currentYear && budget.quarter && budget.quarter > currentQuarter) continue;
@@ -107,7 +101,7 @@ export async function GET(request: NextRequest) {
         alertMessage = `تم استخدام ${usagePercentage.toFixed(1)}% من ميزانية ${getCategoryLabel(budget.category)}`;
       }
 
-      if (alertType && budget.branch) {
+      if (alertType) {
         alerts.push({
           id: `alert-${budget.id}`,
           branchId: budget.branchId,
@@ -115,8 +109,8 @@ export async function GET(request: NextRequest) {
           branchCode: budget.branch.code,
           budgetId: budget.id,
           year: budget.year,
-          quarter: budget.quarter || undefined,
-          month: budget.month || undefined,
+          quarter: budget.quarter,
+          month: budget.month,
           category: budget.category,
           allocated: budget.allocated,
           spent: budget.spent,
@@ -143,7 +137,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Get budget trends for the last 6 months
-    const trends = await getBudgetTrends(branchId || undefined);
+    const trends = await getBudgetTrends(branchId);
 
     return NextResponse.json({
       alerts,
@@ -165,8 +159,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
+    const user = await requireUnifiedAuth(request);
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -175,35 +169,27 @@ export async function POST(request: NextRequest) {
 
     if (action === 'update-budget-spending') {
       // Update actual spending from transactions
-      const results: Array<{
-        budgetId: string;
-        success: boolean;
-        spent: number;
-        remaining?: number;
-        error?: string;
-      }> = [];
+      const results = [];
       
       for (const budgetId of budgetIds) {
         try {
           const budget = await db.branchBudget.findUnique({
             where: { id: budgetId },
+            include: { branch: true },
           });
 
           if (!budget) continue;
 
           // Calculate actual spending from transactions
-          const spending = await calculateActualSpending(budget.branchId, budget.category, budget.year, budget.quarter || undefined, budget.month || undefined);
+          const spending = await calculateActualSpending(budget.branchId, budget.category, budget.year, budget.quarter, budget.month);
 
           const updatedBudget = await db.branchBudget.update({
             where: { id: budgetId },
             data: {
               spent: spending,
               remaining: Math.max(0, budget.allocated - spending),
-              metadata: budget.metadata ? {
-                ...(typeof budget.metadata === 'object' ? budget.metadata : {}),
-                lastSpendingUpdate: new Date().toISOString(),
-                updatedBy: user.id,
-              } : {
+              metadata: {
+                ...budget.metadata,
                 lastSpendingUpdate: new Date().toISOString(),
                 updatedBy: user.id,
               },
@@ -221,7 +207,6 @@ export async function POST(request: NextRequest) {
           results.push({
             budgetId,
             success: false,
-            spent: 0,
             error: 'حدث خطأ في تحديث الميزانية',
           });
         }
@@ -241,20 +226,14 @@ export async function POST(request: NextRequest) {
       // Create custom alert rules for branches
       const { branchRules } = body;
       
-      const rules: any[] = [];
+      const rules = [];
       for (const rule of branchRules) {
         try {
-          const existingBudget = await db.branchBudget.findUnique({ 
-            where: { id: rule.budgetId } 
-          });
-          
-          const currentMetadata = existingBudget?.metadata as any || {};
-          
           const alertRule = await db.branchBudget.update({
             where: { id: rule.budgetId },
             data: {
               metadata: {
-                ...currentMetadata,
+                ...(await db.branchBudget.findUnique({ where: { id: rule.budgetId} }))?.metadata,
                 alertRules: {
                   warningThreshold: rule.warningThreshold || threshold,
                   criticalThreshold: rule.criticalThreshold || criticalThreshold,
@@ -318,7 +297,7 @@ async function calculateActualSpending(branchId: string, category: string, year:
 }
 
 async function getBudgetTrends(branchId?: string): Promise<any[]> {
-  const trends: any[] = [];
+  const trends = [];
   const currentDate = new Date();
   
   for (let i = 5; i >= 0; i--) {
@@ -338,21 +317,15 @@ async function getBudgetTrends(branchId?: string): Promise<any[]> {
 
     const monthlyBudgets = await db.branchBudget.findMany({
       where,
+      include: {
+        branch: {
+          select: { name: true, code: true },
+        },
+      },
     });
 
-    // Fetch branch data separately
-    const budgetsWithBranches = await Promise.all(
-      monthlyBudgets.map(async (budget) => {
-        const branch = await db.branch.findUnique({
-          where: { id: budget.branchId },
-          select: { name: true, code: true },
-        });
-        return { ...budget, branch };
-      })
-    );
-
     const monthlySpending = await calculateActualSpending(
-      branchId || budgetsWithBranches[0]?.branchId || '',
+      branchId || monthlyBudgets[0]?.branchId || '',
       'EXPENSE',
       year,
       undefined,

@@ -109,7 +109,7 @@ export default function MaintenancePage() {
       title: 'تذكير بالصيانة الدورية',
       message: 'حان موعد الصيانة الدورية للمركبة',
       reminderDate: new Date('2024-04-10'),
-      sentDate: undefined,
+      sentDate: null,
       status: MaintenanceStatus.PENDING,
       type: 'EMAIL',
       createdBy: '1',

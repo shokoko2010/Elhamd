@@ -5,30 +5,30 @@ declare module 'next-auth' {
     user: {
       id: string
       email: string
-      name?: string
+      name?: string | null
       role: UserRole
-      phone?: string
-      branchId?: string
-      permissions: string[]
+      phone?: string | null
+      branchId?: string | null
+      permissions?: string[]
     }
   }
 
   interface User {
     id: string
     email: string
-    name?: string
+    name?: string | null
     role: UserRole
-    phone?: string
-    branchId?: string
-    permissions: string[]
+    phone?: string | null
+    branchId?: string | null
+    permissions?: string[]
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
     role: UserRole
-    phone?: string
-    branchId?: string
-    permissions: string[]
+    phone?: string | null
+    branchId?: string | null
+    permissions?: string[]
   }
 }

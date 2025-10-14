@@ -3,17 +3,31 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const accounts = await db.chartOfAccount.findMany({
+      include: {
+        parent: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        }
+      },
       orderBy: {
         code: 'asc'
       }
@@ -28,8 +42,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -49,6 +63,21 @@ export async function POST(request: NextRequest) {
         type,
         parentId,
         normalBalance
+      },
+      include: {
+        parent: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        }
       }
     })
 

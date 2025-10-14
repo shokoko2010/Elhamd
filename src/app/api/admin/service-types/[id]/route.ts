@@ -10,9 +10,29 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
     const serviceType = await db.serviceType.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            serviceBookings: true
+          }
+        },
+        serviceBookings: {
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        }
+      }
     })
 
     if (!serviceType) {
@@ -22,19 +42,7 @@ export async function GET(
       )
     }
 
-    // Get booking count separately
-    const bookingCount = await db.serviceBooking.count({
-      where: { serviceTypeId: id }
-    })
-
-    return NextResponse.json({ 
-      serviceType: {
-        ...serviceType,
-        _count: {
-          serviceBookings: bookingCount
-        }
-      }
-    })
+    return NextResponse.json({ serviceType })
   } catch (error) {
     console.error('Error fetching service type:', error)
     return NextResponse.json(
@@ -49,7 +57,6 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
     const body = await request.json()
     const { name, description, duration, price, category, isActive } = body
 
@@ -75,22 +82,17 @@ export async function PUT(
         price: price !== undefined ? (price ? parseFloat(price) : null) : undefined,
         category,
         isActive
-      }
-    })
-
-    // Get booking count separately
-    const bookingCount = await db.serviceBooking.count({
-      where: { serviceTypeId: id }
-    })
-
-    return NextResponse.json({ 
-      serviceType: {
-        ...updatedServiceType,
+      },
+      include: {
         _count: {
-          serviceBookings: bookingCount
+          select: {
+            serviceBookings: true
+          }
         }
       }
     })
+
+    return NextResponse.json({ serviceType: updatedServiceType })
   } catch (error) {
     console.error('Error updating service type:', error)
     return NextResponse.json(
@@ -105,10 +107,16 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
     // Check if service type exists
     const existingServiceType = await db.serviceType.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            serviceBookings: true
+          }
+        }
+      }
     })
 
     if (!existingServiceType) {
@@ -119,11 +127,7 @@ export async function DELETE(
     }
 
     // Check if service type has bookings
-    const bookingCount = await db.serviceBooking.count({
-      where: { serviceTypeId: id }
-    })
-
-    if (bookingCount > 0) {
+    if (existingServiceType._count.serviceBookings > 0) {
       return NextResponse.json(
         { error: 'لا يمكن حذف نوع الخدمة لوجود حجوزات مرتبطة به' },
         { status: 400 }

@@ -3,9 +3,9 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
+import { createAuthHandler, UserRole } from '@/lib/unified-auth'
+
 const authHandler = async (request: NextRequest) => {
   try {
     return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.STAFF,] })
@@ -65,9 +65,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Add branch filter for branch managers
-    if (session.user.role === UserRole.BRANCH_MANAGER && session.user.branchId) {
+    if (user.role === UserRole.BRANCH_MANAGER && user.branchId) {
       where.warehouse = {
-        branchId: session.user.branchId
+        branchId: user.branchId
       }
     }
 
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check branch permissions
-    if (session.user.role === UserRole.BRANCH_MANAGER && session.user.branchId && warehouse.branchId !== session.user.branchId) {
+    if (user.role === UserRole.BRANCH_MANAGER && user.branchId && warehouse.branchId !== user.branchId) {
       return NextResponse.json({ error: 'Cannot create purchase order for warehouse from different branch' }, { status: 403 })
     }
 
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         currency: 'EGP',
         notes,
         terms,
-        createdById: session.user.id,
+        createdById: user.id,
         items: {
           create: items.map((item: any) => ({
             itemId: item.itemId,
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
         action: 'CREATE_PURCHASE_ORDER',
         entityType: 'PURCHASE_ORDER',
         entityId: order.id,
-        userId: session.user.id,
+        userId: user.id,
         details: {
           orderNumber: order.orderNumber,
           supplierId: supplier.id,

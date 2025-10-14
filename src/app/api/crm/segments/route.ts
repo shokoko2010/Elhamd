@@ -3,15 +3,14 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -82,9 +81,131 @@ export async function GET(request: NextRequest) {
     // Calculate statistics for each segment
     const segmentsWithStats = await Promise.all(
       segments.map(async (segment) => {
-        // For now, return placeholder data since the complex queries need proper relations
-        const customerCount = Math.floor(Math.random() * 100) + 10
-        const avgSpent = Math.floor(Math.random() * 50000) + 5000
+        let whereClause: any = {}
+
+        switch (segment.id) {
+          case 'vip':
+            whereClause = {
+              AND: [
+                { status: 'active' },
+                { segment: 'VIP' },
+                {
+                  OR: [
+                    {
+                      bookings: {
+                        some: {
+                          totalPrice: { gte: 50000 }
+                        }
+                      }
+                    },
+                    {
+                      bookings: {
+                        some: {
+                          date: { gte: new Date(Date.now() - 3 * 30 * 24 * 60 * 60 * 1000) }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+            break
+          case 'customer':
+            whereClause = {
+              AND: [
+                { status: 'active' },
+                { segment: 'CUSTOMER' },
+                {
+                  bookings: {
+                    some: {
+                      date: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+                    }
+                  }
+                }
+              ]
+            }
+            break
+          case 'prospect':
+            whereClause = {
+              AND: [
+                { status: 'prospect' },
+                { segment: 'PROSPECT' },
+                {
+                  bookings: {
+                    none: {
+                      status: 'COMPLETED'
+                    }
+                  }
+                }
+              ]
+            }
+            break
+          case 'lead':
+            whereClause = {
+              AND: [
+                { status: 'prospect' },
+                { segment: 'LEAD' },
+                { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+                {
+                  bookings: {
+                    none: {}
+                  }
+                }
+              ]
+            }
+            break
+          case 'inactive':
+            whereClause = {
+              AND: [
+                { status: 'inactive' },
+                { segment: 'INACTIVE' },
+                {
+                  bookings: {
+                    none: {
+                      date: { gte: new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000) }
+                    }
+                  }
+                }
+              ]
+            }
+            break
+          case 'lost':
+            whereClause = {
+              AND: [
+                { status: 'inactive' },
+                { segment: 'LOST' },
+                {
+                  bookings: {
+                    none: {
+                      date: { gte: new Date(Date.now() - 12 * 30 * 24 * 60 * 60 * 1000) }
+                    }
+                  }
+                }
+              ]
+            }
+            break
+        }
+
+        const customers = await db.user.findMany({
+          where: whereClause,
+          include: {
+            bookings: {
+              select: {
+                totalPrice: true
+              }
+            }
+          }
+        })
+
+        const customerCount = customers.length
+        const avgSpent = customerCount > 0 
+          ? customers.reduce((sum, customer) => {
+              const totalSpent = customer.bookings.reduce((bookingSum, booking) => 
+                bookingSum + (booking.totalPrice || 0), 0
+              )
+              return sum + totalSpent
+            }, 0) / customerCount
+          : 0
 
         return {
           ...segment,

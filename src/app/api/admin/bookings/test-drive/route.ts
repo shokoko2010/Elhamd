@@ -23,7 +23,11 @@ export async function GET(request: NextRequest) {
     
     if (search) {
       where.OR = [
-        { notes: { contains: search, mode: 'insensitive' } }
+        { customer: { name: { contains: search, mode: 'insensitive' } } },
+        { customer: { email: { contains: search, mode: 'insensitive' } } },
+        { customer: { phone: { contains: search } } },
+        { vehicle: { make: { contains: search, mode: 'insensitive' } } },
+        { vehicle: { model: { contains: search, mode: 'insensitive' } } }
       ]
     }
     
@@ -41,6 +45,25 @@ export async function GET(request: NextRequest) {
     const [bookings, total] = await Promise.all([
       db.testDriveBooking.findMany({
         where,
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          vehicle: {
+            select: {
+              id: true,
+              make: true,
+              model: true,
+              year: true,
+              stockNumber: true
+            }
+          }
+        },
         orderBy: [
           { date: 'desc' },
           { timeSlot: 'asc' }
@@ -140,6 +163,25 @@ export async function POST(request: NextRequest) {
         date: new Date(date),
         timeSlot,
         notes
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        vehicle: {
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true,
+            stockNumber: true
+          }
+        }
       }
     })
 

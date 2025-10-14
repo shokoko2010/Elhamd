@@ -17,42 +17,36 @@ interface AdminRouteProps {
 
 export function AdminRoute({ 
   children, 
-  requiredRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN], 
+  requiredRoles = [UserRole.ADMIN], 
   requiredPermissions = [],
   redirectTo = '/login' 
 }: AdminRouteProps) {
-  const { user, isLoading, isAuthenticated, hasAnyPermission, hasAllPermissions } = useAuth()
+  const { user, loading, authenticated, hasAnyRole, hasAnyPermission } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!loading) {
       // Check if user is authenticated
-      if (!isAuthenticated || !user) {
+      if (!authenticated || !user) {
         router.push(redirectTo)
         return
       }
 
       // Check if user has required role
-      if (!requiredRoles.includes(user.role)) {
+      if (!hasAnyRole(requiredRoles)) {
         router.push('/')
         return
       }
 
       // Check if user has required permissions (if specified)
-      if (requiredPermissions.length > 0) {
-        const hasRequired = requiredPermissions.length === 1 
-          ? hasAnyPermission(requiredPermissions)
-          : hasAllPermissions(requiredPermissions)
-        
-        if (!hasRequired) {
-          router.push('/')
-          return
-        }
+      if (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any)) {
+        router.push('/')
+        return
       }
     }
-  }, [user, isLoading, isAuthenticated, requiredRoles, requiredPermissions, redirectTo, router, hasAnyPermission, hasAllPermissions])
+  }, [user, loading, authenticated, requiredRoles, requiredPermissions, redirectTo, router, hasAnyRole, hasAnyPermission])
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -63,8 +57,8 @@ export function AdminRoute({
     )
   }
 
-  if (!isAuthenticated || !user || !requiredRoles.includes(user.role) || 
-      (requiredPermissions.length > 0 && !hasAllPermissions(requiredPermissions))) {
+  if (!authenticated || !user || !hasAnyRole(requiredRoles) || 
+      (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any))) {
     return null // Will redirect in useEffect
   }
 

@@ -22,28 +22,20 @@ export async function GET(request: NextRequest) {
 
     const serviceTypes = await db.serviceType.findMany({
       where,
+      include: {
+        _count: {
+          select: {
+            serviceBookings: true
+          }
+        }
+      },
       orderBy: [
         { category: 'asc' },
         { name: 'asc' }
       ]
     })
 
-    // Get booking counts for all service types
-    const serviceTypesWithCounts = await Promise.all(
-      serviceTypes.map(async (serviceType) => {
-        const bookingCount = await db.serviceBooking.count({
-          where: { serviceTypeId: serviceType.id }
-        })
-        return {
-          ...serviceType,
-          _count: {
-            serviceBookings: bookingCount
-          }
-        }
-      })
-    )
-
-    return NextResponse.json({ serviceTypes: serviceTypesWithCounts })
+    return NextResponse.json({ serviceTypes })
   } catch (error) {
     console.error('Error fetching service types:', error)
     return NextResponse.json(
@@ -74,18 +66,17 @@ export async function POST(request: NextRequest) {
         duration: parseInt(duration),
         price: price ? parseFloat(price) : null,
         category: category as ServiceCategory
+      },
+      include: {
+        _count: {
+          select: {
+            serviceBookings: true
+          }
+        }
       }
     })
 
-    // Get booking count (will be 0 for new service type)
-    const serviceTypeWithCount = {
-      ...serviceType,
-      _count: {
-        serviceBookings: 0
-      }
-    }
-
-    return NextResponse.json({ serviceType: serviceTypeWithCount }, { status: 201 })
+    return NextResponse.json({ serviceType }, { status: 201 })
   } catch (error) {
     console.error('Error creating service type:', error)
     return NextResponse.json(

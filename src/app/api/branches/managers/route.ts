@@ -3,21 +3,19 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { authorize, UserRole } from '@/lib/unified-auth';
+
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser();
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
-    }
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const excludeBranchId = searchParams.get('excludeBranchId');
 
     const where: any = {
-      role: { in: ['ADMIN', 'BRANCH_MANAGER', 'SUPER_ADMIN'] },
+      role: { in: [UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN] },
       isActive: true,
     };
 
@@ -51,7 +49,13 @@ export async function GET(request: NextRequest) {
         email: true,
         phone: true,
         role: true,
-        branchId: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
       },
       orderBy: [
         { role: 'desc' },
@@ -59,18 +63,7 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Fetch branch data separately
-    const managersWithBranches = await Promise.all(
-      managers.map(async (manager) => {
-        const branch = manager.branchId ? await db.branch.findUnique({
-          where: { id: manager.branchId },
-          select: { id: true, name: true, code: true },
-        }) : null;
-        return { ...manager, branch };
-      })
-    );
-
-    return NextResponse.json(managersWithBranches);
+    return NextResponse.json(managers);
   } catch (error) {
     console.error('Error fetching branch managers:', error);
     return NextResponse.json(

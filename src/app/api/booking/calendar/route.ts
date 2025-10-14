@@ -39,52 +39,35 @@ export async function GET(request: NextRequest) {
           in: ['PENDING', 'CONFIRMED']
         }
       },
+      include: {
+        serviceType: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        vehicle: {
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true
+          }
+        }
+      },
       orderBy: [
         { date: 'asc' },
         { timeSlot: 'asc' }
       ]
     })
 
-    // Get related data for bookings
-    const bookingsWithRelations = await Promise.all(
-      bookings.map(async (booking) => {
-        const [serviceType, customer, vehicle] = await Promise.all([
-          db.serviceType.findUnique({
-            where: { id: booking.serviceTypeId }
-          }),
-          db.user.findUnique({
-            where: { id: booking.customerId },
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          }),
-          booking.vehicleId ? db.vehicle.findUnique({
-            where: { id: booking.vehicleId },
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true
-            }
-          }) : null
-        ])
-
-        return {
-          ...booking,
-          serviceType,
-          customer,
-          vehicle
-        }
-      })
-    )
-
     return NextResponse.json({
       timeSlots,
       holidays,
-      bookings: bookingsWithRelations
+      bookings
     })
   } catch (error) {
     console.error('Error fetching calendar data:', error)

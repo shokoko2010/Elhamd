@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     // Get customers with pagination
     const [customers, total] = await Promise.all([
-      (db.user as any).findMany({
+      db.user.findMany({
         where,
         include: {
           customerProfile: {
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create customer
-    const customer = await (db.user as any).create({
+    const customer = await db.user.create({
       data: {
         email,
         name,

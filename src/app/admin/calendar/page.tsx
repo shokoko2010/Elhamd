@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
-import InteractiveCalendar from '@/components/ui/interactive-calendar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,76 +21,125 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
-import { CalendarEvent, TimeSlot } from '@/lib/calendar-service'
-import { format } from 'date-fns'
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from 'date-fns'
 import { ar } from 'date-fns/locale'
 
-interface CalendarPageState {
-  selectedDate: Date | undefined
-  selectedEvent: CalendarEvent | undefined
-  selectedTimeSlot: TimeSlot | undefined
-  showEventDialog: boolean
-  showTimeSlotDialog: boolean
-  editingEvent: CalendarEvent | null
-  filterType: string
-  filterStatus: string
-  viewMode: 'month' | 'week' | 'day'
+interface CalendarEvent {
+  id: string
+  title: string
+  start: Date
+  end: Date
+  type: 'booking' | 'holiday' | 'maintenance' | 'event'
+  status?: string
+  description?: string
+  customerName?: string
+  vehicleName?: string
+}
+
+interface SimpleCalendarDay {
+  date: Date
+  events: CalendarEvent[]
+  isToday: boolean
+  isCurrentMonth: boolean
 }
 
 export default function AdminCalendarPage() {
-  const [state, setState] = useState<CalendarPageState>({
-    selectedDate: undefined,
-    selectedEvent: undefined,
-    selectedTimeSlot: undefined,
-    showEventDialog: false,
-    showTimeSlotDialog: false,
-    editingEvent: null,
-    filterType: 'all',
-    filterStatus: 'all',
-    viewMode: 'month'
-  })
-
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>()
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | undefined>()
+  const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showEventDialog, setShowEventDialog] = useState(false)
+  const [filterType, setFilterType] = useState('all')
 
-  const updateState = (updates: Partial<CalendarPageState>) => {
-    setState(prev => ({ ...prev, ...updates }))
-  }
+  const monthStart = startOfMonth(currentDate)
+  const monthEnd = endOfMonth(currentDate)
+  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-  const handleDateSelect = (date: Date) => {
-    updateState({ selectedDate: date, selectedEvent: undefined })
-  }
+  // Load calendar data
+  useEffect(() => {
+    loadCalendarData()
+  }, [currentDate, filterType])
 
-  const handleEventSelect = (event: CalendarEvent) => {
-    updateState({ selectedEvent: event, selectedTimeSlot: undefined })
-  }
+  const loadCalendarData = async () => {
+    setLoading(true)
+    setError('')
+    
+    try {
+      const params = new URLSearchParams({
+        view: 'month',
+        currentDate: currentDate.toISOString(),
+        showHolidays: 'true',
+        showBookings: 'true',
+        showEvents: 'true',
+        filterTypes: filterType === 'all' ? 'booking,holiday,event' : filterType
+      })
 
-  const handleTimeSlotSelect = (date: Date, timeSlot: TimeSlot) => {
-    updateState({ selectedDate: date, selectedTimeSlot: timeSlot, selectedEvent: undefined })
-  }
+      const response = await fetch(`/api/calendar/data?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
 
-  const handleCreateEvent = () => {
-    updateState({ editingEvent: null, showEventDialog: true })
-  }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
 
-  const handleEditEvent = (event: CalendarEvent) => {
-    updateState({ editingEvent: event, showEventDialog: true })
-  }
-
-  const handleCreateTimeSlot = () => {
-    if (!state.selectedDate) return
-    updateState({ showTimeSlotDialog: true })
-  }
-
-  const getEventIcon = (type: string) => {
-    switch (type) {
-      case 'booking': return <CalendarIcon className="h-4 w-4" />
-      case 'holiday': return <AlertCircle className="h-4 w-4" />
-      case 'maintenance': return <RefreshCw className="h-4 w-4" />
-      default: return <CalendarIcon className="h-4 w-4" />
+      const data = await response.json()
+      setEvents(data.events || [])
+    } catch (err) {
+      console.error('Error loading calendar data:', err)
+      setError('فشل في تحميل بيانات التقويم')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  const handlePreviousMonth = () => {
+    setCurrentDate(prev => subMonths(prev, 1))
+  }
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => addMonths(prev, 1))
+  }
+
+  const handleToday = () => {
+    setCurrentDate(new Date())
+  }
+
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date)
+    setSelectedEvent(undefined)
+  }
+
+  const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedEvent(event)
+  }
+
+  const getEventsForDate = (date: Date): CalendarEvent[] => {
+    return events.filter(event => isSameDay(event.start, date))
+  }
+
+  const getEventTypeColor = (type: string, status?: string) => {
+    if (type === 'holiday') return 'bg-red-100 text-red-800 border-red-200'
+    if (type === 'booking') {
+      switch (status) {
+        case 'PENDING': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        case 'CONFIRMED': return 'bg-green-100 text-green-800 border-green-200'
+        case 'CANCELLED': return 'bg-red-100 text-red-800 border-red-200'
+        case 'COMPLETED': return 'bg-blue-100 text-blue-800 border-blue-200'
+        default: return 'bg-gray-100 text-gray-800 border-gray-200'
+      }
+    }
+    return 'bg-purple-100 text-purple-800 border-purple-200'
   }
 
   const getStatusIcon = (status?: string) => {
@@ -104,32 +152,103 @@ export default function AdminCalendarPage() {
     }
   }
 
-  const getFilterTypes = () => {
-    const types = ['all', 'booking', 'holiday', 'maintenance', 'event']
-    return types.map(type => ({
-      value: type,
-      label: type === 'all' ? 'الكل' : 
-             type === 'booking' ? 'الحجوزات' :
-             type === 'holiday' ? 'العطلات' :
-             type === 'maintenance' ? 'الصيانة' : 'الأحداث'
-    }))
-  }
+  const renderCalendar = () => {
+    const firstDayOfMonth = daysInMonth[0]
+    const startDay = firstDayOfMonth.getDay()
+    
+    // Create array for empty cells before the first day
+    const emptyCells = Array(startDay).fill(null)
+    
+    // Create array for all days in the month
+    const allDays = [...emptyCells, ...daysInMonth]
+    
+    // Group into weeks
+    const weeks = []
+    for (let i = 0; i < allDays.length; i += 7) {
+      weeks.push(allDays.slice(i, i + 7))
+    }
 
-  const getStatusOptions = () => {
-    const statuses = ['all', 'PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED']
-    return statuses.map(status => ({
-      value: status,
-      label: status === 'all' ? 'الكل' :
-             status === 'PENDING' ? 'قيد الانتظار' :
-             status === 'CONFIRMED' ? 'مؤكد' :
-             status === 'CANCELLED' ? 'ملغي' : 'مكتمل'
-    }))
-  }
+    const weekDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 
-  // Memoize filter types to prevent unnecessary re-renders
-  const memoizedFilterTypes = useMemo(() => {
-    return state.filterType === 'all' ? undefined : [state.filterType]
-  }, [state.filterType])
+    return (
+      <div className="space-y-4">
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 gap-1">
+          {weekDays.map(day => (
+            <div key={day} className="text-center text-sm font-medium text-gray-600 p-2">
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {weeks.map((week, weekIndex) => 
+            week.map((day, dayIndex) => {
+              if (!day) {
+                return <div key={`empty-${weekIndex}-${dayIndex}`} className="p-2" />
+              }
+              
+              const dayEvents = getEventsForDate(day)
+              const isSelected = selectedDate && isSameDay(day, selectedDate)
+              const isTodayDate = isToday(day)
+              const isCurrentMonthDate = isSameMonth(day, currentDate)
+              
+              return (
+                <div
+                  key={day.toString()}
+                  className={`min-h-[80px] p-1 border border-gray-200 rounded-lg cursor-pointer transition-all
+                    hover:bg-gray-50
+                    ${isSelected && 'ring-2 ring-blue-500 bg-blue-50'}
+                    ${isTodayDate && 'bg-blue-100'}
+                    ${!isCurrentMonthDate && 'opacity-50'}
+                    hover:shadow-sm
+                  `}
+                  onClick={() => handleDateClick(day)}
+                >
+                  <div className="flex flex-col h-full">
+                    <div className={`text-sm font-medium text-center mb-1
+                      ${isTodayDate && 'text-blue-600 font-bold'}
+                    `}>
+                      {format(day, 'd')}
+                    </div>
+                    
+                    <div className="flex-1 space-y-1">
+                      {dayEvents.slice(0, 2).map(event => (
+                        <div
+                          key={event.id}
+                          className={`text-xs p-1 rounded border cursor-pointer truncate
+                            ${getEventTypeColor(event.type, event.status)}
+                          `}
+                          onClick={(e) => handleEventClick(event, e)}
+                          title={event.title}
+                        >
+                          {format(event.start, 'HH:mm')} {event.title.split(' - ')[0]}
+                        </div>
+                      ))}
+                      
+                      {dayEvents.length > 2 && (
+                        <div className="text-xs text-gray-500 text-center">
+                          +{dayEvents.length - 2}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {dayEvents.length > 0 && (
+                      <div className="flex items-center justify-center text-xs text-gray-500">
+                        <Users className="h-3 w-3 mr-1" />
+                        {dayEvents.length}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -139,43 +258,21 @@ export default function AdminCalendarPage() {
         <p className="text-gray-600">إدارة الحجوزات والمواعيد والأحداث</p>
         
         <div className="mt-4 flex flex-wrap gap-3">
-          <Button onClick={handleCreateEvent}>
+          <Button onClick={() => setShowEventDialog(true)}>
             <Plus className="ml-2 h-4 w-4" />
             إضافة حدث
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleCreateTimeSlot}
-            disabled={!state.selectedDate}
-          >
-            <Plus className="ml-2 h-4 w-4" />
-            إضافة موعد
-          </Button>
           
           <div className="flex gap-2">
-            <Select value={state.filterType} onValueChange={(value) => updateState({ filterType: value })}>
+            <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {getFilterTypes().map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={state.filterStatus} onValueChange={(value) => updateState({ filterStatus: value })}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {getStatusOptions().map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="booking">الحجوزات</SelectItem>
+                <SelectItem value="holiday">العطلات</SelectItem>
+                <SelectItem value="event">الأحداث</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -202,101 +299,111 @@ export default function AdminCalendarPage() {
       )}
 
       {/* Calendar */}
-      <InteractiveCalendar
-        onDateSelect={handleDateSelect}
-        onEventSelect={handleEventSelect}
-        onTimeSlotSelect={handleTimeSlotSelect}
-        selectedDate={state.selectedDate}
-        selectedEvent={state.selectedEvent}
-        selectedTimeSlot={state.selectedTimeSlot}
-        showTimeSlots={true}
-        showEvents={true}
-        showHolidays={true}
-        filterTypes={memoizedFilterTypes}
-        height="700px"
-      />
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5" />
+              {format(currentDate, 'MMMM yyyy', { locale: ar })}
+            </CardTitle>
+            
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={loadCalendarData} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleToday}>
+                اليوم
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePreviousMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleNextMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center h-96">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <div className="overflow-auto">
+              {renderCalendar()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Selected Event Details */}
-      {state.selectedEvent && (
+      {/* Selected Date Details */}
+      {selectedDate && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {state.selectedEvent && getEventIcon(state.selectedEvent.type)}
-                تفاصيل الحدث
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => state.selectedEvent && handleEditEvent(state.selectedEvent)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5" />
+              {format(selectedDate, 'EEEE, MMMM d, yyyy', { locale: ar })}
             </CardTitle>
           </CardHeader>
+          
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
               <div>
-                <h3 className="font-semibold mb-2">معلومات الحدث</h3>
-                <div className="space-y-2">
-                  <div>
-                    <Label className="text-sm text-gray-600">العنوان</Label>
-                    <p className="font-medium">{state.selectedEvent.title}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">النوع</Label>
-                    <Badge variant="outline" className="mt-1">
-                      {state.selectedEvent.type === 'booking' ? 'حجز' :
-                       state.selectedEvent.type === 'holiday' ? 'عطلة' :
-                       state.selectedEvent.type === 'maintenance' ? 'صيانة' : 'حدث'}
-                    </Badge>
-                  </div>
-                  {state.selectedEvent.status && (
-                    <div>
-                      <Label className="text-sm text-gray-600">الحالة</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        {getStatusIcon(state.selectedEvent.status)}
-                        <span className="font-medium">
-                          {state.selectedEvent.status === 'PENDING' ? 'قيد الانتظار' :
-                           state.selectedEvent.status === 'CONFIRMED' ? 'مؤكد' :
-                           state.selectedEvent.status === 'CANCELLED' ? 'ملغي' :
-                           state.selectedEvent.status === 'COMPLETED' ? 'مكتمل' : state.selectedEvent.status}
-                        </span>
+                <h3 className="font-medium mb-2 flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  الأحداث اليوم
+                </h3>
+                {getEventsForDate(selectedDate).length > 0 ? (
+                  <div className="space-y-2">
+                    {getEventsForDate(selectedDate).map(event => (
+                      <div
+                        key={event.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-all
+                          hover:shadow-md
+                          ${selectedEvent?.id === event.id && 'ring-2 ring-blue-500'}
+                          ${getEventTypeColor(event.type, event.status)}
+                        `}
+                        onClick={(e) => handleEventClick(event, e)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{event.title}</div>
+                            <div className="text-sm opacity-75">
+                              {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(event.status)}
+                            <Badge variant="outline" className="text-xs">
+                              {event.type === 'booking' ? 'حجز' : 
+                               event.type === 'holiday' ? 'عطلة' : 'حدث'}
+                            </Badge>
+                          </div>
+                        </div>
+                        {event.description && (
+                          <div className="text-sm mt-2 opacity-75">
+                            {event.description}
+                          </div>
+                        )}
+                        {event.customerName && (
+                          <div className="text-sm mt-1 opacity-75">
+                            عميل: {event.customerName}
+                          </div>
+                        )}
+                        {event.vehicleName && (
+                          <div className="text-sm mt-1 opacity-75">
+                            سيارة: {event.vehicleName}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                  {state.selectedEvent.description && (
-                    <div>
-                      <Label className="text-sm text-gray-600">الوصف</Label>
-                      <p className="mt-1">{state.selectedEvent.description}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-2">التوقيت</h3>
-                <div className="space-y-2">
-                  <div>
-                    <Label className="text-sm text-gray-600">التاريخ</Label>
-                    <p className="font-medium">
-                      {format(state.selectedEvent.start, 'EEEE, MMMM d, yyyy', { locale: ar })}
-                    </p>
+                    ))}
                   </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">الوقت</Label>
-                    <p className="font-medium">
-                      {format(state.selectedEvent.start, 'HH:mm')} - {format(state.selectedEvent.end, 'HH:mm')}
-                    </p>
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    لا توجد أحداث في هذا اليوم
                   </div>
-                  <div>
-                    <Label className="text-sm text-gray-600">المدة</Label>
-                    <p className="font-medium">
-                      {Math.round((state.selectedEvent.end.getTime() - state.selectedEvent.start.getTime()) / 60000)} دقيقة
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -304,14 +411,12 @@ export default function AdminCalendarPage() {
       )}
 
       {/* Event Dialog */}
-      <Dialog open={state.showEventDialog} onOpenChange={(open) => updateState({ showEventDialog: open })}>
+      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {state.editingEvent ? 'تعديل حدث' : 'إضافة حدث جديد'}
-            </DialogTitle>
+            <DialogTitle>إضافة حدث جديد</DialogTitle>
             <DialogDescription>
-              {state.editingEvent ? 'تعديل معلومات الحدث المحدد' : 'إضافة حدث جديد إلى التقويم'}
+              إضافة حدث جديد إلى التقويم
             </DialogDescription>
           </DialogHeader>
           
@@ -321,13 +426,12 @@ export default function AdminCalendarPage() {
               <Input
                 id="event-title"
                 placeholder="أدخل عنوان الحدث"
-                defaultValue={state.editingEvent?.title}
               />
             </div>
             
             <div>
               <Label htmlFor="event-type">نوع الحدث</Label>
-              <Select defaultValue={state.editingEvent?.type}>
+              <Select>
                 <SelectTrigger>
                   <SelectValue placeholder="اختر نوع الحدث" />
                 </SelectTrigger>
@@ -346,70 +450,15 @@ export default function AdminCalendarPage() {
                 id="event-description"
                 placeholder="أدخل وصف الحدث"
                 rows={3}
-                defaultValue={state.editingEvent?.description}
               />
             </div>
             
             <div className="flex gap-3 mt-6">
-              <Button variant="outline" onClick={() => updateState({ showEventDialog: false })}>
+              <Button variant="outline" onClick={() => setShowEventDialog(false)}>
                 إلغاء
               </Button>
               <Button>
-                {state.editingEvent ? 'حفظ التغييرات' : 'إضافة الحدث'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Time Slot Dialog */}
-      <Dialog open={state.showTimeSlotDialog} onOpenChange={(open) => updateState({ showTimeSlotDialog: open })}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>إضافة موعد جديد</DialogTitle>
-            <DialogDescription>
-              إضافة موعد متاح لـ {state.selectedDate && format(state.selectedDate, 'EEEE, MMMM d, yyyy', { locale: ar })}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="start-time">وقت البدء</Label>
-                <Input
-                  id="start-time"
-                  type="time"
-                  placeholder="09:00"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="end-time">وقت الانتهاء</Label>
-                <Input
-                  id="end-time"
-                  type="time"
-                  placeholder="10:00"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="max-bookings">الحد الأقصى للحجوزات</Label>
-              <Input
-                id="max-bookings"
-                type="number"
-                placeholder="1"
-                min="1"
-                max="10"
-              />
-            </div>
-            
-            <div className="flex gap-3 mt-6">
-              <Button variant="outline" onClick={() => updateState({ showTimeSlotDialog: false })}>
-                إلغاء
-              </Button>
-              <Button>
-                إضافة الموعد
+                إضافة الحدث
               </Button>
             </div>
           </div>

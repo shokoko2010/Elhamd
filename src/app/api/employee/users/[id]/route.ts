@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function PUT(
@@ -12,13 +12,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    
+    // User already available from requireUnifiedAuth
+
     if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
@@ -34,7 +35,7 @@ export async function PUT(
 
     // Check if email is already used by another user
     if (email) {
-      const existingUser = await db.session.user.findFirst({
+      const existingUser = await db.user.findFirst({
         where: {
           email,
           NOT: { id }
@@ -50,7 +51,7 @@ export async function PUT(
     }
 
     // Update user
-    const updatedUser = await db.session.user.update({
+    const updatedUser = await db.user.update({
       where: { id },
       data: {
         name,
@@ -87,13 +88,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    
+    // User already available from requireUnifiedAuth
+
     if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
@@ -117,7 +119,7 @@ export async function DELETE(
 
     // If user has related records, don't delete but mark as inactive
     if (relatedOrders.length > 0 || relatedInvoices.length > 0) {
-      await db.session.user.update({
+      await db.user.update({
         where: { id },
         data: {
           status: 'inactive',
@@ -132,7 +134,7 @@ export async function DELETE(
     }
 
     // Delete user (only if no related records)
-    await db.session.user.delete({
+    await db.user.delete({
       where: { id }
     })
 

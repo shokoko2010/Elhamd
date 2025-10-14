@@ -3,9 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
+import { getSimpleUser } from '@/lib/simple-auth'
 import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 
@@ -36,9 +35,20 @@ const updateVehicleSchema = createVehicleSchema.partial().extend({
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    const user = await getSimpleUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('vehicles.view')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -82,6 +92,21 @@ export async function GET(request: NextRequest) {
     const [vehicles, total] = await Promise.all([
       db.vehicle.findMany({
         where,
+        include: {
+          images: {
+            orderBy: { order: 'asc' }
+          },
+          specifications: {
+            orderBy: { category: 'asc' }
+          },
+          pricing: true,
+          testDriveBookings: {
+            select: { id: true }
+          },
+          serviceBookings: {
+            select: { id: true }
+          }
+        },
         orderBy: [
           { [sortBy]: sortOrder },
           { createdAt: 'desc' }
@@ -92,42 +117,8 @@ export async function GET(request: NextRequest) {
       db.vehicle.count({ where })
     ])
 
-    // Get related data for all vehicles
-    const vehiclesWithRelations = await Promise.all(
-      vehicles.map(async (vehicle) => {
-        const [images, specifications, pricing, testDriveCount, serviceCount] = await Promise.all([
-          db.vehicleImage.findMany({
-            where: { vehicleId: vehicle.id },
-            orderBy: { order: 'asc' }
-          }),
-          db.vehicleSpecification.findMany({
-            where: { vehicleId: vehicle.id },
-            orderBy: { category: 'asc' }
-          }),
-          db.vehiclePricing.findUnique({
-            where: { vehicleId: vehicle.id }
-          }),
-          db.testDriveBooking.count({
-            where: { vehicleId: vehicle.id }
-          }),
-          db.serviceBooking.count({
-            where: { vehicleId: vehicle.id }
-          })
-        ])
-
-        return {
-          ...vehicle,
-          images,
-          specifications,
-          pricing,
-          testDriveBookings: testDriveCount > 0 ? { count: testDriveCount } : null,
-          serviceBookings: serviceCount > 0 ? { count: serviceCount } : null
-        }
-      })
-    )
-
     return NextResponse.json({
-      vehicles: vehiclesWithRelations,
+      vehicles,
       pagination: {
         total,
         page,
@@ -148,9 +139,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('vehicles.create')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -184,39 +186,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create vehicle
+    // Create vehicle with default pricing
     const vehicle = await db.vehicle.create({
-      data: validatedData
-    })
-
-    // Create default pricing
-    const pricing = await db.vehiclePricing.create({
       data: {
-        vehicleId: vehicle.id,
-        basePrice: validatedData.price,
-        discountPrice: null,
-        discountPercentage: null,
-        taxes: 0,
-        fees: 0,
-        totalPrice: validatedData.price,
-        currency: 'EGP',
-        hasDiscount: false,
-        discountExpires: null
+        ...validatedData,
+        pricing: {
+          create: {
+            basePrice: validatedData.price,
+            discountPrice: null,
+            discountPercentage: null,
+            taxes: 0,
+            fees: 0,
+            totalPrice: validatedData.price,
+            currency: 'EGP',
+            hasDiscount: false,
+            discountExpires: null
+          }
+        }
+      },
+      include: {
+        images: {
+          orderBy: { order: 'asc' }
+        },
+        pricing: true
       }
     })
 
-    return NextResponse.json({
-      ...vehicle,
-      pricing,
-      images: [],
-      specifications: []
-    }, { status: 201 })
+    return NextResponse.json(vehicle, { status: 201 })
   } catch (error) {
     console.error('Error creating vehicle:', error)
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: error.issues },
+        { error: 'بيانات غير صالحة', details: error.errors },
         { status: 400 }
       )
     }

@@ -3,16 +3,15 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { ComplaintCategory, ComplaintSeverity, ComplaintStatus, ComplaintSource } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -36,6 +35,42 @@ export async function GET(request: NextRequest) {
     const [complaints, total] = await Promise.all([
       db.complaint.findMany({
         where,
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          assigner: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          resolver: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          }
+        },
         orderBy: {
           createdAt: 'desc'
         },
@@ -65,9 +100,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -108,7 +143,43 @@ export async function POST(request: NextRequest) {
         branchId,
         tags,
         attachments,
-        assignedBy: session.user.id
+        assignedBy: user.id
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        assigner: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        resolver: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        }
       }
     })
 

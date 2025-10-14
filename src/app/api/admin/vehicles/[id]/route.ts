@@ -3,9 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
+import { getSimpleUser } from '@/lib/simple-auth'
 import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 
@@ -33,13 +32,42 @@ export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    const user = await getSimpleUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('vehicles.update') ||
+                      user.permissions.includes('vehicles.delete') ||
+                      user.permissions.includes('vehicles.create') ||
+                      user.permissions.includes('vehicles.view')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const vehicle = await db.vehicle.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        images: {
+          orderBy: { order: 'asc' }
+        },
+        specifications: {
+          orderBy: { category: 'asc' }
+        },
+        pricing: true,
+        testDriveBookings: {
+          select: { id: true, date: true, timeSlot: true, status: true }
+        },
+        serviceBookings: {
+          select: { id: true, date: true, timeSlot: true, status: true }
+        }
+      }
     })
 
     if (!vehicle) {
@@ -49,37 +77,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
       )
     }
 
-    // Get related data separately
-    const [images, specifications, pricing, testDriveBookings, serviceBookings] = await Promise.all([
-      db.vehicleImage.findMany({
-        where: { vehicleId: id },
-        orderBy: { order: 'asc' }
-      }),
-      db.vehicleSpecification.findMany({
-        where: { vehicleId: id },
-        orderBy: { category: 'asc' }
-      }),
-      db.vehiclePricing.findUnique({
-        where: { vehicleId: id }
-      }),
-      db.testDriveBooking.findMany({
-        where: { vehicleId: id },
-        select: { id: true, date: true, timeSlot: true, status: true }
-      }),
-      db.serviceBooking.findMany({
-        where: { vehicleId: id },
-        select: { id: true, date: true, timeSlot: true, status: true }
-      })
-    ])
-
-    return NextResponse.json({
-      ...vehicle,
-      images,
-      specifications,
-      pricing,
-      testDriveBookings,
-      serviceBookings
-    })
+    return NextResponse.json(vehicle)
   } catch (error) {
     console.error('Error fetching vehicle:', error)
     return NextResponse.json(
@@ -94,9 +92,23 @@ export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    const user = await getSimpleUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('vehicles.update') ||
+                      user.permissions.includes('vehicles.delete') ||
+                      user.permissions.includes('vehicles.create') ||
+                      user.permissions.includes('vehicles.view')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     // Check if vehicle exists
@@ -147,30 +159,19 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     // Update vehicle
     const vehicle = await db.vehicle.update({
       where: { id },
-      data: validatedData
+      data: validatedData,
+      include: {
+        images: {
+          orderBy: { order: 'asc' }
+        },
+        specifications: {
+          orderBy: { category: 'asc' }
+        },
+        pricing: true
+      }
     })
 
-    // Get related data separately
-    const [images, specifications, pricing] = await Promise.all([
-      db.vehicleImage.findMany({
-        where: { vehicleId: id },
-        orderBy: { order: 'asc' }
-      }),
-      db.vehicleSpecification.findMany({
-        where: { vehicleId: id },
-        orderBy: { category: 'asc' }
-      }),
-      db.vehiclePricing.findUnique({
-        where: { vehicleId: id }
-      })
-    ])
-
-    return NextResponse.json({
-      ...vehicle,
-      images,
-      specifications,
-      pricing
-    })
+    return NextResponse.json(vehicle)
   } catch (error) {
     console.error('Error updating vehicle:', error)
     
@@ -194,13 +195,26 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.permissions.includes('DELETE_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        testDriveBookings: true,
+        serviceBookings: true
+      }
     })
 
     if (!vehicle) {
@@ -211,18 +225,9 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     }
 
     // Check if vehicle has active bookings
-    const [testDriveBookings, serviceBookings] = await Promise.all([
-      db.testDriveBooking.findMany({
-        where: { vehicleId: id }
-      }),
-      db.serviceBooking.findMany({
-        where: { vehicleId: id }
-      })
-    ])
-
-    const hasActiveBookings = testDriveBookings.some(booking => 
+    const hasActiveBookings = vehicle.testDriveBookings.some(booking => 
       ['PENDING', 'CONFIRMED'].includes(booking.status)
-    ) || serviceBookings.some(booking => 
+    ) || vehicle.serviceBookings.some(booking => 
       ['PENDING', 'CONFIRMED'].includes(booking.status)
     )
 

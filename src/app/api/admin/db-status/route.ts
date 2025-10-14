@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authorize, UserRole } from '@/lib/unified-auth';
 import { db } from '@/lib/db';
-import { UserRole } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
     // Authenticate user
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user || (session.user.role !== UserRole.ADMIN && session.user.role !== UserRole.SUPER_ADMIN)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await authorize(request, { 
+      roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] 
+    });
     
     // Check database connection and get basic stats
     const stats = await Promise.allSettled([
@@ -40,9 +36,9 @@ export async function GET(request: NextRequest) {
           }
         },
         user: {
-          id: session.user.id,
-          email: session.user.email,
-          role: session.user.role
+          id: user.id,
+          email: user.email,
+          role: user.role
         }
       }
     });

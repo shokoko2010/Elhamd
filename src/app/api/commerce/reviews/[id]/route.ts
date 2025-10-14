@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { ReviewStatus } from '@prisma/client'
 
@@ -12,14 +12,35 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
-    const user = await getAuthUser()
+    const user = await requireUnifiedAuth(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const review = await db.productReview.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            images: true
+          }
+        },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
     })
 
     if (!review) {
@@ -38,14 +59,13 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
-    const user = await getAuthUser()
+    const user = await requireUnifiedAuth(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to manage reviews
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -94,7 +114,29 @@ export async function PUT(
 
     updatedReview = await db.productReview.update({
       where: { id },
-      data: updateData
+      data: updateData,
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            images: true
+          }
+        },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
     })
 
     // Update product rating if status changed to approved
@@ -119,14 +161,13 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
-    const user = await getAuthUser()
+    const user = await requireUnifiedAuth(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to delete reviews
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -179,25 +220,19 @@ async function updateProductRating(productId: string) {
 
 async function sendReviewNotification(review: any, action: string) {
   try {
-    // Get customer info
-    const customer = review.customerId ? await db.user.findUnique({
-      where: { id: review.customerId }
-    }) : null
-
-    if (!customer) {
-      console.error('Customer not found for review notification')
-      return
-    }
-
     await db.notification.create({
       data: {
-        type: 'SYSTEM',
+        type: 'REVIEW_APPROVED',
         title: 'تمت الموافقة على تقييمك',
-        message: `تمت الموافقة على تقييمك للمنتج`,
+        message: `تمت الموافقة على تقييمك للمنتج ${review.product.name}`,
         status: 'PENDING',
         channel: 'EMAIL',
-        recipient: customer.email,
-        userId: customer.id
+        recipient: review.customer.email,
+        metadata: {
+          reviewId: review.id,
+          productId: review.productId,
+          action
+        }
       }
     })
   } catch (error) {

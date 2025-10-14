@@ -5,12 +5,12 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
             },
           }),
           // المستخدمين النشطين
-          db.session.user.count({
+          db.user.count({
             where: {
               branchId: branch.id,
               isActive: true,

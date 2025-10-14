@@ -3,16 +3,15 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { TaskPriority, TaskStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -113,9 +112,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -188,7 +187,7 @@ export async function POST(request: NextRequest) {
         priority: priority || TaskPriority.MEDIUM,
         dueDate: dueDate ? new Date(dueDate) : null,
         assignedTo,
-        assignedBy: session.user.id,
+        assignedBy: user.id,
         customerId,
         bookingId,
         notes,

@@ -12,9 +12,34 @@ export async function GET(
 ) {
   try {
     const params = await context.params
-    const { id } = params
     const booking = await db.testDriveBooking.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        vehicle: {
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true,
+            price: true,
+            category: true,
+            fuelType: true,
+            transmission: true,
+            images: {
+              where: { isPrimary: true },
+              take: 1
+            }
+          }
+        }
+      }
     })
 
     if (!booking) {
@@ -40,13 +65,15 @@ export async function PUT(
 ) {
   try {
     const params = await context.params
-    const { id } = params
     const body = await request.json()
     const { status, notes, date, timeSlot } = body
 
     // Check if booking exists
     const existingBooking = await db.testDriveBooking.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        vehicle: true
+      }
     })
 
     if (!existingBooking) {
@@ -90,6 +117,25 @@ export async function PUT(
         notes: notes !== undefined ? notes : undefined,
         date: date ? new Date(date) : undefined,
         timeSlot: timeSlot || undefined
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        vehicle: {
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true,
+            stockNumber: true
+          }
+        }
       }
     })
 
@@ -109,7 +155,6 @@ export async function DELETE(
 ) {
   try {
     const params = await context.params
-    const { id } = params
     // Check if booking exists
     const existingBooking = await db.testDriveBooking.findUnique({
       where: { id }

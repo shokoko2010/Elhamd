@@ -1,5 +1,9 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import NextAuth from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions } from '@/lib/authOptions'
 
 const handler = NextAuth(authOptions)
 

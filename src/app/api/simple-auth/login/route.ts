@@ -1,117 +1,87 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import bcrypt from 'bcryptjs';
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    console.log('Login attempt:', { email: body.email, hasPassword: !!body.password });
-    
-    const { email, password } = body;
+    const { email, password } = await request.json()
 
     if (!email || !password) {
-      console.log('Missing credentials');
       return NextResponse.json(
-        { error: 'البريد الإلكتروني وكلمة المرور مطلوبان' },
+        { message: 'Email and password are required' },
         { status: 400 }
-      );
+      )
     }
 
-    // البحث عن المستخدم في قاعدة البيانات
+    // Find user
     const user = await db.user.findUnique({
-      where: { email }
-    });
+      where: { email },
+      include: {
+        roleTemplate: true
+      }
+    })
 
-    console.log('User found:', !!user, user?.role, user?.isActive);
-
-    if (!user) {
-      console.log('User not found:', email);
+    if (!user || !user.isActive || !user.password) {
       return NextResponse.json(
-        { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' },
+        { message: 'Invalid credentials' },
         { status: 401 }
-      );
+      )
     }
 
-    // التحقق من كلمة المرور
-    const isPasswordValid = await bcrypt.compare(password, user.password || '');
-    console.log('Password valid:', isPasswordValid);
-    
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
-      console.log('Invalid password for:', email);
       return NextResponse.json(
-        { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' },
+        { message: 'Invalid credentials' },
         { status: 401 }
-      );
+      )
     }
 
-    // التحقق من أن المستخدم نشط
-    if (!user.isActive) {
-      console.log('User not active:', email);
-      return NextResponse.json(
-        { error: 'الحساب غير نشط' },
-        { status: 401 }
-      );
-    }
-
-    // تحديث آخر تسجيل دخول
+    // Update last login
     await db.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() }
-    });
+    })
 
-    // إعداد جلسة المستخدم
-    const responseData = {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        branchId: user.branchId
-      },
-      message: 'تم تسجيل الدخول بنجاح'
-    };
+    // Create simple token (in production, use JWT)
+    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64')
 
-    console.log('Login successful for:', email);
+    // Return user data without sensitive information
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      phone: user.phone,
+      branchId: user.branchId,
+      token
+    }
 
-    const response = NextResponse.json(responseData);
+    // Create response with token in cookie
+    const response = NextResponse.json({
+      message: 'Login successful',
+      user: userData
+    })
 
-    // تعيين الكوكيز مع إعدادات مناسبة لـ Vercel و HTTPS
-    const isProduction = process.env.NODE_ENV === 'production';
-    response.cookies.set('userId', user.id, {
+    // Set HTTP-only cookie with token
+    response.cookies.set('staff_token', token, {
       httpOnly: true,
-      secure: isProduction, // ضروري لـ HTTPS
+      secure: false, // Set to false for development
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 أيام
       path: '/',
-      // لا نحدد domain للسماح بالعمل على النطاق الرئيسي
-    });
+      maxAge: 60 * 60 * 24 // 24 hours
+    })
 
-    return response;
-
+    return response
   } catch (error) {
-    console.error('Login error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      env: process.env.NODE_ENV,
-      dbUrl: process.env.DATABASE_URL ? 'Set' : 'Not set'
-    });
-    
+    console.error('Login error:', error)
     return NextResponse.json(
-      { error: 'حدث خطأ في تسجيل الدخول' },
+      { message: 'Internal server error' },
       { status: 500 }
-    );
+    )
   }
-}
-
-// دعم طلبات OPTIONS لـ CORS
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
 }

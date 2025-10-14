@@ -3,38 +3,51 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
-    const user = await getAuthUser();
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
+    const user = await requireUnifiedAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
     const budget = await db.branchBudget.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
     if (!budget) {
       return NextResponse.json({ error: 'الميزانية غير موجودة' }, { status: 404 });
     }
 
-    // Fetch related data separately
-    const [branch, creator, approver] = await Promise.all([
-      db.branch.findUnique({ where: { id: budget.branchId } }),
-      db.user.findUnique({ where: { id: budget.createdBy } }),
-      budget.approvedBy ? db.user.findUnique({ where: { id: budget.approvedBy } }) : null
-    ])
-
-    const budgetWithRelations = { ...budget, branch, creator, approver }
-
-    return NextResponse.json(budgetWithRelations);
+    return NextResponse.json(budget);
   } catch (error) {
     console.error('Error fetching branch budget:', error);
     return NextResponse.json(
@@ -49,9 +62,8 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
-    const user = await getAuthUser();
-    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.role as any)) {
+    const user = await requireUnifiedAuth(request);
+    if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 
@@ -73,12 +85,15 @@ export async function PUT(
     }
 
     // التحقق من صلاحية المستخدم في الفرع
-    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+    if (session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'ADMIN') {
       const userPermission = await db.branchPermission.findFirst({
         where: {
           userId: user.id,
           branchId: budget.branchId,
-          isActive: true,
+          permissions: {
+            path: '$',
+            array_contains: 'MANAGE_BUDGETS',
+          },
         },
       });
 
@@ -106,16 +121,30 @@ export async function PUT(
             approvedAt: new Date(),
             status: 'ACTIVE',
           },
+          include: {
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+            creator: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            approver: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
         });
-
-        // Fetch related data separately
-        const [branchData, creatorData, approverData] = await Promise.all([
-          db.branch.findUnique({ where: { id: updatedBudget.branchId } }),
-          db.user.findUnique({ where: { id: updatedBudget.createdBy } }),
-          updatedBudget.approvedBy ? db.user.findUnique({ where: { id: updatedBudget.approvedBy } }) : null
-        ])
-        
-        updatedBudget = { ...updatedBudget, branch: branchData, creator: creatorData, approver: approverData }
         break;
 
       case 'update_spent':
@@ -128,16 +157,30 @@ export async function PUT(
             spent,
             remaining: Math.max(0, remaining),
           },
+          include: {
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+            creator: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            approver: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
         });
-
-        // Fetch related data separately
-        const [branchData2, creatorData2, approverData2] = await Promise.all([
-          db.branch.findUnique({ where: { id: updatedBudget.branchId } }),
-          db.user.findUnique({ where: { id: updatedBudget.createdBy } }),
-          updatedBudget.approvedBy ? db.user.findUnique({ where: { id: updatedBudget.approvedBy } }) : null
-        ])
-        
-        updatedBudget = { ...updatedBudget, branch: branchData2, creator: creatorData2, approver: approverData2 }
         break;
 
       default:
@@ -151,16 +194,30 @@ export async function PUT(
             ...(description !== undefined && { description }),
             ...(status !== undefined && { status }),
           },
+          include: {
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+            creator: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            approver: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
         });
-
-        // Fetch related data separately
-        const [branchData3, creatorData3, approverData3] = await Promise.all([
-          db.branch.findUnique({ where: { id: updatedBudget.branchId } }),
-          db.user.findUnique({ where: { id: updatedBudget.createdBy } }),
-          updatedBudget.approvedBy ? db.user.findUnique({ where: { id: updatedBudget.approvedBy } }) : null
-        ])
-        
-        updatedBudget = { ...updatedBudget, branch: branchData3, creator: creatorData3, approver: approverData3 }
     }
 
     return NextResponse.json(updatedBudget);
@@ -178,9 +235,8 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
-    const user = await getAuthUser();
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role as any)) {
+    const user = await requireUnifiedAuth(request);
+    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
 

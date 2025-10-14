@@ -3,16 +3,15 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { EvaluationStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -34,6 +33,21 @@ export async function GET(request: NextRequest) {
     const [evaluations, total] = await Promise.all([
       db.serviceEvaluation.findMany({
         where,
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          reviewer: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        },
         orderBy: {
           createdAt: 'desc'
         },
@@ -63,9 +77,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -120,6 +134,21 @@ export async function POST(request: NextRequest) {
         attachments,
         isPublic,
         status: EvaluationStatus.PENDING
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        reviewer: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       }
     })
 

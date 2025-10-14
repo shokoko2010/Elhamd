@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 interface CommerceSettings {
@@ -123,13 +123,13 @@ const defaultSettings: CommerceSettings = {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const session = await requireUnifiedAuth(request)
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to access commerce settings
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       // Create default settings if none exist
       settings = await db.commerceSettings.create({
         data: {
-          settings: defaultSettings as any
+          settings: defaultSettings
         }
       })
     }
@@ -154,13 +154,13 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const session = await requireUnifiedAuth(request)
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user has permission to update commerce settings
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -176,7 +176,7 @@ export async function PUT(request: NextRequest) {
       const updatedSettings = await db.commerceSettings.update({
         where: { id: existingSettings.id },
         data: {
-          settings: newSettings as any,
+          settings: newSettings,
           updatedAt: new Date()
         }
       })
@@ -184,7 +184,7 @@ export async function PUT(request: NextRequest) {
     } else {
       const createdSettings = await db.commerceSettings.create({
         data: {
-          settings: newSettings as any
+          settings: newSettings
         }
       })
       return NextResponse.json(createdSettings.settings)

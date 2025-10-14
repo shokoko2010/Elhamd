@@ -10,9 +10,21 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
     const user = await db.user.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        _count: {
+          select: {
+            testDriveBookings: true,
+            serviceBookings: true
+          }
+        }
+      }
     })
 
     if (!user) {
@@ -22,21 +34,7 @@ export async function GET(
       )
     }
 
-    // Get counts separately
-    const [testDriveCount, serviceCount] = await Promise.all([
-      db.testDriveBooking.count({ where: { customerId: id } }),
-      db.serviceBooking.count({ where: { customerId: id } })
-    ])
-
-    return NextResponse.json({ 
-      user: {
-        ...user,
-        _count: {
-          testDriveBookings: testDriveCount,
-          serviceBookings: serviceCount
-        }
-      }
-    })
+    return NextResponse.json({ user })
   } catch (error) {
     console.error('Error fetching user:', error)
     return NextResponse.json(
@@ -51,7 +49,6 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
     const body = await request.json()
     const { email, name, role, phone, isActive, permissions } = body
 
@@ -138,7 +135,6 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
     // Check if user exists
     const existingUser = await db.user.findUnique({
       where: { id }

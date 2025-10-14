@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { ReviewStatus } from '@prisma/client'
 
@@ -88,8 +87,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -126,7 +125,7 @@ export async function POST(request: NextRequest) {
     const existingReview = await db.productReview.findFirst({
       where: {
         productId,
-        customerId: session.user.id
+        customerId: user.id
       }
     })
 
@@ -136,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     // Get commerce settings to check if reviews require approval
     const commerceSettings = await db.commerceSettings.findFirst()
-    const settings = commerceSettings?.settings as any || {}
+    const settings = commerceSettings?.settings || {}
     const requireApproval = settings.reviews?.requireApproval ?? true
     const autoPublish = settings.reviews?.autoPublish ?? false
 
@@ -144,14 +143,14 @@ export async function POST(request: NextRequest) {
     const newReview = await db.productReview.create({
       data: {
         productId,
-        customerId: session.user.id,
+        customerId: user.id,
         rating: parseInt(rating),
         title,
         review,
         images: images || [],
         isAnonymous: isAnonymous || false,
         status: requireApproval && !autoPublish ? ReviewStatus.PENDING : ReviewStatus.APPROVED,
-        approvedBy: !requireApproval || autoPublish ? session.user.id : null,
+        approvedBy: !requireApproval || autoPublish ? user.id : null,
         approvedAt: !requireApproval || autoPublish ? new Date() : null
       },
       include: {

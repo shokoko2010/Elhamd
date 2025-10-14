@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
+import { getAuthUser } from '@/lib/auth-server'
+
 export async function POST(request: NextRequest) {
   try {
     // Check authentication

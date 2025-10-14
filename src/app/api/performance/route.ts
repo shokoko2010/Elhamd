@@ -3,21 +3,20 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 import { PerformancePeriod } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const employeeId = searchParams.get('employeeId') || session.user.id
+    const employeeId = searchParams.get('employeeId') || user.id
     const period = searchParams.get('period') as PerformancePeriod || PerformancePeriod.MONTHLY
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
@@ -121,9 +120,9 @@ async function calculateCustomMetrics(employeeId: string, startDate: Date, endDa
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

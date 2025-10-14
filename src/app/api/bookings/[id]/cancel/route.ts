@@ -3,20 +3,17 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
-import { requireSimpleAuth } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
   context: RouteParams
 ) {
   try {
-    const { id } = await context.params
-    const user = await requireSimpleAuth()
+    const user = await requireUnifiedAuth(request)
     
-    if (!user?.id) {
+    if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -52,7 +49,7 @@ export async function PUT(
           message: `Your test drive booking for ${new Date(booking.date).toLocaleDateString()} has been cancelled.`,
           status: 'PENDING',
           channel: 'EMAIL',
-          recipient: user.email!
+          recipient: session.user.email!
         }
       })
 
@@ -60,12 +57,12 @@ export async function PUT(
     }
 
     // If not test drive, try service booking
-    const serviceBooking = await db.serviceBooking.findUnique({
+    booking = await db.serviceBooking.findUnique({
       where: { id: bookingId }
     })
 
-    if (serviceBooking && serviceBooking.customerId === userId) {
-      if (!['PENDING', 'CONFIRMED'].includes(serviceBooking.status)) {
+    if (booking && booking.customerId === userId) {
+      if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
         return NextResponse.json({ 
           error: 'Booking cannot be cancelled in current status' 
         }, { status: 400 })
@@ -85,10 +82,10 @@ export async function PUT(
           userId: userId,
           type: 'BOOKING_CANCELLATION',
           title: 'Booking Cancelled',
-          message: `Your service booking for ${new Date(serviceBooking.date).toLocaleDateString()} has been cancelled.`,
+          message: `Your service booking for ${new Date(booking.date).toLocaleDateString()} has been cancelled.`,
           status: 'PENDING',
           channel: 'EMAIL',
-          recipient: user.email!
+          recipient: session.user.email!
         }
       })
 

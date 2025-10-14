@@ -21,8 +21,44 @@ export async function GET(request: NextRequest) {
     }
 
     // Find order by order number
-    const order = await db.order.findFirst({
-      where: { orderNumber }
+    const order = await db.order.findUnique({
+      where: { orderNumber },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                images: true
+              }
+            }
+          }
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        },
+        promotions: {
+          include: {
+            promotion: {
+              select: {
+                id: true,
+                title: true,
+                code: true
+              }
+            }
+          }
+        }
+      }
     })
 
     if (!order) {
@@ -32,27 +68,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get customer info for verification
-    const customer = await db.user.findUnique({
-      where: { id: order.customerId }
-    })
-
-    if (!customer) {
-      return NextResponse.json(
-        { error: 'Customer information not found' },
-        { status: 404 }
-      )
-    }
-
     // Verify customer identity
-    if (email && customer.email !== email) {
+    if (email && order.customer.email !== email) {
       return NextResponse.json(
         { error: 'Email does not match order records' },
         { status: 403 }
       )
     }
 
-    if (phone && customer.phone !== phone) {
+    if (phone && order.customer.phone !== phone) {
       return NextResponse.json(
         { error: 'Phone number does not match order records' },
         { status: 403 }
@@ -78,10 +102,25 @@ export async function GET(request: NextRequest) {
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
         customer: {
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone
+          name: order.customer.name,
+          email: order.customer.email,
+          phone: order.customer.phone
         },
+        items: order.items.map(item => ({
+          id: item.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
+          images: item.product.images
+        })),
+        payment: order.payments[0] || null,
+        promotions: order.promotions.map(up => ({
+          id: up.promotion.id,
+          title: up.promotion.title,
+          code: up.promotion.code,
+          discount: up.discount
+        })),
         shippingAddress: order.shippingAddress,
         billingAddress: order.billingAddress,
         notes: order.notes
@@ -99,8 +138,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function getOrderStatusTimeline(order: any): any[] {
-  const timeline: any[] = []
+function getOrderStatusTimeline(order: any) {
+  const timeline = []
   const statuses = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED']
   
   // Add confirmed status
@@ -159,15 +198,11 @@ function getOrderStatusTimeline(order: any): any[] {
   return timeline
 }
 
-function getDeliveryEstimates(order: any): {
-  processing: Date | null;
-  shipping: Date | null;
-  delivery: Date | null;
-} {
+function getDeliveryEstimates(order: any) {
   const estimates = {
-    processing: null as Date | null,
-    shipping: null as Date | null,
-    delivery: null as Date | null
+    processing: null,
+    shipping: null,
+    delivery: null
   }
 
   const baseDate = new Date(order.createdAt)

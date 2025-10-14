@@ -102,16 +102,11 @@ function BranchPermissionsContent() {
   const [userPermissions, setUserPermissions] = useState<Permission[]>([])
   
   // Form state for template permissions
-  const [templateForm, setTemplateForm] = useState<{
-    name: string
-    description: string
-    role: UserRole
-    permissions: Permission[]
-  }>({
+  const [templateForm, setTemplateForm] = useState({
     name: '',
     description: '',
     role: UserRole.BRANCH_MANAGER,
-    permissions: []
+    permissions: [] as Permission[]
   })
 
   // Branch-specific permission groups

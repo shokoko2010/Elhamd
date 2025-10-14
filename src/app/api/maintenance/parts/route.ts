@@ -8,8 +8,8 @@ import { PartStatus, PartCategory } from '@/types/maintenance'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         status: status as PartStatus || PartStatus.AVAILABLE,
         barcode,
         imageUrl,
-        createdBy: session.user.id,
+        createdBy: user.id,
       },
       include: {
         creator: {

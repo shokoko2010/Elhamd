@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

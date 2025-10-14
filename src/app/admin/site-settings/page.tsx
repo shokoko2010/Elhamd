@@ -26,15 +26,15 @@ import SiteSettingsManager from '@/components/admin/site-settings/SiteSettingsMa
 export default function AdminSiteSettingsPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, isLoading, isAuthenticated, isAdmin } = useAuth()
+  const { user, loading, authenticated, isAdmin } = useAuth()
   
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!loading && !authenticated) {
       router.push('/login')
       return
     }
 
-    if (!isLoading && isAuthenticated && !isAdmin) {
+    if (!loading && authenticated && !isAdmin()) {
       toast({
         title: "Access Denied",
         description: "You don't have permission to access this page.",
@@ -43,9 +43,9 @@ export default function AdminSiteSettingsPage() {
       router.push('/dashboard')
       return
     }
-  }, [isLoading, isAuthenticated, isAdmin, router, toast])
+  }, [loading, authenticated, isAdmin, router, toast])
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-6">
@@ -56,7 +56,7 @@ export default function AdminSiteSettingsPage() {
     )
   }
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!authenticated || !isAdmin()) {
     return null
   }
 

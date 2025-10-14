@@ -94,7 +94,7 @@ export default function AdminPageSEOPage() {
     }
 
     if (status === 'authenticated') {
-      if (!isAdmin) {
+      if (!isAdmin()) {
         router.push('/dashboard')
         return
       }

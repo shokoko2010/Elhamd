@@ -3,9 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions, getAuthUser } from '@/lib/auth';
 import { db } from '@/lib/db'
+import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 import { z } from 'zod'
 
@@ -31,8 +30,19 @@ export async function GET(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('EDIT_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const images = await db.vehicleImage.findMany({
@@ -56,8 +66,19 @@ export async function POST(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('EDIT_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     // Check if vehicle exists
@@ -96,7 +117,8 @@ export async function POST(request: NextRequest, context: RouteParams) {
       data: {
         ...validatedData,
         vehicleId: id,
-        order: imageCount
+        order: imageCount,
+        thumbnailUrl: validatedData.imageUrl // In real app, generate thumbnail
       }
     })
 
@@ -124,8 +146,19 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     // Check authentication and authorization
     const user = await getAuthUser()
-    if (!user || !(['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'] as const).includes(user.role as any)) {
-      return NextResponse.json({ error: 'غير مصرح لك' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('EDIT_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const body = await request.json()

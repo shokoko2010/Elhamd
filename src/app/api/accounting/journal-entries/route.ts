@@ -3,17 +3,47 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const journalEntries = await db.journalEntry.findMany({
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        items: {
+          include: {
+            account: {
+              select: {
+                id: true,
+                code: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
       orderBy: {
         date: 'desc'
       }
@@ -28,8 +58,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    const user = await requireUnifiedAuth(request)
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -67,8 +97,47 @@ export async function POST(request: NextRequest) {
         reference,
         totalDebit,
         totalCredit,
-        createdBy: session.user.id,
-        branchId
+        createdBy: user.id,
+        branchId,
+        items: {
+          create: items.map((item: any) => ({
+            accountId: item.accountId,
+            description: item.description,
+            debit: item.debit || 0,
+            credit: item.credit || 0
+          }))
+        }
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        items: {
+          include: {
+            account: {
+              select: {
+                id: true,
+                code: true,
+                name: true
+              }
+            }
+          }
+        }
       }
     })
 

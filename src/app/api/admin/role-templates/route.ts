@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions, getAuthUser } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { PermissionService } from '@/lib/permissions'
 
@@ -31,16 +30,19 @@ export async function GET(request: NextRequest) {
     }
 
     const templates = await db.roleTemplate.findMany({
+      include: {
+        roleTemplatePermissions: {
+          include: {
+            permission: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     })
 
     const templatesWithPermissions = templates.map(template => ({
       ...template,
-      permissions: Array.isArray(template.permissions) 
-        ? template.permissions 
-        : (typeof template.permissions === 'string' 
-            ? JSON.parse(template.permissions) 
-            : [])
+      permissions: template.roleTemplatePermissions.map(rtp => rtp.permission.name)
     }))
 
     return NextResponse.json({ templates: templatesWithPermissions })
@@ -92,6 +94,22 @@ export async function POST(request: NextRequest) {
         isSystem: false
       }
     })
+
+    // Add permissions to template
+    for (const permissionName of permissions) {
+      const permission = await db.permission.findUnique({
+        where: { name: permissionName }
+      })
+
+      if (permission) {
+        await db.roleTemplatePermission.create({
+          data: {
+            templateId: template.id,
+            permissionId: permission.id
+          }
+        })
+      }
+    }
 
     return NextResponse.json({ 
       message: 'Role template created successfully',

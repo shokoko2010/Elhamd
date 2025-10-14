@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions, getAuthUser } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { PermissionService } from '@/lib/permissions'
 
@@ -62,6 +61,27 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       }
     })
 
+    // Remove existing permissions
+    await db.roleTemplatePermission.deleteMany({
+      where: { templateId }
+    })
+
+    // Add new permissions
+    for (const permissionName of permissions) {
+      const permission = await db.permission.findUnique({
+        where: { name: permissionName }
+      })
+
+      if (permission) {
+        await db.roleTemplatePermission.create({
+          data: {
+            templateId: templateId,
+            permissionId: permission.id
+          }
+        })
+      }
+    }
+
     return NextResponse.json({ 
       message: 'Role template updated successfully',
       template: {
@@ -114,6 +134,11 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     if (template.isSystem) {
       return NextResponse.json({ error: 'Cannot delete system templates' }, { status: 403 })
     }
+
+    // Delete template permissions first
+    await db.roleTemplatePermission.deleteMany({
+      where: { templateId }
+    })
 
     // Delete template
     await db.roleTemplate.delete({

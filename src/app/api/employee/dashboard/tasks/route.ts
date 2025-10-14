@@ -3,8 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireStaffRole } from '@/lib/server-auth'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -15,8 +14,8 @@ export async function GET(request: NextRequest) {
     const tasks = await db.task.findMany({
       where: {
         OR: [
-          { assignedToId: session.user.id },
-          { createdById: session.user.id }
+          { assignedToId: user.id },
+          { createdById: user.id }
         ]
       },
       include: {

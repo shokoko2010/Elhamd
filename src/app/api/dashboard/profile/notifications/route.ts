@@ -3,19 +3,18 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireUnifiedAuth } from '@/lib/unified-auth'
 import { db } from '@/lib/db'
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await requireUnifiedAuth(request)
     
     if (!user?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userId = session.user.id
+    const userId = user.id
     const preferences = await request.json()
 
     // Delete existing notification preferences for this user
@@ -35,7 +34,7 @@ export async function PUT(request: NextRequest) {
           message: `Notification for ${pref.type.replace(/_/g, ' ')}`,
           status: 'PENDING',
           channel: 'EMAIL',
-          recipient: session.session.user.email!
+          recipient: session.user.email!
         })
       }
       
@@ -47,7 +46,7 @@ export async function PUT(request: NextRequest) {
           message: `Notification for ${pref.type.replace(/_/g, ' ')}`,
           status: 'PENDING',
           channel: 'SMS',
-          recipient: session.session.user.email! // This should be phone number in real implementation
+          recipient: session.user.email! // This should be phone number in real implementation
         })
       }
       
@@ -59,7 +58,7 @@ export async function PUT(request: NextRequest) {
           message: `Notification for ${pref.type.replace(/_/g, ' ')}`,
           status: 'PENDING',
           channel: 'PUSH',
-          recipient: session.session.user.email!
+          recipient: session.user.email!
         })
       }
     }

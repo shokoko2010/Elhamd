@@ -85,9 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if date is in the past
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    if (bookingDate < today) {
+    if (bookingDate < new Date().setHours(0, 0, 0, 0)) {
       return NextResponse.json(
         { error: 'Cannot book for past dates' },
         { status: 400 }
@@ -107,14 +105,36 @@ export async function POST(request: NextRequest) {
         paymentStatus: PaymentStatus.PENDING,
         notes: notes || null,
         totalPrice: totalPrice || serviceType.price
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        serviceType: {
+          select: {
+            id: true,
+            name: true,
+            duration: true,
+            price: true,
+            category: true
+          }
+        },
+        vehicle: {
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true,
+            stockNumber: true
+          }
+        }
       }
     })
-
-    // Fetch related data separately
-    const [customer, vehicle] = await Promise.all([
-      db.user.findUnique({ where: { id: customerId } }),
-      vehicleId ? db.vehicle.findUnique({ where: { id: vehicleId } }) : null
-    ])
 
     // Send confirmation email
     let emailSent = false
@@ -135,12 +155,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      booking: {
-        ...booking,
-        customer,
-        serviceType,
-        vehicle
-      },
+      booking,
       emailSent,
       message: 'Booking created successfully'
     })
