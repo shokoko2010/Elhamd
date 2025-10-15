@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
 import { UserRole } from '@prisma/client'
-import { PermissionService, PERMISSIONS } from './permissions'
+import { PermissionService } from './permissions'
 
 export { authOptions }
 
@@ -36,21 +36,22 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     // Ensure user has the minimum required permissions based on role
     if (session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN) {
       // Admin users get all permissions by default
-      const allPermissions = Object.values(PERMISSIONS)
+      const allPermissions = Object.values(Permission)
       permissions = Array.from(new Set([...permissions, ...allPermissions]))
     } else if (session.user.role === UserRole.BRANCH_MANAGER) {
       // Branch managers get vehicle management permissions
       const vehiclePermissions = [
-        PERMISSIONS.EDIT_VEHICLES,
-        PERMISSIONS.VIEW_VEHICLES,
-        PERMISSIONS.MANAGE_VEHICLE_INVENTORY
+        Permission.VEHICLE_MANAGE,
+        Permission.VEHICLE_VIEW,
+        Permission.VEHICLE_EDIT,
+        Permission.VEHICLE_IMAGES_MANAGE
       ]
       permissions = Array.from(new Set([...permissions, ...vehiclePermissions]))
     } else if (session.user.role === UserRole.STAFF) {
       // Staff get basic vehicle permissions
       const staffPermissions = [
-        PERMISSIONS.VIEW_VEHICLES,
-        PERMISSIONS.EDIT_VEHICLES
+        Permission.VEHICLE_VIEW,
+        Permission.VEHICLE_EDIT
       ]
       permissions = Array.from(new Set([...permissions, ...staffPermissions]))
     }
