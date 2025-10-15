@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Bus, Van, Search, Gift } from 'lucide-react'
+import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Settings, Droplet } from 'lucide-react'
 import Link from 'next/link'
 import { VehicleCardSkeleton, HeroSliderSkeleton } from '@/components/ui/skeleton'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
@@ -197,21 +197,6 @@ export default function Home() {
       currency: 'EGP',
       minimumFractionDigits: 0
     }).format(price)
-  }
-
-  const getIconForService = (iconName: string) => {
-    const iconMap: { [key: string]: React.ReactNode } = {
-      truck: <Truck className="h-8 w-8 text-white" />,
-      bus: <Bus className="h-8 w-8 text-white" />,
-      van: <Van className="h-8 w-8 text-white" />,
-      pickup: <Car className="h-8 w-8 text-white" />,
-      'shield-check': <Shield className="h-8 w-8 text-white" />,
-      phone: <Phone className="h-8 w-8 text-white" />,
-      search: <Search className="h-8 w-8 text-white" />,
-      gift: <Gift className="h-8 w-8 text-white" />,
-      wrench: <Wrench className="h-8 w-8 text-white" />
-    }
-    return iconMap[iconName] || <Wrench className="h-8 w-8 text-white" />
   }
 
   return (
@@ -463,7 +448,7 @@ export default function Home() {
                     <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
                       <CardHeader className="text-center pb-4">
                         <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                          {getIconForService(service.icon)}
+                          <Wrench className="h-8 w-8 text-white" />
                         </div>
                         <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
                           {service.title}
@@ -473,12 +458,34 @@ export default function Home() {
                         <p className="text-gray-600 mb-6 leading-relaxed">
                           {service.description}
                         </p>
-                        <Link href={service.link || '/service-booking'}>
+                        {service.features && (
+                          <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
+                            {service.features.slice(0, 3).map((feature: string, idx: number) => (
+                              <li key={idx} className="flex items-center justify-end gap-2">
+                                <span>{feature}</span>
+                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-sm text-gray-500">المدة:</span>
+                          <span className="text-sm font-medium text-gray-700">{service.duration}</span>
+                        </div>
+                        {service.price && (
+                          <div className="flex items-center justify-between mb-6">
+                            <span className="text-sm text-gray-500">السعر:</span>
+                            <span className="text-lg font-bold text-green-600">
+                              {formatPrice(service.price)}
+                            </span>
+                          </div>
+                        )}
+                        <Link href="/service-booking">
                           <TouchButton 
                             variant="outline" 
                             className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
                           >
-                            اعرف المزيد
+                            احجز الآن
                           </TouchButton>
                         </Link>
                       </CardContent>
@@ -489,6 +496,150 @@ export default function Home() {
             </section>
           </EnhancedLazySection>
         )}
+
+        {/* Tata Motors Section */}
+        <EnhancedLazySection rootMargin="100px" preload={false}>
+          <section className="py-16 md:py-24 bg-gradient-to-br from-red-50 via-orange-50 to-red-50 relative overflow-hidden">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23dc2626\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
+            </div>
+            
+            <div className="max-w-7xl mx-auto px-4 relative z-10">
+              <div className="text-center mb-16">
+                <Badge className="bg-red-100 text-red-700 border-red-200 mb-4">
+                  <Truck className="ml-2 h-4 w-4" />
+                  Tata Motors
+                </Badge>
+                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                  تاتا موتورز
+                </h2>
+                <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                  القوة والاعتمادية في عالم النقل التجاري. استعرض تشكيلتنا المتكاملة من المركبات التجارية الثقيلة والخفيفة وبيك أب
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                {/* Featured Categories */}
+                <div className="lg:col-span-1">
+                  <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+                    <CardHeader className="text-center pb-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Truck className="h-8 w-8 text-white" />
+                      </div>
+                      <CardTitle className="text-2xl font-bold text-gray-900">
+                        المركبات التجارية الثقيلة
+                      </CardTitle>
+                      <CardDescription className="text-gray-600">
+                        قوة فائقة لأصعب المهام
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      <div className="space-y-3">
+                        <div className="bg-red-50 rounded-lg p-3">
+                          <div className="text-lg font-bold text-red-600">PRIMA 3328.K</div>
+                          <div className="text-sm text-gray-600">270 حصان | 970 نيوتن.متر</div>
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                          شاحنة قوية صُممت للتعامل مع أصعب المهام، مما يضمن سرعة في الإنجاز وتقليل تكاليف الصيانة
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="lg:col-span-1">
+                  <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+                    <CardHeader className="text-center pb-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Package className="h-8 w-8 text-white" />
+                      </div>
+                      <CardTitle className="text-2xl font-bold text-gray-900">
+                        المركبات التجارية الخفيفة
+                      </CardTitle>
+                      <CardDescription className="text-gray-600">
+                        كفاءة وموثوقية لكل الأعمال
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      <div className="space-y-3">
+                        <div className="bg-orange-50 rounded-lg p-3">
+                          <div className="text-lg font-bold text-orange-600">ULTRA T.9</div>
+                          <div className="text-sm text-gray-600">155 حصان | 450 نيوتن.متر</div>
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                          مصممة لرحلات لا تتوقف وسرعة دوران أعلى، مع اعتمادية عالية لتحقيق أقصى إنتاجية
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="lg:col-span-1">
+                  <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+                    <CardHeader className="text-center pb-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Truck className="h-8 w-8 text-white" />
+                      </div>
+                      <CardTitle className="text-2xl font-bold text-gray-900">
+                        بيك أب
+                      </CardTitle>
+                      <CardDescription className="text-gray-600">
+                        قوة ومتانة للربحية العالية
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                      <div className="space-y-3">
+                        <div className="bg-yellow-50 rounded-lg p-3">
+                          <div className="text-lg font-bold text-yellow-600">XENON SC</div>
+                          <div className="text-sm text-gray-600">150 حصان | 320 نيوتن.متر</div>
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                          يجمع بين القوة والمتانة، ما يوفّر أداءً معززًا ويساهم في زيادة الأرباح
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Key Features */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+                {[
+                  { icon: Settings, title: 'محركات قوية', desc: 'تقنية متقدمة' },
+                  { icon: Droplet, title: 'كفاءة وقود', desc: 'استهلاك منخفض' },
+                  { icon: Shield, title: 'سلامة عالية', desc: 'مواصفات أوروبية' },
+                  { icon: Wrench, title: 'صيانة سهلة', desc: 'قطع غيار متوفرة' }
+                ].map((feature, index) => {
+                  const Icon = feature.icon
+                  return (
+                    <div key={index} className="text-center">
+                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
+                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+                          <Icon className="h-6 w-6 text-white" />
+                        </div>
+                        <h3 className="font-bold text-gray-900 mb-2">{feature.title}</h3>
+                        <p className="text-sm text-gray-600">{feature.desc}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="text-center">
+                <Link href="/tata-motors">
+                  <TouchButton 
+                    size="xl"
+                    className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white text-lg font-semibold px-8 py-4 shadow-lg"
+                  >
+                    استعرض جميع موديلات تاتا
+                    <ArrowLeft className="mr-3 h-5 w-5" />
+                  </TouchButton>
+                </Link>
+              </div>
+            </div>
+          </section>
+        </EnhancedLazySection>
 
         {/* Company Values */}
         {companyValues.length > 0 && (
