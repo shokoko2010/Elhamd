@@ -111,7 +111,7 @@ export default function HeaderManagement() {
     logoText: 'Al-Hamd Cars',
     tagline: 'Your Trusted Car Dealership',
     primaryPhone: '+20 2 1234 5678',
-    primaryEmail: 'info@elhamdimport.online',
+    primaryEmail: 'info@elhamdimport.com',
     address: 'Cairo, Egypt',
     workingHours: 'Sat-Thu: 9AM-8PM, Fri: 2PM-8PM',
     ctaButton: {

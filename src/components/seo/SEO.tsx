@@ -31,7 +31,7 @@ export function generateMetadata({
     "description": description,
     "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@elhamdimport.online",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
