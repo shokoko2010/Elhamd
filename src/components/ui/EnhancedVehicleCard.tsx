@@ -8,8 +8,7 @@ import {
   Calendar, 
   Fuel, 
   Settings, 
-  Users, 
-  Star,
+  Users,
   Zap,
   Shield,
   Clock,
@@ -33,7 +32,6 @@ interface Vehicle {
   features?: string[]
   rating?: number
   mileage?: number
-  isFeatured?: boolean
   isNew?: boolean
 }
 
@@ -107,12 +105,6 @@ export function EnhancedVehicleCard({
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
-            {vehicle.isFeatured && (
-              <Badge className="bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm px-3 py-1 shadow-lg">
-                <Star className="w-3 h-3 mr-1 fill-current" />
-                مميزة
-              </Badge>
-            )}
             {vehicle.isNew && (
               <Badge className="bg-gradient-to-r from-green-600 to-green-700 text-white text-sm px-3 py-1 shadow-lg">
                 جديدة

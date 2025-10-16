@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category') || ''
-    const featured = searchParams.get('featured') === 'true'
     const limit = parseInt(searchParams.get('limit') || '12')
     const page = parseInt(searchParams.get('page') || '1')
     const search = searchParams.get('search') || ''
@@ -34,10 +33,6 @@ export async function GET(request: NextRequest) {
 
     if (transmission && transmission !== 'all') {
       where.transmission = transmission
-    }
-
-    if (featured) {
-      where.featured = true
     }
 
     if (search) {
@@ -66,7 +61,6 @@ export async function GET(request: NextRequest) {
           }
         },
         orderBy: [
-          { featured: 'desc' },
           { createdAt: 'desc' }
         ],
         skip,

@@ -166,14 +166,14 @@ export default function Home() {
           setSliderItems(sliders)
         }
 
-        // Fetch featured vehicles
-        const vehiclesResponse = await fetch('/api/vehicles?featured=true&limit=6')
+        // Fetch vehicles
+        const vehiclesResponse = await fetch('/api/vehicles?limit=8')
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
           setFeaturedVehicles(vehiclesData?.vehicles || [])
           
           if (vehiclesData?.vehicles?.length === 0) {
-            toast.info('لا توجد سيارات مميزة متاحة حالياً')
+            toast.info('لا توجد سيارات متاحة حالياً')
           }
         }
 
@@ -329,7 +329,7 @@ export default function Home() {
         {/* Spacing between sections */}
         <div className="h-8 md:h-12 bg-gradient-to-b from-blue-800 to-gray-50"></div>
 
-        {/* Featured Vehicles */}
+        {/* Our Vehicles */}
         <EnhancedLazySection rootMargin="100px" preload={false}>
           <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white relative w-full">
             {/* Background Decoration */}
@@ -341,20 +341,20 @@ export default function Home() {
             <div className="max-w-7xl mx-auto px-4 relative z-10">
               <div className="text-center mb-16">
                 <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
-                  <Star className="ml-2 h-4 w-4" />
-                  مميزة
+                  <Car className="ml-2 h-4 w-4" />
+                  سياراتنا
                 </Badge>
                 <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
-                  السيارات المميزة
+                  استعرض سيارات تاتا
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  استعرض أحدث سيارات تاتا المميزة بعروض حصرية وأسعار ممتازة
+                  استعرض أحدث سيارات تاتا التجارية والخفيفة بأفضل الأسعار والمواصفات
                 </p>
               </div>
             
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {[...Array(3)].map((_, i) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                  {[...Array(4)].map((_, i) => (
                     <LoadingCard key={i} title="جاري تحميل السيارة..." className="h-80 md:h-96" />
                   ))}
                 </div>
@@ -367,37 +367,41 @@ export default function Home() {
               ) : featuredVehicles.length === 0 ? (
                 <div className="text-center py-12">
                   <Car className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد سيارات مميزة حالياً</h3>
-                  <p className="text-gray-500 mb-6">يرجى التحقق لاحقاً أو استعراض جميع السيارات المتاحة</p>
-                  <Link href="/vehicles">
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد سيارات حالياً</h3>
+                  <p className="text-gray-500 mb-6">يرجى التحقق لاحقاً أو التواصل معنا</p>
+                  <Link href="/contact">
                     <TouchButton variant="outline" size="lg">
-                      استعرض جميع السيارات
+                      تواصل معنا
                     </TouchButton>
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {featuredVehicles.map((vehicle) => (
-                    <EnhancedVehicleCard
-                      key={vehicle.id}
-                      vehicle={vehicle}
-                    />
-                  ))}
-                </div>
-              )}
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                    {featuredVehicles.slice(0, 4).map((vehicle) => (
+                      <EnhancedVehicleCard
+                        key={vehicle.id}
+                        vehicle={vehicle}
+                      />
+                    ))}
+                  </div>
 
-              <div className="text-center mt-12">
-                <Link href="/vehicles">
-                  <TouchButton 
-                    variant="outline" 
-                    size="xl"
-                    className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
-                  >
-                    استعرض جميع السيارات
-                    <Car className="mr-3 h-5 w-5" />
-                  </TouchButton>
-                </Link>
-              </div>
+                  {featuredVehicles.length > 4 && (
+                    <div className="text-center mt-12">
+                      <Link href="/vehicles">
+                        <TouchButton 
+                          variant="outline" 
+                          size="xl"
+                          className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
+                        >
+                          استعرض جميع السيارات ({featuredVehicles.length})
+                          <Car className="mr-3 h-5 w-5" />
+                        </TouchButton>
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </section>
         </EnhancedLazySection>

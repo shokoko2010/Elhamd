@@ -23,7 +23,6 @@ const createVehicleSchema = z.object({
   mileage: z.number().min(0).optional(),
   color: z.string().optional(),
   status: z.nativeEnum(VehicleStatus),
-  featured: z.boolean(),
   isActive: z.boolean()
 })
 
@@ -57,7 +56,6 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const category = searchParams.get('category') || ''
     const status = searchParams.get('status') || ''
-    const featured = searchParams.get('featured') || ''
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
@@ -81,12 +79,6 @@ export async function GET(request: NextRequest) {
     
     if (status && status !== 'all') {
       where.status = status as VehicleStatus
-    }
-    
-    if (featured === 'true') {
-      where.featured = true
-    } else if (featured === 'false') {
-      where.featured = false
     }
 
     const [vehicles, total] = await Promise.all([
@@ -139,7 +131,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await requireUnifiedAuth(request)
+    const user = await getSimpleUser(request)
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }

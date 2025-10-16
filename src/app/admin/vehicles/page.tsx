@@ -27,7 +27,6 @@ import {
   Copy,
   Download,
   Upload,
-  Star,
   DollarSign,
   Package,
   List,
@@ -56,7 +55,6 @@ interface Vehicle {
   mileage?: number
   color: string
   status: string
-  featured: boolean
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -126,7 +124,6 @@ interface VehicleFormData {
   mileage?: number
   color: string
   status: string
-  featured: boolean
   isActive: boolean
 }
 
@@ -147,7 +144,6 @@ function VehiclesContent() {
     category: 'all',
     fuelType: 'all',
     status: 'all',
-    featured: 'all',
     priceRange: 'all',
     year: 'all'
   })
@@ -180,7 +176,6 @@ function VehiclesContent() {
     mileage: 0,
     color: '',
     status: 'AVAILABLE',
-    featured: false,
     isActive: true
   })
 
@@ -192,7 +187,6 @@ function VehiclesContent() {
         if (searchTerm) params.append('search', searchTerm)
         if (filters.category !== 'all') params.append('category', filters.category)
         if (filters.status !== 'all') params.append('status', filters.status)
-        if (filters.featured !== 'all') params.append('featured', filters.featured)
         params.append('sortBy', sortBy)
         params.append('sortOrder', sortOrder)
         
@@ -229,9 +223,6 @@ function VehiclesContent() {
       const matchesCategory = filters.category === 'all' || vehicle.category === filters.category
       const matchesFuelType = filters.fuelType === 'all' || vehicle.fuelType === filters.fuelType
       const matchesStatus = filters.status === 'all' || vehicle.status === filters.status
-      const matchesFeatured = filters.featured === 'all' || 
-                             (filters.featured === 'yes' && vehicle.featured) ||
-                             (filters.featured === 'no' && !vehicle.featured)
       
       const matchesPriceRange = filters.priceRange === 'all' || 
                               (filters.priceRange === '0-500k' && vehicle.price <= 500000) ||
@@ -241,7 +232,7 @@ function VehiclesContent() {
       const matchesYear = filters.year === 'all' || vehicle.year.toString() === filters.year
 
       return matchesSearch && matchesCategory && matchesFuelType && matchesStatus && 
-             matchesFeatured && matchesPriceRange && matchesYear
+             matchesPriceRange && matchesYear
     })
 
     // Apply sorting
@@ -283,7 +274,6 @@ function VehiclesContent() {
       mileage: 0,
       color: '',
       status: 'AVAILABLE',
-      featured: false,
       isActive: true
     })
     setEditingVehicle(null)
@@ -306,7 +296,6 @@ function VehiclesContent() {
       mileage: vehicle.mileage,
       color: vehicle.color,
       status: vehicle.status,
-      featured: vehicle.featured,
       isActive: vehicle.isActive
     })
     setShowEditDialog(true)
@@ -341,16 +330,6 @@ function VehiclesContent() {
           setVehicles(prev => prev.filter(v => !selectedVehicles.includes(v.id)))
           setSelectedVehicles([])
         }
-        break
-      case 'featured':
-        setVehicles(prev => prev.map(v => 
-          selectedVehicles.includes(v.id) ? { ...v, featured: true } : v
-        ))
-        break
-      case 'unfeatured':
-        setVehicles(prev => prev.map(v => 
-          selectedVehicles.includes(v.id) ? { ...v, featured: false } : v
-        ))
         break
       case 'activate':
         setVehicles(prev => prev.map(v => 
@@ -552,8 +531,6 @@ function VehiclesContent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="delete">حذف المحدد</SelectItem>
-                  <SelectItem value="featured">تمييز المحدد</SelectItem>
-                  <SelectItem value="unfeatured">إلغاء تمييز المحدد</SelectItem>
                   <SelectItem value="activate">تفعيل المحدد</SelectItem>
                   <SelectItem value="deactivate">تعطيل المحدد</SelectItem>
                 </SelectContent>
@@ -613,17 +590,6 @@ function VehiclesContent() {
                 {statusOptions.map(option => (
                   <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.featured} onValueChange={(value) => setFilters({...filters, featured: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="مميزة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="yes">مميزة فقط</SelectItem>
-                <SelectItem value="no">غير مميزة</SelectItem>
               </SelectContent>
             </Select>
 
@@ -756,10 +722,9 @@ function VehiclesContent() {
                     )}
                     
                     <div className="absolute top-2 left-2 flex gap-1">
-                      {vehicle.featured && (
-                        <Badge className="bg-yellow-500">
-                          <Star className="h-3 w-3 mr-1" />
-                          مميزة
+                      {vehicle.isActive && (
+                        <Badge className="bg-green-500">
+                          نشط
                         </Badge>
                       )}
                       {!vehicle.isActive && (
@@ -875,10 +840,9 @@ function VehiclesContent() {
                             </p>
                           </div>
                           <div className="flex gap-2">
-                            {vehicle.featured && (
-                              <Badge className="bg-yellow-500">
-                                <Star className="h-3 w-3 mr-1" />
-                                مميزة
+                            {vehicle.isActive && (
+                              <Badge className="bg-green-500">
+                                نشط
                               </Badge>
                             )}
                             {getStatusBadge(vehicle.status)}
@@ -995,10 +959,9 @@ function VehiclesContent() {
                               <div>
                                 <div className="font-medium">{vehicle.make} {vehicle.model}</div>
                                 <div className="text-sm text-gray-600">{vehicle.year} • {vehicle.stockNumber}</div>
-                                {vehicle.featured && (
-                                  <Badge className="bg-yellow-500 text-xs">
-                                    <Star className="h-3 w-3 mr-1" />
-                                    مميزة
+                                {vehicle.isActive && (
+                                  <Badge className="bg-green-500 text-xs">
+                                    نشط
                                   </Badge>
                                 )}
                               </div>
@@ -1296,16 +1259,6 @@ function VehicleForm({
           onChange={(e) => setFormData({...formData, description: e.target.value})}
           rows={3}
         />
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="featured"
-          checked={formData.featured}
-          onChange={(e) => setFormData({...formData, featured: e.target.checked})}
-        />
-        <Label htmlFor="featured">مركبة مميزة</Label>
       </div>
 
       <div className="flex gap-3 pt-4">
