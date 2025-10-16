@@ -63,7 +63,7 @@ export async function PUT(request: NextRequest) {
         secondaryColor: '#10B981',
         accentColor: '#F59E0B',
         fontFamily: 'Inter',
-        contactEmail: 'info@alhamdcars.com',
+        contactEmail: 'info@elhamdimport.com',
         headerSettings: {},
         footerSettings: {},
         seoSettings: {},

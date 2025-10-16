@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { VehicleStatus, VehicleCategory } from '@prisma/client'
+import { VehicleCategory } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: any = {
-      status: VehicleStatus.AVAILABLE
+      status: 'AVAILABLE'
     }
 
     if (category && category !== 'all') {

@@ -111,7 +111,7 @@ export default function HeaderManagement() {
     logoText: 'Al-Hamd Cars',
     tagline: 'Your Trusted Car Dealership',
     primaryPhone: '+20 2 1234 5678',
-    primaryEmail: 'info@alhamdcars.com',
+    primaryEmail: 'info@elhamdimport.online',
     address: 'Cairo, Egypt',
     workingHours: 'Sat-Thu: 9AM-8PM, Fri: 2PM-8PM',
     ctaButton: {
@@ -672,7 +672,7 @@ export default function HeaderManagement() {
                       id="primaryEmail"
                       value={content.primaryEmail}
                       onChange={(e) => setContent(prev => ({ ...prev, primaryEmail: e.target.value }))}
-                      placeholder="info@alhamdcars.com"
+                      placeholder="info@elhamdimport.com"
                     />
                   </div>
 

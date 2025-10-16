@@ -60,7 +60,7 @@ const defaultSettings: SiteSettings = {
   fontFamily: 'Inter',
   siteTitle: 'Al-Hamd Cars',
   siteDescription: 'Premium Car Dealership in Egypt',
-  contactEmail: 'info@alhamdcars.com',
+  contactEmail: 'info@elhamdimport.online',
   contactPhone: '+20 123 456 7890',
   contactAddress: 'Cairo, Egypt',
   socialLinks: {

@@ -177,7 +177,7 @@ export default function ConsultationPage() {
                 </div>
                 <div className="flex items-center gap-2 text-white">
                   <Mail className="h-4 w-4" />
-                  <span>info@alhamdcars.com</span>
+                  <span>info@elhamdimport.com</span>
                 </div>
               </div>
             </div>

@@ -342,7 +342,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold">البريد الإلكتروني</h3>
-                      <p className="text-gray-600">{contactInfo?.primaryEmail || 'info@alhamdcars.com'}</p>
+                      <p className="text-gray-600">{contactInfo?.primaryEmail || 'info@elhamdimport.com'}</p>
                       {contactInfo?.secondaryEmail && (
                         <p className="text-sm text-gray-500">{contactInfo.secondaryEmail}</p>
                       )}

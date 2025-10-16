@@ -107,7 +107,7 @@ export default function FooterManagement() {
     logoText: 'Al-Hamd Cars',
     tagline: 'Your Trusted Car Dealership',
     primaryPhone: '+20 2 1234 5678',
-    primaryEmail: 'info@alhamdcars.com',
+    primaryEmail: 'info@elhamdimport.online',
     address: 'Cairo, Egypt',
     workingHours: 'Sat-Thu: 9AM-8PM, Fri: 2PM-8PM',
     copyrightText: '© 2024 Al-Hamd Cars. All rights reserved.',
@@ -136,7 +136,7 @@ export default function FooterManagement() {
     { 
       id: '3', 
       title: 'معلومات التواصل', 
-      content: '+20 2 1234 5678\ninfo@alhamdcars.com\nالقاهرة، مصر\nالسبت - الخميس: 9:00 ص - 8:00 م', 
+      content: '+20 2 1234 5678\ninfo@elhamdimport.com\nالقاهرة، مصر\nالسبت - الخميس: 9:00 ص - 8:00 م', 
       order: 3, 
       isVisible: true,
       type: 'contact'

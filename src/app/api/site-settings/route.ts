@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         fontFamily: 'Inter',
         siteTitle: 'Al-Hamd Cars',
         siteDescription: 'Premium Car Dealership in Egypt',
-        contactEmail: 'info@alhamdcars.com',
+        contactEmail: 'info@elhamdimport.com',
         contactPhone: '+20 123 456 7890',
         contactAddress: 'Cairo, Egypt',
         socialLinks: {

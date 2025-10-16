@@ -35,7 +35,7 @@ export async function GET() {
         { 
           id: '3', 
           title: 'معلومات التواصل', 
-          content: '+20 2 1234 5678\ninfo@alhamdcars.com\nالقاهرة، مصر', 
+          content: '+20 2 1234 5678\ninfo@elhamdimport.com\nالقاهرة، مصر', 
           order: 3, 
           isVisible: true,
           type: 'contact'

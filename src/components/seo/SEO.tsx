@@ -31,7 +31,7 @@ export function generateMetadata({
     "description": description,
     "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.online",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -99,7 +99,7 @@ export function generateStructuredData({
     "description": description,
     "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -123,7 +123,7 @@ export function HomepageSEO() {
     "description": "Your authorized TATA Motors dealer in Egypt offering new vehicles, test drives, and expert service.",
     "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -262,7 +262,7 @@ export function ContactSEO() {
     "description": "Authorized TATA Motors dealer in Egypt",
     "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -300,7 +300,7 @@ export function VehiclesSEO() {
     "description": "Authorized TATA Motors dealer with complete vehicle inventory",
     "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",
@@ -364,7 +364,7 @@ export function TestDriveSEO() {
     "description": "Authorized TATA Motors dealer offering test drives",
     "url": process.env.NEXT_PUBLIC_SITE_URL || 'https://alhamdcars.com',
     "telephone": "+20 2 1234 5678",
-    "email": "info@alhamdcars.com",
+    "email": "info@elhamdimport.com",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Tahrir Street",

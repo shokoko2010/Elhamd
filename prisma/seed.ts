@@ -47,42 +47,40 @@ async function main() {
   // Site Settings
   const siteSettings = await prisma.siteSettings.create({
     data: {
-      siteName: 'شركة الحمد لاستيراد السيارات',
+      siteTitle: 'شركة الحمد لاستيراد السيارات',
       siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
-      siteKeywords: 'تاتا, سيارات تجارية, شاحنات, بيك أب, مصر, القنطرة غرب',
       contactEmail: 'info@elhamdimport.online',
       contactPhone: '+20 2 12345678',
       contactAddress: 'القنطرة غرب، الجيزة، مصر',
-      socialMedia: {
+      socialLinks: {
         facebook: 'https://facebook.com/elhamdimport',
         twitter: 'https://twitter.com/elhamdimport',
         instagram: 'https://instagram.com/elhamdimport',
         linkedin: 'https://linkedin.com/company/elhamdimport'
       },
-      workingHours: {
-        Saturday: '9:00-17:00',
-        Sunday: '9:00-17:00',
-        Monday: '9:00-17:00',
-        Tuesday: '9:00-17:00',
-        Wednesday: '9:00-17:00',
-        Thursday: '9:00-17:00',
-        Friday: 'مغلق'
-      }
+      workingHours: 'السبت - الخميس: 9:00 ص - 5:00 م، الجمعة: مغلق'
     }
   })
 
   // Company Info
   const companyInfo = await prisma.companyInfo.create({
     data: {
-      name: 'شركة الحمد لاستيراد السيارات',
+      title: 'شركة الحمد لاستيراد السيارات',
+      subtitle: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
       description: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
-      mission: 'تقديم أفضل حلول النقل التجاري للسوق المصري بجودة عالية وأسعار تنافسية',
-      vision: 'أن نكون الخيار الأول للسيارات التجارية في مصر',
-      values: ['الجودة', 'الموثوقية', 'خدمة العملاء', 'الابتكار'],
-      establishedYear: 2010,
-      employeeCount: 150,
-      branchesCount: 1,
-      servicesCount: 20
+      features: ['الجودة', 'الموثوقية', 'خدمة العملاء', 'الابتكار'],
+      ctaButtons: [
+        {
+          text: 'استعرض السيارات',
+          link: '/vehicles',
+          variant: 'primary'
+        },
+        {
+          text: 'قيادة تجريبية',
+          link: '/test-drive',
+          variant: 'secondary'
+        }
+      ]
     }
   })
 
@@ -1410,7 +1408,7 @@ async function main() {
   // Sample Bookings
   const customerUser = createdUsers.find(u => u.role === 'CUSTOMER')!
   const vehicles = await prisma.vehicle.findMany({ take: 3 })
-  const serviceTypes = await prisma.serviceType.findMany({ take: 2 })
+  const existingServiceTypes = await prisma.serviceType.findMany({ take: 2 })
 
   // Test drive bookings
   for (let i = 0; i < vehicles.length; i++) {
@@ -1431,8 +1429,8 @@ async function main() {
   }
 
   // Service bookings
-  for (let i = 0; i < serviceTypes.length; i++) {
-    const serviceType = serviceTypes[i]
+  for (let i = 0; i < existingServiceTypes.length; i++) {
+    const serviceType = existingServiceTypes[i]
     const futureDate = new Date()
     futureDate.setDate(futureDate.getDate() + (i + 1) * 3)
 
@@ -1485,7 +1483,7 @@ async function main() {
   console.log(`- Role Templates: ${createdRoles.length}`)
   console.log(`- Users: ${createdUsers.length}`)
   console.log(`- Branches: 1`)
-  console.log(`- Service Types: ${serviceTypes.length}`)
+  console.log(`- Service Types: ${existingServiceTypes.length}`)
   console.log(`- Vehicles: ${commercialVehicles.length}`)
   console.log(`- Images: ${commercialVehicles.reduce((acc, v) => acc + v.images.length, 0)}`)
   console.log(`- Specifications: ${commercialVehicles.reduce((acc, v) => acc + v.specifications.length, 0)}`)
