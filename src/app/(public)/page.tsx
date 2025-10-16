@@ -88,6 +88,7 @@ export default function Home() {
         if (serviceItemsResponse.ok) {
           const serviceData = await serviceItemsResponse.json()
           if (Array.isArray(serviceData)) {
+            // Remove duplicates based on title
             const uniqueServices = serviceData.reduce((acc, current) => {
               if (!acc.find(item => item.title === current.title)) {
                 acc.push(current)
@@ -105,6 +106,7 @@ export default function Home() {
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
           if (Array.isArray(statsData)) {
+            // Remove duplicates based on label
             const uniqueStats = statsData.reduce((acc, current) => {
               if (!acc.find(item => item.label === current.label)) {
                 acc.push(current)
@@ -120,6 +122,7 @@ export default function Home() {
         if (valuesResponse.ok) {
           const valuesData = await valuesResponse.json()
           if (Array.isArray(valuesData)) {
+            // Remove duplicates based on title
             const uniqueValues = valuesData.reduce((acc, current) => {
               if (!acc.find(item => item.title === current.title)) {
                 acc.push(current)
@@ -143,7 +146,19 @@ export default function Home() {
         const timelineResponse = await fetch('/api/about/timeline')
         if (timelineResponse.ok) {
           const timelineData = await timelineResponse.json()
-          setTimelineEvents(Array.isArray(timelineData) ? timelineData : [])
+          if (Array.isArray(timelineData)) {
+            // Remove duplicates based on year and title
+            const uniqueTimeline = timelineData.reduce((acc, current) => {
+              const exists = acc.find(item => item.year === current.year && item.title === current.title)
+              if (!exists) {
+                acc.push(current)
+              }
+              return acc
+            }, [])
+            setTimelineEvents(uniqueTimeline)
+          } else {
+            setTimelineEvents([])
+          }
         }
 
         // Fetch contact info
@@ -355,7 +370,9 @@ export default function Home() {
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
                   {[...Array(4)].map((_, i) => (
-                    <LoadingCard key={i} title="جاري تحميل السيارة..." className="h-80 md:h-96" />
+                    <div key={i} className="h-full min-h-[420px] max-h-[440px]">
+                      <LoadingCard title="جاري تحميل السيارة..." className="h-full" />
+                    </div>
                   ))}
                 </div>
               ) : error ? (
@@ -377,12 +394,13 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 auto-rows-fr">
                     {featuredVehicles.slice(0, 4).map((vehicle) => (
-                      <EnhancedVehicleCard
-                        key={vehicle.id}
-                        vehicle={vehicle}
-                      />
+                      <div key={vehicle.id} className="h-full">
+                        <EnhancedVehicleCard
+                          vehicle={vehicle}
+                        />
+                      </div>
                     ))}
                   </div>
 

@@ -74,7 +74,21 @@ export async function GET() {
       ])
     }
 
-    return NextResponse.json(timelineEvents)
+    // Remove duplicates and ensure unique events
+    const uniqueEvents = timelineEvents.reduce((acc, current) => {
+      const existingIndex = acc.findIndex(event => 
+        event.year === current.year && 
+        event.title === current.title
+      )
+      
+      if (existingIndex === -1) {
+        acc.push(current)
+      }
+      
+      return acc
+    }, [] as typeof timelineEvents)
+
+    return NextResponse.json(uniqueEvents)
   } catch (error) {
     console.error('Error fetching timeline events:', error)
     return NextResponse.json(
