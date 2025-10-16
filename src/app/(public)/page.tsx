@@ -87,7 +87,17 @@ export default function Home() {
         const serviceItemsResponse = await fetch('/api/service-items')
         if (serviceItemsResponse.ok) {
           const serviceData = await serviceItemsResponse.json()
-          setServiceItems(Array.isArray(serviceData) ? serviceData : [])
+          if (Array.isArray(serviceData)) {
+            const uniqueServices = serviceData.reduce((acc, current) => {
+              if (!acc.find(item => item.title === current.title)) {
+                acc.push(current)
+              }
+              return acc
+            }, [])
+            setServiceItems(uniqueServices)
+          } else {
+            setServiceItems([])
+          }
         }
 
         // Fetch company stats
@@ -109,7 +119,17 @@ export default function Home() {
         const valuesResponse = await fetch('/api/about/values')
         if (valuesResponse.ok) {
           const valuesData = await valuesResponse.json()
-          setCompanyValues(Array.isArray(valuesData) ? valuesData : [])
+          if (Array.isArray(valuesData)) {
+            const uniqueValues = valuesData.reduce((acc, current) => {
+              if (!acc.find(item => item.title === current.title)) {
+                acc.push(current)
+              }
+              return acc
+            }, [])
+            setCompanyValues(uniqueValues)
+          } else {
+            setCompanyValues([])
+          }
         }
 
         // Fetch company features

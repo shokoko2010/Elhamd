@@ -18,7 +18,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { SimpleImage } from '@/components/ui/SimpleImage'
 import Link from 'next/link'
 
 interface Vehicle {
@@ -92,14 +91,15 @@ export function EnhancedVehicleCard({
     <Card className={`h-96 overflow-hidden hover:shadow-xl transition-all duration-300 group border-0 shadow-lg hover:shadow-2xl ${className}`}>
       <CardContent className="p-0 h-full">
         {/* Image Section */}
-        <div className="relative h-48 overflow-hidden">
-          <SimpleImage
+        <div className="relative h-48 overflow-hidden bg-gray-100">
+          <img
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
             alt={`${vehicle.make} ${vehicle.model}`}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-            priority={vehicle.isFeatured}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = '/placeholder-car.jpg';
+            }}
           />
           
           {/* Gradient Overlay */}
@@ -260,11 +260,14 @@ export function EnhancedVehicleCard({
               
               <div className="space-y-4">
                 <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                  <SimpleImage
+                  <img
                     src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
                     alt={`${vehicle.make} ${vehicle.model}`}
-                    fill
-                    className="object-cover"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder-car.jpg';
+                    }}
                   />
                 </div>
                 
