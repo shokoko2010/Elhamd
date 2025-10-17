@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -118,7 +118,7 @@ export default function AdminSiteSettingsPage() {
       return
     }
 
-    if (!loading && authenticated && !isAdmin()) {
+    if (!loading && authenticated && !checkIsAdmin()) {
       toast({
         title: "Access Denied",
         description: "You don't have permission to access this page.",
@@ -128,12 +128,12 @@ export default function AdminSiteSettingsPage() {
       return
     }
     
-    if (authenticated && isAdmin()) {
+    if (authenticated && checkIsAdmin()) {
       fetchSiteSettings()
     }
-  }, [loading, authenticated, isAdmin, router, toast])
+  }, [loading, authenticated, user, checkIsAdmin, fetchSiteSettings, router, toast])
 
-  const fetchSiteSettings = async () => {
+  const fetchSiteSettings = useCallback(async () => {
     try {
       const response = await fetch('/api/site-settings')
       if (response.ok) {
@@ -145,7 +145,11 @@ export default function AdminSiteSettingsPage() {
     } catch (error) {
       console.error('Error fetching site settings:', error)
     }
-  }
+  }, [])
+
+  const checkIsAdmin = useCallback(() => {
+    return user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+  }, [user])
 
   const handleSave = async () => {
     try {
@@ -184,10 +188,13 @@ export default function AdminSiteSettingsPage() {
 
   const updateSettings = (path: string[], value: any) => {
     setSettings(prev => {
-      const newSettings = { ...prev }
+      const newSettings = JSON.parse(JSON.stringify(prev)) // Deep copy
       let current: any = newSettings
       
       for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) {
+          current[path[i]] = {}
+        }
         current = current[path[i]]
       }
       
@@ -207,7 +214,7 @@ export default function AdminSiteSettingsPage() {
     )
   }
 
-  if (!authenticated || !isAdmin()) {
+  if (!authenticated || !checkIsAdmin()) {
     return null
   }
 
