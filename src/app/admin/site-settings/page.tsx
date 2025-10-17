@@ -73,9 +73,9 @@ interface SiteSettings {
 export default function AdminSiteSettingsPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, loading, authenticated, isAdmin } = useAuth()
+  const { user, loading, authenticated } = useAuth()
   
-  const [settings, setSettings] = useState<SiteSettings>({
+  const defaultSettings: SiteSettings = {
     primaryColor: '#3B82F6',
     secondaryColor: '#10B981',
     accentColor: '#F59E0B',
@@ -108,30 +108,15 @@ export default function AdminSiteSettingsPage() {
       showCopyright: true,
       columns: 4
     }
-  })
+  }
   
+  const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
   const [isLoading, setIsLoading] = useState(false)
-  
-  useEffect(() => {
-    if (!loading && !authenticated) {
-      router.push('/login')
-      return
-    }
 
-    if (!loading && authenticated && !checkIsAdmin()) {
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to access this page.",
-        variant: "destructive"
-      })
-      router.push('/dashboard')
-      return
-    }
-    
-    if (authenticated && checkIsAdmin()) {
-      fetchSiteSettings()
-    }
-  }, [loading, authenticated, user, checkIsAdmin, fetchSiteSettings, router, toast])
+  // Helper functions
+  const checkIsAdmin = useCallback(() => {
+    return user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+  }, [user])
 
   const fetchSiteSettings = useCallback(async () => {
     try {
@@ -147,11 +132,24 @@ export default function AdminSiteSettingsPage() {
     }
   }, [])
 
-  const checkIsAdmin = useCallback(() => {
-    return user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
-  }, [user])
+  const updateSettings = useCallback((path: string[], value: any) => {
+    setSettings(prev => {
+      const newSettings = JSON.parse(JSON.stringify(prev))
+      let current: any = newSettings
+      
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) {
+          current[path[i]] = {}
+        }
+        current = current[path[i]]
+      }
+      
+      current[path[path.length - 1]] = value
+      return newSettings
+    })
+  }, [])
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await fetch('/api/site-settings', {
@@ -184,25 +182,31 @@ export default function AdminSiteSettingsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [settings, toast])
 
-  const updateSettings = (path: string[], value: any) => {
-    setSettings(prev => {
-      const newSettings = JSON.parse(JSON.stringify(prev)) // Deep copy
-      let current: any = newSettings
-      
-      for (let i = 0; i < path.length - 1; i++) {
-        if (!current[path[i]]) {
-          current[path[i]] = {}
-        }
-        current = current[path[i]]
-      }
-      
-      current[path[path.length - 1]] = value
-      return newSettings
-    })
-  }
+  // Effects
+  useEffect(() => {
+    if (!loading && !authenticated) {
+      router.push('/login')
+      return
+    }
 
+    if (!loading && authenticated && !checkIsAdmin()) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page.",
+        variant: "destructive"
+      })
+      router.push('/dashboard')
+      return
+    }
+    
+    if (authenticated && checkIsAdmin()) {
+      fetchSiteSettings()
+    }
+  }, [loading, authenticated, user, checkIsAdmin, fetchSiteSettings, router, toast])
+
+  // Loading states
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
