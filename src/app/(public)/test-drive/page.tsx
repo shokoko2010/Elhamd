@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { ensureArray } from '@/lib/array-utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -319,7 +320,7 @@ export default function TestDrivePage() {
                   <div>
                     <h2 className="text-2xl font-bold mb-6">اختر مركبة</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {vehicles.map((vehicle) => (
+                      {ensureArray(vehicles).map((vehicle) => (
                         <Card 
                           key={vehicle.id} 
                           className={`cursor-pointer transition-all hover:shadow-md ${
@@ -418,7 +419,7 @@ export default function TestDrivePage() {
                       </Card>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {availableTimeSlots.map((slot) => (
+                      {ensureArray(availableTimeSlots).map((slot) => (
                         <Button
                           key={slot.time}
                           variant={selectedTimeSlot === slot.time ? "default" : "outline"}

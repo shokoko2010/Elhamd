@@ -166,9 +166,12 @@ export default function ContactPage() {
     { day: 'الجمعة', hours: '2:00 م - 8:00 م' }
   ]
 
-  // Ensure departments is always an array for map function
-  const safeDepartments = Array.isArray(departments) ? departments : []
-  const safeWorkingHours = Array.isArray(workingHours) ? workingHours : []
+  // Ensure departments and workingHours are always arrays for map function
+  // Add additional safety checks for database JSON fields
+  const safeDepartments = Array.isArray(departments) ? departments : 
+    (typeof departments === 'object' && departments !== null ? Object.values(departments) : [])
+  const safeWorkingHours = Array.isArray(workingHours) ? workingHours : 
+    (typeof workingHours === 'object' && workingHours !== null ? Object.values(workingHours) : [])
 
   const openInGoogleMaps = () => {
     const url = `https://www.google.com/maps/search/?api=1&query=${center.lat},${center.lng}`

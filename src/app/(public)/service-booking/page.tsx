@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
+import { ensureArray } from '@/lib/array-utils'
 import BookingCalendar from '@/components/booking/BookingCalendar'
 import { toast } from 'sonner'
 
@@ -382,7 +383,7 @@ export default function ServiceBookingPage() {
                   <div>
                     <h2 className="text-2xl font-bold mb-6">اختر مركبتك</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {vehicles.map((vehicle) => (
+                      {ensureArray(vehicles).map((vehicle) => (
                         <Card 
                           key={vehicle.id} 
                           className={`cursor-pointer transition-all hover:shadow-md ${
@@ -442,7 +443,7 @@ export default function ServiceBookingPage() {
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {serviceTypes.map((service) => (
+                      {ensureArray(serviceTypes).map((service) => (
                         <Card 
                           key={service.id} 
                           className={`cursor-pointer transition-all hover:shadow-md ${
