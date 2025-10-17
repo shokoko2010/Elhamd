@@ -106,20 +106,31 @@ export default function ContactPage() {
     setSubmitError('')
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      console.log('Contact form submission:', formData)
-      setSubmitSuccess(true)
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: '',
-        department: ''
+      const response = await fetch('/api/contact/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSubmitSuccess(true)
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          subject: '',
+          message: '',
+          department: ''
+        })
+      } else {
+        setSubmitError(data.error || 'فشل في إرسال الرسالة. يرجى المحاولة مرة أخرى.')
+      }
     } catch (error) {
+      console.error('Contact form submission error:', error)
       setSubmitError('فشل في إرسال الرسالة. يرجى المحاولة مرة أخرى.')
     } finally {
       setLoading(false)
@@ -154,6 +165,10 @@ export default function ContactPage() {
     { day: 'السبت - الخميس', hours: '9:00 ص - 8:00 م' },
     { day: 'الجمعة', hours: '2:00 م - 8:00 م' }
   ]
+
+  // Ensure departments is always an array for map function
+  const safeDepartments = Array.isArray(departments) ? departments : []
+  const safeWorkingHours = Array.isArray(workingHours) ? workingHours : []
 
   const openInGoogleMaps = () => {
     const url = `https://www.google.com/maps/search/?api=1&query=${center.lat},${center.lng}`
@@ -262,7 +277,7 @@ export default function ContactPage() {
                             <SelectValue placeholder="اختر القسم" />
                           </SelectTrigger>
                           <SelectContent>
-                            {departments.map((dept) => (
+                            {safeDepartments.map((dept) => (
                               <SelectItem key={dept.value} value={dept.value}>
                                 {dept.label}
                               </SelectItem>
@@ -385,7 +400,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">ساعات العمل</h3>
                     <div className="space-y-1 mt-2">
-                      {workingHours.map((hours, index) => (
+                      {safeWorkingHours.map((hours, index) => (
                         <div key={index} className="flex justify-between text-sm">
                           <span className="text-gray-600">{hours.day}</span>
                           <span className="font-medium">{hours.hours}</span>
@@ -407,7 +422,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">الأقسام</h3>
                     <div className="space-y-3 mt-3">
-                      {departments.map((dept) => {
+                      {safeDepartments.map((dept) => {
                         const IconComponent = getIconComponent(dept.icon)
                         return (
                           <div key={dept.value} className="flex items-start gap-3">

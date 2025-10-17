@@ -1,5 +1,4 @@
-import { db } from './db'
-import { Notification, EmailTemplate } from '@prisma/client'
+import nodemailer from 'nodemailer'
 
 interface EmailData {
   to: string
@@ -8,528 +7,369 @@ interface EmailData {
   text?: string
 }
 
-interface TemplateVariables {
-  [key: string]: string | number
+interface ContactFormData {
+  name: string
+  email: string
+  phone: string
+  subject?: string
+  message: string
+  department?: string
+}
+
+interface ServiceBookingData {
+  name: string
+  email: string
+  phone: string
+  vehicleType: string
+  serviceType: string
+  preferredDate: string
+  preferredTime: string
+  message?: string
+}
+
+interface TestDriveData {
+  name: string
+  email: string
+  phone: string
+  vehicleId: string
+  vehicleModel: string
+  preferredDate: string
+  preferredTime: string
+  message?: string
+}
+
+interface ConsultationData {
+  name: string
+  email: string
+  phone: string
+  consultationType: string
+  preferredDate: string
+  preferredTime: string
+  message?: string
 }
 
 class EmailService {
-  private async sendEmail(data: EmailData): Promise<boolean> {
+  private transporter: nodemailer.Transporter | null = null
+
+  constructor() {
+    this.initializeTransporter()
+  }
+
+  private initializeTransporter() {
     try {
-      // In a real implementation, you would use a service like:
-      // - SendGrid
-      // - Mailgun
-      // - AWS SES
-      // - Nodemailer with SMTP
-      
-      // For now, we'll simulate email sending
-      console.log('📧 Sending email:', {
-        to: data.to,
-        subject: data.subject,
-        html: data.html
+      // Create transporter using environment variables
+      this.transporter = nodemailer.createTransporter({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
       })
+    } catch (error) {
+      console.error('Failed to initialize email transporter:', error)
+    }
+  }
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+  async sendEmail(data: EmailData): Promise<boolean> {
+    if (!this.transporter) {
+      console.error('Email transporter not initialized')
+      return false
+    }
 
-      // In production, you would make an actual API call here
-      // Example with SendGrid:
-      /*
-      const sgMail = require('@sendgrid/mail')
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY)
-      
-      await sgMail.send({
+    try {
+      const mailOptions = {
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: data.to,
-        from: process.env.FROM_EMAIL || 'noreply@elhamd.com',
         subject: data.subject,
         html: data.html,
-        text: data.text
-      })
-      */
+        text: data.text,
+      }
 
+      const result = await this.transporter.sendMail(mailOptions)
+      console.log('Email sent successfully:', result.messageId)
       return true
     } catch (error) {
-      console.error('Error sending email:', error)
+      console.error('Failed to send email:', error)
       return false
     }
   }
 
-  private async renderTemplate(template: EmailTemplate, variables: TemplateVariables): Promise<string> {
-    let content = template.content
-
-    // Replace template variables
-    if (variables && typeof variables === 'object') {
-      Object.entries(variables).forEach(([key, value]) => {
-        const regex = new RegExp(`{{${key}}}`, 'g')
-        content = content.replace(regex, String(value ?? ''))
-      })
-    }
-
-    return content
+  generateContactEmail(data: ContactFormData): string {
+    return `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>رسالة جديدة من صفحة اتصل بنا</title>
+        <style>
+          body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #1e40af; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f9fafb; }
+          .field { margin-bottom: 15px; }
+          .label { font-weight: bold; color: #374151; }
+          .value { color: #6b7280; }
+          .footer { background: #e5e7eb; padding: 15px; text-align: center; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>رسالة جديدة من صفحة اتصل بنا</h1>
+          </div>
+          <div class="content">
+            <div class="field">
+              <span class="label">الاسم:</span>
+              <span class="value">${data.name}</span>
+            </div>
+            <div class="field">
+              <span class="label">البريد الإلكتروني:</span>
+              <span class="value">${data.email}</span>
+            </div>
+            <div class="field">
+              <span class="label">الهاتف:</span>
+              <span class="value">${data.phone}</span>
+            </div>
+            <div class="field">
+              <span class="label">القسم:</span>
+              <span class="value">${data.department || 'عام'}</span>
+            </div>
+            <div class="field">
+              <span class="label">الموضوع:</span>
+              <span class="value">${data.subject || 'استفسار عام'}</span>
+            </div>
+            <div class="field">
+              <span class="label">الرسالة:</span>
+              <span class="value">${data.message}</span>
+            </div>
+            <div class="field">
+              <span class="label">التاريخ:</span>
+              <span class="value">${new Date().toLocaleString('ar-EG')}</span>
+            </div>
+          </div>
+          <div class="footer">
+            <p>هذه الرسالة أرسلت من موقع الحمد للسيارات</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
   }
 
-  private async createNotification(
-    type: string,
-    recipient: string,
-    title: string,
-    message: string,
-    status: 'PENDING' | 'SENT' | 'FAILED' = 'PENDING'
-  ): Promise<Notification> {
-    return await db.notification.create({
-      data: {
-        type: type as any,
-        recipient,
-        title,
-        message,
-        status: status as any,
-        channel: 'EMAIL'
-      }
-    })
+  generateServiceBookingEmail(data: ServiceBookingData): string {
+    return `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>حجز خدمة جديد</title>
+        <style>
+          body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #059669; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f9fafb; }
+          .field { margin-bottom: 15px; }
+          .label { font-weight: bold; color: #374151; }
+          .value { color: #6b7280; }
+          .footer { background: #e5e7eb; padding: 15px; text-align: center; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>حجز خدمة جديد</h1>
+          </div>
+          <div class="content">
+            <div class="field">
+              <span class="label">الاسم:</span>
+              <span class="value">${data.name}</span>
+            </div>
+            <div class="field">
+              <span class="label">البريد الإلكتروني:</span>
+              <span class="value">${data.email}</span>
+            </div>
+            <div class="field">
+              <span class="label">الهاتف:</span>
+              <span class="value">${data.phone}</span>
+            </div>
+            <div class="field">
+              <span class="label">نوع المركبة:</span>
+              <span class="value">${data.vehicleType}</span>
+            </div>
+            <div class="field">
+              <span class="label">نوع الخدمة:</span>
+              <span class="value">${data.serviceType}</span>
+            </div>
+            <div class="field">
+              <span class="label">التاريخ المفضل:</span>
+              <span class="value">${data.preferredDate}</span>
+            </div>
+            <div class="field">
+              <span class="label">الوقت المفضل:</span>
+              <span class="value">${data.preferredTime}</span>
+            </div>
+            ${data.message ? `
+            <div class="field">
+              <span class="label">ملاحظات إضافية:</span>
+              <span class="value">${data.message}</span>
+            </div>
+            ` : ''}
+            <div class="field">
+              <span class="label">التاريخ:</span>
+              <span class="value">${new Date().toLocaleString('ar-EG')}</span>
+            </div>
+          </div>
+          <div class="footer">
+            <p>هذا الحجز أرسل من موقع الحمد للسيارات</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
   }
 
-  async sendBookingConfirmation(
-    bookingId: string,
-    customerEmail: string,
-    customerName: string
-  ): Promise<boolean> {
-    try {
-      // Get booking details
-      const booking = await db.serviceBooking.findUnique({
-        where: { id: bookingId },
-        include: {
-          customer: true,
-          serviceType: true,
-          vehicle: true
-        }
-      })
-
-      if (!booking) {
-        throw new Error('Booking not found')
-      }
-
-      // Get email template
-      const template = await db.emailTemplate.findFirst({
-        where: { 
-          name: 'booking_confirmation',
-          isActive: true 
-        }
-      })
-
-      if (!template) {
-        throw new Error('Email template not found')
-      }
-
-      // Prepare template variables
-      const variables = {
-        serviceName: booking.serviceType.name,
-        date: new Date(booking.date).toLocaleDateString('ar-EG'),
-        timeSlot: booking.timeSlot,
-        vehicleMake: booking.vehicle?.make || '',
-        vehicleModel: booking.vehicle?.model || '',
-        price: booking.totalPrice || booking.serviceType.price || 0,
-        contactInfo: '01000000000',
-        customerName: customerName
-      }
-
-      // Render template
-      const htmlContent = await this.renderTemplate(template, variables)
-
-      // Create notification record
-      const notification = await this.createNotification(
-        'BOOKING_CONFIRMATION',
-        customerEmail,
-        template.subject,
-        htmlContent
-      )
-
-      // Send email
-      const emailData: EmailData = {
-        to: customerEmail,
-        subject: template.subject,
-        html: htmlContent,
-        text: htmlContent.replace(/<[^>]*>/g, '') // Plain text version
-      }
-
-      const success = await this.sendEmail(emailData)
-
-      // Update notification status
-      await db.notification.update({
-        where: { id: notification.id },
-        data: {
-          status: success ? 'SENT' : 'FAILED',
-          sentAt: success ? new Date() : null
-        }
-      })
-
-      return success
-    } catch (error) {
-      console.error('Error sending booking confirmation:', error)
-      return false
-    }
+  generateTestDriveEmail(data: TestDriveData): string {
+    return `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>طلب تجربة قيادة جديد</title>
+        <style>
+          body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f9fafb; }
+          .field { margin-bottom: 15px; }
+          .label { font-weight: bold; color: #374151; }
+          .value { color: #6b7280; }
+          .footer { background: #e5e7eb; padding: 15px; text-align: center; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>طلب تجربة قيادة جديد</h1>
+          </div>
+          <div class="content">
+            <div class="field">
+              <span class="label">الاسم:</span>
+              <span class="value">${data.name}</span>
+            </div>
+            <div class="field">
+              <span class="label">البريد الإلكتروني:</span>
+              <span class="value">${data.email}</span>
+            </div>
+            <div class="field">
+              <span class="label">الهاتف:</span>
+              <span class="value">${data.phone}</span>
+            </div>
+            <div class="field">
+              <span class="label">الموديل المطلوب:</span>
+              <span class="value">${data.vehicleModel}</span>
+            </div>
+            <div class="field">
+              <span class="label">التاريخ المفضل:</span>
+              <span class="value">${data.preferredDate}</span>
+            </div>
+            <div class="field">
+              <span class="label">الوقت المفضل:</span>
+              <span class="value">${data.preferredTime}</span>
+            </div>
+            ${data.message ? `
+            <div class="field">
+              <span class="label">ملاحظات إضافية:</span>
+              <span class="value">${data.message}</span>
+            </div>
+            ` : ''}
+            <div class="field">
+              <span class="label">التاريخ:</span>
+              <span class="value">${new Date().toLocaleString('ar-EG')}</span>
+            </div>
+          </div>
+          <div class="footer">
+            <p>هذا الطلب أرسل من موقع الحمد للسيارات</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
   }
 
-  async sendBookingReminder(
-    bookingId: string,
-    customerEmail: string,
-    customerName: string
-  ): Promise<boolean> {
-    try {
-      // Get booking details
-      const booking = await db.serviceBooking.findUnique({
-        where: { id: bookingId },
-        include: {
-          customer: true,
-          serviceType: true,
-          vehicle: true
-        }
-      })
-
-      if (!booking) {
-        throw new Error('Booking not found')
-      }
-
-      // Get email template
-      const template = await db.emailTemplate.findFirst({
-        where: { 
-          name: 'booking_reminder',
-          isActive: true 
-        }
-      })
-
-      if (!template) {
-        throw new Error('Email template not found')
-      }
-
-      // Prepare template variables
-      const variables = {
-        serviceName: booking.serviceType.name,
-        date: new Date(booking.date).toLocaleDateString('ar-EG'),
-        timeSlot: booking.timeSlot,
-        vehicleMake: booking.vehicle?.make || '',
-        vehicleModel: booking.vehicle?.model || '',
-        contactInfo: '01000000000',
-        customerName: customerName
-      }
-
-      // Render template
-      const htmlContent = await this.renderTemplate(template, variables)
-
-      // Create notification record
-      const notification = await this.createNotification(
-        'BOOKING_REMINDER',
-        customerEmail,
-        template.subject,
-        htmlContent
-      )
-
-      // Send email
-      const emailData: EmailData = {
-        to: customerEmail,
-        subject: template.subject,
-        html: htmlContent,
-        text: htmlContent.replace(/<[^>]*>/g, '')
-      }
-
-      const success = await this.sendEmail(emailData)
-
-      // Update notification status
-      await db.notification.update({
-        where: { id: notification.id },
-        data: {
-          status: success ? 'SENT' : 'FAILED',
-          sentAt: success ? new Date() : null
-        }
-      })
-
-      // Update booking reminder flag
-      if (success) {
-        await db.serviceBooking.update({
-          where: { id: bookingId },
-          data: { reminderSent: true }
-        })
-      }
-
-      return success
-    } catch (error) {
-      console.error('Error sending booking reminder:', error)
-      return false
-    }
-  }
-
-  async sendBookingCancellation(
-    bookingId: string,
-    customerEmail: string,
-    customerName: string,
-    cancellationReason: string
-  ): Promise<boolean> {
-    try {
-      // Get booking details
-      const booking = await db.serviceBooking.findUnique({
-        where: { id: bookingId },
-        include: {
-          customer: true,
-          serviceType: true,
-          vehicle: true
-        }
-      })
-
-      if (!booking) {
-        throw new Error('Booking not found')
-      }
-
-      // Get email template
-      const template = await db.emailTemplate.findFirst({
-        where: { 
-          name: 'booking_cancellation',
-          isActive: true 
-        }
-      })
-
-      if (!template) {
-        throw new Error('Email template not found')
-      }
-
-      // Prepare template variables
-      const variables = {
-        serviceName: booking.serviceType.name,
-        date: new Date(booking.date).toLocaleDateString('ar-EG'),
-        timeSlot: booking.timeSlot,
-        cancellationReason,
-        contactInfo: '01000000000',
-        customerName: customerName
-      }
-
-      // Render template
-      const htmlContent = await this.renderTemplate(template, variables)
-
-      // Create notification record
-      const notification = await this.createNotification(
-        'BOOKING_CANCELLATION',
-        customerEmail,
-        template.subject,
-        htmlContent
-      )
-
-      // Send email
-      const emailData: EmailData = {
-        to: customerEmail,
-        subject: template.subject,
-        html: htmlContent,
-        text: htmlContent.replace(/<[^>]*>/g, '')
-      }
-
-      const success = await this.sendEmail(emailData)
-
-      // Update notification status
-      await db.notification.update({
-        where: { id: notification.id },
-        data: {
-          status: success ? 'SENT' : 'FAILED',
-          sentAt: success ? new Date() : null
-        }
-      })
-
-      return success
-    } catch (error) {
-      console.error('Error sending booking cancellation:', error)
-      return false
-    }
-  }
-
-  async sendPaymentReceived(
-    paymentId: string,
-    customerEmail: string,
-    customerName: string
-  ): Promise<boolean> {
-    try {
-      // Get payment details
-      const payment = await db.payment.findUnique({
-        where: { id: paymentId },
-        include: {
-          serviceBooking: {
-            include: {
-              customer: true,
-              serviceType: true,
-              vehicle: true
-            }
-          }
-        }
-      })
-
-      if (!payment || !payment.serviceBooking) {
-        throw new Error('Payment not found')
-      }
-
-      // Get email template
-      const template = await db.emailTemplate.findFirst({
-        where: { 
-          name: 'payment_received',
-          isActive: true 
-        }
-      })
-
-      if (!template) {
-        throw new Error('Email template not found')
-      }
-
-      // Prepare template variables
-      const variables = {
-        amount: payment.amount,
-        currency: payment.currency,
-        paymentMethod: payment.paymentMethod,
-        transactionId: payment.transactionId || '',
-        paymentDate: new Date(payment.createdAt).toLocaleDateString('ar-EG'),
-        contactInfo: '01000000000',
-        customerName: customerName
-      }
-
-      // Render template
-      const htmlContent = await this.renderTemplate(template, variables)
-
-      // Create notification record
-      const notification = await this.createNotification(
-        'PAYMENT_RECEIVED',
-        customerEmail,
-        template.subject,
-        htmlContent
-      )
-
-      // Send email
-      const emailData: EmailData = {
-        to: customerEmail,
-        subject: template.subject,
-        html: htmlContent,
-        text: htmlContent.replace(/<[^>]*>/g, '')
-      }
-
-      const success = await this.sendEmail(emailData)
-
-      // Update notification status
-      await db.notification.update({
-        where: { id: notification.id },
-        data: {
-          status: success ? 'SENT' : 'FAILED',
-          sentAt: success ? new Date() : null
-        }
-      })
-
-      return success
-    } catch (error) {
-      console.error('Error sending payment received:', error)
-      return false
-    }
-  }
-
-  async sendWelcomeEmail(
-    customerEmail: string,
-    customerName: string
-  ): Promise<boolean> {
-    try {
-      // Get email template
-      const template = await db.emailTemplate.findFirst({
-        where: { 
-          name: 'welcome',
-          isActive: true 
-        }
-      })
-
-      if (!template) {
-        throw new Error('Email template not found')
-      }
-
-      // Prepare template variables
-      const variables = {
-        customerName,
-        contactInfo: '01000000000',
-        websiteUrl: 'https://elhamd.com'
-      }
-
-      // Render template
-      const htmlContent = await this.renderTemplate(template, variables)
-
-      // Create notification record
-      const notification = await this.createNotification(
-        'PROMOTION',
-        customerEmail,
-        template.subject,
-        htmlContent
-      )
-
-      // Send email
-      const emailData: EmailData = {
-        to: customerEmail,
-        subject: template.subject,
-        html: htmlContent,
-        text: htmlContent.replace(/<[^>]*>/g, '')
-      }
-
-      const success = await this.sendEmail(emailData)
-
-      // Update notification status
-      await db.notification.update({
-        where: { id: notification.id },
-        data: {
-          status: success ? 'SENT' : 'FAILED',
-          sentAt: success ? new Date() : null
-        }
-      })
-
-      return success
-    } catch (error) {
-      console.error('Error sending welcome email:', error)
-      return false
-    }
-  }
-
-  // Method to send booking reminders automatically
-  async sendPendingReminders(): Promise<number> {
-    try {
-      // Get bookings that need reminders (24 hours before and not sent yet)
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      tomorrow.setHours(0, 0, 0, 0)
-
-      const dayAfterTomorrow = new Date(tomorrow)
-      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1)
-
-      const bookings = await db.serviceBooking.findMany({
-        where: {
-          date: {
-            gte: tomorrow,
-            lt: dayAfterTomorrow
-          },
-          status: {
-            in: ['PENDING', 'CONFIRMED']
-          },
-          reminderSent: false
-        },
-        include: {
-          customer: true,
-          serviceType: true,
-          vehicle: true
-        }
-      })
-
-      let sentCount = 0
-
-      for (const booking of bookings) {
-        const success = await this.sendBookingReminder(
-          booking.id,
-          booking.customer.email,
-          booking.customer.name || 'عميل'
-        )
-
-        if (success) {
-          sentCount++
-        }
-      }
-
-      return sentCount
-    } catch (error) {
-      console.error('Error sending pending reminders:', error)
-      return 0
-    }
+  generateConsultationEmail(data: ConsultationData): string {
+    return `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>طلب استشارة جديد</title>
+        <style>
+          body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #7c3aed; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f9fafb; }
+          .field { margin-bottom: 15px; }
+          .label { font-weight: bold; color: #374151; }
+          .value { color: #6b7280; }
+          .footer { background: #e5e7eb; padding: 15px; text-align: center; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>طلب استشارة جديد</h1>
+          </div>
+          <div class="content">
+            <div class="field">
+              <span class="label">الاسم:</span>
+              <span class="value">${data.name}</span>
+            </div>
+            <div class="field">
+              <span class="label">البريد الإلكتروني:</span>
+              <span class="value">${data.email}</span>
+            </div>
+            <div class="field">
+              <span class="label">الهاتف:</span>
+              <span class="value">${data.phone}</span>
+            </div>
+            <div class="field">
+              <span class="label">نوع الاستشارة:</span>
+              <span class="value">${data.consultationType}</span>
+            </div>
+            <div class="field">
+              <span class="label">التاريخ المفضل:</span>
+              <span class="value">${data.preferredDate}</span>
+            </div>
+            <div class="field">
+              <span class="label">الوقت المفضل:</span>
+              <span class="value">${data.preferredTime}</span>
+            </div>
+            ${data.message ? `
+            <div class="field">
+              <span class="label">ملاحظات إضافية:</span>
+              <span class="value">${data.message}</span>
+            </div>
+            ` : ''}
+            <div class="field">
+              <span class="label">التاريخ:</span>
+              <span class="value">${new Date().toLocaleString('ar-EG')}</span>
+            </div>
+          </div>
+          <div class="footer">
+            <p>هذا الطلب أرسل من موقع الحمد للسيارات</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
   }
 }
 
 export const emailService = new EmailService()
-export default EmailService
+export default emailService
