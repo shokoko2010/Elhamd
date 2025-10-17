@@ -335,77 +335,109 @@ export class PermissionService {
   }
 
   static async getUserPermissions(userId: string): Promise<Permission[]> {
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: {
-        permissions: {
-          include: {
-            permission: true
-          }
-        },
-        roleTemplate: true,
-        branchPermissions: true
-      }
-    })
+    console.log('=== DEBUG: getUserPermissions called for userId:', userId)
+    
+    try {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        include: {
+          permissions: {
+            include: {
+              permission: true
+            }
+          },
+          roleTemplate: true,
+          branchPermissions: true
+        }
+      })
 
-    if (!user) {
+      console.log('User found:', !!user)
+      if (user) {
+        console.log('User role:', user.role)
+        console.log('Role template:', user.roleTemplate?.name)
+        console.log('Direct permissions count:', user.permissions.length)
+      }
+
+      if (!user) {
+        console.log('No user found, returning empty permissions')
+        return []
+      }
+
+      let permissions: Permission[] = []
+
+      // For admin users, return all permissions to simplify
+      if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+        console.log('User is admin, returning all permissions')
+        return Object.values(PERMISSIONS)
+      }
+
+      // Start with role template permissions
+      if (user.roleTemplate?.permissions) {
+        try {
+          console.log('Processing role template permissions...')
+          // Check if permissions are already stored as an array or as JSON string
+          let templatePermissions: string[] = []
+          if (typeof user.roleTemplate.permissions === 'string') {
+            templatePermissions = JSON.parse(user.roleTemplate.permissions)
+          } else if (Array.isArray(user.roleTemplate.permissions)) {
+            templatePermissions = user.roleTemplate.permissions
+          }
+          
+          console.log('Template permissions parsed:', templatePermissions.length)
+          
+          // Convert permission IDs to Permission names
+          const permissionNames = await db.permission.findMany({
+            where: { id: { in: templatePermissions } },
+            select: { name: true }
+          })
+          
+          const templatePerms = permissionNames.map(p => p.name as Permission)
+          permissions = [...permissions, ...templatePerms]
+          console.log('Template permissions added:', templatePerms.length)
+        } catch (error) {
+          console.error('Error parsing role template permissions:', error)
+        }
+      }
+
+      // Add custom permissions if they exist
+      if (user.customPermissions) {
+        try {
+          const customPermissions = JSON.parse(user.customPermissions)
+          permissions = [...permissions, ...customPermissions]
+          console.log('Custom permissions added:', customPermissions.length)
+        } catch (error) {
+          console.error('Error parsing custom permissions:', error)
+        }
+      }
+
+      // Add individual user permissions
+      const userPermissions = user.permissions.map(up => up.permission.name as Permission)
+      permissions = [...permissions, ...userPermissions]
+      console.log('User permissions added:', userPermissions.length)
+
+      // Add branch-specific permissions if user is assigned to a branch
+      if (user.branchId) {
+        const branchPermission = user.branchPermissions.find(bp => bp.branchId === user.branchId)
+        if (branchPermission?.permissions) {
+          try {
+            const branchPermissions = JSON.parse(branchPermission.permissions)
+            permissions = [...permissions, ...branchPermissions]
+            console.log('Branch permissions added:', branchPermissions.length)
+          } catch (error) {
+            console.error('Error parsing branch permissions:', error)
+          }
+        }
+      }
+
+      // Remove duplicates
+      const uniquePermissions = [...new Set(permissions)]
+      console.log('Final permissions count:', uniquePermissions.length)
+      
+      return uniquePermissions
+    } catch (error) {
+      console.error('Error in getUserPermissions:', error)
       return []
     }
-
-    let permissions: Permission[] = []
-
-    // Start with role template permissions
-    if (user.roleTemplate?.permissions) {
-      try {
-        // Check if permissions are already stored as an array or as JSON string
-        let templatePermissions: string[] = []
-        if (typeof user.roleTemplate.permissions === 'string') {
-          templatePermissions = JSON.parse(user.roleTemplate.permissions)
-        } else if (Array.isArray(user.roleTemplate.permissions)) {
-          templatePermissions = user.roleTemplate.permissions
-        }
-        
-        // Convert permission IDs to Permission names
-        const permissionNames = await db.permission.findMany({
-          where: { id: { in: templatePermissions } },
-          select: { name: true }
-        })
-        
-        permissions = permissionNames.map(p => p.name as Permission)
-      } catch (error) {
-        console.error('Error parsing role template permissions:', error)
-      }
-    }
-
-    // Add custom permissions if they exist
-    if (user.customPermissions) {
-      try {
-        const customPermissions = JSON.parse(user.customPermissions)
-        permissions = [...permissions, ...customPermissions]
-      } catch (error) {
-        console.error('Error parsing custom permissions:', error)
-      }
-    }
-
-    // Add individual user permissions
-    const userPermissions = user.permissions.map(up => up.permission.name as Permission)
-    permissions = [...permissions, ...userPermissions]
-
-    // Add branch-specific permissions if user is assigned to a branch
-    if (user.branchId) {
-      const branchPermission = user.branchPermissions.find(bp => bp.branchId === user.branchId)
-      if (branchPermission?.permissions) {
-        try {
-          const branchPermissions = JSON.parse(branchPermission.permissions)
-          permissions = [...permissions, ...branchPermissions]
-        } catch (error) {
-          console.error('Error parsing branch permissions:', error)
-        }
-      }
-    }
-
-    // Remove duplicates
-    return [...new Set(permissions)]
   }
 
   static async hasPermission(userId: string, permission: Permission): Promise<boolean> {

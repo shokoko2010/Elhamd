@@ -38,12 +38,20 @@ export default function LoginPage() {
       if (response.ok) {
         const data = await response.json()
         
+        console.log('Login successful:', data.user.role)
+        
         // Redirect based on role
         if (data.user.role === UserRole.ADMIN || data.user.role === UserRole.SUPER_ADMIN) {
+          console.log('Redirecting to admin dashboard...')
           router.push('/admin')
         } else if (data.user.role === UserRole.STAFF || data.user.role === UserRole.BRANCH_MANAGER) {
+          console.log('Redirecting to employee dashboard...')
           router.push('/employee/dashboard')
+        } else if (data.user.role === UserRole.CUSTOMER) {
+          console.log('Redirecting to customer dashboard...')
+          router.push('/customer')
         } else {
+          console.log('Redirecting to general dashboard...')
           router.push('/dashboard')
         }
       } else {
@@ -81,6 +89,14 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+              <p className="font-medium mb-1">معلومات تسجيل الدخول:</p>
+              <ul className="text-xs space-y-1">
+                <li>• المشرفون: admin@elhamd.com</li>
+                <li>• الموظفون: بريد العمل الخاص</li>
+                <li>• العملاء: البريد المسجل</li>
+              </ul>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
@@ -134,7 +150,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6">
+        <div className="text-center mt-6 space-y-2">
           <Button 
             variant="link" 
             className="text-white hover:text-blue-200"
@@ -142,6 +158,15 @@ export default function LoginPage() {
           >
             العودة إلى الصفحة الرئيسية
           </Button>
+          <div>
+            <Button 
+              variant="link" 
+              className="text-white hover:text-blue-200 text-sm"
+              onClick={() => router.push('/create-admin')}
+            >
+              إنشاء حساب مشرف جديد
+            </Button>
+          </div>
         </div>
       </div>
     </div>

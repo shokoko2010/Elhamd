@@ -29,6 +29,7 @@ export function useAuth() {
       setLoading(true)
       setError(null)
       
+      console.log('=== DEBUG: fetchUser called ===')
       console.log('Fetching user from /api/simple-auth/me...')
       const response = await fetch('/api/simple-auth/me', {
         credentials: 'include'
@@ -38,7 +39,7 @@ export function useAuth() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('User data received:', data.user?.email)
+        console.log('User data received:', data.user?.email, 'Role:', data.user?.role)
         setUser({
           id: data.user.id,
           email: data.user.email,

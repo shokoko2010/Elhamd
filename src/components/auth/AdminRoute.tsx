@@ -17,7 +17,7 @@ interface AdminRouteProps {
 
 export function AdminRoute({ 
   children, 
-  requiredRoles = [UserRole.ADMIN], 
+  requiredRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN], 
   requiredPermissions = [],
   redirectTo = '/login' 
 }: AdminRouteProps) {
@@ -25,24 +25,37 @@ export function AdminRoute({
   const router = useRouter()
 
   useEffect(() => {
+    console.log('=== DEBUG: AdminRoute useEffect ===')
+    console.log('User:', user)
+    console.log('Loading:', loading)
+    console.log('Authenticated:', authenticated)
+    console.log('Required roles:', requiredRoles)
+    console.log('Has any role:', hasAnyRole(requiredRoles))
+    
     if (!loading) {
       // Check if user is authenticated
       if (!authenticated || !user) {
+        console.log('User not authenticated, redirecting to:', redirectTo)
         router.push(redirectTo)
         return
       }
 
       // Check if user has required role
       if (!hasAnyRole(requiredRoles)) {
+        console.log('User does not have required roles, redirecting to /')
+        console.log('User role:', user.role, 'Required:', requiredRoles)
         router.push('/')
         return
       }
 
       // Check if user has required permissions (if specified)
       if (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any)) {
+        console.log('User does not have required permissions, redirecting to /')
         router.push('/')
         return
       }
+
+      console.log('User passed all checks, staying on page')
     }
   }, [user, loading, authenticated, requiredRoles, requiredPermissions, redirectTo, router, hasAnyRole, hasAnyPermission])
 
@@ -59,8 +72,10 @@ export function AdminRoute({
 
   if (!authenticated || !user || !hasAnyRole(requiredRoles) || 
       (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any))) {
+    console.log('AdminRoute: User not authorized, returning null')
     return null // Will redirect in useEffect
   }
 
+  console.log('AdminRoute: Rendering children')
   return <>{children}</>
 }
