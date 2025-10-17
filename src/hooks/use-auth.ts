@@ -72,15 +72,42 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      await fetch('/api/simple-auth/logout', { 
+      console.log('=== LOGOUT CALLED FROM HOOK ===')
+      
+      // Call logout API
+      const response = await fetch('/api/simple-auth/logout', { 
         method: 'POST',
         credentials: 'include'
       })
+      
+      console.log('Logout API response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Logout API response:', data)
+      } else {
+        console.error('Logout API failed:', response.status)
+      }
+      
+      // Clear user state immediately
       setUser(null)
+      setError(null)
+      
+      // Try to clear cookie manually as backup
+      document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+      document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname
+      
+      console.log('User state cleared, redirecting to login')
+      
+      // Force redirect to login page
       window.location.href = '/login'
     } catch (error) {
       console.error('Logout error:', error)
+      
+      // Still clear state and redirect even if API fails
       setUser(null)
+      setError(null)
+      document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
       window.location.href = '/login'
     }
   }

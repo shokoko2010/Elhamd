@@ -38,7 +38,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/hooks/use-auth'
-import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 const sidebarItems = [
@@ -233,11 +232,11 @@ export function AdminSidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const pathname = usePathname()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const router = useRouter()
 
   const handleSignOut = async () => {
-    signOut({ callbackUrl: '/' })
+    await logout()
   }
 
   const toggleExpanded = (title: string) => {

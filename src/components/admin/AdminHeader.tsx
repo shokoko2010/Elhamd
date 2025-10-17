@@ -12,18 +12,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
-import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import NotificationSystem from './NotificationSystem'
 
 export function AdminHeader() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const router = useRouter()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   const handleSignOut = async () => {
-    signOut({ callbackUrl: '/' })
+    await logout()
   }
 
   return (

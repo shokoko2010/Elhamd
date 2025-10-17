@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/use-auth'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, Shield } from 'lucide-react'
@@ -23,41 +23,41 @@ export function AdminRoute({
 }: AdminRouteProps) {
   const { user, loading, authenticated, hasAnyRole, hasAnyPermission } = useAuth()
   const router = useRouter()
+  const hasCheckedAuth = useRef(false)
 
   useEffect(() => {
-    console.log('=== DEBUG: AdminRoute useEffect ===')
-    console.log('User:', user)
-    console.log('Loading:', loading)
-    console.log('Authenticated:', authenticated)
-    console.log('Required roles:', requiredRoles)
-    console.log('Has any role:', hasAnyRole(requiredRoles))
+    // Prevent infinite loops by using ref
+    if (hasCheckedAuth.current) return
     
     if (!loading) {
+      hasCheckedAuth.current = true
+      
       // Check if user is authenticated
       if (!authenticated || !user) {
-        console.log('User not authenticated, redirecting to:', redirectTo)
         router.push(redirectTo)
         return
       }
 
       // Check if user has required role
       if (!hasAnyRole(requiredRoles)) {
-        console.log('User does not have required roles, redirecting to /')
-        console.log('User role:', user.role, 'Required:', requiredRoles)
         router.push('/')
         return
       }
 
       // Check if user has required permissions (if specified)
       if (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any)) {
-        console.log('User does not have required permissions, redirecting to /')
         router.push('/')
         return
       }
-
-      console.log('User passed all checks, staying on page')
     }
-  }, [user, loading, authenticated, requiredRoles, requiredPermissions, redirectTo, router, hasAnyRole, hasAnyPermission])
+  }, [loading, authenticated, user, hasAnyRole, hasAnyPermission])
+
+  // Reset ref when dependencies change that might require re-authentication
+  useEffect(() => {
+    if (!loading && !authenticated) {
+      hasCheckedAuth.current = false
+    }
+  }, [loading, authenticated])
 
   if (loading) {
     return (
@@ -72,10 +72,8 @@ export function AdminRoute({
 
   if (!authenticated || !user || !hasAnyRole(requiredRoles) || 
       (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any))) {
-    console.log('AdminRoute: User not authorized, returning null')
     return null // Will redirect in useEffect
   }
 
-  console.log('AdminRoute: Rendering children')
   return <>{children}</>
 }

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-import { signOut } from 'next-auth/react'
+import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -180,10 +179,9 @@ interface User {
 }
 
 export default function EmployeeDashboardPage() {
-  const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   
   const [stats, setStats] = useState<EmployeeStats>({
     totalBookings: 0,
@@ -216,15 +214,10 @@ export default function EmployeeDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [users, setUsers] = useState<User[]>([])
-  const [dataLoading, setDataLoading] = useState(status === 'loading')
+  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-      return
-    }
-
-    if (status === 'authenticated' && user) {
+    if (user) {
       // Check if user is staff or admin
       if (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
         router.push('/dashboard')
@@ -232,8 +225,10 @@ export default function EmployeeDashboardPage() {
       }
       
       fetchDashboardData()
+    } else {
+      router.push('/login')
     }
-  }, [status, user, router])
+  }, [user, router])
 
   const fetchDashboardData = async () => {
     try {
@@ -404,7 +399,7 @@ export default function EmployeeDashboardPage() {
     }
   }
 
-  if (status === 'loading' || dataLoading || !user) {
+  if (!user) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse space-y-6">
@@ -419,14 +414,14 @@ export default function EmployeeDashboardPage() {
     )
   }
 
-  if (status === 'unauthenticated' || !user) {
+  if (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Authentication Error</h1>
-          <p className="text-gray-600 mb-4">Please login to access this page</p>
-          <Button onClick={() => router.push('/login')}>
-            Return to Login
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">You don't have permission to access this page</p>
+          <Button onClick={() => router.push('/dashboard')}>
+            Return to Dashboard
           </Button>
         </div>
       </div>
@@ -452,7 +447,7 @@ export default function EmployeeDashboardPage() {
           <Button variant="outline" onClick={() => window.location.href = '/'}>
             Back to Home
           </Button>
-          <Button variant="outline" onClick={() => signOut({ callbackUrl: '/' })}>
+          <Button variant="outline" onClick={() => logout()}>
             Logout
           </Button>
         </div>

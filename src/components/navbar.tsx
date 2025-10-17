@@ -26,7 +26,7 @@ import {
   MapPin,
   Search
 } from 'lucide-react'
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/hooks/use-auth'
 import { useSiteSettings } from '@/components/SiteSettingsProvider'
 
 // Create a safe wrapper component to handle auth state
@@ -34,11 +34,9 @@ function AuthAwareNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
-  const { data: session, status } = useSession()
+  const { user, loading, logout } = useAuth()
   const { settings } = useSiteSettings()
-  const user = session?.user
-  const isAuthenticated = !!session
-  const loading = status === 'loading'
+  const isAuthenticated = !!user
 
   useEffect(() => {
     setIsMounted(true)
@@ -54,8 +52,8 @@ function AuthAwareNavbar() {
     { name: 'اتصل بنا', href: '/contact', icon: Phone },
   ]
 
-  const handleLogout = () => {
-    signOut({ callbackUrl: '/' })
+  const handleLogout = async () => {
+    await logout()
     setIsMenuOpen(false)
   }
 

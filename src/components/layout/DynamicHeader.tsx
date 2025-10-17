@@ -20,7 +20,7 @@ import {
   User,
   LogOut
 } from 'lucide-react'
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/hooks/use-auth'
 
 interface SiteSettings {
   id: string
@@ -78,7 +78,7 @@ const navigation: NavigationItem[] = [
 
 export default function DynamicHeader() {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { user, logout } = useAuth()
   const [settings, setSettings] = useState<SiteSettings | null>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -108,7 +108,7 @@ export default function DynamicHeader() {
   }
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/' })
+    await logout()
   }
 
   const isActive = (href: string) => {
@@ -270,19 +270,19 @@ export default function DynamicHeader() {
 
           {/* User Actions */}
           <div className="flex items-center gap-4">
-            {session ? (
+            {user ? (
               <div className="flex items-center gap-3">
                 <Link href="/dashboard">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={session.user?.image || undefined} />
+                    <AvatarImage src={user.image || undefined} />
                     <AvatarFallback>
-                      {session.user?.name?.charAt(0).toUpperCase() || 'U'}
+                      {user.name?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </Link>
                 <div className="hidden md:block">
-                  <p className="text-sm font-medium">{session.user?.name}</p>
-                  <p className="text-xs text-gray-500">{session.user?.email}</p>
+                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleSignOut}>
                   <LogOut className="w-4 h-4 mr-2" />
