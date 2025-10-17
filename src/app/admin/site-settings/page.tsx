@@ -274,7 +274,7 @@ export default function AdminSiteSettingsPage() {
                   <Label htmlFor="siteTitle">عنوان الموقع *</Label>
                   <Input
                     id="siteTitle"
-                    value={settings.siteTitle}
+                    value={settings.siteTitle || ''}
                     onChange={(e) => updateSettings(['siteTitle'], e.target.value)}
                     placeholder="أدخل عنوان الموقع"
                   />
@@ -284,7 +284,7 @@ export default function AdminSiteSettingsPage() {
                   <Input
                     id="contactEmail"
                     type="email"
-                    value={settings.contactEmail}
+                    value={settings.contactEmail || ''}
                     onChange={(e) => updateSettings(['contactEmail'], e.target.value)}
                     placeholder="أدخل البريد الإلكتروني"
                   />
@@ -295,7 +295,7 @@ export default function AdminSiteSettingsPage() {
                 <Label htmlFor="siteDescription">وصف الموقع</Label>
                 <Textarea
                   id="siteDescription"
-                  value={settings.siteDescription}
+                  value={settings.siteDescription || ''}
                   onChange={(e) => updateSettings(['siteDescription'], e.target.value)}
                   placeholder="أدخل وصف الموقع"
                   rows={3}
@@ -396,7 +396,7 @@ export default function AdminSiteSettingsPage() {
                   <Input
                     id="primaryColor"
                     type="color"
-                    value={settings.primaryColor}
+                    value={settings.primaryColor || '#3B82F6'}
                     onChange={(e) => updateSettings(['primaryColor'], e.target.value)}
                   />
                 </div>
@@ -405,7 +405,7 @@ export default function AdminSiteSettingsPage() {
                   <Input
                     id="secondaryColor"
                     type="color"
-                    value={settings.secondaryColor}
+                    value={settings.secondaryColor || '#10B981'}
                     onChange={(e) => updateSettings(['secondaryColor'], e.target.value)}
                   />
                 </div>
@@ -414,7 +414,7 @@ export default function AdminSiteSettingsPage() {
                   <Input
                     id="accentColor"
                     type="color"
-                    value={settings.accentColor}
+                    value={settings.accentColor || '#F59E0B'}
                     onChange={(e) => updateSettings(['accentColor'], e.target.value)}
                   />
                 </div>
@@ -422,7 +422,7 @@ export default function AdminSiteSettingsPage() {
               
               <div>
                 <Label htmlFor="fontFamily">نوع الخط</Label>
-                <Select value={settings.fontFamily} onValueChange={(value) => updateSettings(['fontFamily'], value)}>
+                <Select value={settings.fontFamily || 'Inter'} onValueChange={(value) => updateSettings(['fontFamily'], value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر نوع الخط" />
                   </SelectTrigger>
@@ -459,7 +459,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="showLogo">عرض الشعار</Label>
                     <Switch
                       id="showLogo"
-                      checked={settings.headerSettings.showLogo}
+                      checked={settings.headerSettings?.showLogo ?? true}
                       onCheckedChange={(checked) => updateSettings(['headerSettings', 'showLogo'], checked)}
                     />
                   </div>
@@ -468,7 +468,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="showNavigation">عرض القائمة</Label>
                     <Switch
                       id="showNavigation"
-                      checked={settings.headerSettings.showNavigation}
+                      checked={settings.headerSettings?.showNavigation ?? true}
                       onCheckedChange={(checked) => updateSettings(['headerSettings', 'showNavigation'], checked)}
                     />
                   </div>
@@ -477,7 +477,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="showContactInfo">عرض معلومات الاتصال</Label>
                     <Switch
                       id="showContactInfo"
-                      checked={settings.headerSettings.showContactInfo}
+                      checked={settings.headerSettings?.showContactInfo ?? true}
                       onCheckedChange={(checked) => updateSettings(['headerSettings', 'showContactInfo'], checked)}
                     />
                   </div>
@@ -486,7 +486,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="showSocialLinks">عرض روابط التواصل</Label>
                     <Switch
                       id="showSocialLinks"
-                      checked={settings.headerSettings.showSocialLinks}
+                      checked={settings.headerSettings?.showSocialLinks ?? true}
                       onCheckedChange={(checked) => updateSettings(['headerSettings', 'showSocialLinks'], checked)}
                     />
                   </div>
@@ -499,7 +499,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="stickyHeader">هيدر ثابت</Label>
                     <Switch
                       id="stickyHeader"
-                      checked={settings.headerSettings.stickyHeader}
+                      checked={settings.headerSettings?.stickyHeader ?? true}
                       onCheckedChange={(checked) => updateSettings(['headerSettings', 'stickyHeader'], checked)}
                     />
                   </div>
@@ -508,7 +508,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="transparentHeader">هيدر شفاف</Label>
                     <Switch
                       id="transparentHeader"
-                      checked={settings.headerSettings.transparentHeader}
+                      checked={settings.headerSettings?.transparentHeader ?? false}
                       onCheckedChange={(checked) => updateSettings(['headerSettings', 'transparentHeader'], checked)}
                     />
                   </div>
@@ -538,7 +538,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="footerShowLogo">عرض الشعار</Label>
                     <Switch
                       id="footerShowLogo"
-                      checked={settings.footerSettings.showLogo}
+                      checked={settings.footerSettings?.showLogo ?? true}
                       onCheckedChange={(checked) => updateSettings(['footerSettings', 'showLogo'], checked)}
                     />
                   </div>
@@ -547,7 +547,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="footerShowNavigation">عرض القائمة</Label>
                     <Switch
                       id="footerShowNavigation"
-                      checked={settings.footerSettings.showNavigation}
+                      checked={settings.footerSettings?.showNavigation ?? true}
                       onCheckedChange={(checked) => updateSettings(['footerSettings', 'showNavigation'], checked)}
                     />
                   </div>
@@ -556,7 +556,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="footerShowContactInfo">عرض معلومات الاتصال</Label>
                     <Switch
                       id="footerShowContactInfo"
-                      checked={settings.footerSettings.showContactInfo}
+                      checked={settings.footerSettings?.showContactInfo ?? true}
                       onCheckedChange={(checked) => updateSettings(['footerSettings', 'showContactInfo'], checked)}
                     />
                   </div>
@@ -565,7 +565,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="footerShowSocialLinks">عرض روابط التواصل</Label>
                     <Switch
                       id="footerShowSocialLinks"
-                      checked={settings.footerSettings.showSocialLinks}
+                      checked={settings.footerSettings?.showSocialLinks ?? true}
                       onCheckedChange={(checked) => updateSettings(['footerSettings', 'showSocialLinks'], checked)}
                     />
                   </div>
@@ -574,7 +574,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="footerShowNewsletter">عرض النشرة البريدية</Label>
                     <Switch
                       id="footerShowNewsletter"
-                      checked={settings.footerSettings.showNewsletter}
+                      checked={settings.footerSettings?.showNewsletter ?? true}
                       onCheckedChange={(checked) => updateSettings(['footerSettings', 'showNewsletter'], checked)}
                     />
                   </div>
@@ -583,7 +583,7 @@ export default function AdminSiteSettingsPage() {
                     <Label htmlFor="footerShowCopyright">عرض حقوق النشر</Label>
                     <Switch
                       id="footerShowCopyright"
-                      checked={settings.footerSettings.showCopyright}
+                      checked={settings.footerSettings?.showCopyright ?? true}
                       onCheckedChange={(checked) => updateSettings(['footerSettings', 'showCopyright'], checked)}
                     />
                   </div>
@@ -595,7 +595,7 @@ export default function AdminSiteSettingsPage() {
                   <div>
                     <Label htmlFor="footerColumns">عدد الأعمدة</Label>
                     <Select 
-                      value={settings.footerSettings.columns.toString()} 
+                      value={settings.footerSettings?.columns?.toString() || '4'} 
                       onValueChange={(value) => updateSettings(['footerSettings', 'columns'], parseInt(value))}
                     >
                       <SelectTrigger>
