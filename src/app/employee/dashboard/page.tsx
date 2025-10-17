@@ -38,7 +38,6 @@ import {
   Filter
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth'
 import TaskManagement from '@/components/employee/EnhancedTaskManagement'
 import CarManagement from '@/components/employee/CarManagement'
 import OrderManagement from '@/components/employee/OrderManagement'
