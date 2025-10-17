@@ -57,8 +57,14 @@ class EmailService {
 
   private initializeTransporter() {
     try {
+      // Only initialize if email configuration is available
+      if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+        console.warn('Email configuration missing. Email functionality will be disabled.')
+        return
+      }
+
       // Create transporter using environment variables
-      this.transporter = nodemailer.createTransporter({
+      this.transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT || '587'),
         secure: process.env.SMTP_SECURE === 'true',
@@ -74,7 +80,7 @@ class EmailService {
 
   async sendEmail(data: EmailData): Promise<boolean> {
     if (!this.transporter) {
-      console.error('Email transporter not initialized')
+      console.warn('Email transporter not initialized - skipping email send')
       return false
     }
 
@@ -368,6 +374,94 @@ class EmailService {
       </body>
       </html>
     `
+  }
+
+  async sendContactForm(data: ContactFormData): Promise<boolean> {
+    const subject = `رسالة جديدة من صفحة اتصل بنا: ${data.subject || 'استفسار عام'}`
+    const html = this.generateContactEmail(data)
+    
+    return this.sendEmail({
+      to: process.env.SMTP_USER || 'info@elhamd.com', // Send to company email
+      subject,
+      html
+    })
+  }
+
+  async sendServiceBooking(data: ServiceBookingData): Promise<boolean> {
+    const subject = `حجز خدمة جديد: ${data.serviceType}`
+    const html = this.generateServiceBookingEmail(data)
+    
+    return this.sendEmail({
+      to: process.env.SMTP_USER || 'info@elhamd.com', // Send to company email
+      subject,
+      html
+    })
+  }
+
+  async sendTestDriveRequest(data: TestDriveData): Promise<boolean> {
+    const subject = `طلب تجربة قيادة: ${data.vehicleModel}`
+    const html = this.generateTestDriveEmail(data)
+    
+    return this.sendEmail({
+      to: process.env.SMTP_USER || 'info@elhamd.com', // Send to company email
+      subject,
+      html
+    })
+  }
+
+  async sendConsultationRequest(data: ConsultationData): Promise<boolean> {
+    const subject = `طلب استشارة جديد: ${data.consultationType}`
+    const html = this.generateConsultationEmail(data)
+    
+    return this.sendEmail({
+      to: process.env.SMTP_USER || 'info@elhamd.com', // Send to company email
+      subject,
+      html
+    })
+  }
+
+  async sendBookingConfirmation(bookingId: string, customerEmail: string, customerName: string): Promise<boolean> {
+    const subject = 'تأكيد حجز الخدمة - الحمد للسيارات'
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>تأكيد حجز الخدمة</title>
+        <style>
+          body { font-family: Arial, sans-serif; direction: rtl; text-align: right; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #059669; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f9fafb; }
+          .footer { background: #e5e7eb; padding: 15px; text-align: center; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>تأكيد حجز الخدمة</h1>
+          </div>
+          <div class="content">
+            <p>عزيزي/عزيزتي ${customerName}،</p>
+            <p>نشكرك على حجزك معنا. تم استلام طلبك بنجاح وسنقوم بالتواصل معك قريباً لتأكيد التفاصيل.</p>
+            <p><strong>رقم الحجز:</strong> ${bookingId}</p>
+            <p>في حال كان لديك أي استفسار، لا تتردد في التواصل معنا.</p>
+            <p>مع أطيب التحيات،<br/>فريق الحمد للسيارات</p>
+          </div>
+          <div class="footer">
+            <p>هذه الرسالة أرسلت من موقع الحمد للسيارات</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+    
+    return this.sendEmail({
+      to: customerEmail,
+      subject,
+      html
+    })
   }
 }
 

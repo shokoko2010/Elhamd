@@ -19,7 +19,9 @@ import {
   HelpCircle,
   ChevronRight,
   ChevronLeft,
-  ExternalLink
+  ExternalLink,
+  Calendar,
+  Settings
 } from 'lucide-react'
 import Link from 'next/link'
 
