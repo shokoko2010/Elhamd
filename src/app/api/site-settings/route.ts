@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { db } from '@/lib/db'
 import { getSimpleUser } from '@/lib/simple-auth'
-
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'file:db/custom.db'
-    }
-  }
-})
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +19,7 @@ export async function GET(request: NextRequest) {
     console.log('User authenticated:', user.email)
     
     // Get the first site settings record
-    const settings = await prisma.siteSettings.findFirst()
+    const settings = await db.siteSettings.findFirst()
     
     console.log('Found settings:', settings ? 'Yes' : 'No')
     
@@ -113,14 +105,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if settings already exist
-    const existingSettings = await prisma.siteSettings.findFirst()
+    const existingSettings = await db.siteSettings.findFirst()
     console.log('Existing settings found:', existingSettings ? 'Yes' : 'No')
     
     let settings
     if (existingSettings) {
       // Update existing settings
       console.log('Updating existing settings...')
-      settings = await prisma.siteSettings.update({
+      settings = await db.siteSettings.update({
         where: { id: existingSettings.id },
         data: {
           ...body,
@@ -130,7 +122,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Create new settings
       console.log('Creating new settings...')
-      settings = await prisma.siteSettings.create({
+      settings = await db.siteSettings.create({
         data: {
           ...body,
           createdAt: new Date(),

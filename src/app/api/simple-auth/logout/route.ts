@@ -12,7 +12,7 @@ export async function POST() {
     // Clear the auth cookie with multiple approaches to ensure it's removed
     response.cookies.set('staff_token', '', {
       httpOnly: true,
-      secure: false, // Set to false for development
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 0,
@@ -22,7 +22,7 @@ export async function POST() {
     // Also try to clear with different settings
     response.cookies.set('staff_token', '', {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       path: '/',
       maxAge: 0
