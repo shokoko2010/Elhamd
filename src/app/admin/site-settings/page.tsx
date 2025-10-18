@@ -120,17 +120,44 @@ export default function AdminSiteSettingsPage() {
 
   const fetchSiteSettings = useCallback(async () => {
     try {
+      console.log('Fetching site settings...')
       const response = await fetch('/api/site-settings')
+      console.log('Fetch response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
-        if (data[0]) {
-          setSettings(data[0])
+        console.log('Fetched settings:', data)
+        
+        // Handle both array and single object responses
+        if (Array.isArray(data)) {
+          if (data.length > 0) {
+            setSettings(data[0])
+          }
+        } else if (data && (data.id || data.siteTitle)) {
+          setSettings(data)
         }
+      } else {
+        const errorData = await response.json()
+        console.error('Fetch failed:', errorData)
+        
+        // Show warning but don't block the page - use default settings
+        toast({
+          title: 'تحذير',
+          description: 'باستخدام الإعدادات الافتراضية - لا يمكن الاتصال بالخادم',
+          variant: 'default'
+        })
       }
     } catch (error) {
-      console.error('Error fetching site settings:', error)
+      console.error('Fetch error:', error)
+      
+      // Show warning but don't block the page - use default settings
+      toast({
+        title: 'تحذير',
+        description: 'باستخدام الإعدادات الافتراضية - لا يمكن الاتصال بالخادم',
+        variant: 'default'
+      })
     }
-  }, [])
+  }, [toast])
 
   const updateSettings = useCallback((path: string[], value: any) => {
     setSettings(prev => {
@@ -152,6 +179,9 @@ export default function AdminSiteSettingsPage() {
   const handleSave = useCallback(async () => {
     try {
       setIsLoading(true)
+      
+      console.log('Saving settings:', settings)
+      
       const response = await fetch('/api/site-settings', {
         method: 'POST',
         headers: {
@@ -160,25 +190,49 @@ export default function AdminSiteSettingsPage() {
         body: JSON.stringify(settings)
       })
 
+      const responseData = await response.json()
+      console.log('Save response:', responseData)
+
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: 'Site settings saved successfully'
+          title: 'نجاح',
+          description: 'تم حفظ إعدادات الموقع بنجاح'
         })
       } else {
-        const error = await response.json()
+        console.error('Save failed:', responseData)
+        
+        // Check if it's a connection error
+        if (responseData.error && responseData.error.includes('ECONNREFUSED')) {
+          toast({
+            title: 'خطأ في الاتصال',
+            description: 'لا يمكن الاتصال بالخادم. قد تحتاج إلى استخدام localhost:3000 للاختبار',
+            variant: 'destructive'
+          })
+        } else {
+          toast({
+            title: 'خطأ',
+            description: responseData.error || 'فشل حفظ الإعدادات',
+            variant: 'destructive'
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Save error:', error)
+      
+      // Check if it's a network error
+      if (error instanceof Error && error.message.includes('fetch')) {
         toast({
-          title: 'Error',
-          description: error.error || 'Failed to save site settings',
+          title: 'خطأ في الشبكة',
+          description: 'لا يمكن الاتصال بالخادم. تأكد من أنك تستخدم localhost:3000',
+          variant: 'destructive'
+        })
+      } else {
+        toast({
+          title: 'خطأ',
+          description: 'حدث خطأ أثناء حفظ الإعدادات',
           variant: 'destructive'
         })
       }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to save site settings',
-        variant: 'destructive'
-      })
     } finally {
       setIsLoading(false)
     }
