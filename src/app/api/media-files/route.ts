@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const folder = searchParams.get('folder') || ''
+    const recursive = searchParams.get('recursive') === 'true'
 
     // Build the uploads directory path
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
@@ -36,82 +37,91 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Read directory contents
-    const entries = await fs.readdir(targetDir, { withFileTypes: true })
-    
     const files = []
     const folders = []
 
-    for (const entry of entries) {
-      const fullPath = path.join(targetDir, entry.name)
-      const stats = await fs.stat(fullPath)
+    // Recursive function to read all image files
+    async function readImageFiles(dirPath: string, currentFolder: string): Promise<void> {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true })
 
-      if (entry.isDirectory()) {
-        // Get file count in subdirectory
-        try {
-          const subEntries = await fs.readdir(fullPath)
-          folders.push({
-            name: entry.name,
-            path: path.join(folder, entry.name).replace(/\\/g, '/'),
-            fileCount: subEntries.length,
-            createdAt: stats.birthtime.toISOString(),
-            modifiedAt: stats.mtime.toISOString()
-          })
-        } catch {
-          folders.push({
-            name: entry.name,
-            path: path.join(folder, entry.name).replace(/\\/g, '/'),
-            fileCount: 0,
-            createdAt: stats.birthtime.toISOString(),
-            modifiedAt: stats.mtime.toISOString()
-          })
-        }
-      } else if (entry.isFile()) {
-        // Check if it's an image file
-        const ext = path.extname(entry.name).toLowerCase()
-        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico']
-        
-        if (imageExtensions.includes(ext)) {
-          const relativePath = path.join('uploads', folder, entry.name).replace(/\\/g, '/')
-          const url = `/${relativePath}`
-          
-          // Try to load metadata if it exists
-          let metadata = {}
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name)
+        const stats = await fs.stat(fullPath)
+
+        if (entry.isDirectory()) {
+          // Get file count in subdirectory
           try {
-            const metadataPath = fullPath + '.meta.json'
-            const metadataContent = await fs.readFile(metadataPath, 'utf-8')
-            metadata = JSON.parse(metadataContent)
+            const subEntries = await fs.readdir(fullPath)
+            folders.push({
+              name: entry.name,
+              path: path.join(currentFolder, entry.name).replace(/\\/g, '/'),
+              fileCount: subEntries.length,
+              createdAt: stats.birthtime.toISOString(),
+              modifiedAt: stats.mtime.toISOString()
+            })
           } catch {
-            // No metadata file, use defaults
+            folders.push({
+              name: entry.name,
+              path: path.join(currentFolder, entry.name).replace(/\\/g, '/'),
+              fileCount: 0,
+              createdAt: stats.birthtime.toISOString(),
+              modifiedAt: stats.mtime.toISOString()
+            })
           }
+
+          // Recursively read subdirectories if recursive is true
+          if (recursive) {
+            await readImageFiles(fullPath, path.join(currentFolder, entry.name).replace(/\\/g, '/'))
+          }
+        } else if (entry.isFile()) {
+          // Check if it's an image file
+          const ext = path.extname(entry.name).toLowerCase()
+          const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico']
           
-          files.push({
-            id: Buffer.from(relativePath).toString('base64'),
-            name: entry.name,
-            originalName: entry.name,
-            url: url,
-            thumbnailUrl: url,
-            size: stats.size,
-            type: 'image',
-            mimeType: `image/${ext.slice(1)}`,
-            altText: metadata.altText || '',
-            title: metadata.title || entry.name.replace(/\.[^/.]+$/, ''),
-            description: metadata.description || '',
-            tags: metadata.tags || [],
-            category: metadata.category || folder || 'other',
-            uploadedAt: stats.birthtime.toISOString(),
-            updatedAt: stats.mtime.toISOString(),
-            uploadedBy: user.email,
-            width: null,
-            height: null,
-            isPublic: true,
-            isFeatured: false,
-            folder: folder,
-            path: relativePath
-          })
+          if (imageExtensions.includes(ext)) {
+            const relativePath = path.join('uploads', currentFolder, entry.name).replace(/\\/g, '/')
+            const url = `/${relativePath}`
+            
+            // Try to load metadata if it exists
+            let metadata = {}
+            try {
+              const metadataPath = fullPath + '.meta.json'
+              const metadataContent = await fs.readFile(metadataPath, 'utf-8')
+              metadata = JSON.parse(metadataContent)
+            } catch {
+              // No metadata file, use defaults
+            }
+            
+            files.push({
+              id: Buffer.from(relativePath).toString('base64'),
+              name: entry.name,
+              originalName: entry.name,
+              url: url,
+              thumbnailUrl: url,
+              size: stats.size,
+              type: 'image',
+              mimeType: `image/${ext.slice(1)}`,
+              altText: metadata.altText || '',
+              title: metadata.title || entry.name.replace(/\.[^/.]+$/, ''),
+              description: metadata.description || '',
+              tags: metadata.tags || [],
+              category: metadata.category || currentFolder || 'other',
+              uploadedAt: stats.birthtime.toISOString(),
+              updatedAt: stats.mtime.toISOString(),
+              uploadedBy: user.email,
+              width: null,
+              height: null,
+              isPublic: true,
+              isFeatured: false,
+              folder: currentFolder,
+              path: relativePath
+            })
+          }
         }
       }
     }
+
+    await readImageFiles(targetDir, folder)
 
     // Sort files by modified date (newest first)
     files.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())

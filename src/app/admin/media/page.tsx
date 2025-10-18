@@ -115,18 +115,15 @@ function MediaContent() {
     setLoading(true)
     setError('')
     try {
-      console.log('🔄 Loading media data from file system...')
-      
       // Fetch media files from new API that reads from uploads directory
-      const response = await fetch('/api/media-files', {
+      // Use recursive=true to get all images from subdirectories
+      const response = await fetch('/api/media-files?recursive=true', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Include cookies for authentication
       })
-      
-      console.log('📡 Media Files API response status:', response.status)
       
       if (!response.ok) {
         if (response.status === 401) {
@@ -140,7 +137,6 @@ function MediaContent() {
       }
       
       const data = await response.json()
-      console.log('📊 Media Files API response:', data)
       
       // Ensure data structure is valid
       if (data && data.success && data.data && Array.isArray(data.data.files)) {

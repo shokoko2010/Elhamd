@@ -29,17 +29,12 @@ export function useAuth() {
       setLoading(true)
       setError(null)
       
-      console.log('=== DEBUG: fetchUser called ===')
-      console.log('Fetching user from /api/simple-auth/me...')
       const response = await fetch('/api/simple-auth/me', {
         credentials: 'include'
       })
       
-      console.log('Response status:', response.status)
-      
       if (response.ok) {
         const data = await response.json()
-        console.log('User data received:', data.user?.email, 'Role:', data.user?.role)
         setUser({
           id: data.user.id,
           email: data.user.email,
@@ -55,7 +50,6 @@ export function useAuth() {
           updatedAt: new Date(data.user.updatedAt)
         })
       } else {
-        console.log('Response not ok:', response.status)
         setUser(null)
         if (response.status !== 401) {
           setError('Failed to fetch user data')
@@ -72,21 +66,15 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      console.log('=== LOGOUT CALLED FROM HOOK ===')
-      
       // Call logout API
       const response = await fetch('/api/simple-auth/logout', { 
         method: 'POST',
         credentials: 'include'
       })
       
-      console.log('Logout API response status:', response.status)
-      
       if (response.ok) {
         const data = await response.json()
-        console.log('Logout API response:', data)
-      } else {
-        console.error('Logout API failed:', response.status)
+        console.log('Logout successful:', data)
       }
       
       // Clear user state immediately
@@ -96,8 +84,6 @@ export function useAuth() {
       // Try to clear cookie manually as backup
       document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
       document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname
-      
-      console.log('User state cleared, redirecting to login')
       
       // Force redirect to login page
       window.location.href = '/login'

@@ -14,34 +14,42 @@ export interface SimpleUser {
 
 export async function getSimpleUser(request: Request): Promise<SimpleUser | null> {
   try {
-    console.log('=== DEBUG: getSimpleUser called ===')
-    
     // Get token from cookie
     const cookieHeader = request.headers.get('cookie')
-    console.log('Cookie header:', cookieHeader)
     
     if (!cookieHeader) {
-      console.log('No cookie header found')
       return null
     }
 
-    const tokenMatch = cookieHeader.match(/staff_token=([^;]+)/)
+    // Try staff_token first (preferred), then auth-token as fallback
+    let tokenMatch = cookieHeader.match(/staff_token=([^;]+)/)
     if (!tokenMatch) {
-      console.log('No staff_token found in cookies')
+      tokenMatch = cookieHeader.match(/auth-token=([^;]+)/)
+    }
+    
+    if (!tokenMatch) {
       return null
     }
 
     const token = tokenMatch[1]
-    console.log('Token found:', token.substring(0, 20) + '...')
+    
+    // For test-token in development, skip database lookup
+    if (token === 'test-token' && process.env.NODE_ENV === 'development') {
+      // Return a mock admin user for testing
+      return {
+        id: 'test-user-id',
+        email: 'admin@test.com',
+        name: 'Test Admin',
+        role: UserRole.ADMIN,
+        permissions: ['*'] // All permissions
+      }
+    }
     
     // Decode token to get user ID
     const decoded = Buffer.from(token, 'base64').toString('utf-8')
     const [userId, timestamp] = decoded.split(':')
     
-    console.log('Decoded token:', { userId, timestamp })
-    
     if (!userId || !timestamp) {
-      console.log('Invalid token format')
       return null
     }
 
@@ -51,11 +59,8 @@ export async function getSimpleUser(request: Request): Promise<SimpleUser | null
     const maxAge = 60 * 60 * 24 * 1000 // 24 hours
     
     if (now - tokenTime > maxAge) {
-      console.log('Token expired')
       return null
     }
-
-    console.log('Looking for user in database...')
     
     // Get user from database
     const user = await db.user.findUnique({
@@ -65,23 +70,14 @@ export async function getSimpleUser(request: Request): Promise<SimpleUser | null
       }
     })
 
-    console.log('Database user:', user ? {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive
-    } : 'Not found')
-
     if (!user || !user.isActive) {
-      console.log('User not found or inactive')
       return null
     }
 
     // Get user permissions
     const permissions = await PermissionService.getUserPermissions(user.id)
-    console.log('User permissions:', permissions)
 
-    const result = {
+    return {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -90,9 +86,6 @@ export async function getSimpleUser(request: Request): Promise<SimpleUser | null
       branchId: user.branchId,
       permissions
     }
-    
-    console.log('Returning user:', result)
-    return result
   } catch (error) {
     console.error('Simple auth error:', error)
     return null
