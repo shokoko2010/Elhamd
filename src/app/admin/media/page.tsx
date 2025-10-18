@@ -29,7 +29,8 @@ import {
   Folder,
   Tag,
   Copy,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
 
 interface MediaFile {
@@ -89,10 +90,12 @@ function MediaContent() {
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showFolderDialog, setShowFolderDialog] = useState(false)
+  const [showReplaceDialog, setShowReplaceDialog] = useState(false)
   
   // Form states
   const [editingFile, setEditingFile] = useState<MediaFile | null>(null)
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null)
+  const [replaceFile, setReplaceFile] = useState<File | null>(null)
   const [editForm, setEditForm] = useState({
     title: '',
     altText: '',
@@ -112,10 +115,10 @@ function MediaContent() {
     setLoading(true)
     setError('')
     try {
-      console.log('🔄 Loading media data...')
+      console.log('🔄 Loading media data from file system...')
       
-      // Fetch media files from API using direct fetch - get all files without limit
-      const response = await fetch('/api/media-simple', {
+      // Fetch media files from new API that reads from uploads directory
+      const response = await fetch('/api/media-files', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +126,7 @@ function MediaContent() {
         credentials: 'include', // Include cookies for authentication
       })
       
-      console.log('📡 Media API response status:', response.status)
+      console.log('📡 Media Files API response status:', response.status)
       
       if (!response.ok) {
         if (response.status === 401) {
@@ -137,72 +140,43 @@ function MediaContent() {
       }
       
       const data = await response.json()
-      console.log('📊 Media API response:', data)
+      console.log('📊 Media Files API response:', data)
       
       // Ensure data structure is valid
-      if (data && data.data && data.data.files && Array.isArray(data.data.files)) {
+      if (data && data.success && data.data && Array.isArray(data.data.files)) {
         // Map the media files to match the interface
         const mappedFiles = data.data.files.map((file: any) => ({
           id: file.id,
-          name: file.filename || file.name || 'Unnamed',
-          originalName: file.originalName || file.originalFilename || file.name || 'Unnamed',
+          name: file.name,
+          originalName: file.originalName,
           url: file.url,
-          thumbnailUrl: file.thumbnailUrl || file.url,
-          size: file.size || 0,
-          type: file.mimeType?.startsWith('image/') ? 'image' : 'document',
-          mimeType: file.mimeType || 'application/octet-stream',
-          altText: file.altText || '',
-          title: file.title || '',
-          description: file.description || '',
-          tags: Array.isArray(file.tags) ? file.tags : (typeof file.tags === 'string' ? JSON.parse(file.tags) : []),
-          category: file.category || 'other',
-          uploadedAt: file.createdAt || file.uploadedAt || new Date().toISOString(),
-          updatedAt: file.updatedAt || file.uploadedAt || new Date().toISOString(),
-          uploadedBy: file.createdBy || file.uploadedBy || 'unknown',
+          thumbnailUrl: file.thumbnailUrl,
+          size: file.size,
+          type: file.type,
+          mimeType: file.mimeType,
+          altText: file.altText,
+          title: file.title,
+          description: file.description,
+          tags: Array.isArray(file.tags) ? file.tags : [],
+          category: file.category,
+          uploadedAt: file.uploadedAt,
+          updatedAt: file.updatedAt,
+          uploadedBy: file.uploadedBy,
           width: file.width,
           height: file.height,
           isPublic: file.isPublic,
           isFeatured: file.isFeatured
         }))
-        console.log(`✅ Mapped ${mappedFiles.length} media files`)
+        console.log(`✅ Loaded ${mappedFiles.length} media files from file system`)
         setMediaFiles(mappedFiles)
+        
+        // Set folders from API response
+        if (data.data.folders && Array.isArray(data.data.folders)) {
+          setFolders(data.data.folders)
+        }
       } else {
         console.warn('⚠️ Invalid media data structure:', data)
         throw new Error('Invalid media data structure')
-      }
-
-      // Fetch media stats using direct fetch
-      try {
-        const statsResponse = await fetch('/api/media/stats', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        })
-        
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json()
-          console.log('📈 Stats API response:', statsData)
-          
-          // Update folders based on categories
-          if (statsData && statsData.data && statsData.data.byCategory && typeof statsData.data.byCategory === 'object' && statsData.data.byCategory !== null) {
-            const categoryFolders = Object.entries(statsData.data.byCategory).map(([category, info]: [string, any]) => ({
-              id: category,
-              name: categories.find(c => c.value === category)?.label || category,
-              path: `/${category}`,
-              fileCount: info.count || 0,
-              createdAt: new Date().toISOString()
-            }))
-            console.log(`📁 Created ${categoryFolders.length} category folders`)
-            setFolders(categoryFolders)
-          }
-        } else {
-          console.warn('⚠️ Failed to fetch stats:', statsResponse.status)
-        }
-      } catch (statsError) {
-        console.warn('⚠️ Stats fetch error:', statsError)
-        // Continue without stats - not critical
       }
       
     } catch (error) {
@@ -340,17 +314,24 @@ function MediaContent() {
     setShowEditDialog(true)
   }
 
+  const handleReplaceFileDialog = (file: MediaFile) => {
+    setEditingFile(file)
+    setReplaceFile(null)
+    setShowReplaceDialog(true)
+  }
+
   const handleSaveEdit = async () => {
     if (!editingFile) return
 
     try {
-      const response = await fetch(`/api/media-simple?id=${editingFile.id}`, {
+      const response = await fetch(`/api/media-files`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
         body: JSON.stringify({
+          id: editingFile.id,
           title: editForm.title,
           altText: editForm.altText,
           description: editForm.description,
@@ -391,7 +372,7 @@ function MediaContent() {
 
     try {
       const deletePromises = selectedFiles.map(fileId => 
-        fetch(`/api/media-simple?id=${fileId}`, { 
+        fetch(`/api/media-files?id=${fileId}`, { 
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -406,6 +387,56 @@ function MediaContent() {
     } catch (error) {
       console.error('Error deleting files:', error)
       setError('فشل في حذف الملفات')
+    }
+  }
+
+  const handleReplaceFile = async (fileId: string, newFile: File) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', newFile)
+      formData.append('fileId', fileId)
+
+      const response = await fetch('/api/media-files/replace', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to replace file')
+      }
+
+      const result = await response.json()
+      
+      // Update the file in the list
+      setMediaFiles(prev => prev.map(file => 
+        file.id === fileId ? {
+          ...file,
+          name: result.data.name,
+          originalName: result.data.originalName,
+          size: result.data.size,
+          updatedAt: result.data.updatedAt
+        } : file
+      ))
+
+      return result.data
+    } catch (error) {
+      console.error('Error replacing file:', error)
+      setError('فشل في استبدال الملف')
+      throw error
+    }
+  }
+
+  const handleReplaceFileSubmit = async () => {
+    if (!editingFile || !replaceFile) return
+
+    try {
+      await handleReplaceFile(editingFile.id, replaceFile)
+      setShowReplaceDialog(false)
+      setEditingFile(null)
+      setReplaceFile(null)
+    } catch (error) {
+      console.error('Error replacing file:', error)
     }
   }
 
@@ -664,6 +695,9 @@ function MediaContent() {
                           <Button variant="secondary" size="sm" onClick={() => handleEditFile(file)}>
                             <Edit className="h-4 w-4" />
                           </Button>
+                          <Button variant="secondary" size="sm" onClick={() => handleReplaceFileDialog(file)}>
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                       
@@ -753,6 +787,9 @@ function MediaContent() {
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEditFile(file)}>
                               <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleReplaceFileDialog(file)}>
+                              <RefreshCw className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => {
                               try {
@@ -935,6 +972,59 @@ function MediaContent() {
             </Button>
             <Button onClick={handleSaveEdit}>
               حفظ التغييرات
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Replace File Dialog */}
+      <Dialog open={showReplaceDialog} onOpenChange={setShowReplaceDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>استبدال الملف</DialogTitle>
+            <DialogDescription>
+              استبدال الملف الحالي بملف جديد. سيتم إنشاء نسخة احتياطية من الملف الأصلي.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingFile && (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-3 bg-gray-50">
+                <p className="text-sm font-medium mb-1">الملف الحالي:</p>
+                <p className="text-sm text-gray-600">{editingFile.name}</p>
+                <p className="text-xs text-gray-500">{formatFileSize(editingFile.size)}</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="replaceFile">اختر ملفاً جديداً:</Label>
+                <Input
+                  id="replaceFile"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setReplaceFile(e.target.files?.[0] || null)}
+                  className="mt-2"
+                />
+              </div>
+              
+              {replaceFile && (
+                <div className="border rounded-lg p-3 bg-blue-50">
+                  <p className="text-sm font-medium mb-1">الملف الجديد:</p>
+                  <p className="text-sm text-gray-600">{replaceFile.name}</p>
+                  <p className="text-xs text-gray-500">{formatFileSize(replaceFile.size)}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex gap-3 mt-6">
+            <Button variant="outline" onClick={() => setShowReplaceDialog(false)}>
+              إلغاء
+            </Button>
+            <Button 
+              onClick={handleReplaceFileSubmit}
+              disabled={!replaceFile}
+            >
+              استبدال الملف
             </Button>
           </div>
         </DialogContent>
