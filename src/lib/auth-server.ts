@@ -159,3 +159,19 @@ export async function hasAnyPermission(userId: string, permissions: string[]): P
 export async function hasAllPermissions(userId: string, permissions: string[]): Promise<boolean> {
   return await PermissionService.hasAllPermissions(userId, permissions)
 }
+
+// Simple auth verification for API routes
+export async function verifyAuth(request: Request) {
+  try {
+    const user = await getAuthUser()
+    
+    if (!user) {
+      return { success: false, error: 'No authenticated user found' }
+    }
+    
+    return { success: true, user }
+  } catch (error) {
+    console.error('Auth verification error:', error)
+    return { success: false, error: 'Authentication failed' }
+  }
+}

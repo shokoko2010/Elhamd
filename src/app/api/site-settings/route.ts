@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getSimpleUser } from '@/lib/simple-auth'
 
 const prisma = new PrismaClient({
   datasources: {
@@ -9,9 +10,21 @@ const prisma = new PrismaClient({
   }
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     console.log('GET /api/site-settings - Fetching site settings...')
+    
+    // Verify authentication
+    const user = await getSimpleUser(request)
+    if (!user) {
+      console.log('Authentication failed: No user found')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    console.log('User authenticated:', user.email)
     
     // Get the first site settings record
     const settings = await prisma.siteSettings.findFirst()
@@ -74,6 +87,18 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     console.log('POST /api/site-settings - Saving site settings...')
+    
+    // Verify authentication
+    const user = await getSimpleUser(request)
+    if (!user) {
+      console.log('Authentication failed: No user found')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    console.log('User authenticated:', user.email)
     
     const body = await request.json()
     console.log('Received settings data:', JSON.stringify(body, null, 2))
