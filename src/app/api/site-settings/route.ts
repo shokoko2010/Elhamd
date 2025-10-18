@@ -1,80 +1,41 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
-import { authorize, UserRole } from '@/lib/unified-auth'
-import { db } from '@/lib/db'
+import { PrismaClient } from '@prisma/client'
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const key = searchParams.get('key')
-
-    const where: any = { isActive: true }
-    
-    if (key) {
-      where.id = key
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: 'file:db/custom.db'
     }
+  }
+})
 
-    const settings = await db.siteSettings.findMany({
-      where,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: key ? 1 : 10
-    })
-
-    // Ensure all JSON fields have default values
-    const processedSettings = settings.map(setting => ({
-      ...setting,
-      socialLinks: setting.socialLinks || {},
-      seoSettings: setting.seoSettings || {},
-      performanceSettings: setting.performanceSettings || {},
-      headerSettings: setting.headerSettings || {},
-      footerSettings: setting.footerSettings || {}
-    }))
-
-    if (processedSettings.length === 0) {
+export async function GET() {
+  try {
+    console.log('GET /api/site-settings - Fetching site settings...')
+    
+    // Get the first site settings record
+    const settings = await prisma.siteSettings.findFirst()
+    
+    console.log('Found settings:', settings ? 'Yes' : 'No')
+    
+    if (!settings) {
       // Return default settings if none exist
       const defaultSettings = {
         id: 'default',
-        logoUrl: '/logo.svg',
-        faviconUrl: '/favicon.ico',
         primaryColor: '#3B82F6',
         secondaryColor: '#10B981',
         accentColor: '#F59E0B',
         fontFamily: 'Inter',
-        siteTitle: 'Al-Hamd Cars',
-        siteDescription: 'Premium Car Dealership in Egypt',
+        siteTitle: 'Elhamd Import',
+        siteDescription: 'متخصصون في استيراد وبيع أفضل الشاحنات التجارية',
         contactEmail: 'info@elhamdimport.com',
-        contactPhone: '+20 123 456 7890',
-        contactAddress: 'Cairo, Egypt',
+        contactPhone: '+966 50 123 4567',
+        contactAddress: 'الرياض، المملكة العربية السعودية',
         socialLinks: {
-          facebook: 'https://facebook.com/alhamdcars',
-          twitter: 'https://twitter.com/alhamdcars',
-          instagram: 'https://instagram.com/alhamdcars',
-          linkedin: 'https://linkedin.com/company/alhamdcars'
-        },
-        seoSettings: {
-          metaTitle: 'Al-Hamd Cars - Premium Car Dealership in Egypt',
-          metaDescription: 'Discover premium cars at Al-Hamd Cars. Best prices, excellent service, and wide selection of vehicles.',
-          keywords: 'cars, dealership, egypt, premium vehicles, car sales',
-          ogImage: '/og-image.jpg',
-          twitterHandle: '@alhamdcars'
-        },
-        performanceSettings: {
-          cachingEnabled: true,
-          cacheTTL: 300,
-          compressionEnabled: true,
-          imageOptimizationEnabled: true,
-          lazyLoadingEnabled: true,
-          minificationEnabled: true,
-          bundleOptimizationEnabled: true,
-          cdnEnabled: false,
-          cdnUrl: '',
-          prefetchingEnabled: true,
-          monitoringEnabled: true
+          facebook: '',
+          twitter: '',
+          instagram: '',
+          linkedin: ''
         },
         headerSettings: {
           showLogo: true,
@@ -92,58 +53,19 @@ export async function GET(request: NextRequest) {
           showNewsletter: true,
           showCopyright: true,
           columns: 4
-        },
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        }
       }
-      return NextResponse.json([defaultSettings])
+      
+      console.log('Returning default settings')
+      return NextResponse.json(defaultSettings)
     }
 
-    return NextResponse.json(processedSettings)
+    console.log('Returning existing settings')
+    return NextResponse.json(settings)
   } catch (error) {
     console.error('Error fetching site settings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch site settings' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN] })
-
-    const body = await request.json()
-    const { headerSettings, footerSettings } = body
-
-    // Get current active settings
-    const currentSettings = await db.siteSettings.findFirst({
-      where: { isActive: true }
-    })
-
-    if (!currentSettings) {
-      return NextResponse.json(
-        { error: 'No active settings found' },
-        { status: 404 }
-      )
-    }
-
-    // Update settings
-    const updatedSettings = await db.siteSettings.update({
-      where: { id: currentSettings.id },
-      data: {
-        headerSettings: headerSettings || currentSettings.headerSettings,
-        footerSettings: footerSettings || currentSettings.footerSettings,
-        updatedAt: new Date()
-      }
-    })
-
-    return NextResponse.json(updatedSettings)
-  } catch (error) {
-    console.error('Error updating site settings:', error)
-    return NextResponse.json(
-      { error: 'Failed to update site settings' },
+      { error: 'Failed to fetch site settings', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -151,69 +73,53 @@ export async function PUT(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN] })
-
+    console.log('POST /api/site-settings - Saving site settings...')
+    
     const body = await request.json()
-    const {
-      logoUrl,
-      faviconUrl,
-      primaryColor,
-      secondaryColor,
-      accentColor,
-      fontFamily,
-      siteTitle,
-      siteDescription,
-      contactEmail,
-      contactPhone,
-      contactAddress,
-      socialLinks,
-      seoSettings,
-      performanceSettings,
-      headerSettings,
-      footerSettings
-    } = body
-
+    console.log('Received settings data:', JSON.stringify(body, null, 2))
+    
     // Validate required fields
-    if (!siteTitle || !contactEmail) {
+    if (!body.siteTitle || !body.contactEmail) {
+      console.log('Validation failed: Missing required fields')
       return NextResponse.json(
         { error: 'Site title and contact email are required' },
         { status: 400 }
       )
     }
 
-    // Deactivate existing settings
-    await db.siteSettings.updateMany({
-      where: { isActive: true },
-      data: { isActive: false }
-    })
+    // Check if settings already exist
+    const existingSettings = await prisma.siteSettings.findFirst()
+    console.log('Existing settings found:', existingSettings ? 'Yes' : 'No')
+    
+    let settings
+    if (existingSettings) {
+      // Update existing settings
+      console.log('Updating existing settings...')
+      settings = await prisma.siteSettings.update({
+        where: { id: existingSettings.id },
+        data: {
+          ...body,
+          updatedAt: new Date()
+        }
+      })
+    } else {
+      // Create new settings
+      console.log('Creating new settings...')
+      settings = await prisma.siteSettings.create({
+        data: {
+          ...body,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      })
+    }
 
-    const settings = await db.siteSettings.create({
-      data: {
-        logoUrl,
-        faviconUrl,
-        primaryColor,
-        secondaryColor,
-        accentColor,
-        fontFamily,
-        siteTitle,
-        siteDescription,
-        contactEmail,
-        contactPhone,
-        contactAddress,
-        socialLinks: socialLinks || {},
-        seoSettings: seoSettings || {},
-        performanceSettings: performanceSettings || {},
-        headerSettings: headerSettings || {},
-        footerSettings: footerSettings || {},
-        isActive: true
-      }
-    })
-
-    return NextResponse.json(settings, { status: 201 })
+    console.log('Settings saved successfully:', settings.id)
+    return NextResponse.json(settings)
   } catch (error) {
-    console.error('Error creating site settings:', error)
+    console.error('Error saving site settings:', error)
     return NextResponse.json(
-      { error: 'Failed to create site settings' },
+      { error: 'Failed to save site settings', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
