@@ -2753,6 +2753,75 @@ model PopupConfig {
   @@map("popup_configs")
 }
 
+model ContactSubmission {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String
+  subject     String?
+  message     String
+  department  String?
+  status      String   @default("PENDING")
+  submittedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("contact_submissions")
+}
+
+model ServiceBookingSubmission {
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String
+  vehicleType   String
+  serviceType   String
+  preferredDate DateTime
+  preferredTime String
+  message       String?
+  status        String   @default("PENDING")
+  submittedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("service_booking_submissions")
+}
+
+model TestDriveSubmission {
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String
+  vehicleId     String
+  vehicleModel  String
+  preferredDate DateTime
+  preferredTime String
+  message       String?
+  status        String   @default("PENDING")
+  submittedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("test_drive_submissions")
+}
+
+model ConsultationSubmission {
+  id               String   @id @default(cuid())
+  name             String
+  email            String
+  phone            String
+  consultationType String
+  preferredDate    DateTime
+  preferredTime    String
+  message          String?
+  status           String   @default("PENDING")
+  submittedAt      DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("consultation_submissions")
+}
+
 enum VehicleSpecCategory {
   ENGINE
   EXTERIOR
@@ -3572,73 +3641,4 @@ enum PopupPosition {
   BOTTOM_LEFT
   BOTTOM_CENTER
   BOTTOM_RIGHT
-}
-
-model ContactSubmission {
-  id          String   @id @default(cuid())
-  name        String
-  email       String
-  phone       String
-  subject     String?
-  message     String
-  department  String?
-  status      String   @default("PENDING")
-  submittedAt DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@map("contact_submissions")
-}
-
-model ServiceBookingSubmission {
-  id            String   @id @default(cuid())
-  name          String
-  email         String
-  phone         String
-  vehicleType   String
-  serviceType   String
-  preferredDate DateTime
-  preferredTime String
-  message       String?
-  status        String   @default("PENDING")
-  submittedAt   DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  @@map("service_booking_submissions")
-}
-
-model TestDriveSubmission {
-  id            String   @id @default(cuid())
-  name          String
-  email         String
-  phone         String
-  vehicleId     String
-  vehicleModel  String
-  preferredDate DateTime
-  preferredTime String
-  message       String?
-  status        String   @default("PENDING")
-  submittedAt   DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  @@map("test_drive_submissions")
-}
-
-model ConsultationSubmission {
-  id               String   @id @default(cuid())
-  name             String
-  email            String
-  phone            String
-  consultationType String
-  preferredDate    DateTime
-  preferredTime    String
-  message          String?
-  status           String   @default("PENDING")
-  submittedAt      DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  @@map("consultation_submissions")
 }
