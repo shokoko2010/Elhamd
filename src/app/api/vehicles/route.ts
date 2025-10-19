@@ -1,5 +1,10 @@
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { VehicleCategory } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,23 +13,32 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '12')
     const page = parseInt(searchParams.get('page') || '1')
     const search = searchParams.get('search') || ''
+    const fuelType = searchParams.get('fuelType') || ''
+    const transmission = searchParams.get('transmission') || ''
 
     const skip = (page - 1) * limit
 
     // Build where clause
     const where: any = {
-      status: 'ACTIVE'
+      status: 'AVAILABLE'
     }
 
     if (category && category !== 'all') {
-      where.category = {
-        name: { contains: category, mode: 'insensitive' }
-      }
+      where.category = category as VehicleCategory
+    }
+
+    if (fuelType && fuelType !== 'all') {
+      where.fuelType = fuelType
+    }
+
+    if (transmission && transmission !== 'all') {
+      where.transmission = transmission
     }
 
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
+        { make: { contains: search, mode: 'insensitive' } },
+        { model: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } }
       ]
     }
@@ -35,17 +49,16 @@ export async function GET(request: NextRequest) {
         include: {
           images: {
             orderBy: {
-              displayOrder: 'asc'
+              order: 'asc'
             },
             select: {
               id: true,
-              url: true,
-              fileName: true,
+              imageUrl: true,
+              altText: true,
               isPrimary: true,
-              displayOrder: true
+              order: true
             }
-          },
-          category: true
+          }
         },
         orderBy: [
           { createdAt: 'desc' }
@@ -56,35 +69,8 @@ export async function GET(request: NextRequest) {
       db.vehicle.count({ where })
     ])
 
-    // Transform the data to match the expected format
-    const transformedVehicles = vehicles.map(vehicle => ({
-      id: vehicle.id,
-      title: vehicle.title,
-      description: vehicle.description,
-      category: vehicle.category?.name || '',
-      price: 0, // Default price since it's not in our schema
-      fuelType: 'ديزل', // Default fuel type
-      transmission: 'يدوي', // Default transmission
-      year: 2024, // Default year
-      make: 'Tata', // Default make
-      model: vehicle.title,
-      images: vehicle.images.map(img => ({
-        id: img.id,
-        imageUrl: img.url,
-        altText: img.fileName,
-        isPrimary: img.isPrimary,
-        order: img.displayOrder
-      })),
-      specifications: vehicle.specifications,
-      highlights: vehicle.highlights,
-      features: vehicle.features,
-      status: vehicle.status,
-      createdAt: vehicle.createdAt,
-      updatedAt: vehicle.updatedAt
-    }))
-
     return NextResponse.json({
-      vehicles: transformedVehicles,
+      vehicles,
       pagination: {
         total,
         page,

@@ -1,55 +1,156 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { SecurityService } from '@/lib/security-service'
 
 export async function middleware(request: NextRequest) {
+  const securityService = SecurityService.getInstance()
+  
   // Handle employee dashboard authentication
   if (request.nextUrl.pathname.startsWith('/employee')) {
-    const token = request.cookies.get('staff_token')?.value
-    
-    if (!token) {
-      return NextResponse.redirect(new URL('/login', request.url))
+    try {
+      // Get our custom auth token
+      const token = request.cookies.get('staff_token')?.value
+      
+      if (!token) {
+        // Redirect to main login if not authenticated
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+      
+      // For now, just let the request pass - the page will handle auth validation
+      // This avoids middleware complexity that might cause issues
+      
+      const response = NextResponse.next()
+      return securityService.addSecurityHeaders(response)
+    } catch (error) {
+      // If there's any error with token, clear cookies and redirect to login
+      console.error('Middleware auth error:', error)
+      
+      const response = NextResponse.redirect(new URL('/login', request.url))
+      response.cookies.delete('staff_token')
+      
+      return response
     }
-    
-    const response = NextResponse.next()
-    return addBasicSecurityHeaders(response)
   }
   
   // Handle admin routes
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    const token = request.cookies.get('staff_token')?.value
+    try {
+      // Get our custom auth token
+      const token = request.cookies.get('staff_token')?.value
+      
+      if (!token) {
+        // Redirect to main login if not authenticated
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+      
+      const response = NextResponse.next()
+      return securityService.addSecurityHeaders(response)
+    } catch (error) {
+      console.error('Middleware auth error:', error)
+      
+      const response = NextResponse.redirect(new URL('/login', request.url))
+      response.cookies.delete('staff_token')
+      
+      return response
+    }
+  }
+  
+  // Apply security measures to API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    // Skip security for health check and some public endpoints
+    const publicEndpoints = [
+      '/api/health',
+      '/api/placeholder',
+      '/api/vehicles',
+      '/api/service-types',
+      '/api/availability',
+      '/api/site-settings'
+    ]
     
-    if (!token) {
-      return NextResponse.redirect(new URL('/login', request.url))
+    const isPublicEndpoint = publicEndpoints.some(endpoint => 
+      request.nextUrl.pathname.startsWith(endpoint)
+    )
+    
+    let rateLimitResult: {
+      allowed: boolean
+      remaining: number
+      resetTime: number
+    } | null = null
+    if (!isPublicEndpoint) {
+      // Apply rate limiting
+      rateLimitResult = await securityService.rateLimit(request, 'api')
+      if (!rateLimitResult.allowed) {
+        return NextResponse.json(
+          { error: 'Too many requests', message: 'Please try again later' },
+          { 
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit': '100',
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+              'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString()
+            }
+          }
+        )
+      }
     }
     
+    // Create a response wrapper for API routes
     const response = NextResponse.next()
-    return addBasicSecurityHeaders(response)
+    
+    // Add security headers
+    const securedResponse = securityService.addSecurityHeaders(response)
+    
+    // Add CORS headers
+    const corsResponse = securityService.handleCors(request, securedResponse)
+    
+    // Add rate limit headers for all API responses (only if rate limiting was applied)
+    if (!isPublicEndpoint && rateLimitResult) {
+      corsResponse.headers.set('X-RateLimit-Limit', '100')
+      corsResponse.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString())
+      corsResponse.headers.set('X-RateLimit-Reset', rateLimitResult.resetTime.toString())
+    }
+    
+    return corsResponse
   }
   
-  // Apply basic security to API routes
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    const response = NextResponse.next()
-    return addBasicSecurityHeaders(response)
-  }
-  
-  // Apply basic security headers to all responses
+  // Apply security headers to all responses
   const response = NextResponse.next()
-  return addBasicSecurityHeaders(response)
-}
-
-function addBasicSecurityHeaders(response: NextResponse) {
-  // Basic security headers
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'DENY')
-  response.headers.set('X-XSS-Protection', '1; mode=block')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  const securedResponse = securityService.addSecurityHeaders(response)
+  
+  // Add CSRF protection for non-GET requests
+  if (request.method !== 'GET') {
+    const origin = request.headers.get('origin')
+    const host = request.headers.get('host')
+    
+    // Allow same-origin requests
+    if (origin && origin !== `http://${host}` && origin !== `https://${host}`) {
+      // Check if origin is allowed
+      const allowedOrigins = process.env.NODE_ENV === 'production' 
+        ? ['https://elhamd-cars.com'] 
+        : ['http://localhost:3000']
+      
+      if (!allowedOrigins.includes(origin)) {
+        return NextResponse.json(
+          { error: 'Invalid origin' },
+          { status: 403 }
+        )
+      }
+    }
+  }
+  
+  // Security headers for web pages
+  securedResponse.headers.set('X-Content-Type-Options', 'nosniff')
+  securedResponse.headers.set('X-Frame-Options', 'DENY')
+  securedResponse.headers.set('X-XSS-Protection', '1; mode=block')
+  securedResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   
   // HSTS in production
   if (process.env.NODE_ENV === 'production') {
-    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
+    securedResponse.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
   }
   
-  return response
+  return securedResponse
 }
 
 export const config = {
