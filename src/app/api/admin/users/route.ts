@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user
-    const user = await db.user.create({
+    const newUser = await db.user.create({
       data: {
         email,
         name,
@@ -164,13 +164,13 @@ export async function POST(request: NextRequest) {
     if (permissions && permissions.length > 0) {
       await db.userPermission.createMany({
         data: permissions.map((permissionId: string) => ({
-          userId: user.id,
+          userId: newUser.id,
           permissionId
         }))
       })
     }
 
-    return NextResponse.json({ user }, { status: 201 })
+    return NextResponse.json({ user: newUser }, { status: 201 })
   } catch (error) {
     console.error('Error creating user:', error)
     return NextResponse.json(
