@@ -1,259 +1,126 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { getSimpleUser } from "@/lib/auth";
+import { UserRole } from "@/lib/db";
+
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { getSimpleUser } from '@/lib/simple-auth'
-import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
-import { z } from 'zod'
-
-// Validation schema for updates
-const updateVehicleSchema = z.object({
-  make: z.string().min(1, 'الماركة مطلوبة').optional(),
-  model: z.string().min(1, 'الموديل مطلوب').optional(),
-  year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
-  price: z.number().positive('السعر يجب أن يكون موجباً').optional(),
-  stockNumber: z.string().min(1, 'رقم المخزون مطلوب').optional(),
-  vin: z.string().optional(),
-  description: z.string().optional(),
-  category: z.nativeEnum(VehicleCategory).optional(),
-  fuelType: z.nativeEnum(FuelType).optional(),
-  transmission: z.nativeEnum(TransmissionType).optional(),
-  mileage: z.number().min(0).optional(),
-  color: z.string().optional(),
-  status: z.nativeEnum(VehicleStatus).optional(),
-  featured: z.boolean().optional(),
-  isActive: z.boolean().optional()
-})
-
 // GET /api/admin/vehicles/[id] - Get single vehicle
-export async function GET(request: NextRequest, context: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams
+) {
   try {
-    const { id } = await context.params
-    // Check authentication and authorization
-    const user = await getSimpleUser(request)
+    const user = await getSimpleUser(request);
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
-    }
-    
-    // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.STAFF ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('vehicles.update') ||
-                      user.permissions.includes('vehicles.delete') ||
-                      user.permissions.includes('vehicles.create') ||
-                      user.permissions.includes('vehicles.view')
-    
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const vehicle = await db.vehicle.findUnique({
       where: { id },
       include: {
         images: {
-          orderBy: { order: 'asc' }
+          orderBy: { displayOrder: "asc" },
         },
-        specifications: {
-          orderBy: { category: 'asc' }
-        },
-        pricing: true,
-        testDriveBookings: {
-          select: { id: true, date: true, timeSlot: true, status: true }
-        },
-        serviceBookings: {
-          select: { id: true, date: true, timeSlot: true, status: true }
-        }
-      }
-    })
+        category: true,
+      },
+    });
 
     if (!vehicle) {
-      return NextResponse.json(
-        { error: 'المركبة غير موجودة' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
-    return NextResponse.json(vehicle)
+    return NextResponse.json(vehicle);
   } catch (error) {
-    console.error('Error fetching vehicle:', error)
+    console.error("Failed to fetch vehicle:", error);
     return NextResponse.json(
-      { error: 'فشل في جلب المركبة' },
+      { error: "Failed to fetch vehicle" },
       { status: 500 }
-    )
+    );
   }
 }
 
 // PUT /api/admin/vehicles/[id] - Update vehicle
-export async function PUT(request: NextRequest, context: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  { params }: RouteParams
+) {
   try {
-    const { id } = await context.params
-    // Check authentication and authorization
-    const user = await getSimpleUser(request)
+    const user = await getSimpleUser(request);
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Check permissions
+    const canManageVehicles = user.role === UserRole.SUPER_ADMIN || 
+      user.permissions?.includes("manage_vehicles");
     
-    // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.STAFF ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('vehicles.update') ||
-                      user.permissions.includes('vehicles.delete') ||
-                      user.permissions.includes('vehicles.create') ||
-                      user.permissions.includes('vehicles.view')
-    
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    if (!canManageVehicles) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
-    // Check if vehicle exists
-    const existingVehicle = await db.vehicle.findUnique({
-      where: { id }
-    })
+    const { id } = await params;
+    const body = await request.json();
 
-    if (!existingVehicle) {
-      return NextResponse.json(
-        { error: 'المركبة غير موجودة' },
-        { status: 404 }
-      )
-    }
-
-    const body = await request.json()
-    
-    // Validate input
-    const validatedData = updateVehicleSchema.parse(body)
-
-    // Check if stock number already exists (if being updated)
-    if (validatedData.stockNumber && validatedData.stockNumber !== existingVehicle.stockNumber) {
-      const stockNumberExists = await db.vehicle.findUnique({
-        where: { stockNumber: validatedData.stockNumber }
-      })
-      
-      if (stockNumberExists) {
-        return NextResponse.json(
-          { error: 'رقم المخزون مستخدم بالفعل' },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Check if VIN already exists (if being updated)
-    if (validatedData.vin && validatedData.vin !== existingVehicle.vin) {
-      const vinExists = await db.vehicle.findUnique({
-        where: { vin: validatedData.vin }
-      })
-      
-      if (vinExists) {
-        return NextResponse.json(
-          { error: 'رقم الهيكل (VIN) مستخدم بالفعل' },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Update vehicle
     const vehicle = await db.vehicle.update({
       where: { id },
-      data: validatedData,
+      data: body,
       include: {
-        images: {
-          orderBy: { order: 'asc' }
-        },
-        specifications: {
-          orderBy: { category: 'asc' }
-        },
-        pricing: true
-      }
-    })
+        category: true,
+        images: true,
+      },
+    });
 
-    return NextResponse.json(vehicle)
+    return NextResponse.json(vehicle);
   } catch (error) {
-    console.error('Error updating vehicle:', error)
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: error.issues },
-        { status: 400 }
-      )
-    }
-    
+    console.error("Failed to update vehicle:", error);
     return NextResponse.json(
-      { error: 'فشل في تحديث المركبة' },
+      { error: "Failed to update vehicle" },
       { status: 500 }
-    )
+    );
   }
 }
 
 // DELETE /api/admin/vehicles/[id] - Delete vehicle
-export async function DELETE(request: NextRequest, context: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteParams
+) {
   try {
-    const { id } = await context.params
-    // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await getSimpleUser(request);
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Check permissions
+    const canManageVehicles = user.role === UserRole.SUPER_ADMIN || 
+      user.permissions?.includes("manage_vehicles");
     
-    // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.permissions.includes('DELETE_VEHICLES')
-    
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    if (!canManageVehicles) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
-    // Check if vehicle exists
-    const vehicle = await db.vehicle.findUnique({
-      where: { id },
-      include: {
-        testDriveBookings: true,
-        serviceBookings: true
-      }
-    })
-
-    if (!vehicle) {
-      return NextResponse.json(
-        { error: 'المركبة غير موجودة' },
-        { status: 404 }
-      )
-    }
-
-    // Check if vehicle has active bookings
-    const hasActiveBookings = vehicle.testDriveBookings.some(booking => 
-      ['PENDING', 'CONFIRMED'].includes(booking.status)
-    ) || vehicle.serviceBookings.some(booking => 
-      ['PENDING', 'CONFIRMED'].includes(booking.status)
-    )
-
-    if (hasActiveBookings) {
-      return NextResponse.json(
-        { error: 'لا يمكن حذف المركبة بسبب وجود حجوزات نشطة' },
-        { status: 400 }
-      )
-    }
+    const { id } = await params;
 
     // Delete vehicle images first
     await db.vehicleImage.deleteMany({
-      where: { vehicleId: id }
-    })
+      where: { vehicleId: id },
+    });
 
     // Delete vehicle
     await db.vehicle.delete({
-      where: { id }
-    })
+      where: { id },
+    });
 
-    return NextResponse.json({ message: 'تم حذف المركبة بنجاح' })
+    return NextResponse.json({ message: "Vehicle deleted successfully" });
   } catch (error) {
-    console.error('Error deleting vehicle:', error)
+    console.error("Failed to delete vehicle:", error);
     return NextResponse.json(
-      { error: 'فشل في حذف المركبة' },
+      { error: "Failed to delete vehicle" },
       { status: 500 }
-    )
+    );
   }
 }

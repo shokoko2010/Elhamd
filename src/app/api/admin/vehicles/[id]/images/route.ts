@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { getSimpleUser } from '@/lib/simple-auth'
 import { UserRole } from '@prisma/client'
 import { z } from 'zod'
 
@@ -29,16 +29,17 @@ export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await getSimpleUser(request)
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('*') ||
+                      user.permissions.includes('vehicles.view') ||
                       user.permissions.includes('EDIT_VEHICLES')
     
     if (!hasAccess) {
@@ -65,16 +66,17 @@ export async function POST(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await getSimpleUser(request)
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('*') ||
+                      user.permissions.includes('vehicles.update') ||
                       user.permissions.includes('EDIT_VEHICLES')
     
     if (!hasAccess) {
@@ -145,16 +147,17 @@ export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    const user = await getAuthUser()
+    const user = await getSimpleUser(request)
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('*') ||
+                      user.permissions.includes('vehicles.update') ||
                       user.permissions.includes('EDIT_VEHICLES')
     
     if (!hasAccess) {
@@ -189,6 +192,83 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     
     return NextResponse.json(
       { error: 'فشل في تحديث ترتيب الصور' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/admin/vehicles/[id]/images/[imageId] - Delete vehicle image
+export async function DELETE(request: NextRequest, context: RouteParams) {
+  try {
+    const { id } = await context.params
+    const url = new URL(request.url)
+    const imageId = url.searchParams.get('imageId')
+    
+    if (!imageId) {
+      return NextResponse.json(
+        { error: 'معرف الصورة مطلوب' },
+        { status: 400 }
+      )
+    }
+
+    // Check authentication and authorization
+    const user = await getSimpleUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.STAFF ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes('*') ||
+                      user.permissions.includes('vehicles.delete') ||
+                      user.permissions.includes('EDIT_VEHICLES')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
+
+    // Check if image exists and belongs to the vehicle
+    const image = await db.vehicleImage.findFirst({
+      where: { 
+        id: imageId,
+        vehicleId: id 
+      }
+    })
+
+    if (!image) {
+      return NextResponse.json(
+        { error: 'الصورة غير موجودة' },
+        { status: 404 }
+      )
+    }
+
+    // Delete the image
+    await db.vehicleImage.delete({
+      where: { id: imageId }
+    })
+
+    // If this was the primary image, set another image as primary if available
+    if (image.isPrimary) {
+      const remainingImages = await db.vehicleImage.findMany({
+        where: { vehicleId: id },
+        orderBy: { order: 'asc' }
+      })
+
+      if (remainingImages.length > 0) {
+        await db.vehicleImage.update({
+          where: { id: remainingImages[0].id },
+          data: { isPrimary: true }
+        })
+      }
+    }
+
+    return NextResponse.json({ message: 'تم حذف الصورة بنجاح' })
+  } catch (error) {
+    console.error('Error deleting vehicle image:', error)
+    return NextResponse.json(
+      { error: 'فشل في حذف الصورة' },
       { status: 500 }
     )
   }

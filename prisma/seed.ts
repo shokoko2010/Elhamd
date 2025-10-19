@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { seedTataComplete } from '../scripts/seed-tata-complete'
 
 const prisma = new PrismaClient()
 
@@ -1502,6 +1503,10 @@ async function main() {
   console.log('Customer (VIP): customer1@elhamdimport.online / customer123')
   console.log('Customer (Premium): customer2@elhamdimport.online / customer123')
   console.log('Customer (Standard): customer3@elhamdimport.online / customer123')
+
+  // Seed Tata Commercial Vehicles
+  console.log('\\n🚛 Seeding Tata Commercial Vehicles...')
+  await seedTataComplete()
 }
 
 main()
