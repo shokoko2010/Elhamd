@@ -4,7 +4,8 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireSimpleAuth } from '@/lib/simple-auth'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
 import { z } from 'zod'
 
 const popupConfigSchema = z.object({
@@ -59,9 +60,9 @@ const popupConfigSchema = z.object({
 // GET /api/admin/popup-configs/[id] - Get specific popup configuration
 export async function GET(request: NextRequest, context: RouteParams) {
   try {
-    const user = await requireSimpleAuth(request)
-    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await getAuthUser()
+    if (!user || !([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 })
     }
 
     const { id } = await context.params
@@ -84,9 +85,9 @@ export async function GET(request: NextRequest, context: RouteParams) {
 // PUT /api/admin/popup-configs/[id] - Update popup configuration
 export async function PUT(request: NextRequest, context: RouteParams) {
   try {
-    const user = await requireSimpleAuth(request)
-    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await getAuthUser()
+    if (!user || !([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 })
     }
 
     const { id } = await context.params
@@ -138,9 +139,9 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 // DELETE /api/admin/popup-configs/[id] - Delete popup configuration
 export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
-    const user = await requireSimpleAuth(request)
-    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await getAuthUser()
+    if (!user || !([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 })
     }
 
     const { id } = await context.params

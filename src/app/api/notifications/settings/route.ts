@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { authorize, UserRole } from '@/lib/unified-auth'
+import { authorize, UserRole } from '@/lib/auth-server'
 
 const authHandler = async (request: NextRequest) => {
   try {

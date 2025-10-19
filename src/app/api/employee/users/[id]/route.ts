@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 
 export async function PUT(
@@ -12,7 +12,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const user = await requireUnifiedAuth(request)
+    const user = await getAuthUser()
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -88,7 +88,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const user = await requireUnifiedAuth(request)
+    const user = await getAuthUser()
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

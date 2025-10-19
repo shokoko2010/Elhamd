@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -24,30 +25,28 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const response = await fetch('/api/simple-auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email,
-          password
-        })
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false
       })
       
-      if (response.ok) {
-        const data = await response.json()
+      if (result?.ok) {
+        console.log('Login successful')
         
-        console.log('Login successful:', data.user.role)
+        // Get user role to determine redirect
+        const response = await fetch('/api/auth/session')
+        const session = await response.json()
+        const userRole = session?.user?.role
         
         // Redirect based on role
-        if (data.user.role === UserRole.ADMIN || data.user.role === UserRole.SUPER_ADMIN) {
+        if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
           console.log('Redirecting to admin dashboard...')
           router.push('/admin')
-        } else if (data.user.role === UserRole.STAFF || data.user.role === UserRole.BRANCH_MANAGER) {
+        } else if (userRole === UserRole.STAFF || userRole === UserRole.BRANCH_MANAGER) {
           console.log('Redirecting to employee dashboard...')
           router.push('/employee/dashboard')
-        } else if (data.user.role === UserRole.CUSTOMER) {
+        } else if (userRole === UserRole.CUSTOMER) {
           console.log('Redirecting to customer dashboard...')
           router.push('/customer')
         } else {
@@ -55,8 +54,7 @@ export default function LoginPage() {
           router.push('/dashboard')
         }
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'البريد الإلكتروني أو كلمة المرور غير صحيحة')
+        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
       }
     } catch (err) {
       console.error('Login error:', err)

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { SecurityService } from '@/lib/security-service'
 
 export async function middleware(request: NextRequest) {
@@ -8,35 +9,34 @@ export async function middleware(request: NextRequest) {
   // Handle employee dashboard authentication
   if (request.nextUrl.pathname.startsWith('/employee')) {
     try {
-      // Get our custom auth token
-      const token = request.cookies.get('staff_token')?.value
+      // Get NextAuth token
+      const token = await getToken({ 
+        req: request, 
+        secret: process.env.NEXTAUTH_SECRET 
+      })
       
       if (!token) {
         // Redirect to main login if not authenticated
         return NextResponse.redirect(new URL('/login', request.url))
       }
       
-      // For now, just let the request pass - the page will handle auth validation
-      // This avoids middleware complexity that might cause issues
-      
       const response = NextResponse.next()
       return securityService.addSecurityHeaders(response)
     } catch (error) {
-      // If there's any error with token, clear cookies and redirect to login
+      // If there's any error with token, redirect to login
       console.error('Middleware auth error:', error)
-      
-      const response = NextResponse.redirect(new URL('/login', request.url))
-      response.cookies.delete('staff_token')
-      
-      return response
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
   
   // Handle admin routes
   if (request.nextUrl.pathname.startsWith('/admin')) {
     try {
-      // Get our custom auth token
-      const token = request.cookies.get('staff_token')?.value
+      // Get NextAuth token
+      const token = await getToken({ 
+        req: request, 
+        secret: process.env.NEXTAUTH_SECRET 
+      })
       
       if (!token) {
         // Redirect to main login if not authenticated
@@ -47,11 +47,7 @@ export async function middleware(request: NextRequest) {
       return securityService.addSecurityHeaders(response)
     } catch (error) {
       console.error('Middleware auth error:', error)
-      
-      const response = NextResponse.redirect(new URL('/login', request.url))
-      response.cookies.delete('staff_token')
-      
-      return response
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
   

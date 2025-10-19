@@ -1300,7 +1300,9 @@ const ImagesManagementDialog = ({
     
     setLoading(true)
     try {
-      const response = await fetch(`/api/admin/vehicles/${vehicle.id}/images`)
+      const response = await fetch(`/api/admin/vehicles/${vehicle.id}/images`, {
+        credentials: 'include'
+      })
       if (response.ok) {
         const imagesData = await response.json()
         setImages(imagesData)
@@ -1320,7 +1322,8 @@ const ImagesManagementDialog = ({
     setLoading(true)
     try {
       const response = await fetch(`/api/admin/vehicles/${vehicle?.id}/images/${imageId}/primary`, {
-        method: 'PUT'
+        method: 'PUT',
+        credentials: 'include'
       })
       
       if (response.ok) {
@@ -1346,7 +1349,8 @@ const ImagesManagementDialog = ({
     setLoading(true)
     try {
       const response = await fetch(`/api/admin/vehicles/${vehicle?.id}/images/${imageId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       })
       
       if (response.ok) {
@@ -1378,6 +1382,7 @@ const ImagesManagementDialog = ({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           imageUrl,
           altText: `${vehicle?.make} ${vehicle?.model}`,

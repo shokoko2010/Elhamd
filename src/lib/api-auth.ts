@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-server'
+import { authOptions } from '@/lib/authOptions'
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-secret'
 

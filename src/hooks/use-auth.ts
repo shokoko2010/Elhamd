@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import { UserRole } from '@prisma/client'
 import { Permission } from '@/lib/permissions'
 
@@ -20,91 +21,63 @@ export interface AuthUser {
 }
 
 export function useAuth() {
+  const { data: session, status } = useSession()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchUser = async () => {
-    try {
+  useEffect(() => {
+    if (status === 'loading') {
       setLoading(true)
-      setError(null)
-      
-      const response = await fetch('/api/simple-auth/me', {
-        credentials: 'include'
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setUser({
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.name,
-          role: data.user.role,
-          phone: data.user.phone,
-          branchId: data.user.branchId,
-          permissions: data.user.permissions || [],
-          isActive: data.user.isActive,
-          emailVerified: data.user.emailVerified,
-          lastLoginAt: data.user.lastLoginAt,
-          createdAt: new Date(data.user.createdAt),
-          updatedAt: new Date(data.user.updatedAt)
-        })
-      } else {
-        setUser(null)
-        if (response.status !== 401) {
-          setError('Failed to fetch user data')
-        }
-      }
-    } catch (err) {
-      console.error('Error in fetchUser:', err)
-      setError('An error occurred')
-      setUser(null)
-    } finally {
-      setLoading(false)
+      return
     }
-  }
+
+    if (status === 'authenticated' && session?.user) {
+      setUser({
+        id: session.user.id,
+        email: session.user.email!,
+        name: session.user.name,
+        role: session.user.role as UserRole,
+        phone: session.user.phone,
+        branchId: session.user.branchId,
+        permissions: session.user.permissions as Permission[] || [],
+        isActive: true, // Assuming active if session exists
+        emailVerified: true, // Assuming verified if session exists
+        lastLoginAt: session.user.lastLoginAt ? new Date(session.user.lastLoginAt) : null,
+        createdAt: new Date(), // Default values
+        updatedAt: new Date()
+      })
+      setError(null)
+    } else {
+      setUser(null)
+      setError(null)
+    }
+    
+    setLoading(false)
+  }, [session, status])
 
   const logout = async () => {
     try {
-      // Call logout API
-      const response = await fetch('/api/simple-auth/logout', { 
-        method: 'POST',
-        credentials: 'include'
+      await signOut({ 
+        redirect: true,
+        callbackUrl: '/login'
       })
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Logout successful:', data)
-      }
-      
-      // Clear user state immediately
-      setUser(null)
-      setError(null)
-      
-      // Try to clear cookie manually as backup
-      document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-      document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname
-      
-      // Force redirect to login page
-      window.location.href = '/login'
     } catch (error) {
       console.error('Logout error:', error)
-      
-      // Still clear state and redirect even if API fails
-      setUser(null)
-      setError(null)
-      document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+      // Force redirect even if signOut fails
       window.location.href = '/login'
     }
   }
 
   const update = async () => {
-    await fetchUser()
+    // NextAuth handles session updates automatically
+    // This is a placeholder for any manual refresh logic
+    if (status === 'authenticated') {
+      setLoading(true)
+      // NextAuth will automatically refresh the session
+      setTimeout(() => setLoading(false), 100)
+    }
   }
-
-  useEffect(() => {
-    fetchUser()
-  }, [])
 
   const authenticated = !!user && !loading
   const unauthenticated = !user && !loading
@@ -130,57 +103,57 @@ export function useAuth() {
   }
 
   const isAdmin = (): boolean => {
-    return hasAnyRole([UserRole.ADMIN])
+    return hasAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])
   }
 
   const isBranchManager = (): boolean => {
-    return hasAnyRole([UserRole.ADMIN, UserRole.BRANCH_MANAGER])
+    return hasAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER])
   }
 
   const isStaff = (): boolean => {
-    return hasAnyRole([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
+    return hasAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
   }
 
   const isCustomer = (): boolean => {
     return hasRole(UserRole.CUSTOMER)
   }
 
-  // Permission check helpers
-  const canViewUsers = (): boolean => hasPermission('users.view')
-  const canManageUsers = (): boolean => hasAnyPermission(['users.create', 'users.update', 'users.delete'])
-  const canManageRoles = (): boolean => hasPermission('users.update')
-  const canManagePermissions = (): boolean => hasPermission('users.update')
+  // Permission check helpers using updated PERMISSIONS constants
+  const canViewUsers = (): boolean => hasPermission('view_users')
+  const canManageUsers = (): boolean => hasAnyPermission(['create_users', 'edit_users', 'delete_users'])
+  const canManageRoles = (): boolean => hasPermission('edit_users')
+  const canManagePermissions = (): boolean => hasPermission('edit_users')
 
-  const canViewVehicles = (): boolean => hasPermission('vehicles.view')
-  const canManageVehicles = (): boolean => hasAnyPermission(['vehicles.create', 'vehicles.update', 'vehicles.delete'])
+  const canViewVehicles = (): boolean => hasPermission('view_vehicles')
+  const canManageVehicles = (): boolean => hasAnyPermission(['create_vehicles', 'edit_vehicles', 'delete_vehicles'])
 
-  const canViewBookings = (): boolean => hasPermission('bookings.view')
-  const canManageBookings = (): boolean => hasAnyPermission(['bookings.create', 'bookings.update', 'bookings.delete'])
+  const canViewBookings = (): boolean => hasPermission('view_bookings')
+  const canManageBookings = (): boolean => hasAnyPermission(['create_bookings', 'edit_bookings', 'delete_bookings'])
 
-  const canViewServices = (): boolean => hasPermission('bookings.view')
-  const canManageServices = (): boolean => hasAnyPermission(['bookings.create', 'bookings.update'])
+  const canViewServices = (): boolean => hasPermission('view_services')
+  const canManageServices = (): boolean => hasAnyPermission(['create_services', 'edit_services'])
 
-  const canViewInventory = (): boolean => hasPermission('vehicles.view')
-  const canManageInventory = (): boolean => hasAnyPermission(['vehicles.create', 'vehicles.update'])
-  const canManageWarehouses = (): boolean => hasPermission('branches.view')
-  const canManageSuppliers = (): boolean => hasPermission('branches.view')
+  const canViewInventory = (): boolean => hasPermission('view_inventory')
+  const canManageInventory = (): boolean => hasAnyPermission(['create_inventory_items', 'edit_inventory_items'])
+  const canManageWarehouses = (): boolean => hasPermission('view_branches')
+  const canManageSuppliers = (): boolean => hasPermission('view_branches')
 
-  const canViewFinancials = (): boolean => hasPermission('reports.view')
-  const canManageFinancials = (): boolean => hasAnyPermission(['reports.view', 'reports.export'])
+  const canViewFinancials = (): boolean => hasPermission('view_financials')
+  const canManageFinancials = (): boolean => hasAnyPermission(['view_financials', 'export_financial_data'])
 
-  const canViewBranches = (): boolean => hasPermission('branches.view')
-  const canManageBranches = (): boolean => hasAnyPermission(['branches.create', 'branches.update', 'branches.delete'])
-  const canManageBranchStaff = (): boolean => hasPermission('users.update')
+  const canViewBranches = (): boolean => hasPermission('view_branches')
+  const canManageBranches = (): boolean => hasAnyPermission(['create_branches', 'edit_branches', 'delete_branches'])
+  const canManageBranchStaff = (): boolean => hasPermission('edit_users')
 
-  const canViewCustomers = (): boolean => hasPermission('users.view')
-  const canManageCustomers = (): boolean => hasAnyPermission(['users.create', 'users.update'])
+  const canViewCustomers = (): boolean => hasPermission('view_customers')
+  const canManageCustomers = (): boolean => hasAnyPermission(['create_customers', 'edit_customers'])
 
-  const canViewReports = (): boolean => hasPermission('reports.view')
-  const canGenerateReports = (): boolean => hasPermission('reports.export')
-  const canExportData = (): boolean => hasPermission('reports.export')
+  const canViewReports = (): boolean => hasPermission('view_reports')
+  const canGenerateReports = (): boolean => hasPermission('export_data')
+  const canExportData = (): boolean => hasPermission('export_data')
 
-  const canManageSystemSettings = (): boolean => hasPermission('system.settings')
-  const canManageRoleTemplates = (): boolean => hasPermission('system.settings')
+  const canManageSystemSettings = (): boolean => hasPermission('manage_system_settings')
+  const canManageRoleTemplates = (): boolean => hasPermission('manage_roles_templates')
 
   return {
     user,

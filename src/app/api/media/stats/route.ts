@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { authorize, UserRole } from '@/lib/unified-auth';
+import { authorize, UserRole } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
   try {

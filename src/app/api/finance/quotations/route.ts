@@ -3,13 +3,13 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireUnifiedAuth(request)
+    const authUser = await getAuthUser()
     
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireUnifiedAuth(request)
+    const authUser = await getAuthUser()
     
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

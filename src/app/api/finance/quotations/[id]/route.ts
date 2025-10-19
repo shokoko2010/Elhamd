@@ -3,14 +3,14 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUnifiedAuth } from '@/lib/unified-auth'
+import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
-    const authenticatedUser = await requireUnifiedAuth(request)
+    const authenticatedUser = await getAuthUser()
     
     if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
 export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
-    const authenticatedUser = await requireUnifiedAuth(request)
+    const authenticatedUser = await getAuthUser()
     
     if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -186,7 +186,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
-    const authenticatedUser = await requireUnifiedAuth(request)
+    const authenticatedUser = await getAuthUser()
     
     if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

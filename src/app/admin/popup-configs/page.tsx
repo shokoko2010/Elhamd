@@ -90,18 +90,9 @@ export default function PopupConfigsPage() {
     try {
       setLoading(true)
       
-      // Check if user is authenticated
-      const authResponse = await fetch('/api/simple-auth/me')
-      if (!authResponse.ok) {
-        toast.error('يجب تسجيل الدخول للوصول إلى هذه الصفحة')
-        // Redirect to login page after a short delay
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 2000)
-        return
-      }
-      
-      const response = await fetch(`/api/admin/popup-configs?page=${pagination.page}&limit=${pagination.limit}`)
+      const response = await fetch(`/api/admin/popup-configs?page=${pagination.page}&limit=${pagination.limit}`, {
+        credentials: 'include'
+      })
       
       if (response.status === 401) {
         toast.error('يجب تسجيل الدخول للوصول إلى هذه الصفحة')
@@ -136,6 +127,7 @@ export default function PopupConfigsPage() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData)
       })
 
@@ -168,7 +160,10 @@ export default function PopupConfigsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/admin/popup-configs/${id}`, { method: 'DELETE' })
+      const response = await fetch(`/api/admin/popup-configs/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      })
       
       if (response.status === 401) {
         toast.error('يجب تسجيل الدخول للوصول إلى هذه الصفحة')

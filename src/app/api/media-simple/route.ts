@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { authorize, UserRole } from '@/lib/unified-auth'
+import { authorize, UserRole } from '@/lib/auth-server'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 

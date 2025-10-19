@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions } from '@/lib/authOptions'
 import { UserRole } from '@prisma/client'
 
 export interface ServerAuthUser {

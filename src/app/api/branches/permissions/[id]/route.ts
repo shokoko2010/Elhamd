@@ -11,7 +11,7 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
+    const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
@@ -63,7 +63,7 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
+    const user = await getAuthUser();
     if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }
@@ -132,7 +132,7 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
-    const user = await requireUnifiedAuth(request);
+    const user = await getAuthUser();
     if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 });
     }

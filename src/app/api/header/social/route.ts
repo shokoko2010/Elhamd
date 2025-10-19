@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { authorize, UserRole } from '@/lib/unified-auth'
+import { authorize, UserRole } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {

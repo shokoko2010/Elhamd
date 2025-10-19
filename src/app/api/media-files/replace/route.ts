@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
-import { getSimpleUser } from '@/lib/simple-auth'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    const user = await getSimpleUser(request)
-    if (!user) {
+    const user = await getAuthUser()
+    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Staff access required' },
         { status: 401 }
       )
     }

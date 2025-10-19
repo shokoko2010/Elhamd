@@ -4,13 +4,13 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireUnifiedAnyRole } from '@/lib/unified-auth-server'
+import { requireAnyRole } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await requireUnifiedAnyRole(request, [UserRole.ADMIN, UserRole.SUPER_ADMIN])
+    const user = await requireAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])
 
     const body = await request.json()
     const { sliderIds } = body

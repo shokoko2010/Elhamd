@@ -4,7 +4,8 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireSimpleAuth } from '@/lib/simple-auth'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
 import { z } from 'zod'
 
 const popupConfigSchema = z.object({
@@ -59,9 +60,9 @@ const popupConfigSchema = z.object({
 // GET /api/admin/popup-configs - Get all popup configurations
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireSimpleAuth(request)
-    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await getAuthUser()
+    if (!user || !([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -99,9 +100,9 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/popup-configs - Create new popup configuration
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireSimpleAuth(request)
-    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'BRANCH_MANAGER'].includes(user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await getAuthUser()
+    if (!user || !([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.BRANCH_MANAGER].includes(user.role))) {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 })
     }
 
     const body = await request.json()

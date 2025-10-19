@@ -4,9 +4,10 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSimpleUser } from '@/lib/simple-auth'
+import { getAuthUser } from '@/lib/auth-server'
 import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
+import { PERMISSIONS } from '@/lib/permissions'
 
 // Validation schemas
 const createVehicleSchema = z.object({
@@ -34,7 +35,7 @@ const updateVehicleSchema = createVehicleSchema.partial().extend({
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getSimpleUser(request)
+    const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('vehicles.view')
+                      user.permissions.includes(PERMISSIONS.VIEW_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getSimpleUser(request)
+    const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.STAFF ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes('vehicles.create')
+                      user.permissions.includes(PERMISSIONS.CREATE_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })

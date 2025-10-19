@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSimpleUser } from '@/lib/simple-auth'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
     console.log('GET /api/site-settings - Fetching site settings...')
     
     // Verify authentication
-    const user = await getSimpleUser(request)
-    if (!user) {
-      console.log('Authentication failed: No user found')
+    const user = await getAuthUser()
+    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role))) {
+      console.log('Authentication failed: No admin user found')
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Admin access required' },
         { status: 401 }
       )
     }
@@ -81,11 +82,11 @@ export async function POST(request: NextRequest) {
     console.log('POST /api/site-settings - Saving site settings...')
     
     // Verify authentication
-    const user = await getSimpleUser(request)
-    if (!user) {
-      console.log('Authentication failed: No user found')
+    const user = await getAuthUser()
+    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role))) {
+      console.log('Authentication failed: No admin user found')
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized - Admin access required' },
         { status: 401 }
       )
     }
