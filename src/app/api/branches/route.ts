@@ -8,9 +8,21 @@ import { authorize, UserRole } from '@/lib/auth-server';
 
 const authHandler = async (request: NextRequest) => {
   try {
-    return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.BRANCH_MANAGER,] })
+    const auth = await authorize(request, { 
+      roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] 
+    })
+    
+    if (auth.error) {
+      return auth.error
+    }
+    
+    return auth
   } catch (error) {
-    return null
+    console.error('Authentication error:', error)
+    return NextResponse.json(
+      { error: 'Authentication failed' },
+      { status: 500 }
+    )
   }
 }
 
@@ -20,6 +32,8 @@ export async function GET(request: NextRequest) {
     if (auth.error) {
       return auth.error
     }
+
+    const user = auth.user
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');

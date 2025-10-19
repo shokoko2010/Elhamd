@@ -4,11 +4,30 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ElectronicInvoicingService } from '@/lib/electronic-invoicing-service'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
+import { PERMISSIONS } from '@/lib/permissions'
 
 const invoicingService = ElectronicInvoicingService.getInstance()
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication and authorization
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.role === UserRole.ACCOUNTANT ||
+                      user.permissions.includes(PERMISSIONS.VIEW_INVOICES)
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
     const { searchParams } = new URL(request.url)
     
     const action = searchParams.get('action')
@@ -41,6 +60,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication and authorization
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.role === UserRole.ACCOUNTANT ||
+                      user.permissions.includes(PERMISSIONS.CREATE_INVOICES)
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
     const body = await request.json()
     const { action } = body
 

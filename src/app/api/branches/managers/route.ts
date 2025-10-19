@@ -9,6 +9,10 @@ import { authorize, UserRole } from '@/lib/auth-server';
 export async function GET(request: NextRequest) {
   try {
     const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    
+    if (auth.error) {
+      return auth.error
+    }
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';

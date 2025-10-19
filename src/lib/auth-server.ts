@@ -1,7 +1,8 @@
 import { getServerSession } from 'next-auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/authOptions'
 import { UserRole } from '@prisma/client'
-import { PermissionService } from './permissions'
+import { PermissionService, PERMISSIONS } from './permissions'
 
 export { authOptions }
 
@@ -52,18 +53,18 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     } else if (session.user.role === UserRole.BRANCH_MANAGER) {
       // Branch managers get vehicle management permissions
       const vehiclePermissions = [
-        PERMISSIONS.VEHICLE_MANAGE,
-        PERMISSIONS.VEHICLE_VIEW,
-        PERMISSIONS.VEHICLE_EDIT,
-        PERMISSIONS.VEHICLE_IMAGES_MANAGE
+        PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
+        PERMISSIONS.VIEW_VEHICLES,
+        PERMISSIONS.EDIT_VEHICLES,
+        PERMISSIONS.CREATE_VEHICLES
       ]
       permissions = Array.from(new Set([...permissions, ...vehiclePermissions]))
       console.log('Branch manager - vehicle permissions granted')
     } else if (session.user.role === UserRole.STAFF) {
       // Staff get basic vehicle permissions
       const staffPermissions = [
-        PERMISSIONS.VEHICLE_VIEW,
-        PERMISSIONS.VEHICLE_EDIT
+        PERMISSIONS.VIEW_VEHICLES,
+        PERMISSIONS.EDIT_VEHICLES
       ]
       permissions = Array.from(new Set([...permissions, ...staffPermissions]))
       console.log('Staff - basic permissions granted')
@@ -195,5 +196,59 @@ export async function verifyAuth(request: Request) {
   } catch (error) {
     console.error('Auth verification error:', error)
     return { success: false, error: 'Authentication failed' }
+  }
+}
+
+// Authorize function for API routes with role-based access
+export async function authorize(request: NextRequest, options?: { roles?: UserRole[], permissions?: string[] }) {
+  try {
+    const user = await getAuthUser()
+    
+    if (!user) {
+      return {
+        error: NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        )
+      }
+    }
+
+    // Check role-based access
+    if (options?.roles && options.roles.length > 0) {
+      if (!options.roles.includes(user.role)) {
+        return {
+          error: NextResponse.json(
+            { error: 'Insufficient permissions' },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
+    // Check permission-based access
+    if (options?.permissions && options.permissions.length > 0) {
+      const hasRequiredPermission = options.permissions.some(permission => 
+        user.permissions.includes(permission)
+      )
+      
+      if (!hasRequiredPermission) {
+        return {
+          error: NextResponse.json(
+            { error: 'Insufficient permissions' },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
+    return { user }
+  } catch (error) {
+    console.error('Authorization error:', error)
+    return {
+      error: NextResponse.json(
+        { error: 'Authorization failed' },
+        { status: 500 }
+      )
+    }
   }
 }

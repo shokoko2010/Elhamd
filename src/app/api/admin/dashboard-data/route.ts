@@ -4,9 +4,27 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { AdminService } from '@/lib/admin-service'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
+import { PERMISSIONS } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication and authorization
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.permissions.includes(PERMISSIONS.VIEW_DASHBOARD)
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
 
