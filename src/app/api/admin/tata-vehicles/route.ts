@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import { withSecurity } from '@/lib/api-middleware'
 import { z } from 'zod'
 
 // Schema for vehicle creation/update
@@ -41,7 +42,7 @@ const vehicleSchema = z.object({
 })
 
 // GET /api/admin/tata-vehicles - Get all Tata vehicles
-export async function GET(request: NextRequest) {
+export const GET = withSecurity(async (request: NextRequest) => {
   try {
     const user = await getCurrentUser()
     if (!user) {
@@ -126,10 +127,12 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching Tata vehicles:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+}, {
+  rateLimitKey: 'tata-vehicles-api'
+})
 
 // POST /api/admin/tata-vehicles - Create new Tata vehicle
-export async function POST(request: NextRequest) {
+export const POST = withSecurity(async (request: NextRequest) => {
   try {
     const user = await getCurrentUser()
     if (!user) {
@@ -150,7 +153,7 @@ export async function POST(request: NextRequest) {
     const validatedData = vehicleSchema.parse(body)
 
     // Generate unique stock number
-    const stockNumber = `TATA-${validatedData.model.replace(/\\s+/g, '-')}-${Date.now()}`
+    const stockNumber = `TATA-${validatedData.model.replace(/\s+/g, '-')}-${Date.now()}`
 
     // Create vehicle
     const vehicle = await db.vehicle.create({
@@ -254,4 +257,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+}, {
+  rateLimitKey: 'tata-vehicles-api'
+})

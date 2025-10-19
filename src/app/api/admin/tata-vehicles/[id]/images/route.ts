@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import { withSecurity } from '@/lib/api-middleware'
 import { z } from 'zod'
 
 // Schema for image creation/update
@@ -12,10 +13,10 @@ const imageSchema = z.object({
 })
 
 // GET /api/admin/tata-vehicles/[id]/images - Get vehicle images
-export async function GET(
+export const GET = withSecurity(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const user = await getCurrentUser()
     if (!user) {
@@ -56,13 +57,15 @@ export async function GET(
     console.error('Error fetching vehicle images:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+}, {
+  rateLimitKey: 'tata-vehicles-api'
+})
 
 // POST /api/admin/tata-vehicles/[id]/images - Add new image
-export async function POST(
+export const POST = withSecurity(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const user = await getCurrentUser()
     if (!user) {
@@ -131,13 +134,15 @@ export async function POST(
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+}, {
+  rateLimitKey: 'tata-vehicles-api'
+})
 
 // PUT /api/admin/tata-vehicles/[id]/images - Reorder images
-export async function PUT(
+export const PUT = withSecurity(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const user = await getCurrentUser()
     if (!user) {
@@ -228,4 +233,6 @@ export async function PUT(
     console.error('Error reordering vehicle images:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
+}, {
+  rateLimitKey: 'tata-vehicles-api'
+})
