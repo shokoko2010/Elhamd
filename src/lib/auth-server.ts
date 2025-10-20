@@ -1,10 +1,18 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/authOptions'
-import { UserRole } from '@prisma/client'
 import { PermissionService, PERMISSIONS } from './permissions'
 
 export { authOptions }
+
+// Define UserRole enum locally to avoid import issues
+export enum UserRole {
+  CUSTOMER = 'CUSTOMER',
+  STAFF = 'STAFF',
+  BRANCH_MANAGER = 'BRANCH_MANAGER',
+  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN'
+}
 
 export interface AuthUser {
   id: string
