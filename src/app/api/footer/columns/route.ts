@@ -22,7 +22,7 @@ export async function GET() {
           content: 'الرئيسية\nالسيارات\nالخدمات\nمن نحن\nاتصل بنا', 
           order: 1, 
           isVisible: true,
-          type: 'links'
+          type: 'LINKS'
         },
         { 
           id: '2', 
@@ -30,7 +30,7 @@ export async function GET() {
           content: 'بيع السيارات\nقيادة تجريبية\nحجز الخدمة\nالتمويل\nالصيانة', 
           order: 2, 
           isVisible: true,
-          type: 'links'
+          type: 'LINKS'
         },
         { 
           id: '3', 
@@ -38,7 +38,7 @@ export async function GET() {
           content: '+20 2 1234 5678\ninfo@elhamdimport.com\nالقاهرة، مصر', 
           order: 3, 
           isVisible: true,
-          type: 'contact'
+          type: 'CONTACT'
         },
         { 
           id: '4', 
@@ -46,7 +46,7 @@ export async function GET() {
           content: 'فيسبوك\nتويتر\nانستغرام\nلينكدإن', 
           order: 4, 
           isVisible: true,
-          type: 'social'
+          type: 'SOCIAL'
         },
         { 
           id: '5', 
@@ -54,7 +54,7 @@ export async function GET() {
           content: 'سياسة الخصوصية\nالشروط والأحكام\nالأسئلة الشائعة\nخريطة الموقع', 
           order: 5, 
           isVisible: true,
-          type: 'links'
+          type: 'LINKS'
         },
         { 
           id: '6', 
@@ -62,7 +62,7 @@ export async function GET() {
           content: 'الدعم الفني\nالضمان\nالصيانة\nقطع الغيار', 
           order: 6, 
           isVisible: true,
-          type: 'links'
+          type: 'LINKS'
         }
       ])
     }
@@ -113,7 +113,7 @@ export async function PUT(request: NextRequest) {
         content: column.content,
         order: column.order,
         isVisible: column.isVisible,
-        type: column.type
+        type: (column.type as string)?.toUpperCase() as any || 'LINKS'
       }))
     })
 

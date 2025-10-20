@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ImageOptimizationService } from '@/lib/image-optimization'
-import { getAuthUser } from '@/lib/auth-server'
+import { getAuthUser, UserRole } from '@/lib/auth-server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has permission to upload images
-    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
+    if (![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role)) {
       console.log('User role:', user.role, 'Not authorized for image upload');
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
@@ -80,7 +80,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if user has permission to delete images
-    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
+    if (![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

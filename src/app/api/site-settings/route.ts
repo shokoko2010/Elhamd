@@ -109,11 +109,19 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     console.log('Received settings data:', JSON.stringify(body, null, 2))
     
-    // Validate required fields
-    if (!body.siteTitle || !body.contactEmail) {
-      console.log('Validation failed: Missing required fields')
+    // Validate required fields - be more flexible with validation
+    if (!body.siteTitle && !body.title) {
+      console.log('Validation failed: Missing site title')
       return NextResponse.json(
-        { error: 'Site title and contact email are required' },
+        { error: 'Site title is required' },
+        { status: 400 }
+      )
+    }
+    
+    if (!body.contactEmail && !body.email) {
+      console.log('Validation failed: Missing contact email')
+      return NextResponse.json(
+        { error: 'Contact email is required' },
         { status: 400 }
       )
     }
@@ -182,11 +190,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Received settings data:', JSON.stringify(body, null, 2))
     
-    // Validate required fields
-    if (!body.siteTitle || !body.contactEmail) {
-      console.log('Validation failed: Missing required fields')
+    // Validate required fields - be more flexible with validation
+    if (!body.siteTitle && !body.title) {
+      console.log('Validation failed: Missing site title')
       return NextResponse.json(
-        { error: 'Site title and contact email are required' },
+        { error: 'Site title is required' },
+        { status: 400 }
+      )
+    }
+    
+    if (!body.contactEmail && !body.email) {
+      console.log('Validation failed: Missing contact email')
+      return NextResponse.json(
+        { error: 'Contact email is required' },
         { status: 400 }
       )
     }
