@@ -33,7 +33,10 @@ import {
   Archive,
   Shield,
   ShoppingCart,
-  MessageSquare
+  MessageSquare,
+  Layout,
+  Type,
+  Palette
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -66,6 +69,16 @@ const sidebarItems = [
         icon: Settings,
       },
       {
+        title: 'الهيدر',
+        href: '/admin/header',
+        icon: Layout,
+      },
+      {
+        title: 'الفوتر',
+        href: '/admin/footer',
+        icon: Type,
+      },
+      {
         title: 'الوسائط',
         href: '/admin/media',
         icon: ImageIcon,
@@ -76,9 +89,19 @@ const sidebarItems = [
         icon: FileText,
       },
       {
+        title: 'إدارة المحتوى',
+        href: '/admin/content-management',
+        icon: Layout,
+      },
+      {
         title: 'النوافذ المنبثقة',
         href: '/admin/popup-configs',
         icon: MessageSquare,
+      },
+      {
+        title: 'SEO',
+        href: '/admin/page-seo',
+        icon: Palette,
       },
     ]
   },

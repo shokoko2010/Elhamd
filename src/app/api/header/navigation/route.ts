@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { authorize, UserRole } from '@/lib/auth-server'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
 import { db } from '@/lib/db'
 
 interface NavigationItem {
@@ -17,7 +18,20 @@ interface NavigationItem {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] })
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.role === UserRole.BRANCH_MANAGER ||
+                      user.role === UserRole.STAFF
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
 
     // Get navigation from site settings
     const settings = await db.siteSettings.findFirst()
@@ -46,7 +60,18 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
 
     const body = await request.json()
     const navigation = body as NavigationItem[]

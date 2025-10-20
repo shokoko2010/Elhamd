@@ -3,7 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { authorize, UserRole } from '@/lib/auth-server'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -38,7 +39,18 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
     
     const data = await request.json()
 
