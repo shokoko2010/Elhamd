@@ -62,6 +62,7 @@ export const authOptions = {
     strategy: 'jwt' as const
   },
   secret: process.env.NEXTAUTH_SECRET,
+  url: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -89,16 +90,18 @@ export const authOptions = {
   },
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: false, // Set to false for development
-        domain: undefined
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
       }
     }
   },
-  useSecureCookies: false,
+  useSecureCookies: process.env.NODE_ENV === 'production',
   debug: true
 }
