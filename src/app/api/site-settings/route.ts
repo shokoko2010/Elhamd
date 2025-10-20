@@ -109,8 +109,30 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     console.log('Received settings data:', JSON.stringify(body, null, 2))
     
+    // Handle different data structures
+    let settingsData = body
+    
+    // If data is nested (e.g., { headerSettings: { ... } }), extract it
+    if (body.headerSettings) {
+      console.log('Extracting headerSettings from nested structure')
+      settingsData = { ...body.headerSettings }
+    }
+    
+    // Handle other nested structures
+    if (body.footerSettings) {
+      console.log('Extracting footerSettings from nested structure')
+      settingsData = { ...settingsData, ...body.footerSettings }
+    }
+    
+    if (body.seoSettings) {
+      console.log('Extracting seoSettings from nested structure')
+      settingsData = { ...settingsData, seoSettings: body.seoSettings }
+    }
+    
+    console.log('Processed settings data:', JSON.stringify(settingsData, null, 2))
+    
     // Validate required fields - be more flexible with validation
-    if (!body.siteTitle && !body.title) {
+    if (!settingsData.siteTitle && !settingsData.title) {
       console.log('Validation failed: Missing site title')
       return NextResponse.json(
         { error: 'Site title is required' },
@@ -118,7 +140,7 @@ export async function PUT(request: NextRequest) {
       )
     }
     
-    if (!body.contactEmail && !body.email) {
+    if (!settingsData.contactEmail && !settingsData.email) {
       console.log('Validation failed: Missing contact email')
       return NextResponse.json(
         { error: 'Contact email is required' },
@@ -132,21 +154,19 @@ export async function PUT(request: NextRequest) {
     
     let settings
     if (existingSettings) {
-      // Update existing settings
+      // Update existing settings - merge with existing
       console.log('Updating existing settings...')
+      const mergedData = { ...existingSettings, ...settingsData, updatedAt: new Date() }
       settings = await db.siteSettings.update({
         where: { id: existingSettings.id },
-        data: {
-          ...body,
-          updatedAt: new Date()
-        }
+        data: mergedData
       })
     } else {
       // Create new settings
       console.log('Creating new settings...')
       settings = await db.siteSettings.create({
         data: {
-          ...body,
+          ...settingsData,
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -190,8 +210,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Received settings data:', JSON.stringify(body, null, 2))
     
+    // Handle different data structures
+    let settingsData = body
+    
+    // If data is nested (e.g., { headerSettings: { ... } }), extract it
+    if (body.headerSettings) {
+      console.log('Extracting headerSettings from nested structure')
+      settingsData = { ...body.headerSettings }
+    }
+    
+    // Handle other nested structures
+    if (body.footerSettings) {
+      console.log('Extracting footerSettings from nested structure')
+      settingsData = { ...settingsData, ...body.footerSettings }
+    }
+    
+    if (body.seoSettings) {
+      console.log('Extracting seoSettings from nested structure')
+      settingsData = { ...settingsData, seoSettings: body.seoSettings }
+    }
+    
+    console.log('Processed settings data:', JSON.stringify(settingsData, null, 2))
+    
     // Validate required fields - be more flexible with validation
-    if (!body.siteTitle && !body.title) {
+    if (!settingsData.siteTitle && !settingsData.title) {
       console.log('Validation failed: Missing site title')
       return NextResponse.json(
         { error: 'Site title is required' },
@@ -199,7 +241,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    if (!body.contactEmail && !body.email) {
+    if (!settingsData.contactEmail && !settingsData.email) {
       console.log('Validation failed: Missing contact email')
       return NextResponse.json(
         { error: 'Contact email is required' },
@@ -213,21 +255,19 @@ export async function POST(request: NextRequest) {
     
     let settings
     if (existingSettings) {
-      // Update existing settings
+      // Update existing settings - merge with existing
       console.log('Updating existing settings...')
+      const mergedData = { ...existingSettings, ...settingsData, updatedAt: new Date() }
       settings = await db.siteSettings.update({
         where: { id: existingSettings.id },
-        data: {
-          ...body,
-          updatedAt: new Date()
-        }
+        data: mergedData
       })
     } else {
       // Create new settings
       console.log('Creating new settings...')
       settings = await db.siteSettings.create({
         data: {
-          ...body,
+          ...settingsData,
           createdAt: new Date(),
           updatedAt: new Date()
         }
