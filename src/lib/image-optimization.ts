@@ -249,6 +249,58 @@ export class ImageOptimizationService {
     }
   }
 
+  async saveGeneralImage(
+    file: File,
+    folderName: string = 'general'
+  ): Promise<{
+    url: string
+    thumbnails: { [key: string]: string }
+    filename: string
+    filesize: number
+  }> {
+    // Validate file
+    const validation = this.validateImage(file)
+    if (!validation.valid) {
+      throw new Error(validation.error)
+    }
+
+    // Convert file to buffer
+    const buffer = Buffer.from(await file.arrayBuffer())
+
+    // Generate unique filename
+    const timestamp = Date.now()
+    const randomId = Math.random().toString(36).substring(2, 15)
+    const imageId = `general_${timestamp}_${randomId}`
+
+    // Create path
+    const dirPath = join(this.uploadDir, folderName)
+    const filename = `${imageId}.webp`
+    const filepath = join(dirPath, filename)
+
+    // Ensure directory exists
+    await this.ensureDirectory(dirPath)
+
+    // Optimize and save image
+    const optimizedBuffer = await this.optimizeImage(buffer, {
+      width: 1200,
+      height: 900,
+      quality: 85,
+      format: 'webp'
+    })
+
+    await writeFile(filepath, optimizedBuffer)
+
+    // Generate thumbnails
+    const thumbnails = await this.generateThumbnails(buffer, imageId)
+
+    return {
+      url: `/uploads/${folderName}/${filename}`,
+      thumbnails,
+      filename,
+      filesize: optimizedBuffer.length
+    }
+  }
+
   async deleteImage(imagePath: string): Promise<void> {
     try {
       // Remove leading slash if present

@@ -58,9 +58,21 @@ export async function PUT(
 ) {
   try {
     const { id } = await context.params
+    console.log('=== DEBUG: Branch Update API Called ===')
+    console.log('Branch ID:', id)
+    
     const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    
+    if (auth.error) {
+      console.log('Auth failed:', auth.error)
+      return auth.error
+    }
+
+    console.log('Auth successful for user:', auth.user.email)
 
     const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2))
+    
     const {
       name,
       code,
@@ -80,8 +92,11 @@ export async function PUT(
     });
 
     if (!existingBranch) {
+      console.log('Branch not found:', id)
       return NextResponse.json({ error: 'الفرع غير موجود' }, { status: 404 });
     }
+
+    console.log('Existing branch found:', existingBranch.name)
 
     // التحقق من عدم وجود فرع آخر بنفس الكود
     if (code && code !== existingBranch.code) {
@@ -90,6 +105,7 @@ export async function PUT(
       });
 
       if (branchWithSameCode) {
+        console.log('Branch with same code exists:', code)
         return NextResponse.json(
           { error: 'يوجد فرع آخر بهذا الكود' },
           { status: 400 }
@@ -104,6 +120,7 @@ export async function PUT(
       });
 
       if (!manager) {
+        console.log('Manager not found:', managerId)
         return NextResponse.json(
           { error: 'المدير المحدد غير موجود' },
           { status: 400 }
@@ -116,6 +133,7 @@ export async function PUT(
       });
 
       if (existingManagerBranch && existingManagerBranch.id !== id) {
+        console.log('Manager already assigned to another branch:', managerId)
         return NextResponse.json(
           { error: 'هذا المستخدم يدير فرع آخر بالفعل' },
           { status: 400 }
@@ -123,20 +141,24 @@ export async function PUT(
       }
     }
 
+    const updateData: any = {
+      ...(name && { name }),
+      ...(code && { code }),
+      ...(address !== undefined && { address }),
+      ...(phone !== undefined && { phone }),
+      ...(email !== undefined && { email }),
+      ...(managerId !== undefined && { managerId }),
+      ...(currency && { currency }),
+      ...(timezone && { timezone }),
+      ...(settings !== undefined && { settings }),
+      ...(isActive !== undefined && { isActive }),
+    };
+
+    console.log('Update data:', JSON.stringify(updateData, null, 2))
+
     const branch = await db.branch.update({
       where: { id },
-      data: {
-        ...(name && { name }),
-        ...(code && { code }),
-        ...(address !== undefined && { address }),
-        ...(phone !== undefined && { phone }),
-        ...(email !== undefined && { email }),
-        ...(managerId !== undefined && { managerId }),
-        ...(currency && { currency }),
-        ...(timezone && { timezone }),
-        ...(settings !== undefined && { settings }),
-        ...(isActive !== undefined && { isActive }),
-      },
+      data: updateData,
       include: {
         manager: {
           select: {
@@ -148,6 +170,7 @@ export async function PUT(
       },
     });
 
+    console.log('Branch updated successfully:', branch.name)
     return NextResponse.json(branch);
   } catch (error) {
     console.error('Error updating branch:', error);

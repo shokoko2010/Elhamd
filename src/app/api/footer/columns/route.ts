@@ -80,25 +80,34 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    console.log('=== DEBUG: Footer Columns PUT API Called ===')
+    
     const user = await getAuthUser()
     if (!user) {
+      console.log('No authenticated user found')
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
+    
+    console.log('User authenticated:', user.email, 'Role:', user.role)
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
                       user.role === UserRole.SUPER_ADMIN
 
     if (!hasAccess) {
+      console.log('User does not have required role')
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const data = await request.json()
+    console.log('Footer columns data received:', JSON.stringify(data, null, 2))
 
     // Delete all existing columns
+    console.log('Deleting existing footer columns...')
     await db.footerColumn.deleteMany()
 
     // Create new columns
+    console.log('Creating new footer columns...')
     const newColumns = await db.footerColumn.createMany({
       data: data.map((column: any) => ({
         title: column.title,
@@ -109,10 +118,14 @@ export async function PUT(request: NextRequest) {
       }))
     })
 
+    console.log('Footer columns created successfully')
+
     // Return the created columns
     const createdColumns = await db.footerColumn.findMany({
       orderBy: { order: 'asc' }
     })
+
+    console.log('Retrieved created columns:', createdColumns.length)
 
     return NextResponse.json(createdColumns)
   } catch (error) {

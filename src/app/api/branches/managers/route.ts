@@ -8,15 +8,22 @@ import { authorize, UserRole } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('=== DEBUG: Branch Managers API Called ===')
+    
     const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
     
     if (auth.error) {
+      console.log('Auth failed:', auth.error)
       return auth.error
     }
+
+    console.log('Auth successful for user:', auth.user.email)
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const excludeBranchId = searchParams.get('excludeBranchId');
+
+    console.log('Search params:', { search, excludeBranchId })
 
     const where: any = {
       role: { in: [UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN] },
@@ -30,6 +37,8 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    console.log('User where clause:', JSON.stringify(where, null, 2))
+
     // استبعاد المديرين الذين يديرون فروع أخرى
     const managedBranches = await db.branch.findMany({
       where: {
@@ -39,11 +48,15 @@ export async function GET(request: NextRequest) {
       select: { managerId: true },
     });
 
+    console.log('Managed branches found:', managedBranches.length)
+
     const managedManagerIds = managedBranches.map(b => b.managerId).filter(Boolean);
 
     if (managedManagerIds.length > 0) {
       where.id = { notIn: managedManagerIds };
     }
+
+    console.log('Final where clause:', JSON.stringify(where, null, 2))
 
     const managers = await db.user.findMany({
       where,
@@ -66,6 +79,8 @@ export async function GET(request: NextRequest) {
         { name: 'asc' },
       ],
     });
+
+    console.log('Managers found:', managers.length)
 
     return NextResponse.json(managers);
   } catch (error) {

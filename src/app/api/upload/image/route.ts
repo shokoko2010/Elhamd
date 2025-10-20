@@ -25,11 +25,11 @@ export async function POST(request: NextRequest) {
     const vehicleId = formData.get('vehicleId') as string
     const isPrimary = formData.get('isPrimary') === 'true'
     const order = parseInt(formData.get('order') as string) || 0
-    const type = formData.get('type') as 'vehicle' | 'service' || 'vehicle'
-    const entityId = formData.get('entityId') as string
+    const type = formData.get('type') as 'vehicle' | 'service' | 'general' || 'vehicle'
+    const entityId = formData.get('entityId') as string || formData.get('vehicleId') as string || 'general'
 
-    if (!file || !entityId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
     // Initialize image optimization service
@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
       result = await imageService.saveVehicleImage(file, entityId, isPrimary, order)
     } else if (type === 'service') {
       result = await imageService.saveServiceImage(file, entityId)
+    } else if (type === 'general') {
+      // For general uploads, just save to a general folder
+      result = await imageService.saveGeneralImage(file, entityId)
     } else {
       return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 })
     }
