@@ -109,67 +109,80 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     console.log('Received settings data:', JSON.stringify(body, null, 2))
     
-    // Handle different data structures
-    let settingsData = body
-    
-    // If data is nested (e.g., { headerSettings: { ... } }), extract it
-    if (body.headerSettings) {
-      console.log('Extracting headerSettings from nested structure')
-      settingsData = { ...body.headerSettings }
-    }
-    
-    // Handle other nested structures
-    if (body.footerSettings) {
-      console.log('Extracting footerSettings from nested structure')
-      settingsData = { ...settingsData, ...body.footerSettings }
-    }
-    
-    if (body.seoSettings) {
-      console.log('Extracting seoSettings from nested structure')
-      settingsData = { ...settingsData, seoSettings: body.seoSettings }
-    }
-    
-    console.log('Processed settings data:', JSON.stringify(settingsData, null, 2))
-    
-    // Validate required fields - be more flexible with validation
-    if (!settingsData.siteTitle && !settingsData.title) {
-      console.log('Validation failed: Missing site title')
-      return NextResponse.json(
-        { error: 'Site title is required' },
-        { status: 400 }
-      )
-    }
-    
-    if (!settingsData.contactEmail && !settingsData.email) {
-      console.log('Validation failed: Missing contact email')
-      return NextResponse.json(
-        { error: 'Contact email is required' },
-        { status: 400 }
-      )
-    }
-
-    // Check if settings already exist
+    // Get existing settings
     const existingSettings = await db.siteSettings.findFirst()
     console.log('Existing settings found:', existingSettings ? 'Yes' : 'No')
     
+    let finalData
+    if (existingSettings) {
+      // Start with existing settings
+      finalData = { ...existingSettings }
+      
+      // Update with new data
+      Object.assign(finalData, body)
+      
+      // Handle nested JSON fields properly
+      if (body.headerSettings) {
+        finalData.headerSettings = {
+          ...(existingSettings.headerSettings as any || {}),
+          ...body.headerSettings
+        }
+      }
+      if (body.footerSettings) {
+        finalData.footerSettings = {
+          ...(existingSettings.footerSettings as any || {}),
+          ...body.footerSettings
+        }
+      }
+      if (body.seoSettings) {
+        finalData.seoSettings = {
+          ...(existingSettings.seoSettings as any || {}),
+          ...body.seoSettings
+        }
+      }
+      
+      finalData.updatedAt = new Date()
+    } else {
+      // Create new settings
+      finalData = {
+        ...body,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      
+      // Validate required fields for new settings
+      if (!finalData.siteTitle && !finalData.title) {
+        console.log('Validation failed: Missing site title')
+        return NextResponse.json(
+          { error: 'Site title is required' },
+          { status: 400 }
+        )
+      }
+      
+      if (!finalData.contactEmail && !finalData.email) {
+        console.log('Validation failed: Missing contact email')
+        return NextResponse.json(
+          { error: 'Contact email is required' },
+          { status: 400 }
+        )
+      }
+    }
+    
+    console.log('Final data to save:', JSON.stringify(finalData, null, 2))
+
     let settings
     if (existingSettings) {
-      // Update existing settings - merge with existing
+      // Update existing settings
       console.log('Updating existing settings...')
-      const mergedData = { ...existingSettings, ...settingsData, updatedAt: new Date() }
       settings = await db.siteSettings.update({
         where: { id: existingSettings.id },
-        data: mergedData
+        data: finalData
       })
     } else {
       // Create new settings
       console.log('Creating new settings...')
       settings = await db.siteSettings.create({
-        data: {
-          ...settingsData,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
+        data: finalData
       })
     }
 
@@ -210,67 +223,80 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Received settings data:', JSON.stringify(body, null, 2))
     
-    // Handle different data structures
-    let settingsData = body
-    
-    // If data is nested (e.g., { headerSettings: { ... } }), extract it
-    if (body.headerSettings) {
-      console.log('Extracting headerSettings from nested structure')
-      settingsData = { ...body.headerSettings }
-    }
-    
-    // Handle other nested structures
-    if (body.footerSettings) {
-      console.log('Extracting footerSettings from nested structure')
-      settingsData = { ...settingsData, ...body.footerSettings }
-    }
-    
-    if (body.seoSettings) {
-      console.log('Extracting seoSettings from nested structure')
-      settingsData = { ...settingsData, seoSettings: body.seoSettings }
-    }
-    
-    console.log('Processed settings data:', JSON.stringify(settingsData, null, 2))
-    
-    // Validate required fields - be more flexible with validation
-    if (!settingsData.siteTitle && !settingsData.title) {
-      console.log('Validation failed: Missing site title')
-      return NextResponse.json(
-        { error: 'Site title is required' },
-        { status: 400 }
-      )
-    }
-    
-    if (!settingsData.contactEmail && !settingsData.email) {
-      console.log('Validation failed: Missing contact email')
-      return NextResponse.json(
-        { error: 'Contact email is required' },
-        { status: 400 }
-      )
-    }
-
-    // Check if settings already exist
+    // Get existing settings
     const existingSettings = await db.siteSettings.findFirst()
     console.log('Existing settings found:', existingSettings ? 'Yes' : 'No')
     
+    let finalData
+    if (existingSettings) {
+      // Start with existing settings
+      finalData = { ...existingSettings }
+      
+      // Update with new data
+      Object.assign(finalData, body)
+      
+      // Handle nested JSON fields properly
+      if (body.headerSettings) {
+        finalData.headerSettings = {
+          ...(existingSettings.headerSettings as any || {}),
+          ...body.headerSettings
+        }
+      }
+      if (body.footerSettings) {
+        finalData.footerSettings = {
+          ...(existingSettings.footerSettings as any || {}),
+          ...body.footerSettings
+        }
+      }
+      if (body.seoSettings) {
+        finalData.seoSettings = {
+          ...(existingSettings.seoSettings as any || {}),
+          ...body.seoSettings
+        }
+      }
+      
+      finalData.updatedAt = new Date()
+    } else {
+      // Create new settings
+      finalData = {
+        ...body,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      
+      // Validate required fields for new settings
+      if (!finalData.siteTitle && !finalData.title) {
+        console.log('Validation failed: Missing site title')
+        return NextResponse.json(
+          { error: 'Site title is required' },
+          { status: 400 }
+        )
+      }
+      
+      if (!finalData.contactEmail && !finalData.email) {
+        console.log('Validation failed: Missing contact email')
+        return NextResponse.json(
+          { error: 'Contact email is required' },
+          { status: 400 }
+        )
+      }
+    }
+    
+    console.log('Final data to save:', JSON.stringify(finalData, null, 2))
+
     let settings
     if (existingSettings) {
-      // Update existing settings - merge with existing
+      // Update existing settings
       console.log('Updating existing settings...')
-      const mergedData = { ...existingSettings, ...settingsData, updatedAt: new Date() }
       settings = await db.siteSettings.update({
         where: { id: existingSettings.id },
-        data: mergedData
+        data: finalData
       })
     } else {
       // Create new settings
       console.log('Creating new settings...')
       settings = await db.siteSettings.create({
-        data: {
-          ...settingsData,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
+        data: finalData
       })
     }
 
