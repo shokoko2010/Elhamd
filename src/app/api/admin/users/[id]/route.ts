@@ -4,12 +4,21 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { authorize, UserRole } from '@/lib/auth-server'
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
   try {
+    const { id } = await context.params
+    
+    // Check authentication
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    if (auth.error) {
+      return auth.error
+    }
+
     const user = await db.user.findUnique({
       where: { id },
       include: {
@@ -49,6 +58,14 @@ export async function PUT(
   context: RouteParams
 ) {
   try {
+    const { id } = await context.params
+    
+    // Check authentication
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    if (auth.error) {
+      return auth.error
+    }
+    
     const body = await request.json()
     const { email, name, role, phone, isActive, permissions } = body
 
@@ -135,6 +152,14 @@ export async function DELETE(
   context: RouteParams
 ) {
   try {
+    const { id } = await context.params
+    
+    // Check authentication
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    if (auth.error) {
+      return auth.error
+    }
+
     // Check if user exists
     const existingUser = await db.user.findUnique({
       where: { id }

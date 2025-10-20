@@ -8,23 +8,33 @@ import { authorize, UserRole } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== DEBUG: Branch Managers API Called ===')
+    console.log('=== BRANCH MANAGERS API: START ===')
     
-    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
-    
-    if (auth.error) {
-      console.log('Auth failed:', auth.error)
-      return auth.error
+    // Step 1: Check authentication
+    let authUser;
+    try {
+      const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+      if (auth.error) {
+        console.log('Auth failed:', auth.error)
+        return auth.error
+      }
+      authUser = auth.user
+      console.log('Auth successful for user:', authUser.email)
+    } catch (authError) {
+      console.error('Auth exception:', authError)
+      return NextResponse.json(
+        { error: 'Authentication failed', details: authError instanceof Error ? authError.message : 'Unknown auth error' },
+        { status: 401 }
+      )
     }
 
-    console.log('Auth successful for user:', auth.user.email)
-
+    // Step 2: Parse query parameters
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const excludeBranchId = searchParams.get('excludeBranchId');
+    console.log('Query params:', { search, excludeBranchId })
 
-    console.log('Search params:', { search, excludeBranchId })
-
+    // Step 3: Build base query
     const where: any = {
       role: { in: [UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN] },
       isActive: true,
@@ -37,56 +47,76 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    console.log('User where clause:', JSON.stringify(where, null, 2))
+    console.log('Base where clause:', JSON.stringify(where, null, 2))
 
-    // استبعاد المديرين الذين يديرون فروع أخرى
-    const managedBranches = await db.branch.findMany({
-      where: {
-        managerId: { not: null },
-        ...(excludeBranchId && { id: { not: excludeBranchId } }),
-      },
-      select: { managerId: true },
-    });
+    // Step 4: Get managed branches (with error handling)
+    let managedBranches = [];
+    try {
+      managedBranches = await db.branch.findMany({
+        where: {
+          managerId: { not: null },
+          ...(excludeBranchId && { id: { not: excludeBranchId } }),
+        },
+        select: { managerId: true },
+      });
+      console.log('Managed branches found:', managedBranches.length)
+    } catch (branchError) {
+      console.error('Error fetching managed branches:', branchError)
+      // Continue without excluding managed branches
+    }
 
-    console.log('Managed branches found:', managedBranches.length)
-
+    // Step 5: Exclude already assigned managers
     const managedManagerIds = managedBranches.map(b => b.managerId).filter(Boolean);
-
     if (managedManagerIds.length > 0) {
       where.id = { notIn: managedManagerIds };
     }
 
     console.log('Final where clause:', JSON.stringify(where, null, 2))
 
-    const managers = await db.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
+    // Step 6: Fetch managers (with error handling)
+    let managers = [];
+    try {
+      managers = await db.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
           },
         },
-      },
-      orderBy: [
-        { role: 'desc' },
-        { name: 'asc' },
-      ],
-    });
+        orderBy: [
+          { role: 'desc' },
+          { name: 'asc' },
+        ],
+      });
+      console.log('Managers found:', managers.length)
+    } catch (managersError) {
+      console.error('Error fetching managers:', managersError)
+      return NextResponse.json(
+        { error: 'Failed to fetch managers', details: managersError instanceof Error ? managersError.message : 'Unknown error' },
+        { status: 500 }
+      )
+    }
 
-    console.log('Managers found:', managers.length)
-
+    console.log('=== BRANCH MANAGERS API: SUCCESS ===')
     return NextResponse.json(managers);
+    
   } catch (error) {
-    console.error('Error fetching branch managers:', error);
+    console.error('=== BRANCH MANAGERS API: ERROR ===', error);
     return NextResponse.json(
-      { error: 'حدث خطأ في جلب قائمة المديرين' },
+      { 
+        error: 'حدث خطأ في جلب قائمة المديرين',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
