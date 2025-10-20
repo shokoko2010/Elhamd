@@ -118,8 +118,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
       data: {
         ...validatedData,
         vehicleId: id,
-        order: imageCount,
-        thumbnailUrl: validatedData.imageUrl // In real app, generate thumbnail
+        order: imageCount
       }
     })
 
