@@ -109,7 +109,7 @@ export default function MarketingAutomation() {
   }
 
   const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`
+    return `${(value || 0).toFixed(1)}%`
   }
 
   const formatNumber = (num: number) => {

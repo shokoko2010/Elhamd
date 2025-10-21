@@ -264,7 +264,7 @@ export default function MarketingSalesPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.conversionRate.toFixed(1)}%</div>
+              <div className="text-2xl font-bold">{(stats.conversionRate || 0).toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground">
                 متوسط التحويل
               </p>
@@ -500,7 +500,7 @@ export default function MarketingSalesPage() {
                             ></div>
                           </div>
                           <span className="text-sm font-medium">
-                            {target.progress.toFixed(1)}%
+                            {(target.progress || 0).toFixed(1)}%
                           </span>
                         </div>
                       </TableCell>

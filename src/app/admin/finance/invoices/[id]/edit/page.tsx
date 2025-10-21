@@ -526,14 +526,14 @@ function EditInvoiceContent() {
                       <div>
                         <Label className="text-sm">المجموع</Label>
                         <div className="p-2 bg-gray-50 rounded font-medium">
-                          {item.totalPrice.toFixed(2)} ج.م
+                          {(item.totalPrice || 0).toFixed(2)} ج.م
                         </div>
                       </div>
                       
                       <div>
                         <Label className="text-sm">الضريبة</Label>
                         <div className="p-2 bg-gray-50 rounded font-medium">
-                          {item.taxAmount.toFixed(2)} ج.م
+                          {(item.taxAmount || 0).toFixed(2)} ج.م
                         </div>
                       </div>
                     </div>
@@ -597,16 +597,16 @@ function EditInvoiceContent() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">الإجمالي الفرعي:</span>
-                  <span className="font-medium">{subtotal.toFixed(2)} ج.م</span>
+                  <span className="font-medium">{(subtotal || 0).toFixed(2)} ج.م</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">الضريبة:</span>
-                  <span className="font-medium">{taxAmount.toFixed(2)} ج.م</span>
+                  <span className="font-medium">{(taxAmount || 0).toFixed(2)} ج.م</span>
                 </div>
                 <div className="border-t pt-2">
                   <div className="flex justify-between text-lg font-bold">
                     <span>الإجمالي:</span>
-                    <span className="text-blue-600">{totalAmount.toFixed(2)} ج.م</span>
+                    <span className="text-blue-600">{(totalAmount || 0).toFixed(2)} ج.م</span>
                   </div>
                 </div>
               </div>
@@ -627,12 +627,12 @@ function EditInvoiceContent() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">المدفوع:</span>
-                <span className="font-medium">{invoice.paidAmount.toFixed(2)} ج.م</span>
+                <span className="font-medium">{(invoice.paidAmount || 0).toFixed(2)} ج.م</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">المتبقي:</span>
                 <span className={`font-medium ${(totalAmount - invoice.paidAmount) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                  {(totalAmount - invoice.paidAmount).toFixed(2)} ج.م
+                  {((totalAmount || 0) - (invoice.paidAmount || 0)).toFixed(2)} ج.م
                 </span>
               </div>
             </CardContent>

@@ -964,7 +964,7 @@ function InvoiceDetailsContent() {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">نسبة الدفع:</span>
                 <span className="font-medium">
-                  {((invoice.paidAmount / invoice.totalAmount) * 100).toFixed(1)}%
+                  {invoice.totalAmount > 0 ? ((invoice.paidAmount / invoice.totalAmount) * 100).toFixed(1) : '0.0'}%
                 </span>
               </div>
             </CardContent>

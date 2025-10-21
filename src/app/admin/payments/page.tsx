@@ -323,7 +323,7 @@ export default function EgyptianPaymentManagement() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium text-green-600">{formatCurrency(amount)}</p>
-                            <p className="text-sm text-gray-500">{((count / transactions.length) * 100).toFixed(1)}%</p>
+                            <p className="text-sm text-gray-500">{transactions.length > 0 ? ((count / transactions.length) * 100).toFixed(1) : '0.0'}%</p>
                           </div>
                         </div>
                       )
