@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { auth } from '@/auth'
+import { getAuthUser } from '@/lib/auth-server'
 import { PaymentStatus, PaymentMethod, InvoiceStatus } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         branchId: invoice.branchId,
         metadata: {
           type: 'OFFLINE',
-          recordedBy: session.user.id,
+          recordedBy: user.id,
           referenceNumber,
           paymentDate: paymentDate || new Date().toISOString()
         }
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         invoiceId,
         metadata: {
           type: 'OFFLINE',
-          recordedBy: session.user.id,
+          recordedBy: user.id,
           paymentId: payment.id
         }
       }
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         action: 'RECORDED_OFFLINE_PAYMENT',
         entityType: 'INVOICE',
         entityId: invoiceId,
-        userId: session.user.id,
+        userId: user.id,
         details: {
           amount,
           paymentMethod,
@@ -169,8 +169,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { auth } from '@/auth'
+import { getAuthUser } from '@/lib/auth-server'
 import { InvoiceStatus } from '@prisma/client'
 
 export async function PUT(
@@ -8,8 +8,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -70,7 +70,7 @@ export async function PUT(
       updateData.metadata = {
         ...currentInvoice.metadata,
         statusChangeNotes: notes,
-        statusChangedBy: session.user.id,
+        statusChangedBy: user.id,
         statusChangedAt: new Date().toISOString()
       }
     }
@@ -100,7 +100,7 @@ export async function PUT(
         action: 'UPDATED_INVOICE_STATUS',
         entityType: 'INVOICE',
         entityId: invoiceId,
-        userId: session.user.id,
+        userId: user.id,
         details: {
           oldStatus: currentInvoice.status,
           newStatus: status,
