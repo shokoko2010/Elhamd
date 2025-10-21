@@ -5,16 +5,24 @@ import { PaymentStatus, PaymentMethod, InvoiceStatus } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== OFFLINE PAYMENT API START ===')
+    
     const user = await getAuthUser()
+    console.log('User authenticated:', !!user)
+    
     if (!user) {
+      console.log('Authentication failed')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
+    console.log('Request body:', body)
+    
     const { invoiceId, amount, paymentMethod, notes, referenceNumber, paymentDate } = body
 
     // Validate required fields
     if (!invoiceId || !amount || !paymentMethod) {
+      console.log('Missing required fields:', { invoiceId, amount, paymentMethod })
       return NextResponse.json({ 
         error: 'Missing required fields: invoiceId, amount, paymentMethod' 
       }, { status: 400 })
@@ -161,8 +169,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error recording offline payment:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+    
     return NextResponse.json({ 
-      error: 'Failed to record offline payment' 
+      error: 'Failed to record offline payment',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }

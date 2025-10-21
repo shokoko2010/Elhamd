@@ -2921,6 +2921,7 @@ enum PaymentMethod {
   DEBIT_CARD
   BANK_TRANSFER
   MOBILE_WALLET
+  CHECK
 }
 
 enum BookingType {
