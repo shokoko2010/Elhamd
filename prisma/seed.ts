@@ -826,12 +826,302 @@ async function main() {
     data: sliders
   })
 
+  // 8. Create Time Slots for Bookings
+  console.log('⏰ Creating time slots...')
+  const timeSlots = [
+    { dayOfWeek: 1, startTime: '09:00', endTime: '10:00', maxBookings: 2, isActive: true }, // Saturday
+    { dayOfWeek: 1, startTime: '10:00', endTime: '11:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 1, startTime: '11:00', endTime: '12:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 1, startTime: '12:00', endTime: '13:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 1, startTime: '13:00', endTime: '14:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 1, startTime: '14:00', endTime: '15:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 1, startTime: '15:00', endTime: '16:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 1, startTime: '16:00', endTime: '17:00', maxBookings: 2, isActive: true },
+    
+    { dayOfWeek: 2, startTime: '09:00', endTime: '10:00', maxBookings: 2, isActive: true }, // Sunday
+    { dayOfWeek: 2, startTime: '10:00', endTime: '11:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 2, startTime: '11:00', endTime: '12:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 2, startTime: '12:00', endTime: '13:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 2, startTime: '13:00', endTime: '14:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 2, startTime: '14:00', endTime: '15:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 2, startTime: '15:00', endTime: '16:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 2, startTime: '16:00', endTime: '17:00', maxBookings: 2, isActive: true },
+    
+    { dayOfWeek: 3, startTime: '09:00', endTime: '10:00', maxBookings: 2, isActive: true }, // Monday
+    { dayOfWeek: 3, startTime: '10:00', endTime: '11:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 3, startTime: '11:00', endTime: '12:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 3, startTime: '12:00', endTime: '13:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 3, startTime: '13:00', endTime: '14:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 3, startTime: '14:00', endTime: '15:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 3, startTime: '15:00', endTime: '16:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 3, startTime: '16:00', endTime: '17:00', maxBookings: 2, isActive: true },
+    
+    { dayOfWeek: 4, startTime: '09:00', endTime: '10:00', maxBookings: 2, isActive: true }, // Tuesday
+    { dayOfWeek: 4, startTime: '10:00', endTime: '11:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 4, startTime: '11:00', endTime: '12:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 4, startTime: '12:00', endTime: '13:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 4, startTime: '13:00', endTime: '14:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 4, startTime: '14:00', endTime: '15:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 4, startTime: '15:00', endTime: '16:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 4, startTime: '16:00', endTime: '17:00', maxBookings: 2, isActive: true },
+    
+    { dayOfWeek: 5, startTime: '09:00', endTime: '10:00', maxBookings: 2, isActive: true }, // Wednesday
+    { dayOfWeek: 5, startTime: '10:00', endTime: '11:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 5, startTime: '11:00', endTime: '12:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 5, startTime: '12:00', endTime: '13:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 5, startTime: '13:00', endTime: '14:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 5, startTime: '14:00', endTime: '15:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 5, startTime: '15:00', endTime: '16:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 5, startTime: '16:00', endTime: '17:00', maxBookings: 2, isActive: true },
+    
+    { dayOfWeek: 6, startTime: '09:00', endTime: '10:00', maxBookings: 2, isActive: true }, // Thursday
+    { dayOfWeek: 6, startTime: '10:00', endTime: '11:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 6, startTime: '11:00', endTime: '12:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 6, startTime: '12:00', endTime: '13:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 6, startTime: '13:00', endTime: '14:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 6, startTime: '14:00', endTime: '15:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 6, startTime: '15:00', endTime: '16:00', maxBookings: 2, isActive: true },
+    { dayOfWeek: 6, startTime: '16:00', endTime: '17:00', maxBookings: 2, isActive: true }
+  ]
+
+  const createdTimeSlots = await Promise.all(
+    timeSlots.map(slot => prisma.timeSlot.create({ data: slot }))
+  )
+
+  // 9. Create Sample Bookings
+  console.log('📅 Creating sample bookings...')
+  
+  const customerUser = createdUsers.find(u => u.email === 'customer@example.com')!
+  const serviceTypesData = await prisma.serviceType.findMany()
+  
+  // Create Test Drive Bookings
+  const testDriveBookings = [
+    {
+      customerId: customerUser.id,
+      vehicleId: createdVehicles[0].id, // PRIMA 3328.K
+      date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+      timeSlot: '10:00',
+      status: BookingStatus.CONFIRMED,
+      notes: 'العميل مهتم جداً بالشاحنة لاستخدامها في أعمال النقل الثقيل'
+    },
+    {
+      customerId: customerUser.id,
+      vehicleId: createdVehicles[1].id, // LP 613
+      date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+      timeSlot: '14:00',
+      status: BookingStatus.PENDING,
+      notes: 'يرغب في تجربة القيادة لاستخدام الحافلة في نقل الموظفين'
+    },
+    {
+      customerId: createdUsers[7].id, // Another customer
+      vehicleId: createdVehicles[2].id, // LPT 1618
+      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Yesterday
+      timeSlot: '11:00',
+      status: BookingStatus.COMPLETED,
+      notes: 'تمت تجربة القيادة بنجاح وعميل راضٍ جداً'
+    },
+    {
+      customerId: createdUsers[7].id,
+      vehicleId: createdVehicles[3].id, // ULTRA T.7
+      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next week
+      timeSlot: '09:00',
+      status: BookingStatus.PENDING,
+      notes: 'مهتم بالشاحنة الخفيفة لأعمال التوصيل داخل المدينة'
+    }
+  ]
+
+  const createdTestDriveBookings = await Promise.all(
+    testDriveBookings.map(booking => prisma.testDriveBooking.create({ data: booking }))
+  )
+
+  // Create Service Bookings
+  const serviceBookings = [
+    {
+      customerId: customerUser.id,
+      vehicleId: createdVehicles[0].id,
+      serviceTypeId: serviceTypesData[0].id, // صيانة دورية
+      timeSlotId: createdTimeSlots[0].id,
+      date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tomorrow
+      timeSlot: '09:00',
+      status: BookingStatus.CONFIRMED,
+      totalPrice: 500,
+      paymentStatus: PaymentStatus.PENDING,
+      notes: 'صيانة دورية للشاحنة الجديدة'
+    },
+    {
+      customerId: customerUser.id,
+      vehicleId: createdVehicles[1].id,
+      serviceTypeId: serviceTypesData[1].id, // تغيير زيت
+      timeSlotId: createdTimeSlots[8].id,
+      date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+      timeSlot: '10:00',
+      status: BookingStatus.PENDING,
+      totalPrice: 200,
+      paymentStatus: PaymentStatus.PENDING,
+      notes: 'تغيير زيت المحرك والفلاتر'
+    },
+    {
+      customerId: createdUsers[7].id,
+      vehicleId: createdVehicles[2].id,
+      serviceTypeId: serviceTypesData[2].id, // فحص شامل
+      timeSlotId: createdTimeSlots[16].id,
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      timeSlot: '11:00',
+      status: BookingStatus.COMPLETED,
+      totalPrice: 300,
+      paymentStatus: PaymentStatus.COMPLETED,
+      notes: 'تم الفحص الشامل والسيارة بحالة ممتازة'
+    },
+    {
+      customerId: createdUsers[7].id,
+      vehicleId: createdVehicles[3].id,
+      serviceTypeId: serviceTypesData[3].id, // تصليح مكابح
+      timeSlotId: createdTimeSlots[24].id,
+      date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
+      timeSlot: '14:00',
+      status: BookingStatus.CONFIRMED,
+      totalPrice: 800,
+      paymentStatus: PaymentStatus.PENDING,
+      notes: 'صيانة نظام المكابح وتغيير تيلات الفرامل'
+    },
+    {
+      customerId: customerUser.id,
+      vehicleId: createdVehicles[4].id,
+      serviceTypeId: serviceTypesData[4].id, // تغيير إطارات
+      timeSlotId: createdTimeSlots[32].id,
+      date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), // 6 days from now
+      timeSlot: '15:00',
+      status: BookingStatus.PENDING,
+      totalPrice: 400,
+      paymentStatus: PaymentStatus.PENDING,
+      notes: 'تغيير الإطارات الأربع وترصيصها'
+    }
+  ]
+
+  const createdServiceBookings = await Promise.all(
+    serviceBookings.map(booking => prisma.serviceBooking.create({ data: booking }))
+  )
+
+  // Create General Bookings (for unified view)
+  const generalBookings = [
+    {
+      type: 'TEST_DRIVE',
+      customerId: createdTestDriveBookings[0].customerId,
+      vehicleId: createdTestDriveBookings[0].vehicleId,
+      date: createdTestDriveBookings[0].date,
+      timeSlot: createdTestDriveBookings[0].timeSlot,
+      status: createdTestDriveBookings[0].status,
+      notes: createdTestDriveBookings[0].notes
+    },
+    {
+      type: 'SERVICE',
+      customerId: createdServiceBookings[0].customerId,
+      vehicleId: createdServiceBookings[0].vehicleId,
+      serviceTypeId: createdServiceBookings[0].serviceTypeId,
+      date: createdServiceBookings[0].date,
+      timeSlot: createdServiceBookings[0].timeSlot,
+      status: createdServiceBookings[0].status,
+      totalPrice: createdServiceBookings[0].totalPrice,
+      paymentStatus: createdServiceBookings[0].paymentStatus,
+      notes: createdServiceBookings[0].notes
+    },
+    {
+      type: 'TEST_DRIVE',
+      customerId: createdTestDriveBookings[1].customerId,
+      vehicleId: createdTestDriveBookings[1].vehicleId,
+      date: createdTestDriveBookings[1].date,
+      timeSlot: createdTestDriveBookings[1].timeSlot,
+      status: createdTestDriveBookings[1].status,
+      notes: createdTestDriveBookings[1].notes
+    },
+    {
+      type: 'SERVICE',
+      customerId: createdServiceBookings[1].customerId,
+      vehicleId: createdServiceBookings[1].vehicleId,
+      serviceTypeId: createdServiceBookings[1].serviceTypeId,
+      date: createdServiceBookings[1].date,
+      timeSlot: createdServiceBookings[1].timeSlot,
+      status: createdServiceBookings[1].status,
+      totalPrice: createdServiceBookings[1].totalPrice,
+      paymentStatus: createdServiceBookings[1].paymentStatus,
+      notes: createdServiceBookings[1].notes
+    }
+  ]
+
+  const createdGeneralBookings = await Promise.all(
+    generalBookings.map(booking => prisma.booking.create({ data: booking }))
+  )
+
+  // 10. Create Calendar Events
+  console.log('📆 Creating calendar events...')
+  const calendarEvents = [
+    {
+      title: 'تجربة قيادة - PRIMA 3328.K',
+      description: 'عميل مهتم بالشاحنة لأعمال النقل الثقيل',
+      startTime: new Date(createdTestDriveBookings[0].date.getTime() + 10 * 60 * 60 * 1000), // 10:00 AM
+      endTime: new Date(createdTestDriveBookings[0].date.getTime() + 11 * 60 * 60 * 1000), // 11:00 AM
+      type: 'APPOINTMENT',
+      status: 'SCHEDULED',
+      location: 'الفرع الرئيسي - القنطرة غرب',
+      attendees: [customerUser.name, 'مندوب مبيعات'],
+      bookingId: createdGeneralBookings[0].id,
+      organizerId: createdUsers[1].id, // Branch manager
+      notes: 'يرجى تجهيز الشاحنة وإعداد المستندات اللازمة'
+    },
+    {
+      title: 'صيانة دورية - PRIMA 3328.K',
+      description: 'صيانة دورية للشاحنة الجديدة',
+      startTime: new Date(createdServiceBookings[0].date.getTime() + 9 * 60 * 60 * 1000), // 9:00 AM
+      endTime: new Date(createdServiceBookings[0].date.getTime() + 11 * 60 * 60 * 1000), // 11:00 AM
+      type: 'APPOINTMENT',
+      status: 'SCHEDULED',
+      location: 'ورشة الصيانة - الفرع الرئيسي',
+      attendees: [customerUser.name, 'فني صيانة'],
+      bookingId: createdGeneralBookings[1].id,
+      organizerId: createdUsers[3].id, // Service manager
+      notes: 'تجهيز قطع الغيار اللازمة للصيانة الدورية'
+    },
+    {
+      title: 'اجتماع مبيعات أسبوعي',
+      description: 'مناقشة أداء المبيعات والخطط القادمة',
+      startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 13 * 60 * 60 * 1000), // Next week 1:00 PM
+      endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 15 * 60 * 60 * 1000), // Next week 3:00 PM
+      type: 'MEETING',
+      status: 'SCHEDULED',
+      location: 'قاعة الاجتماعات - الفرع الرئيسي',
+      attendees: ['مدير الفرع', 'مدير المبيعات', 'موظفو المبيعات'],
+      organizerId: createdUsers[1].id, // Branch manager
+      notes: 'مراجعة التقارير الأسبوعية وتخطيط الأهداف القادمة'
+    },
+    {
+      title: 'موعد تسليم سيارة',
+      description: 'تسليم شاحنة LPT 1618 للعميل',
+      startTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000), // 10 days from now 10:00 AM
+      endTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000), // 10 days from now 12:00 PM
+      type: 'APPOINTMENT',
+      status: 'SCHEDULED',
+      location: 'الفرع الرئيسي - القنطرة غرب',
+      attendees: ['العميل', 'مندوب مبيعات', 'مسؤول المالية'],
+      organizerId: createdUsers[2].id, // Sales manager
+      notes: 'تجهيز المستندات النهائية واستلام الدفعة الأولى'
+    }
+  ]
+
+  await prisma.calendarEvent.createMany({
+    data: calendarEvents
+  })
+
   console.log('✅ Database seeding completed successfully!')
   console.log(`📊 Created ${createdVehicles.length} vehicles`)
   console.log(`👥 Created ${createdUsers.length} users`)
   console.log(`🏢 Created 1 branch`)
   console.log(`🔐 Created ${createdPermissions.length} permissions`)
   console.log(`👥 Created ${createdRoles.length} role templates`)
+  console.log(`⏰ Created ${createdTimeSlots.length} time slots`)
+  console.log(`📅 Created ${createdTestDriveBookings.length} test drive bookings`)
+  console.log(`🔧 Created ${createdServiceBookings.length} service bookings`)
+  console.log(`📋 Created ${createdGeneralBookings.length} general bookings`)
+  console.log(`📆 Created ${calendarEvents.length} calendar events`)
   console.log(`🎠 Created ${sliders.length} sliders`)
 }
 
