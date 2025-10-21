@@ -11,8 +11,11 @@ export async function POST(request: NextRequest) {
     console.log('User authenticated:', !!user)
     
     if (!user) {
-      console.log('Authentication failed')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.log('Authentication failed - no user found')
+      return NextResponse.json({ 
+        error: 'Authentication required. Please log in to access this feature.',
+        code: 'AUTH_REQUIRED'
+      }, { status: 401 })
     }
 
     const body = await request.json()
@@ -41,7 +44,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (!invoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+      console.log('Invoice not found:', invoiceId)
+      return NextResponse.json({ 
+        error: 'Invoice not found. Please check the invoice ID and try again.',
+        code: 'INVOICE_NOT_FOUND'
+      }, { status: 404 })
     }
 
     // Calculate total paid amount
@@ -50,12 +57,26 @@ export async function POST(request: NextRequest) {
 
     // Check if payment amount exceeds invoice total
     if (newTotalPaid > invoice.totalAmount) {
+      console.log('Payment amount exceeds invoice total:', {
+        paymentAmount: amount,
+        currentTotal: totalPaid,
+        newTotal: newTotalPaid,
+        invoiceTotal: invoice.totalAmount
+      })
       return NextResponse.json({ 
-        error: 'Payment amount exceeds invoice total' 
+        error: `Payment amount (¥${amount.toFixed(2)}) exceeds invoice total (¥${invoice.totalAmount.toFixed(2)}). Current paid amount: ¥${totalPaid.toFixed(2)}`,
+        code: 'PAYMENT_EXCEEDS_TOTAL',
+        details: {
+          paymentAmount: amount,
+          invoiceTotal: invoice.totalAmount,
+          currentPaid: totalPaid,
+          remainingAmount: invoice.totalAmount - totalPaid
+        }
       }, { status: 400 })
     }
 
     // Create payment record
+    console.log('Creating payment record...')
     const payment = await db.payment.create({
       data: {
         bookingId: invoiceId, // Using invoiceId as bookingId for offline payments
@@ -75,8 +96,10 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    console.log('Payment record created:', payment.id)
 
     // Create invoice payment relationship
+    console.log('Creating invoice payment relationship...')
     await db.invoicePayment.create({
       data: {
         invoiceId,
@@ -88,6 +111,7 @@ export async function POST(request: NextRequest) {
         notes: notes || `Offline payment - ${paymentMethod}`
       }
     })
+    console.log('Invoice payment relationship created')
 
     // Update invoice status based on payment
     let newStatus: InvoiceStatus = invoice.status
@@ -98,6 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update invoice
+    console.log('Updating invoice status...')
     await db.invoice.update({
       where: { id: invoiceId },
       data: {
@@ -107,8 +132,10 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       }
     })
+    console.log('Invoice updated with status:', newStatus)
 
     // Create transaction record
+    console.log('Creating transaction record...')
     await db.transaction.create({
       data: {
         referenceId: `TXN-${Date.now()}`,
@@ -130,8 +157,10 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    console.log('Transaction record created')
 
     // Log activity
+    console.log('Creating activity log...')
     await db.activityLog.create({
       data: {
         action: 'RECORDED_OFFLINE_PAYMENT',
@@ -146,7 +175,9 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    console.log('Activity log created')
 
+    console.log('=== OFFLINE PAYMENT API SUCCESS ===')
     return NextResponse.json({
       success: true,
       message: 'Offline payment recorded successfully',
