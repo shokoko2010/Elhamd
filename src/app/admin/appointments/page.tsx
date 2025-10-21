@@ -31,12 +31,17 @@ interface Booking {
   customerEmail: string
   customerPhone: string
   vehicleName?: string
+  vehicleMake?: string
+  vehicleModel?: string
   serviceName?: string
-  date: any // Firestore Timestamp
+  serviceCategory?: string
+  date: Date
   timeSlot: string
   status: BookingStatus
   notes?: string
-  createdAt: any // Firestore Timestamp
+  totalPrice?: number
+  paymentStatus?: string
+  createdAt: Date
 }
 
 export default function AdminAppointmentsPage() {
@@ -54,67 +59,18 @@ export default function AdminAppointmentsPage() {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      // Load test drive bookings
-      const testDriveData = await TestDriveBookingService.getUserBookings('dummy') // This should be modified to get all bookings
-      // For now, we'll use mock data
-      setTestDriveBookings([
-        {
-          id: '1',
-          type: 'test-drive',
-          customerName: 'Ahmed Mohamed',
-          customerEmail: 'ahmed@email.com',
-          customerPhone: '+20 123 456 7890',
-          vehicleName: 'Tata Nexon',
-          date: { toDate: () => new Date('2024-01-20') },
-          timeSlot: '14:00',
-          status: BookingStatus.PENDING,
-          notes: 'Interested in automatic transmission',
-          createdAt: { toDate: () => new Date('2024-01-15') }
-        },
-        {
-          id: '2',
-          type: 'test-drive',
-          customerName: 'Sara Ali',
-          customerEmail: 'sara@email.com',
-          customerPhone: '+20 987 654 3210',
-          vehicleName: 'Tata Punch',
-          date: { toDate: () => new Date('2024-01-21') },
-          timeSlot: '10:00',
-          status: BookingStatus.CONFIRMED,
-          createdAt: { toDate: () => new Date('2024-01-16') }
-        }
-      ] as Booking[])
+      // Load test drive bookings from database
+      const testDriveData = await TestDriveBookingService.getAllBookings()
+      setTestDriveBookings(testDriveData)
 
-      // Load service bookings
-      setServiceBookings([
-        {
-          id: '3',
-          type: 'service',
-          customerName: 'Mahmoud Hassan',
-          customerEmail: 'mahmoud@email.com',
-          customerPhone: '+20 555 123 4567',
-          serviceName: 'Full Service',
-          date: { toDate: () => new Date('2024-01-22') },
-          timeSlot: '09:00',
-          status: BookingStatus.PENDING,
-          notes: 'Regular maintenance check',
-          createdAt: { toDate: () => new Date('2024-01-17') }
-        },
-        {
-          id: '4',
-          type: 'service',
-          customerName: 'Fatima Ahmed',
-          customerEmail: 'fatima@email.com',
-          customerPhone: '+20 444 555 6666',
-          serviceName: 'Oil Change',
-          date: { toDate: () => new Date('2024-01-23') },
-          timeSlot: '11:00',
-          status: BookingStatus.COMPLETED,
-          createdAt: { toDate: () => new Date('2024-01-18') }
-        }
-      ] as Booking[])
+      // Load service bookings from database
+      const serviceData = await ServiceBookingService.getAllBookings()
+      setServiceBookings(serviceData)
     } catch (error) {
       console.error('Error loading bookings:', error)
+      // Show error message to user
+      setTestDriveBookings([])
+      setServiceBookings([])
     } finally {
       setLoading(false)
     }
@@ -127,7 +83,7 @@ export default function AdminAppointmentsPage() {
       } else {
         await ServiceBookingService.updateBookingStatus(bookingId, status)
       }
-      await loadBookings()
+      await loadBookings() // Reload data to show updated status
     } catch (error) {
       console.error('Error updating booking status:', error)
     }
@@ -135,15 +91,15 @@ export default function AdminAppointmentsPage() {
 
   const getStatusBadge = (status: BookingStatus) => {
     switch (status) {
-      case BookingStatus.PENDING:
+      case 'PENDING':
         return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
-      case BookingStatus.CONFIRMED:
+      case 'CONFIRMED':
         return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Confirmed</Badge>
-      case BookingStatus.COMPLETED:
+      case 'COMPLETED':
         return <Badge className="bg-blue-500"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>
-      case BookingStatus.CANCELLED:
+      case 'CANCELLED':
         return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>
-      case BookingStatus.NO_SHOW:
+      case 'NO_SHOW':
         return <Badge className="bg-blue-600"><AlertCircle className="h-3 w-3 mr-1" />No Show</Badge>
       default:
         return <Badge>{status}</Badge>
@@ -206,7 +162,7 @@ export default function AdminAppointmentsPage() {
             <TableCell>
               <div>
                 <p className="text-sm">
-                  {booking.date.toDate().toLocaleDateString()}
+                  {booking.date.toLocaleDateString()}
                 </p>
                 <p className="text-xs text-gray-500">{booking.timeSlot}</p>
               </div>
@@ -216,35 +172,35 @@ export default function AdminAppointmentsPage() {
             </TableCell>
             <TableCell>
               <div className="flex items-center space-x-2">
-                {booking.status === BookingStatus.PENDING && (
+                {booking.status === 'PENDING' && (
                   <>
                     <Button
                       size="sm"
-                      onClick={() => updateBookingStatus(booking.id, type, BookingStatus.CONFIRMED)}
+                      onClick={() => updateBookingStatus(booking.id, type, 'CONFIRMED')}
                     >
                       Confirm
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => updateBookingStatus(booking.id, type, BookingStatus.CANCELLED)}
+                      onClick={() => updateBookingStatus(booking.id, type, 'CANCELLED')}
                     >
                       Cancel
                     </Button>
                   </>
                 )}
-                {booking.status === BookingStatus.CONFIRMED && (
+                {booking.status === 'CONFIRMED' && (
                   <>
                     <Button
                       size="sm"
-                      onClick={() => updateBookingStatus(booking.id, type, BookingStatus.COMPLETED)}
+                      onClick={() => updateBookingStatus(booking.id, type, 'COMPLETED')}
                     >
                       Complete
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => updateBookingStatus(booking.id, type, BookingStatus.NO_SHOW)}
+                      onClick={() => updateBookingStatus(booking.id, type, 'NO_SHOW')}
                     >
                       No Show
                     </Button>
@@ -293,8 +249,8 @@ export default function AdminAppointmentsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {testDriveBookings.filter(b => b.status === BookingStatus.PENDING).length +
-               serviceBookings.filter(b => b.status === BookingStatus.PENDING).length}
+              {testDriveBookings.filter(b => b.status === 'PENDING').length +
+               serviceBookings.filter(b => b.status === 'PENDING').length}
             </div>
           </CardContent>
         </Card>
@@ -305,8 +261,8 @@ export default function AdminAppointmentsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {testDriveBookings.filter(b => b.status === BookingStatus.CONFIRMED).length +
-               serviceBookings.filter(b => b.status === BookingStatus.CONFIRMED).length}
+              {testDriveBookings.filter(b => b.status === 'CONFIRMED').length +
+               serviceBookings.filter(b => b.status === 'CONFIRMED').length}
             </div>
           </CardContent>
         </Card>
@@ -317,8 +273,8 @@ export default function AdminAppointmentsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {testDriveBookings.filter(b => b.status === BookingStatus.COMPLETED).length +
-               serviceBookings.filter(b => b.status === BookingStatus.COMPLETED).length}
+              {testDriveBookings.filter(b => b.status === 'COMPLETED').length +
+               serviceBookings.filter(b => b.status === 'COMPLETED').length}
             </div>
           </CardContent>
         </Card>
@@ -347,6 +303,7 @@ export default function AdminAppointmentsPage() {
                 <SelectItem value="confirmed">Confirmed</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="no-show">No Show</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -1,12 +1,9 @@
-// Firestore services for booking management
+// Real database services for booking management using Prisma
+import { db } from '@/lib/db'
+import { BookingStatus, Prisma } from '@prisma/client'
 
-export enum BookingStatus {
-  PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-  NO_SHOW = 'no-show'
-}
+// Re-export BookingStatus from Prisma for consistency
+export { BookingStatus } from '@prisma/client'
 
 export interface TestDriveBooking {
   id: string
@@ -14,6 +11,8 @@ export interface TestDriveBooking {
   customerEmail: string
   customerPhone: string
   vehicleName: string
+  vehicleMake: string
+  vehicleModel: string
   date: Date
   timeSlot: string
   status: BookingStatus
@@ -27,10 +26,16 @@ export interface ServiceBooking {
   customerEmail: string
   customerPhone: string
   serviceName: string
+  serviceCategory: string
+  vehicleName?: string
+  vehicleMake?: string
+  vehicleModel?: string
   date: Date
   timeSlot: string
   status: BookingStatus
   notes?: string
+  totalPrice?: number
+  paymentStatus: string
   createdAt: Date
 }
 
@@ -191,42 +196,299 @@ export class BookingService {
   }
 }
 
-// Mock TestDriveBookingService (deprecated - use BookingService instead)
+// Real TestDriveBookingService using Prisma
 export const TestDriveBookingService = {
+  async getAllBookings(): Promise<TestDriveBooking[]> {
+    try {
+      const bookings = await db.testDriveBooking.findMany({
+        include: {
+          customer: {
+            select: {
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          vehicle: {
+            select: {
+              make: true,
+              model: true
+            }
+          }
+        },
+        orderBy: {
+          date: 'desc'
+        }
+      })
+
+      return bookings.map(booking => ({
+        id: booking.id,
+        customerName: booking.customer.name || 'Unknown',
+        customerEmail: booking.customer.email,
+        customerPhone: booking.customer.phone || '',
+        vehicleName: `${booking.vehicle.make} ${booking.vehicle.model}`,
+        vehicleMake: booking.vehicle.make,
+        vehicleModel: booking.vehicle.model,
+        date: booking.date,
+        timeSlot: booking.timeSlot,
+        status: booking.status,
+        notes: booking.notes,
+        createdAt: booking.createdAt
+      }))
+    } catch (error) {
+      console.error('Error fetching test drive bookings:', error)
+      throw error
+    }
+  },
+
   async getUserBookings(userId: string): Promise<TestDriveBooking[]> {
-    // In a real implementation, this would fetch from Firestore
-    // For now, return empty array as the page uses mock data
-    return []
+    try {
+      const bookings = await db.testDriveBooking.findMany({
+        where: {
+          customerId: userId
+        },
+        include: {
+          customer: {
+            select: {
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          vehicle: {
+            select: {
+              make: true,
+              model: true
+            }
+          }
+        },
+        orderBy: {
+          date: 'desc'
+        }
+      })
+
+      return bookings.map(booking => ({
+        id: booking.id,
+        customerName: booking.customer.name || 'Unknown',
+        customerEmail: booking.customer.email,
+        customerPhone: booking.customer.phone || '',
+        vehicleName: `${booking.vehicle.make} ${booking.vehicle.model}`,
+        vehicleMake: booking.vehicle.make,
+        vehicleModel: booking.vehicle.model,
+        date: booking.date,
+        timeSlot: booking.timeSlot,
+        status: booking.status,
+        notes: booking.notes,
+        createdAt: booking.createdAt
+      }))
+    } catch (error) {
+      console.error('Error fetching user test drive bookings:', error)
+      throw error
+    }
   },
 
   async updateBookingStatus(bookingId: string, status: BookingStatus): Promise<void> {
-    // In a real implementation, this would update the booking in Firestore
-    console.log(`Updating test drive booking ${bookingId} to status: ${status}`)
+    try {
+      await db.testDriveBooking.update({
+        where: {
+          id: bookingId
+        },
+        data: {
+          status,
+          updatedAt: new Date()
+        }
+      })
+      console.log(`Updated test drive booking ${bookingId} to status: ${status}`)
+    } catch (error) {
+      console.error('Error updating test drive booking status:', error)
+      throw error
+    }
   },
 
-  async createBooking(booking: Omit<TestDriveBooking, 'id' | 'createdAt'>): Promise<string> {
-    // In a real implementation, this would create a new booking in Firestore
-    console.log('Creating new test drive booking:', booking)
-    return 'mock-booking-id'
+  async createBooking(data: {
+    customerId: string
+    vehicleId: string
+    date: Date
+    timeSlot: string
+    notes?: string
+  }): Promise<string> {
+    try {
+      const booking = await db.testDriveBooking.create({
+        data: {
+          customerId: data.customerId,
+          vehicleId: data.vehicleId,
+          date: data.date,
+          timeSlot: data.timeSlot,
+          notes: data.notes,
+          status: BookingStatus.PENDING
+        }
+      })
+      console.log('Created new test drive booking:', booking.id)
+      return booking.id
+    } catch (error) {
+      console.error('Error creating test drive booking:', error)
+      throw error
+    }
   }
 }
 
-// Mock ServiceBookingService (deprecated - use BookingService instead)
+// Real ServiceBookingService using Prisma
 export const ServiceBookingService = {
+  async getAllBookings(): Promise<ServiceBooking[]> {
+    try {
+      const bookings = await db.serviceBooking.findMany({
+        include: {
+          customer: {
+            select: {
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          serviceType: {
+            select: {
+              name: true,
+              category: true
+            }
+          },
+          vehicle: {
+            select: {
+              make: true,
+              model: true
+            }
+          }
+        },
+        orderBy: {
+          date: 'desc'
+        }
+      })
+
+      return bookings.map(booking => ({
+        id: booking.id,
+        customerName: booking.customer.name || 'Unknown',
+        customerEmail: booking.customer.email,
+        customerPhone: booking.customer.phone || '',
+        serviceName: booking.serviceType.name,
+        serviceCategory: booking.serviceType.category,
+        vehicleName: booking.vehicle ? `${booking.vehicle.make} ${booking.vehicle.model}` : undefined,
+        vehicleMake: booking.vehicle?.make,
+        vehicleModel: booking.vehicle?.model,
+        date: booking.date,
+        timeSlot: booking.timeSlot,
+        status: booking.status,
+        notes: booking.notes,
+        totalPrice: booking.totalPrice,
+        paymentStatus: booking.paymentStatus,
+        createdAt: booking.createdAt
+      }))
+    } catch (error) {
+      console.error('Error fetching service bookings:', error)
+      throw error
+    }
+  },
+
   async getUserBookings(userId: string): Promise<ServiceBooking[]> {
-    // In a real implementation, this would fetch from Firestore
-    // For now, return empty array as the page uses mock data
-    return []
+    try {
+      const bookings = await db.serviceBooking.findMany({
+        where: {
+          customerId: userId
+        },
+        include: {
+          customer: {
+            select: {
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          serviceType: {
+            select: {
+              name: true,
+              category: true
+            }
+          },
+          vehicle: {
+            select: {
+              make: true,
+              model: true
+            }
+          }
+        },
+        orderBy: {
+          date: 'desc'
+        }
+      })
+
+      return bookings.map(booking => ({
+        id: booking.id,
+        customerName: booking.customer.name || 'Unknown',
+        customerEmail: booking.customer.email,
+        customerPhone: booking.customer.phone || '',
+        serviceName: booking.serviceType.name,
+        serviceCategory: booking.serviceType.category,
+        vehicleName: booking.vehicle ? `${booking.vehicle.make} ${booking.vehicle.model}` : undefined,
+        vehicleMake: booking.vehicle?.make,
+        vehicleModel: booking.vehicle?.model,
+        date: booking.date,
+        timeSlot: booking.timeSlot,
+        status: booking.status,
+        notes: booking.notes,
+        totalPrice: booking.totalPrice,
+        paymentStatus: booking.paymentStatus,
+        createdAt: booking.createdAt
+      }))
+    } catch (error) {
+      console.error('Error fetching user service bookings:', error)
+      throw error
+    }
   },
 
   async updateBookingStatus(bookingId: string, status: BookingStatus): Promise<void> {
-    // In a real implementation, this would update the booking in Firestore
-    console.log(`Updating service booking ${bookingId} to status: ${status}`)
+    try {
+      await db.serviceBooking.update({
+        where: {
+          id: bookingId
+        },
+        data: {
+          status,
+          updatedAt: new Date()
+        }
+      })
+      console.log(`Updated service booking ${bookingId} to status: ${status}`)
+    } catch (error) {
+      console.error('Error updating service booking status:', error)
+      throw error
+    }
   },
 
-  async createBooking(booking: Omit<ServiceBooking, 'id' | 'createdAt'>): Promise<string> {
-    // In a real implementation, this would create a new booking in Firestore
-    console.log('Creating new service booking:', booking)
-    return 'mock-booking-id'
+  async createBooking(data: {
+    customerId: string
+    serviceTypeId: string
+    vehicleId?: string
+    date: Date
+    timeSlot: string
+    notes?: string
+    totalPrice?: number
+  }): Promise<string> {
+    try {
+      const booking = await db.serviceBooking.create({
+        data: {
+          customerId: data.customerId,
+          serviceTypeId: data.serviceTypeId,
+          vehicleId: data.vehicleId,
+          date: data.date,
+          timeSlot: data.timeSlot,
+          notes: data.notes,
+          totalPrice: data.totalPrice,
+          status: BookingStatus.PENDING,
+          paymentStatus: 'PENDING'
+        }
+      })
+      console.log('Created new service booking:', booking.id)
+      return booking.id
+    } catch (error) {
+      console.error('Error creating service booking:', error)
+      throw error
+    }
   }
 }
