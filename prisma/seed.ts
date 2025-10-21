@@ -244,7 +244,11 @@ async function main() {
 
   const createdPermissions = await Promise.all(
     permissions.map(permission => 
-      prisma.permission.create({ data: permission })
+      prisma.permission.upsert({
+        where: { name: permission.name },
+        update: {},
+        create: permission
+      })
     )
   )
 
@@ -332,14 +336,20 @@ async function main() {
 
   const createdRoles = await Promise.all(
     roleTemplates.map(role => 
-      prisma.roleTemplate.create({ data: role })
+      prisma.roleTemplate.upsert({
+        where: { name: role.name },
+        update: {},
+        create: role
+      })
     )
   )
 
   // 4. Create Main Branch
   console.log('🏢 Creating main branch...')
-  const mainBranch = await prisma.branch.create({
-    data: {
+  const mainBranch = await prisma.branch.upsert({
+    where: { code: 'ELHAMD-MAIN' },
+    update: {},
+    create: {
       name: 'الفرع الرئيسي - القنطرة غرب',
       code: 'ELHAMD-MAIN',
       address: 'القنطرة غرب، الجيزة، مصر',
@@ -468,7 +478,11 @@ async function main() {
   ]
 
   const createdUsers = await Promise.all(
-    users.map(user => prisma.user.create({ data: user }))
+    users.map(user => prisma.user.upsert({
+      where: { email: user.email },
+      update: {},
+      create: user
+    }))
   )
 
   // 6. Create Service Types
@@ -512,7 +526,8 @@ async function main() {
   ]
 
   await prisma.serviceType.createMany({
-    data: serviceTypes
+    data: serviceTypes,
+    skipDuplicates: true
   })
 
   // 7. Create Tata Vehicles with Images
@@ -718,8 +733,10 @@ async function main() {
   const createdVehicles = await Promise.all(
     vehicles.map(async (vehicle) => {
       // Create vehicle
-      const createdVehicle = await prisma.vehicle.create({
-        data: {
+      const createdVehicle = await prisma.vehicle.upsert({
+        where: { stockNumber: vehicle.stockNumber },
+        update: {},
+        create: {
           make: vehicle.make,
           model: vehicle.model,
           year: vehicle.year,
@@ -884,9 +901,15 @@ async function main() {
     { dayOfWeek: 6, startTime: '16:00', endTime: '17:00', maxBookings: 2, isActive: true }
   ]
 
-  const createdTimeSlots = await Promise.all(
-    timeSlots.map(slot => prisma.timeSlot.create({ data: slot }))
-  )
+  const createdTimeSlotsResult = await prisma.timeSlot.createMany({
+    data: timeSlots,
+    skipDuplicates: true
+  })
+
+  // Fetch all time slots to use in bookings
+  const createdTimeSlots = await prisma.timeSlot.findMany({
+    orderBy: { id: 'asc' }
+  })
 
   // 9. Create Sample Bookings
   console.log('📅 Creating sample bookings...')
@@ -1117,7 +1140,7 @@ async function main() {
   console.log(`🏢 Created 1 branch`)
   console.log(`🔐 Created ${createdPermissions.length} permissions`)
   console.log(`👥 Created ${createdRoles.length} role templates`)
-  console.log(`⏰ Created ${createdTimeSlots.length} time slots`)
+  console.log(`⏰ Created ${createdTimeSlotsResult.count} time slots`)
   console.log(`📅 Created ${createdTestDriveBookings.length} test drive bookings`)
   console.log(`🔧 Created ${createdServiceBookings.length} service bookings`)
   console.log(`📋 Created ${createdGeneralBookings.length} general bookings`)
