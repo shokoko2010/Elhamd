@@ -30,7 +30,8 @@ import {
   Mail,
   MoreHorizontal,
   X,
-  Smartphone
+  Smartphone,
+  Banknote
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
@@ -597,10 +598,18 @@ function FinanceContent() {
                   <CardTitle>المدفوعات</CardTitle>
                   <CardDescription>تتبع جميع المدفوعات الواردة والصادرة</CardDescription>
                 </div>
-                <Button>
-                  <Plus className="ml-2 h-4 w-4" />
-                  تسجيل دفعة جديدة
-                </Button>
+                <div className="flex gap-2">
+                  <Link href="/admin/finance/payments">
+                    <Button variant="outline">
+                      <Banknote className="ml-2 h-4 w-4" />
+                      إدارة الدفعات
+                    </Button>
+                  </Link>
+                  <Button>
+                    <Plus className="ml-2 h-4 w-4" />
+                    تسجيل دفعة جديدة
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

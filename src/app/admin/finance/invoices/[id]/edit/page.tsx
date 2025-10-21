@@ -21,7 +21,13 @@ import {
   Calendar,
   User,
   Package,
-  Smartphone
+  Smartphone,
+  CreditCard,
+  Banknote,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  XCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -84,12 +90,27 @@ interface Invoice {
   paidAmount: number
   currency: string
   items: InvoiceItem[]
+  payments?: InvoicePayment[]
   taxes: any[]
   notes?: string
   terms?: string
   createdAt: string
   updatedAt: string
   createdBy: string
+}
+
+interface InvoicePayment {
+  id: string
+  amount: number
+  paymentDate: string
+  paymentMethod: string
+  transactionId?: string
+  notes?: string
+  payment: {
+    id: string
+    status: string
+    metadata?: any
+  }
 }
 
 export default function EditInvoicePage() {
@@ -117,6 +138,20 @@ function EditInvoiceContent() {
   const [notes, setNotes] = useState('')
   const [terms, setTerms] = useState('')
   const [items, setItems] = useState<InvoiceItem[]>([])
+  const [showOfflinePayment, setShowOfflinePayment] = useState(false)
+  const [showStatusUpdate, setShowStatusUpdate] = useState(false)
+  const [offlinePayment, setOfflinePayment] = useState({
+    amount: '',
+    paymentMethod: 'CASH',
+    notes: '',
+    referenceNumber: '',
+    paymentDate: new Date().toISOString().split('T')[0]
+  })
+  const [statusUpdate, setStatusUpdate] = useState({
+    status: '',
+    notes: '',
+    sendNotification: false
+  })
   const { toast } = useToast()
 
   useEffect(() => {
@@ -293,6 +328,131 @@ function EditInvoiceContent() {
     }
   }
 
+  const recordOfflinePayment = async () => {
+    if (!offlinePayment.amount || parseFloat(offlinePayment.amount) <= 0) {
+      toast({
+        title: 'خطأ',
+        description: 'يرجى إدخال مبلغ الدفع',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      const response = await fetch('/api/finance/payments/offline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          invoiceId,
+          amount: parseFloat(offlinePayment.amount),
+          paymentMethod: offlinePayment.paymentMethod,
+          notes: offlinePayment.notes,
+          referenceNumber: offlinePayment.referenceNumber,
+          paymentDate: offlinePayment.paymentDate
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast({
+          title: 'نجاح',
+          description: 'تم تسجيل الدفع بنجاح'
+        })
+        
+        // Reset form and refresh invoice data
+        setOfflinePayment({
+          amount: '',
+          paymentMethod: 'CASH',
+          notes: '',
+          referenceNumber: '',
+          paymentDate: new Date().toISOString().split('T')[0]
+        })
+        setShowOfflinePayment(false)
+        fetchInvoiceData()
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to record payment')
+      }
+    } catch (error) {
+      toast({
+        title: 'خطأ',
+        description: error instanceof Error ? error.message : 'فشل في تسجيل الدفع',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const updateInvoiceStatus = async () => {
+    if (!statusUpdate.status) {
+      toast({
+        title: 'خطأ',
+        description: 'يرجى اختيار الحالة الجديدة',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/finance/invoices/${invoiceId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(statusUpdate)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast({
+          title: 'نجاح',
+          description: 'تم تحديث حالة الفاتورة بنجاح'
+        })
+        
+        // Reset form and refresh invoice data
+        setStatusUpdate({
+          status: '',
+          notes: '',
+          sendNotification: false
+        })
+        setShowStatusUpdate(false)
+        fetchInvoiceData()
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update status')
+      }
+    } catch (error) {
+      toast({
+        title: 'خطأ',
+        description: error instanceof Error ? error.message : 'فشل في تحديث الحالة',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      DRAFT: { color: 'bg-gray-100 text-gray-800', icon: FileText, label: 'مسودة' },
+      SENT: { color: 'bg-blue-100 text-blue-800', icon: Send, label: 'مرسلة' },
+      PAID: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'مدفوعة' },
+      PARTIALLY_PAID: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'مدفوعة جزئياً' },
+      OVERDUE: { color: 'bg-red-100 text-red-800', icon: AlertCircle, label: 'متأخرة' },
+      CANCELLED: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'ملغية' },
+      REFUNDED: { color: 'bg-purple-100 text-purple-800', icon: AlertCircle, label: 'مستردة' }
+    }
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.DRAFT
+    const Icon = config.icon
+
+    return (
+      <Badge className={config.color}>
+        <Icon className="w-3 h-3 ml-1" />
+        {config.label}
+      </Badge>
+    )
+  }
+
   const { subtotal, taxAmount, totalAmount } = calculateTotals()
 
   if (loading) {
@@ -330,10 +490,29 @@ function EditInvoiceContent() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold">تعديل الفاتورة</h1>
-            <p className="text-gray-600 mt-2">فاتورة رقم {invoice.invoiceNumber}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-gray-600">فاتورة رقم {invoice.invoiceNumber}</p>
+              {getStatusBadge(invoice.status)}
+            </div>
           </div>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowStatusUpdate(true)}
+            className="flex items-center gap-2"
+          >
+            <AlertCircle className="h-4 w-4" />
+            تحديث الحالة
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowOfflinePayment(true)}
+            className="flex items-center gap-2"
+          >
+            <Banknote className="h-4 w-4" />
+            دفع أوفلاين
+          </Button>
           <Button variant="outline" onClick={saveInvoice} disabled={saving}>
             <Save className="ml-2 h-4 w-4" />
             {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
@@ -621,9 +800,7 @@ function EditInvoiceContent() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">الحالة الحالية:</span>
-                <Badge variant={invoice.status === 'PAID' ? 'default' : 'secondary'}>
-                  {invoice.status}
-                </Badge>
+                {getStatusBadge(invoice.status)}
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">المدفوع:</span>
@@ -635,6 +812,26 @@ function EditInvoiceContent() {
                   {((totalAmount || 0) - (invoice.paidAmount || 0)).toFixed(2)} ج.م
                 </span>
               </div>
+              
+              {/* Payment History */}
+              {invoice.payments && invoice.payments.length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="text-sm font-medium mb-2">سجل الدفعات:</p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {invoice.payments.map((payment) => (
+                      <div key={payment.id} className="text-xs bg-gray-50 p-2 rounded">
+                        <div className="flex justify-between">
+                          <span>{payment.paymentMethod}</span>
+                          <span className="font-medium">{payment.amount.toFixed(2)} ج.م</span>
+                        </div>
+                        <div className="text-gray-500">
+                          {new Date(payment.paymentDate).toLocaleDateString('ar-EG')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -680,6 +877,182 @@ function EditInvoiceContent() {
           </Card>
         </div>
       </div>
+
+      {/* Offline Payment Modal */}
+      {showOfflinePayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Banknote className="h-5 w-5" />
+                تسجيل دفع أوفلاين
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="paymentAmount">المبلغ</Label>
+                <Input
+                  id="paymentAmount"
+                  type="number"
+                  value={offlinePayment.amount}
+                  onChange={(e) => setOfflinePayment(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="أدخل المبلغ"
+                  step="0.01"
+                  min="0"
+                  max={((totalAmount || 0) - (invoice?.paidAmount || 0)).toFixed(2)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  المتبقي للسداد: {((totalAmount || 0) - (invoice?.paidAmount || 0)).toFixed(2)} ج.م
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="paymentMethod">طريقة الدفع</Label>
+                <Select 
+                  value={offlinePayment.paymentMethod} 
+                  onValueChange={(value) => setOfflinePayment(prev => ({ ...prev, paymentMethod: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CASH">نقدي</SelectItem>
+                    <SelectItem value="BANK_TRANSFER">تحويل بنكي</SelectItem>
+                    <SelectItem value="CHECK">شيك</SelectItem>
+                    <SelectItem value="CREDIT_CARD">بطاقة ائتمان</SelectItem>
+                    <SelectItem value="DEBIT_CARD">بطاقة خصم مباشر</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="paymentDate">تاريخ الدفع</Label>
+                <Input
+                  id="paymentDate"
+                  type="date"
+                  value={offlinePayment.paymentDate}
+                  onChange={(e) => setOfflinePayment(prev => ({ ...prev, paymentDate: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="referenceNumber">رقم المرجع (اختياري)</Label>
+                <Input
+                  id="referenceNumber"
+                  value={offlinePayment.referenceNumber}
+                  onChange={(e) => setOfflinePayment(prev => ({ ...prev, referenceNumber: e.target.value }))}
+                  placeholder="رقم العملية أو الشيك"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="paymentNotes">ملاحظات (اختياري)</Label>
+                <Textarea
+                  id="paymentNotes"
+                  value={offlinePayment.notes}
+                  onChange={(e) => setOfflinePayment(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="أي ملاحظات إضافية..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowOfflinePayment(false)}
+                  className="flex-1"
+                >
+                  إلغاء
+                </Button>
+                <Button 
+                  onClick={recordOfflinePayment}
+                  className="flex-1"
+                  disabled={!offlinePayment.amount || parseFloat(offlinePayment.amount) <= 0}
+                >
+                  تسجيل الدفع
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusUpdate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                تحديث حالة الفاتورة
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="newStatus">الحالة الجديدة</Label>
+                <Select 
+                  value={statusUpdate.status} 
+                  onValueChange={(value) => setStatusUpdate(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر الحالة الجديدة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">مسودة</SelectItem>
+                    <SelectItem value="SENT">مرسلة</SelectItem>
+                    <SelectItem value="PAID">مدفوعة</SelectItem>
+                    <SelectItem value="PARTIALLY_PAID">مدفوعة جزئياً</SelectItem>
+                    <SelectItem value="OVERDUE">متأخرة</SelectItem>
+                    <SelectItem value="CANCELLED">ملغية</SelectItem>
+                    <SelectItem value="REFUNDED">مستردة</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="statusNotes">ملاحظات التغيير (اختياري)</Label>
+                <Textarea
+                  id="statusNotes"
+                  value={statusUpdate.notes}
+                  onChange={(e) => setStatusUpdate(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="سبب تغيير الحالة..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <input
+                  type="checkbox"
+                  id="sendNotification"
+                  checked={statusUpdate.sendNotification}
+                  onChange={(e) => setStatusUpdate(prev => ({ ...prev, sendNotification: e.target.checked }))}
+                  className="rounded"
+                />
+                <Label htmlFor="sendNotification" className="text-sm">
+                  إرسال إشعار للعميل
+                </Label>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowStatusUpdate(false)}
+                  className="flex-1"
+                >
+                  إلغاء
+                </Button>
+                <Button 
+                  onClick={updateInvoiceStatus}
+                  className="flex-1"
+                  disabled={!statusUpdate.status}
+                >
+                  تحديث الحالة
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
