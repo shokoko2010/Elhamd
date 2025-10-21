@@ -1,71 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
-import { v4 as uuidv4 } from 'uuid'
+import { existsSync } from 'fs'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== Public Upload API Called ===')
+    
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const vehicleId = formData.get('vehicleId') as string
-    const isPrimary = formData.get('isPrimary') === 'true'
-    const order = parseInt(formData.get('order') as string) || 0
+    const folder = formData.get('folder') as string || 'general'
 
     if (!file) {
-      return NextResponse.json({ error: 'لم يتم إرسال ملف' }, { status: 400 })
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
+
+    console.log('File details:', { name: file.name, size: file.size, type: file.type })
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'نوع الملف غير مدعوم. يرجى استخدام JPEG, PNG, أو WebP' }, { status: 400 })
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024 // 10MB
-    if (file.size > maxSize) {
-      return NextResponse.json({ error: 'حجم الملف كبير جداً. الحد الأقصى هو 10 ميجابايت' }, { status: 400 })
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 })
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'vehicles')
-    try {
-      await mkdir(uploadsDir, { recursive: true })
-    } catch (error) {
-      // Directory might already exist
+    // Create upload directory
+    const uploadDir = join(process.cwd(), 'public', 'uploads', folder)
+    if (!existsSync(uploadDir)) {
+      await mkdir(uploadDir, { recursive: true })
     }
 
     // Generate unique filename
-    const fileExtension = file.name.split('.').pop()
-    const uniqueFilename = `${vehicleId}_${uuidv4()}.${fileExtension}`
-    const filePath = join(uploadsDir, uniqueFilename)
+    const timestamp = Date.now()
+    const randomId = Math.random().toString(36).substring(2, 15)
+    const extension = file.name.split('.').pop()
+    const filename = `${timestamp}_${randomId}.${extension}`
+    const filepath = join(uploadDir, filename)
 
-    // Convert file to buffer and save
+    // Save file
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    
-    await writeFile(filePath, buffer)
+    await writeFile(filepath, buffer)
 
-    // Return the public URL
-    const publicUrl = `/uploads/vehicles/${uniqueFilename}`
+    const url = `/uploads/${folder}/${filename}`
+
+    console.log('File saved successfully:', url)
 
     return NextResponse.json({
       success: true,
-      url: publicUrl,
-      filename: uniqueFilename,
-      size: file.size,
-      type: file.type,
-      metadata: {
-        vehicleId,
-        isPrimary,
-        order
-      }
+      url,
+      filename,
+      size: buffer.length,
+      type: file.type
     })
 
   } catch (error) {
-    console.error('Error uploading image:', error)
+    console.error('Error uploading file:', error)
     return NextResponse.json(
-      { error: 'فشل في رفع الصورة. يرجى المحاولة مرة أخرى' },
+      { error: error instanceof Error ? error.message : 'Failed to upload file' },
       { status: 500 }
     )
   }

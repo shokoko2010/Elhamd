@@ -90,18 +90,16 @@ export const authOptions = {
   },
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === 'production' 
-        ? '__Secure-next-auth.session-token' 
-        : 'next-auth.session-token',
+      name: 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
+        secure: false, // Always false for development
+        domain: undefined // Don't set domain in development
       }
     }
   },
-  useSecureCookies: process.env.NODE_ENV === 'production',
+  useSecureCookies: false, // Always false for development
   debug: true
 }

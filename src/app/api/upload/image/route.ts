@@ -8,9 +8,14 @@ import { getAuthUser, UserRole } from '@/lib/auth-server'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== Image Upload API Called ===')
+    
     // Check authentication
     const user = await getAuthUser()
+    console.log('Auth user:', user ? { id: user.id, email: user.email, role: user.role } : 'No user')
+    
     if (!user) {
+      console.log('Authentication failed - no user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -20,6 +25,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
+    console.log('User authenticated, processing form data...')
+    
     const formData = await request.formData()
     const file = formData.get('file') as File
     const vehicleId = formData.get('vehicleId') as string
@@ -28,9 +35,14 @@ export async function POST(request: NextRequest) {
     const type = formData.get('type') as 'vehicle' | 'service' | 'general' || 'vehicle'
     const entityId = formData.get('entityId') as string || formData.get('vehicleId') as string || 'general'
 
+    console.log('Form data:', { file: !!file, type, entityId, vehicleId, isPrimary, order })
+
     if (!file) {
+      console.log('No file provided in form data')
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
+
+    console.log('File details:', { name: file.name, size: file.size, type: file.type })
 
     // Initialize image optimization service
     const imageService = ImageOptimizationService.getInstance()
@@ -44,8 +56,11 @@ export async function POST(request: NextRequest) {
       // For general uploads, just save to a general folder
       result = await imageService.saveGeneralImage(file, entityId)
     } else {
+      console.log('Invalid upload type:', type)
       return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 })
     }
+
+    console.log('Image saved successfully:', result)
 
     return NextResponse.json({
       success: true,

@@ -1,33 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
-import { getAuthUser } from '@/lib/auth-server'
+import { existsSync } from 'fs'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const user = await getAuthUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    console.log('Upload request from user:', user.email, 'Role:', user.role);
-
-    // Check if user has permission to upload images
-    if (!['ADMIN', 'SUPER_ADMIN', 'STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
-      console.log('Access denied for role:', user.role);
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
-    }
-
+    console.log('=== Simple Upload API Called ===')
+    
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const vehicleId = formData.get('vehicleId') as string
-    const isPrimary = formData.get('isPrimary') === 'true'
+    const folder = formData.get('folder') as string || 'general'
 
-    if (!file || !vehicleId) {
-      return NextResponse.json({ error: 'Missing file or vehicleId' }, { status: 400 })
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
+
+    console.log('File details:', { name: file.name, size: file.size, type: file.type })
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -35,54 +23,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Create upload directory
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'vehicles')
-    await mkdir(uploadDir, { recursive: true })
+    const uploadDir = join(process.cwd(), 'public', 'uploads', folder)
+    if (!existsSync(uploadDir)) {
+      await mkdir(uploadDir, { recursive: true })
+    }
 
     // Generate unique filename
     const timestamp = Date.now()
     const randomId = Math.random().toString(36).substring(2, 15)
     const extension = file.name.split('.').pop()
-    const filename = `${vehicleId}_${timestamp}_${randomId}.${extension}`
+    const filename = `${timestamp}_${randomId}.${extension}`
+    const filepath = join(uploadDir, filename)
 
     // Save file
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const filepath = join(uploadDir, filename)
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
     await writeFile(filepath, buffer)
 
-    // Save to database
-    const vehicleImage = await db.vehicleImage.create({
-      data: {
-        vehicleId,
-        imageUrl: `/uploads/vehicles/${filename}`,
-        altText: `${file.name}`,
-        isPrimary,
-        order: 0
-      }
-    })
+    const url = `/uploads/${folder}/${filename}`
 
-    // If this is primary, unset other primary images
-    if (isPrimary) {
-      await db.vehicleImage.updateMany({
-        where: {
-          vehicleId,
-          id: { not: vehicleImage.id }
-        },
-        data: {
-          isPrimary: false
-        }
-      })
-    }
+    console.log('File saved successfully:', url)
 
     return NextResponse.json({
       success: true,
-      image: vehicleImage,
-      url: vehicleImage.imageUrl
+      url,
+      filename,
+      size: buffer.length,
+      type: file.type
     })
 
   } catch (error) {
-    console.error('Error uploading image:', error)
+    console.error('Error uploading file:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to upload image' },
+      { error: error instanceof Error ? error.message : 'Failed to upload file' },
       { status: 500 }
     )
   }

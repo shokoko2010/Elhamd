@@ -371,9 +371,27 @@ export default function HeaderManagement() {
     if (!file) return
 
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('file', file)
+    formData.append('folder', 'logo')
 
     try {
+      // Try public upload first (no auth required)
+      let response = await fetch('/api/upload/public', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setContent(prev => ({ ...prev, logoUrl: data.url }))
+        toast({
+          title: 'Success',
+          description: 'Logo uploaded successfully'
+        })
+        return
+      }
+
+      // Try simple upload with auth
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
       const headers: Record<string, string> = {}
       
@@ -381,7 +399,7 @@ export default function HeaderManagement() {
         headers['Authorization'] = `Bearer ${token}`
       }
 
-      const response = await fetch('/api/upload/image', {
+      response = await fetch('/api/upload/simple', {
         method: 'POST',
         headers,
         body: formData
@@ -394,11 +412,35 @@ export default function HeaderManagement() {
           title: 'Success',
           description: 'Logo uploaded successfully'
         })
+        return
+      }
+
+      // Fallback to complex upload
+      formData.set('type', 'general')
+      formData.set('entityId', 'logo')
+      
+      response = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers,
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setContent(prev => ({ ...prev, logoUrl: data.url }))
+        toast({
+          title: 'Success',
+          description: 'Logo uploaded successfully'
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to upload logo')
       }
     } catch (error) {
+      console.error('Logo upload error:', error)
       toast({
         title: 'Error',
-        description: 'Failed to upload logo',
+        description: error instanceof Error ? error.message : 'Failed to upload logo',
         variant: 'destructive'
       })
     }
