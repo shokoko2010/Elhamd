@@ -51,6 +51,22 @@ export const PERMISSIONS = {
   VIEW_REPORTS: 'view_reports',
   EXPORT_FINANCIAL_DATA: 'export_financial_data',
   
+  // Enhanced Financial Permissions
+  VIEW_INVOICES: 'view_invoices',
+  APPROVE_INVOICES: 'approve_invoices',
+  SEND_INVOICES: 'send_invoices',
+  DOWNLOAD_INVOICES: 'download_invoices',
+  MANAGE_QUOTATIONS: 'manage_quotations',
+  APPROVE_QUOTATIONS: 'approve_quotations',
+  CONVERT_QUOTATIONS: 'convert_quotations',
+  PROCESS_OFFLINE_PAYMENTS: 'process_offline_payments',
+  MANAGE_PAYMENT_METHODS: 'manage_payment_methods',
+  VIEW_PAYMENT_HISTORY: 'view_payment_history',
+  REFUND_PAYMENTS: 'refund_payments',
+  MANAGE_TAX_SETTINGS: 'manage_tax_settings',
+  VIEW_FINANCIAL_OVERVIEW: 'view_financial_overview',
+  ACCESS_FINANCE_DASHBOARD: 'access_finance_dashboard',
+  
   // Branch Management
   VIEW_BRANCHES: 'view_branches',
   CREATE_BRANCHES: 'create_branches',
@@ -136,12 +152,26 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     
     // Financial Management
     PERMISSIONS.VIEW_FINANCIALS,
+    PERMISSIONS.VIEW_INVOICES,
     PERMISSIONS.CREATE_INVOICES,
     PERMISSIONS.EDIT_INVOICES,
     PERMISSIONS.DELETE_INVOICES,
+    PERMISSIONS.APPROVE_INVOICES,
+    PERMISSIONS.SEND_INVOICES,
+    PERMISSIONS.DOWNLOAD_INVOICES,
+    PERMISSIONS.MANAGE_QUOTATIONS,
+    PERMISSIONS.APPROVE_QUOTATIONS,
+    PERMISSIONS.CONVERT_QUOTATIONS,
     PERMISSIONS.MANAGE_PAYMENTS,
+    PERMISSIONS.PROCESS_OFFLINE_PAYMENTS,
+    PERMISSIONS.MANAGE_PAYMENT_METHODS,
+    PERMISSIONS.VIEW_PAYMENT_HISTORY,
+    PERMISSIONS.REFUND_PAYMENTS,
+    PERMISSIONS.MANAGE_TAX_SETTINGS,
     PERMISSIONS.VIEW_REPORTS,
     PERMISSIONS.EXPORT_FINANCIAL_DATA,
+    PERMISSIONS.VIEW_FINANCIAL_OVERVIEW,
+    PERMISSIONS.ACCESS_FINANCE_DASHBOARD,
     
     // Branch Management
     PERMISSIONS.VIEW_BRANCHES,
@@ -215,10 +245,19 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     
     // Financial Management (limited to branch)
     PERMISSIONS.VIEW_FINANCIALS,
+    PERMISSIONS.VIEW_INVOICES,
     PERMISSIONS.CREATE_INVOICES,
     PERMISSIONS.EDIT_INVOICES,
+    PERMISSIONS.SEND_INVOICES,
+    PERMISSIONS.DOWNLOAD_INVOICES,
+    PERMISSIONS.MANAGE_QUOTATIONS,
+    PERMISSIONS.CONVERT_QUOTATIONS,
     PERMISSIONS.MANAGE_PAYMENTS,
+    PERMISSIONS.PROCESS_OFFLINE_PAYMENTS,
+    PERMISSIONS.VIEW_PAYMENT_HISTORY,
     PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.VIEW_FINANCIAL_OVERVIEW,
+    PERMISSIONS.ACCESS_FINANCE_DASHBOARD,
     
     // Branch Management (limited to own branch)
     PERMISSIONS.VIEW_BRANCHES,
@@ -265,7 +304,10 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     
     // Financial Management (view only)
     PERMISSIONS.VIEW_FINANCIALS,
+    PERMISSIONS.VIEW_INVOICES,
+    PERMISSIONS.VIEW_PAYMENT_HISTORY,
     PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.VIEW_FINANCIAL_OVERVIEW,
     
     // Branch Management (view only)
     PERMISSIONS.VIEW_BRANCHES,
@@ -549,12 +591,26 @@ export class PermissionService {
       [PERMISSIONS.SYNC_VEHICLES_TO_INVENTORY]: 'Sync vehicles with inventory system',
       [PERMISSIONS.INITIALIZE_INVENTORY_DATA]: 'Initialize inventory with default data',
       [PERMISSIONS.VIEW_FINANCIALS]: 'View financial reports and data',
+      [PERMISSIONS.VIEW_INVOICES]: 'View invoice list and details',
       [PERMISSIONS.CREATE_INVOICES]: 'Create new invoices',
       [PERMISSIONS.EDIT_INVOICES]: 'Edit invoice information',
       [PERMISSIONS.DELETE_INVOICES]: 'Delete invoices',
+      [PERMISSIONS.APPROVE_INVOICES]: 'Approve invoice validation',
+      [PERMISSIONS.SEND_INVOICES]: 'Send invoices to customers',
+      [PERMISSIONS.DOWNLOAD_INVOICES]: 'Download invoice PDFs',
+      [PERMISSIONS.MANAGE_QUOTATIONS]: 'Manage price quotations',
+      [PERMISSIONS.APPROVE_QUOTATIONS]: 'Approve price quotations',
+      [PERMISSIONS.CONVERT_QUOTATIONS]: 'Convert quotations to invoices',
       [PERMISSIONS.MANAGE_PAYMENTS]: 'Manage payment processing and records',
+      [PERMISSIONS.PROCESS_OFFLINE_PAYMENTS]: 'Process offline/cash payments',
+      [PERMISSIONS.MANAGE_PAYMENT_METHODS]: 'Manage payment methods and gateways',
+      [PERMISSIONS.VIEW_PAYMENT_HISTORY]: 'View payment history and records',
+      [PERMISSIONS.REFUND_PAYMENTS]: 'Process payment refunds',
+      [PERMISSIONS.MANAGE_TAX_SETTINGS]: 'Manage tax rates and settings',
       [PERMISSIONS.VIEW_REPORTS]: 'View system reports',
       [PERMISSIONS.EXPORT_FINANCIAL_DATA]: 'Export financial data and reports',
+      [PERMISSIONS.VIEW_FINANCIAL_OVERVIEW]: 'View financial dashboard and overview',
+      [PERMISSIONS.ACCESS_FINANCE_DASHBOARD]: 'Access full finance dashboard',
       [PERMISSIONS.VIEW_BRANCHES]: 'View branch information and details',
       [PERMISSIONS.CREATE_BRANCHES]: 'Create new branches',
       [PERMISSIONS.EDIT_BRANCHES]: 'Edit branch information',

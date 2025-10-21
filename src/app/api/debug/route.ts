@@ -7,6 +7,15 @@ export async function GET(request: NextRequest) {
   try {
     console.log('=== DEBUG API CALLED ===');
     
+    // Check environment
+    const env = {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET'
+    }
+    console.log('Environment:', env);
+    
     // Step 1: Check authentication
     const authUser = await getAuthUser();
     console.log('Auth user:', authUser ? {
@@ -19,7 +28,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Not authenticated',
         step: 'auth',
-        suggestion: 'Please log in first'
+        suggestion: 'Please log in first',
+        environment: env
       }, { status: 401 });
     }
     
@@ -32,11 +42,24 @@ export async function GET(request: NextRequest) {
         error: 'Insufficient permissions',
         step: 'role',
         userRole: authUser.role,
-        requiredRoles: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
+        requiredRoles: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        environment: env
       }, { status: 403 });
     }
     
-    // Step 3: Test database query for users
+    // Step 3: Test database connection
+    let dbStatus = 'OK';
+    let dbError = null;
+    try {
+      const count = await db.invoice.count();
+      console.log('Database OK, invoice count:', count);
+    } catch (error) {
+      dbStatus = 'ERROR';
+      dbError = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Database error:', dbError);
+    }
+    
+    // Step 4: Test database query for users
     let usersCount = 0;
     let users = [];
     try {
@@ -60,11 +83,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Database query failed',
         step: 'database',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        environment: env
       }, { status: 500 });
     }
     
-    // Step 4: Test database query for branches
+    // Step 5: Test database query for branches
     let branchesCount = 0;
     let branches = [];
     try {
@@ -84,11 +108,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Branch query failed',
         step: 'branches',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        environment: env
       }, { status: 500 });
     }
     
-    // Step 5: Simulate the managers query
+    // Step 6: Test finance APIs - check for sample invoice
+    let sampleInvoice = null;
+    let invoiceError = null;
+    try {
+      sampleInvoice = await db.invoice.findFirst({
+        select: {
+          id: true,
+          invoiceNumber: true,
+          status: true,
+          totalAmount: true,
+          paidAmount: true,
+          currency: true
+        }
+      });
+      console.log('Sample invoice:', sampleInvoice?.invoiceNumber || 'None found');
+    } catch (error) {
+      invoiceError = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Invoice query failed:', invoiceError);
+    }
+    
+    // Step 7: Simulate the managers query
     let managers = [];
     try {
       const where: any = {
@@ -138,12 +183,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Managers query failed',
         step: 'managers',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        environment: env
       }, { status: 500 });
     }
     
     return NextResponse.json({
       success: true,
+      environment: env,
+      health: {
+        database: { status: dbStatus, error: dbError },
+        authentication: 'success',
+        finance: {
+          sampleInvoice: sampleInvoice ? {
+            id: sampleInvoice.id,
+            number: sampleInvoice.invoiceNumber,
+            status: sampleInvoice.status,
+            total: sampleInvoice.totalAmount,
+            paid: sampleInvoice.paidAmount
+          } : null,
+          error: invoiceError
+        }
+      },
       debug: {
         step: 'complete',
         authentication: 'success',
@@ -160,7 +221,8 @@ export async function GET(request: NextRequest) {
         counts: {
           users: usersCount,
           branches: branchesCount,
-          managers: managers.length
+          managers: managers.length,
+          invoices: sampleInvoice ? 1 : 0
         },
         sampleData: {
           users: users.slice(0, 2),
@@ -176,7 +238,12 @@ export async function GET(request: NextRequest) {
       { 
         error: 'Debug API failed',
         details: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          VERCEL: process.env.VERCEL,
+          VERCEL_ENV: process.env.VERCEL_ENV
+        }
       },
       { status: 500 }
     );

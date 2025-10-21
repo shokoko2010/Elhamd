@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    <p>This page helps test the API endpoints to diagnose issues.</p>
+
+    <div class="test-section">
+        <h2>1. Basic Connection Test</h2>
+        <button onclick="testBasicConnection()">Test No-Auth Endpoint</button>
+        <div id="basic-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Database Connection Test</h2>
+        <button onclick="testDatabase()">Test Database Connection</button>
+        <div id="db-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Authentication Test</h2>
+        <button onclick="testAuth()">Test Authentication</button>
+        <div id="auth-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Offline Payment Test</h2>
+        <div>
+            <input type="text" id="invoiceId" placeholder="Invoice ID" value="test-invoice-id">
+            <input type="number" id="amount" placeholder="Amount" value="100">
+            <select id="paymentMethod">
+                <option value="CASH">CASH</option>
+                <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+                <option value="CHECK">CHECK</option>
+            </select>
+        </div>
+        <button onclick="testOfflinePayment()">Test Offline Payment</button>
+        <div id="payment-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Invoice Status Test</h2>
+        <div>
+            <input type="text" id="statusInvoiceId" placeholder="Invoice ID" value="test-invoice-id">
+            <select id="status">
+                <option value="PAID">PAID</option>
+                <option value="SENT">SENT</option>
+                <option value="CANCELLED">CANCELLED</option>
+                <option value="DRAFT">DRAFT</option>
+            </select>
+        </div>
+        <button onclick="testInvoiceStatus()">Test Invoice Status</button>
+        <div id="status-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. Real API Test (Production)</h2>
+        <button onclick="testRealAPIs()">Test Real APIs</button>
+        <div id="real-result" class="result"></div>
+    </div>
+
+    <script>
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        function showResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            element.className = `result ${result.success ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(result, null, 2);
+        }
+
+        async function testBasicConnection() {
+            const result = await makeRequest('/api/test/no-auth');
+            showResult('basic-result', result);
+        }
+
+        async function testDatabase() {
+            const result = await makeRequest('/api/test/db-simple');
+            showResult('db-result', result);
+        }
+
+        async function testAuth() {
+            const result = await makeRequest('/api/test/auth');
+            showResult('auth-result', result);
+        }
+
+        async function testOfflinePayment() {
+            const invoiceId = document.getElementById('invoiceId').value;
+            const amount = document.getElementById('amount').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            
+            const result = await makeRequest('/api/test/offline-payment', {
+                method: 'POST',
+                body: JSON.stringify({
+                    invoiceId,
+                    amount,
+                    paymentMethod
+                })
+            });
+            showResult('payment-result', result);
+        }
+
+        async function testInvoiceStatus() {
+            const invoiceId = document.getElementById('statusInvoiceId').value;
+            const status = document.getElementById('status').value;
+            
+            const result = await makeRequest('/api/test/invoice-status', {
+                method: 'POST',
+                body: JSON.stringify({
+                    invoiceId,
+                    status
+                })
+            });
+            showResult('status-result', result);
+        }
+
+        async function testRealAPIs() {
+            const results = {};
+            
+            // Test real offline payment API
+            results.offlinePayment = await makeRequest('/api/finance/payments/offline', {
+                method: 'POST',
+                body: JSON.stringify({
+                    invoiceId: 'test-invoice-id',
+                    amount: '100',
+                    paymentMethod: 'CASH'
+                })
+            });
+            
+            // Test real invoice status API
+            results.invoiceStatus = await makeRequest('/api/finance/invoices/test-invoice-id/status', {
+                method: 'PUT',
+                body: JSON.stringify({
+                    status: 'PAID'
+                })
+            });
+            
+            showResult('real-result', results);
+        }
+
+        // Auto-run basic test on page load
+        window.addEventListener('load', () => {
+            console.log('API Test Page loaded. Running basic connection test...');
+            testBasicConnection();
+        });
+    </script>
+</body>
+</html>

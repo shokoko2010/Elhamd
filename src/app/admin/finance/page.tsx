@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
+import { useAuth } from '@/hooks/use-auth'
+import { PERMISSIONS } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -31,7 +33,8 @@ import {
   MoreHorizontal,
   X,
   Smartphone,
-  Banknote
+  Banknote,
+  Lock
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
@@ -126,6 +129,7 @@ export default function FinancePage() {
 }
 
 function FinanceContent() {
+  const { user, hasPermission } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(true)
   const [overview, setOverview] = useState<FinancialOverview | null>(null)
@@ -136,6 +140,33 @@ function FinanceContent() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [dateRange, setDateRange] = useState('month')
   const { toast } = useToast()
+
+  // Check permissions
+  const canViewInvoices = hasPermission(PERMISSIONS.VIEW_INVOICES) || hasPermission(PERMISSIONS.VIEW_FINANCIALS)
+  const canCreateInvoices = hasPermission(PERMISSIONS.CREATE_INVOICES)
+  const canEditInvoices = hasPermission(PERMISSIONS.EDIT_INVOICES)
+  const canDeleteInvoices = hasPermission(PERMISSIONS.DELETE_INVOICES)
+  const canSendInvoices = hasPermission(PERMISSIONS.SEND_INVOICES)
+  const canDownloadInvoices = hasPermission(PERMISSIONS.DOWNLOAD_INVOICES)
+  const canManageQuotations = hasPermission(PERMISSIONS.MANAGE_QUOTATIONS)
+  const canManagePayments = hasPermission(PERMISSIONS.MANAGE_PAYMENTS)
+  const canViewPaymentHistory = hasPermission(PERMISSIONS.VIEW_PAYMENT_HISTORY)
+  const canProcessOfflinePayments = hasPermission(PERMISSIONS.PROCESS_OFFLINE_PAYMENTS)
+  const canViewFinancialOverview = hasPermission(PERMISSIONS.VIEW_FINANCIAL_OVERVIEW)
+  const canAccessFinanceDashboard = hasPermission(PERMISSIONS.ACCESS_FINANCE_DASHBOARD)
+
+  // Redirect if user doesn't have any finance permissions
+  useEffect(() => {
+    if (!canViewInvoices && !canManageQuotations && !canManagePayments && !canViewFinancialOverview) {
+      toast({
+        title: 'صلاحية غير كافية',
+        description: 'ليس لديك صلاحية للوصول إلى القسم المالي',
+        variant: 'destructive'
+      })
+      // Optionally redirect to dashboard
+      window.location.href = '/admin'
+    }
+  }, [user, canViewInvoices, canManageQuotations, canManagePayments, canViewFinancialOverview, toast])
 
   // Handle tab parameter from URL
   useEffect(() => {
@@ -320,12 +351,14 @@ function FinanceContent() {
           <p className="text-gray-600 mt-2">إدارة الفواتير والمدفوعات والتقارير المالية</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/admin/finance/invoices/create">
-            <Button>
-              <Plus className="ml-2 h-4 w-4" />
-              فاتورة جديدة
-            </Button>
-          </Link>
+          {canCreateInvoices && (
+            <Link href="/admin/finance/invoices/create">
+              <Button>
+                <Plus className="ml-2 h-4 w-4" />
+                فاتورة جديدة
+              </Button>
+            </Link>
+          )}
           <Button variant="outline">
             <Download className="ml-2 h-4 w-4" />
             تصدير
@@ -391,10 +424,10 @@ function FinanceContent() {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="invoices">الفواتير</TabsTrigger>
-          <TabsTrigger value="quotations">عروض الأسعار</TabsTrigger>
-          <TabsTrigger value="payments">المدفوعات</TabsTrigger>
-          <TabsTrigger value="reports">التقارير</TabsTrigger>
+          {canViewInvoices && <TabsTrigger value="invoices">الفواتير</TabsTrigger>}
+          {canManageQuotations && <TabsTrigger value="quotations">عروض الأسعار</TabsTrigger>}
+          {(canManagePayments || canViewPaymentHistory) && <TabsTrigger value="payments">المدفوعات</TabsTrigger>}
+          {canViewFinancialOverview && <TabsTrigger value="reports">التقارير</TabsTrigger>}
         </TabsList>
 
         {/* Invoices Tab */}

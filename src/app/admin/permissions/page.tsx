@@ -298,6 +298,11 @@ function PermissionsContent() {
     setIsEditUserModalOpen(true)
   }
 
+  const handleManageFinancePermissions = (user: UserWithPermissions) => {
+    // Open finance permissions manager in a new tab or modal
+    window.open(`/admin/users/${user.id}/finance-permissions`, '_blank')
+  }
+
   const handleSaveUserPermissions = async () => {
     if (!selectedUser) return
 
@@ -610,6 +615,14 @@ function PermissionsContent() {
                         >
                           <Edit className="w-4 h-4 ml-1" />
                           تعديل الصلاحيات
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleManageFinancePermissions(user)}
+                        >
+                          <Settings className="w-4 h-4 ml-1" />
+                          الصلاحيات المالية
                         </Button>
                       </div>
                     </div>
