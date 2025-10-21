@@ -25,9 +25,36 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!invoiceId || !amount || !paymentMethod) {
-      console.log('Missing required fields:', { invoiceId, amount, paymentMethod })
+      console.log('Missing required fields:', { 
+        invoiceId: !!invoiceId, 
+        amount: !!amount, 
+        paymentMethod: !!paymentMethod,
+        invoiceIdValue: invoiceId,
+        amountValue: amount,
+        paymentMethodValue: paymentMethod
+      })
       return NextResponse.json({ 
-        error: 'Missing required fields: invoiceId, amount, paymentMethod' 
+        error: 'Missing required fields: invoiceId, amount, paymentMethod',
+        code: 'MISSING_FIELDS',
+        details: {
+          invoiceId: !!invoiceId,
+          amount: !!amount,
+          paymentMethod: !!paymentMethod
+        }
+      }, { status: 400 })
+    }
+
+    // Validate amount is a positive number
+    const parsedAmount = parseFloat(amount)
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      console.log('Invalid amount:', amount)
+      return NextResponse.json({ 
+        error: 'Payment amount must be a positive number',
+        code: 'INVALID_AMOUNT',
+        details: {
+          providedAmount: amount,
+          parsedAmount
+        }
       }, { status: 400 })
     }
 
@@ -53,21 +80,21 @@ export async function POST(request: NextRequest) {
 
     // Calculate total paid amount
     const totalPaid = invoice.payments.reduce((sum, ip) => sum + ip.payment.amount, 0)
-    const newTotalPaid = totalPaid + amount
+    const newTotalPaid = totalPaid + parsedAmount
 
     // Check if payment amount exceeds invoice total
     if (newTotalPaid > invoice.totalAmount) {
       console.log('Payment amount exceeds invoice total:', {
-        paymentAmount: amount,
+        paymentAmount: parsedAmount,
         currentTotal: totalPaid,
         newTotal: newTotalPaid,
         invoiceTotal: invoice.totalAmount
       })
       return NextResponse.json({ 
-        error: `Payment amount (¥${amount.toFixed(2)}) exceeds invoice total (¥${invoice.totalAmount.toFixed(2)}). Current paid amount: ¥${totalPaid.toFixed(2)}`,
+        error: `Payment amount (¥${parsedAmount.toFixed(2)}) exceeds invoice total (¥${invoice.totalAmount.toFixed(2)}). Current paid amount: ¥${totalPaid.toFixed(2)}`,
         code: 'PAYMENT_EXCEEDS_TOTAL',
         details: {
-          paymentAmount: amount,
+          paymentAmount: parsedAmount,
           invoiceTotal: invoice.totalAmount,
           currentPaid: totalPaid,
           remainingAmount: invoice.totalAmount - totalPaid
@@ -81,7 +108,7 @@ export async function POST(request: NextRequest) {
       data: {
         bookingId: invoiceId, // Using invoiceId as bookingId for offline payments
         bookingType: 'SERVICE', // Default booking type
-        amount,
+        amount: parsedAmount,
         currency: invoice.currency,
         status: PaymentStatus.COMPLETED,
         paymentMethod: paymentMethod as PaymentMethod,
@@ -104,7 +131,7 @@ export async function POST(request: NextRequest) {
       data: {
         invoiceId,
         paymentId: payment.id,
-        amount,
+        amount: parsedAmount,
         paymentDate: new Date(paymentDate || Date.now()),
         paymentMethod: paymentMethod as PaymentMethod,
         transactionId: payment.transactionId,
@@ -142,7 +169,7 @@ export async function POST(request: NextRequest) {
         branchId: invoice.branchId,
         type: 'INCOME',
         category: 'INVOICE_PAYMENT',
-        amount,
+        amount: parsedAmount,
         currency: invoice.currency,
         description: `Offline payment for invoice ${invoice.invoiceNumber}`,
         date: new Date(paymentDate || Date.now()),
@@ -168,7 +195,7 @@ export async function POST(request: NextRequest) {
         entityId: invoiceId,
         userId: user.id,
         details: {
-          amount,
+          amount: parsedAmount,
           paymentMethod,
           referenceNumber,
           invoiceNumber: invoice.invoiceNumber
