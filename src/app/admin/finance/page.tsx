@@ -190,24 +190,37 @@ function FinanceContent() {
       if (overviewResponse.ok) {
         const overviewData = await overviewResponse.json()
         setOverview(overviewData)
+      } else {
+        console.error('Overview API failed:', overviewResponse.status)
       }
       
       // Fetch invoices
       const invoicesResponse = await fetch('/api/finance/invoices')
       if (invoicesResponse.ok) {
         const invoicesData = await invoicesResponse.json()
-        setInvoices(invoicesData)
+        // Ensure invoices is always an array - handle both array and object with invoices property
+        setInvoices(Array.isArray(invoicesData) ? invoicesData : (invoicesData?.invoices || []))
+      } else {
+        console.error('Invoices API failed:', invoicesResponse.status)
+        setInvoices([])
       }
       
       // Fetch payments
       const paymentsResponse = await fetch('/api/finance/payments/offline')
       if (paymentsResponse.ok) {
         const paymentsData = await paymentsResponse.json()
-        setPayments(paymentsData.payments || [])
+        // Ensure payments is always an array
+        setPayments(Array.isArray(paymentsData?.payments) ? paymentsData.payments : [])
+      } else {
+        console.error('Payments API failed:', paymentsResponse.status)
+        setPayments([])
       }
       
     } catch (error) {
       console.error('Error fetching finance data:', error)
+      // Ensure arrays are set even on error
+      setInvoices([])
+      setPayments([])
       toast({
         title: 'خطأ',
         description: 'فشل في تحميل البيانات المالية',
@@ -312,7 +325,7 @@ function FinanceContent() {
     return <Icon className="w-4 h-4" />
   }
 
-  const filteredInvoices = invoices.filter(invoice => {
+  const filteredInvoices = (invoices || []).filter(invoice => {
     const matchesSearch = 
       invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -324,7 +337,7 @@ function FinanceContent() {
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const filteredPayments = payments.filter(payment => {
+  const filteredPayments = (payments || []).filter(payment => {
     const matchesSearch = 
       payment.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.notes?.toLowerCase().includes(searchTerm.toLowerCase())
