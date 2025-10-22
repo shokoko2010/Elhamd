@@ -157,16 +157,55 @@ function FinanceContent() {
 
   // Redirect if user doesn't have any finance permissions
   useEffect(() => {
-    if (!canViewInvoices && !canManageQuotations && !canManagePayments && !canViewFinancialOverview) {
+    if (user && !canViewInvoices && !canManageQuotations && !canManagePayments && !canViewFinancialOverview) {
       toast({
         title: 'صلاحية غير كافية',
-        description: 'ليس لديك صلاحية للوصول إلى القسم المالي',
+        description: 'ليس لديك صلاحية للوصول إلى القسم المالي. برجى التواصل مع مدير النظام.',
         variant: 'destructive'
       })
-      // Optionally redirect to dashboard
-      window.location.href = '/admin'
+      // Show access denied message instead of redirect
+      return
     }
   }, [user, canViewInvoices, canManageQuotations, canManagePayments, canViewFinancialOverview, toast])
+
+  // Show access denied message if user is authenticated but lacks permissions
+  if (user && !canViewInvoices && !canManageQuotations && !canManagePayments && !canViewFinancialOverview) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4">
+          <CardHeader className="text-center">
+            <Lock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <CardTitle className="text-red-600">صلاحية غير كافية</CardTitle>
+            <CardDescription>
+              ليس لديك صلاحية للوصول إلى القسم المالي
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-gray-600 text-center">
+              <p>المستخدم: {user.email}</p>
+              <p>الدور: {user.role}</p>
+              <p>عدد الصلاحيات: {user.permissions?.length || 0}</p>
+            </div>
+            <div className="space-y-2">
+              <Button 
+                onClick={() => window.location.href = '/admin/finance/debug'}
+                variant="outline"
+                className="w-full"
+              >
+                صفحة تشخيص الصلاحيات
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/admin'}
+                className="w-full"
+              >
+                العودة للوحة التحكم
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   // Handle tab parameter from URL
   useEffect(() => {
