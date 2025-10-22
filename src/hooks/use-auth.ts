@@ -140,6 +140,20 @@ export function useAuth() {
 
   const canViewFinancials = (): boolean => hasPermission('view_financials')
   const canManageFinancials = (): boolean => hasAnyPermission(['view_financials', 'export_financial_data'])
+  
+  // Finance permissions
+  const canViewInvoices = (): boolean => hasPermission('view_invoices') || hasPermission('view_financials')
+  const canCreateInvoices = (): boolean => hasPermission('create_invoices')
+  const canEditInvoices = (): boolean => hasPermission('edit_invoices')
+  const canDeleteInvoices = (): boolean => hasPermission('delete_invoices')
+  const canSendInvoices = (): boolean => hasPermission('send_invoices')
+  const canDownloadInvoices = (): boolean => hasPermission('download_invoices')
+  const canManageQuotations = (): boolean => hasPermission('manage_quotations')
+  const canManagePayments = (): boolean => hasPermission('manage_payments')
+  const canViewPaymentHistory = (): boolean => hasPermission('view_payment_history')
+  const canProcessOfflinePayments = (): boolean => hasPermission('process_offline_payments')
+  const canViewFinancialOverview = (): boolean => hasPermission('view_financial_overview')
+  const canAccessFinanceDashboard = (): boolean => hasPermission('access_finance_dashboard')
 
   const canViewBranches = (): boolean => hasPermission('view_branches')
   const canManageBranches = (): boolean => hasAnyPermission(['create_branches', 'edit_branches', 'delete_branches'])
@@ -190,6 +204,21 @@ export function useAuth() {
     canManageSuppliers,
     canViewFinancials,
     canManageFinancials,
+    
+    // Finance permissions
+    canViewInvoices,
+    canCreateInvoices,
+    canEditInvoices,
+    canDeleteInvoices,
+    canSendInvoices,
+    canDownloadInvoices,
+    canManageQuotations,
+    canManagePayments,
+    canViewPaymentHistory,
+    canProcessOfflinePayments,
+    canViewFinancialOverview,
+    canAccessFinanceDashboard,
+    
     canViewBranches,
     canManageBranches,
     canManageBranchStaff,
