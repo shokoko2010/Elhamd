@@ -7,9 +7,16 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let isConnected = false
+  
   try {
     console.log('=== INVOICE STATUS UPDATE START ===')
     console.log('Invoice ID:', params.id)
+    
+    // Ensure database connection
+    await db.$connect()
+    isConnected = true
+    console.log('Database connected successfully')
     
     const user = await getAuthUser()
     console.log('User authenticated:', !!user)
@@ -167,11 +174,35 @@ export async function PUT(
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
     
+    // Check for specific database connection errors
+    if (error instanceof Error) {
+      if (error.message.includes('connection') || error.message.includes('timeout')) {
+        return NextResponse.json({ 
+          error: 'Database connection error. Please try again.',
+          code: 'DATABASE_CONNECTION_ERROR',
+          details: 'Unable to connect to the database. Please try again later.'
+        }, { status: 503 })
+      }
+      
+      if (error.message.includes('prisma') || error.message.includes('query')) {
+        return NextResponse.json({ 
+          error: 'Database query error. Please try again.',
+          code: 'DATABASE_QUERY_ERROR',
+          details: 'A database error occurred while processing your request.'
+        }, { status: 500 })
+      }
+    }
+    
     return NextResponse.json({ 
       error: 'Failed to update invoice status',
       details: error instanceof Error ? error.message : 'Unknown error',
       code: 'INTERNAL_ERROR'
     }, { status: 500 })
+  } finally {
+    if (isConnected) {
+      await db.$disconnect()
+      console.log('Database disconnected')
+    }
   }
 }
 

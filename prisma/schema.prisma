@@ -394,10 +394,11 @@ model Payment {
   receiptUrl      String?
   notes           String?
   branchId        String?
+  metadata        Json?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   invoicePayments InvoicePayment[]
-  serviceBooking  ServiceBooking   @relation(fields: [bookingId], references: [id])
+  serviceBooking  ServiceBooking?  @relation(fields: [bookingId], references: [id])
   branch          Branch?          @relation(fields: [branchId], references: [id])
 
   @@map("payments")
