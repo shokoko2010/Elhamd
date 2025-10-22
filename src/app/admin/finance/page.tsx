@@ -257,40 +257,7 @@ function FinanceContent() {
     )
   }
 
-  const fetchFinanceData = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch overview data
-      const overviewResponse = await fetch('/api/finance/overview')
-      if (overviewResponse.ok) {
-        const overviewData = await overviewResponse.json()
-        setOverview(overviewData)
-      }
-
-      // Fetch invoices
-      const invoicesResponse = await fetch('/api/finance/invoices')
-      if (invoicesResponse.ok) {
-        const invoicesData = await invoicesResponse.json()
-        setInvoices(invoicesData.invoices || [])
-      }
-
-      // Fetch payments
-      const paymentsResponse = await fetch('/api/payments/transactions')
-      if (paymentsResponse.ok) {
-        const paymentsData = await paymentsResponse.json()
-        setPayments(paymentsData.transactions || [])
-      }
-    } catch (error) {
-      toast({
-        title: 'خطأ',
-        description: 'فشل في تحميل البيانات المالية',
-        variant: 'destructive'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+  
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-EG', {
