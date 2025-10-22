@@ -168,6 +168,56 @@ function FinanceContent() {
     }
   }, [user, canViewInvoices, canManageQuotations, canManagePayments, canViewFinancialOverview, toast])
 
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const tab = urlParams.get('tab')
+    if (tab && ['overview', 'invoices', 'quotations', 'payments', 'reports'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchFinanceData()
+  }, [dateRange])
+
+  const fetchFinanceData = async () => {
+    try {
+      setLoading(true)
+      
+      // Fetch overview data
+      const overviewResponse = await fetch('/api/finance/overview')
+      if (overviewResponse.ok) {
+        const overviewData = await overviewResponse.json()
+        setOverview(overviewData)
+      }
+      
+      // Fetch invoices
+      const invoicesResponse = await fetch('/api/finance/invoices')
+      if (invoicesResponse.ok) {
+        const invoicesData = await invoicesResponse.json()
+        setInvoices(invoicesData)
+      }
+      
+      // Fetch payments
+      const paymentsResponse = await fetch('/api/finance/payments/offline')
+      if (paymentsResponse.ok) {
+        const paymentsData = await paymentsResponse.json()
+        setPayments(paymentsData.payments || [])
+      }
+      
+    } catch (error) {
+      console.error('Error fetching finance data:', error)
+      toast({
+        title: 'خطأ',
+        description: 'فشل في تحميل البيانات المالية',
+        variant: 'destructive'
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Show access denied message if user is authenticated but lacks permissions
   if (user && !canViewInvoices && !canManageQuotations && !canManagePayments && !canViewFinancialOverview) {
     return (
@@ -206,19 +256,6 @@ function FinanceContent() {
       </div>
     )
   }
-
-  // Handle tab parameter from URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const tab = urlParams.get('tab')
-    if (tab && ['overview', 'invoices', 'quotations', 'payments', 'reports'].includes(tab)) {
-      setActiveTab(tab)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchFinanceData()
-  }, [dateRange])
 
   const fetchFinanceData = async () => {
     try {
