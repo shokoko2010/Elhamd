@@ -53,12 +53,13 @@ interface Invoice {
   id: string
   invoiceNumber: string
   customerId: string
-  customer: {
+  customer?: {
     id: string
     name: string
     email: string
     phone?: string
   }
+  customerName?: string // Alternative field for backward compatibility
   type: string
   status: 'DRAFT' | 'SENT' | 'PAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'CANCELLED' | 'REFUNDED'
   issueDate: string
@@ -328,8 +329,8 @@ function FinanceContent() {
   const filteredInvoices = (invoices || []).filter(invoice => {
     const matchesSearch = 
       invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (invoice.customer?.name || invoice.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (invoice.customer?.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter
     const matchesType = typeFilter === 'all' || invoice.type === typeFilter
@@ -586,8 +587,8 @@ function FinanceContent() {
                         </td>
                         <td className="text-right py-3 px-4">
                           <div>
-                            <p className="font-medium">{invoice.customer.name}</p>
-                            <p className="text-sm text-gray-500">{invoice.customer.email}</p>
+                            <p className="font-medium">{invoice.customer?.name || invoice.customerName || 'غير معروف'}</p>
+                            <p className="text-sm text-gray-500">{invoice.customer?.email || ''}</p>
                           </div>
                         </td>
                         <td className="text-right py-3 px-4">
