@@ -337,31 +337,69 @@ export async function GET(request: NextRequest) {
       where.paymentMethod = paymentMethod
     }
 
-    const payments = await db.invoicePayment.findMany({
-      where,
-      include: {
-        invoice: {
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true
+    let payments
+    try {
+      // Try to fetch with metadata field
+      payments = await db.invoicePayment.findMany({
+        where,
+        include: {
+          invoice: {
+            include: {
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
               }
+            }
+          },
+          payment: true
+        },
+        orderBy: {
+          paymentDate: 'desc'
+        }
+      })
+    } catch (error) {
+      // If metadata field doesn't exist, fetch without it
+      console.log('Metadata field not found, fetching payments without metadata')
+      payments = await db.invoicePayment.findMany({
+        where,
+        include: {
+          invoice: {
+            include: {
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          },
+          payment: {
+            select: {
+              id: true,
+              amount: true,
+              currency: true,
+              status: true,
+              paymentMethod: true,
+              transactionId: true,
+              notes: true,
+              createdAt: true
             }
           }
         },
-        payment: true
-      },
-      orderBy: {
-        paymentDate: 'desc'
-      }
-    })
+        orderBy: {
+          paymentDate: 'desc'
+        }
+      })
+    }
 
-    // Filter for offline payments only
+    // Filter for offline payments only (safely check metadata)
     const offlinePayments = payments.filter(ip => 
       ip.payment.notes?.includes('Offline') || 
-      ip.payment.metadata?.type === 'OFFLINE'
+      (ip.payment as any).metadata?.type === 'OFFLINE'
     )
 
     return NextResponse.json({
