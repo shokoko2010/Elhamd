@@ -102,43 +102,32 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Create payment record
-    console.log('Creating payment record...')
-    const payment = await db.payment.create({
-      data: {
-        bookingId: invoiceId, // Using invoiceId as bookingId for offline payments
-        bookingType: 'SERVICE', // Default booking type
-        amount: parsedAmount,
-        currency: invoice.currency,
-        status: PaymentStatus.COMPLETED,
-        paymentMethod: paymentMethod as PaymentMethod,
-        transactionId: referenceNumber || `OFFLINE-${Date.now()}`,
-        notes: notes || `Offline payment - ${paymentMethod}`,
-        branchId: invoice.branchId,
-        metadata: {
-          type: 'OFFLINE',
-          recordedBy: user.id,
-          referenceNumber,
-          paymentDate: paymentDate || new Date().toISOString()
-        }
-      }
-    })
-    console.log('Payment record created:', payment.id)
-
-    // Create invoice payment relationship
-    console.log('Creating invoice payment relationship...')
-    await db.invoicePayment.create({
+    // Create invoice payment record directly
+    console.log('Creating invoice payment record...')
+    const invoicePayment = await db.invoicePayment.create({
       data: {
         invoiceId,
-        paymentId: payment.id,
+        paymentId: `OFFLINE-${Date.now()}`, // Use a generated ID as paymentId
         amount: parsedAmount,
         paymentDate: new Date(paymentDate || Date.now()),
         paymentMethod: paymentMethod as PaymentMethod,
-        transactionId: payment.transactionId,
+        transactionId: referenceNumber || `OFFLINE-${Date.now()}`,
         notes: notes || `Offline payment - ${paymentMethod}`
       }
     })
-    console.log('Invoice payment relationship created')
+    console.log('Invoice payment record created:', invoicePayment.id)
+
+    // Create a simple payment record for tracking
+    console.log('Creating payment tracking record...')
+    const payment = {
+      id: invoicePayment.paymentId,
+      amount: parsedAmount,
+      paymentMethod: paymentMethod as PaymentMethod,
+      transactionId: invoicePayment.transactionId,
+      status: PaymentStatus.COMPLETED,
+      createdAt: invoicePayment.createdAt
+    }
+    console.log('Payment tracking record created')
 
     // Update invoice status based on payment
     let newStatus: InvoiceStatus = invoice.status
@@ -174,13 +163,14 @@ export async function POST(request: NextRequest) {
         description: `Offline payment for invoice ${invoice.invoiceNumber}`,
         date: new Date(paymentDate || Date.now()),
         paymentMethod: paymentMethod as PaymentMethod,
-        reference: payment.transactionId,
+        reference: invoicePayment.transactionId,
         customerId: invoice.customerId,
         invoiceId,
         metadata: {
           type: 'OFFLINE',
           recordedBy: user.id,
-          paymentId: payment.id
+          invoicePaymentId: invoicePayment.id,
+          paymentId: invoicePayment.paymentId
         }
       }
     })
@@ -198,7 +188,9 @@ export async function POST(request: NextRequest) {
           amount: parsedAmount,
           paymentMethod,
           referenceNumber,
-          invoiceNumber: invoice.invoiceNumber
+          invoiceNumber: invoice.invoiceNumber,
+          invoicePaymentId: invoicePayment.id,
+          paymentId: invoicePayment.paymentId
         }
       }
     })
@@ -209,12 +201,12 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Offline payment recorded successfully',
       payment: {
-        id: payment.id,
-        amount: payment.amount,
-        paymentMethod: payment.paymentMethod,
-        transactionId: payment.transactionId,
-        status: payment.status,
-        createdAt: payment.createdAt
+        id: invoicePayment.paymentId,
+        amount: invoicePayment.amount,
+        paymentMethod: invoicePayment.paymentMethod,
+        transactionId: invoicePayment.transactionId,
+        status: PaymentStatus.COMPLETED,
+        createdAt: invoicePayment.createdAt
       },
       invoice: {
         id: invoice.id,
@@ -252,11 +244,7 @@ export async function GET(request: NextRequest) {
     const paymentMethod = searchParams.get('paymentMethod')
 
     // Build where clause
-    const where: any = {
-      payment: {
-        status: PaymentStatus.COMPLETED
-      }
-    }
+    const where: any = {}
 
     if (invoiceId) {
       where.invoiceId = invoiceId
@@ -278,7 +266,7 @@ export async function GET(request: NextRequest) {
       where.paymentMethod = paymentMethod
     }
 
-    const payments = await db.invoicePayment.findMany({
+    const invoicePayments = await db.invoicePayment.findMany({
       where,
       include: {
         invoice: {
@@ -291,8 +279,7 @@ export async function GET(request: NextRequest) {
               }
             }
           }
-        },
-        payment: true
+        }
       },
       orderBy: {
         paymentDate: 'desc'
@@ -300,9 +287,9 @@ export async function GET(request: NextRequest) {
     })
 
     // Filter for offline payments only
-    const offlinePayments = payments.filter(ip => 
-      ip.payment.notes?.includes('Offline') || 
-      ip.payment.metadata?.type === 'OFFLINE'
+    const offlinePayments = invoicePayments.filter(ip => 
+      ip.notes?.includes('Offline') || 
+      ip.paymentId?.startsWith('OFFLINE-')
     )
 
     return NextResponse.json({
