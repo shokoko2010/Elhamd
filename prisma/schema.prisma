@@ -22,110 +22,74 @@ model SecurityLog {
 }
 
 model User {
-  id                          String                 @id @default(cuid())
-  email                       String                 @unique
-  password                    String?
-  name                        String?
-  role                        UserRole               @default(CUSTOMER)
-  phone                       String?
-  isActive                    Boolean                @default(true)
-  emailVerified               Boolean                @default(false)
-  lastLoginAt                 DateTime?
-  securitySettings            Json?
-  segment                     CustomerSegment        @default(CUSTOMER)
-  status                      String                 @default("active")
-  branchId                    String?
-  roleTemplateId              String?
-  customPermissions           Json?
-  createdAt                   DateTime               @default(now())
-  updatedAt                   DateTime               @updatedAt
-  activityLogs                ActivityLog[]
-  bookings                    Booking[]
-  approvedBudgets             BranchBudget[]         @relation("BudgetApprover")
-  createdBudgets              BranchBudget[]         @relation("BudgetCreator")
-  branchPermissions           BranchPermission[]
-  approvedTransfers           BranchTransfer[]       @relation("TransferApprover")
-  transferRequests            BranchTransfer[]       @relation("TransferRequester")
-  managedBranch               Branch?                @relation("BranchManager")
-  organizedEvents             CalendarEvent[]
-  campaignMembers             CampaignMember[]       @relation("CampaignMemberUser")
-  complaintFollowUps          ComplaintFollowUp[]
-  createdComplaints           Complaint[]            @relation("ComplaintAssigner")
-  assignedComplaints          Complaint[]            @relation("ComplaintAssignee")
-  complaints                  Complaint[]
-  resolvedComplaints          Complaint[]            @relation("ComplaintResolver")
-  approvedContracts           Contract[]             @relation("ContractApprover")
-  createdContracts            Contract[]             @relation("ContractCreator")
-  customerContracts           Contract[]             @relation("CustomerContracts")
-  crmInteractions             CRMInteraction[]
-  feedback                    CustomerFeedback[]
-  customerProfile             CustomerProfile?
-  employeeRecord              Employee?              @relation("EmployeeRecord")
-  assignedInsuranceClaims     InsuranceClaim[]       @relation("InsuranceClaimAssignee")
-  createdInsuranceClaims      InsuranceClaim[]       @relation("InsuranceClaimCreator")
-  customerInsuranceClaims     InsuranceClaim[]       @relation("CustomerInsuranceClaims")
-  createdInsuranceCompanies   InsuranceCompany[]
-  approvedInsurancePayments   InsurancePayment[]     @relation("InsurancePaymentApprover")
-  createdInsurancePayments    InsurancePayment[]     @relation("InsurancePaymentCreator")
-  approvedInsurancePolicies   InsurancePolicy[]      @relation("InsurancePolicyApprover")
-  createdInsurancePolicies    InsurancePolicy[]      @relation("InsurancePolicyCreator")
-  customerInsurancePolicies   InsurancePolicy[]      @relation("CustomerInsurancePolicies")
-  invoices                    Invoice[]
-  approvedJournalEntries      JournalEntry[]         @relation("JournalEntryApprover")
-  createdJournalEntries       JournalEntry[]         @relation("JournalEntryCreator")
-  knowledgeBaseArticles       KnowledgeBaseArticle[] @relation("ArticleAuthor")
-  reviewedArticles            KnowledgeBaseArticle[] @relation("ArticleReviewer")
-  knowledgeBaseRatings        KnowledgeBaseRating[]
-  leadActivities              LeadActivity[]         @relation("LeadActivityUser")
-  createdLeads                Lead[]                 @relation("LeadAssigner")
-  leads                       Lead[]                 @relation("LeadAssignee")
-  approvedLeaveRequests       LeaveRequest[]         @relation("LeaveApprover")
-  createdMaintenanceParts     MaintenancePart[]
-  createdMaintenanceRecords   MaintenanceRecord[]
-  createdMaintenanceReminders MaintenanceReminder[]
-  createdMaintenanceSchedules MaintenanceSchedule[]
-  approvedCampaigns           MarketingCampaign[]    @relation("CampaignApprover")
-  marketingCampaigns          MarketingCampaign[]    @relation("CampaignCreator")
-  createdOrders               Order[]                @relation("OrderCreator")
-  orders                      Order[]                @relation("OrderCustomer")
-  approvedPayrollRecords      PayrollRecord[]        @relation("PayrollApprover")
-  createdPayrollRecords       PayrollRecord[]        @relation("PayrollCreator")
-  performanceMetrics          PerformanceMetric[]
-  performanceReviews          PerformanceReview[]    @relation("PerformanceReviewer")
-  approvedReviews             ProductReview[]        @relation("ProductReviewApprover")
-  productReviews              ProductReview[]        @relation("ProductReviewCustomer")
-  createdProducts             Product[]              @relation("ProductCreator")
-  createdPromotions           Promotion[]            @relation("PromotionCreator")
-  approvedPurchaseOrders      PurchaseOrder[]        @relation("PurchaseOrderApprover")
-  purchaseOrders              PurchaseOrder[]        @relation("PurchaseOrderCreator")
-  quotations                  Quotation[]            @relation("QuotationCreator")
-  customerQuotations          Quotation[]            @relation("CustomerQuotations")
-  salesFunnels                SalesFunnel[]
-  salesTargets                SalesTarget[]
-  securityLogs                SecurityLog[]
-  serviceBookings             ServiceBooking[]
-  serviceEvaluations          ServiceEvaluation[]    @relation("EvaluationCustomer")
-  reviewedEvaluations         ServiceEvaluation[]    @relation("EvaluationReviewer")
-  createdTickets              SupportTicket[]        @relation("TicketAssigner")
-  assignedTickets             SupportTicket[]        @relation("TicketAssignee")
-  supportTickets              SupportTicket[]
-  resolvedTickets             SupportTicket[]        @relation("TicketResolver")
-  taskComments                TaskComment[]
-  createdTasks                Task[]                 @relation("TaskAssigner")
-  assignedTasks               Task[]                 @relation("TaskAssignee")
-  customerTasks               Task[]                 @relation("TaskCustomer")
-  approvedTaxRecords          TaxRecord[]            @relation("TaxRecordApprover")
-  createdTaxRecords           TaxRecord[]            @relation("TaxRecordCreator")
-  testDriveBookings           TestDriveBooking[]
-  ticketComments              TicketComment[]
-  ticketTimeline              TicketTimeline[]
-  transactions                Transaction[]
-  permissions                 UserPermission[]
-  branch                      Branch?                @relation(fields: [branchId], references: [id])
-  roleTemplate                RoleTemplate?          @relation(fields: [roleTemplateId], references: [id])
-  approvedWarrantyClaims      WarrantyClaim[]        @relation("WarrantyClaimApprover")
-  createdWarrantyClaims       WarrantyClaim[]        @relation("WarrantyClaimCreator")
-  warrantyClaims              WarrantyClaim[]        @relation("WarrantyClaimCustomer")
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  password               String?
+  name                   String?
+  role                   UserRole               @default(CUSTOMER)
+  phone                  String?
+  isActive               Boolean                @default(true)
+  emailVerified          Boolean                @default(false)
+  lastLoginAt            DateTime?
+  securitySettings       Json?
+  segment                CustomerSegment        @default(CUSTOMER)
+  status                 String                 @default("active")
+  branchId               String?
+  roleTemplateId         String?
+  customPermissions      Json?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  activityLogs           ActivityLog[]
+  bookings               Booking[]
+  approvedBudgets        BranchBudget[]         @relation("BudgetApprover")
+  createdBudgets         BranchBudget[]         @relation("BudgetCreator")
+  branchPermissions      BranchPermission[]
+  approvedTransfers      BranchTransfer[]       @relation("TransferApprover")
+  transferRequests       BranchTransfer[]       @relation("TransferRequester")
+  managedBranch          Branch?                @relation("BranchManager")
+  organizedEvents        CalendarEvent[]
+  campaignMembers        CampaignMember[]       @relation("CampaignMemberUser")
+  complaintFollowUps     ComplaintFollowUp[]
+  createdComplaints      Complaint[]            @relation("ComplaintAssigner")
+  assignedComplaints     Complaint[]            @relation("ComplaintAssignee")
+  complaints             Complaint[]
+  resolvedComplaints     Complaint[]            @relation("ComplaintResolver")
+  crmInteractions        CRMInteraction[]
+  feedback               CustomerFeedback[]
+  customerProfile        CustomerProfile?
+  invoices               Invoice[]
+  knowledgeBaseArticles  KnowledgeBaseArticle[] @relation("ArticleAuthor")
+  reviewedArticles       KnowledgeBaseArticle[] @relation("ArticleReviewer")
+  knowledgeBaseRatings   KnowledgeBaseRating[]
+  leadActivities         LeadActivity[]         @relation("LeadActivityUser")
+  createdLeads           Lead[]                 @relation("LeadAssigner")
+  leads                  Lead[]                 @relation("LeadAssignee")
+  approvedCampaigns      MarketingCampaign[]    @relation("CampaignApprover")
+  marketingCampaigns     MarketingCampaign[]    @relation("CampaignCreator")
+  performanceMetrics     PerformanceMetric[]
+  approvedPurchaseOrders PurchaseOrder[]        @relation("PurchaseOrderApprover")
+  purchaseOrders         PurchaseOrder[]        @relation("PurchaseOrderCreator")
+  quotations             Quotation[]            @relation("QuotationCreator")
+  customerQuotations     Quotation[]            @relation("CustomerQuotations")
+  securityLogs           SecurityLog[]
+  serviceBookings        ServiceBooking[]
+  serviceEvaluations     ServiceEvaluation[]    @relation("EvaluationCustomer")
+  reviewedEvaluations    ServiceEvaluation[]    @relation("EvaluationReviewer")
+  createdTickets         SupportTicket[]        @relation("TicketAssigner")
+  assignedTickets        SupportTicket[]        @relation("TicketAssignee")
+  supportTickets         SupportTicket[]
+  resolvedTickets        SupportTicket[]        @relation("TicketResolver")
+  taskComments           TaskComment[]
+  createdTasks           Task[]                 @relation("TaskAssigner")
+  assignedTasks          Task[]                 @relation("TaskAssignee")
+  customerTasks          Task[]                 @relation("TaskCustomer")
+  testDriveBookings      TestDriveBooking[]
+  ticketComments         TicketComment[]
+  ticketTimeline         TicketTimeline[]
+  transactions           Transaction[]
+  permissions            UserPermission[]
+  branch                 Branch?                @relation(fields: [branchId], references: [id])
+  roleTemplate           RoleTemplate?          @relation(fields: [roleTemplateId], references: [id])
 
   @@index([email])
   @@index([role])
@@ -155,22 +119,14 @@ model Branch {
   toTransfers            BranchTransfer[]        @relation("ToBranch")
   manager                User?                   @relation("BranchManager", fields: [managerId], references: [id])
   complaints             Complaint[]
-  contracts              Contract[]
   customerServiceMetrics CustomerServiceMetric[]
-  employees              Employee[]
-  insuranceCompanies     InsuranceCompany[]
   inventory              InventoryItem[]
   invoices               Invoice[]
-  journalEntries         JournalEntry[]
   leads                  Lead[]
   marketingCampaigns     MarketingCampaign[]
-  marketingMetrics       MarketingMetric[]
   payments               Payment[]
   quotations             Quotation[]
-  salesFunnels           SalesFunnel[]
-  salesTargets           SalesTarget[]
   supportTickets         SupportTicket[]
-  taxRecords             TaxRecord[]
   transactions           Transaction[]
   users                  User[]
   vehicles               Vehicle[]
@@ -182,40 +138,32 @@ model Branch {
 }
 
 model Vehicle {
-  id                   String                 @id @default(cuid())
-  make                 String
-  model                String
-  year                 Int
-  price                Float
-  stockNumber          String                 @unique
-  vin                  String?                @unique
-  description          String?
-  category             VehicleCategory
-  fuelType             FuelType
-  transmission         TransmissionType
-  mileage              Int?
-  color                String?
-  status               VehicleStatus          @default(AVAILABLE)
-  featured             Boolean                @default(false)
-  branchId             String?
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  bookings             Booking[]
-  contracts            Contract[]
-  insuranceClaims      InsuranceClaim[]
-  insurancePolicies    InsurancePolicy[]
-  maintenanceRecords   MaintenanceRecord[]
-  maintenanceReminders MaintenanceReminder[]
-  maintenanceSchedules MaintenanceSchedule[]
-  opportunities        Opportunity[]
-  serviceBookings      ServiceBooking[]
-  testDriveBookings    TestDriveBooking[]
-  images               VehicleImage[]
-  pricing              VehiclePricing?
-  specifications       VehicleSpecification[]
-  branch               Branch?                @relation(fields: [branchId], references: [id])
-  warranties           Warranty[]
-  warrantyClaims       WarrantyClaim[]
+  id                String                 @id @default(cuid())
+  make              String
+  model             String
+  year              Int
+  price             Float
+  stockNumber       String                 @unique
+  vin               String?                @unique
+  description       String?
+  category          VehicleCategory
+  fuelType          FuelType
+  transmission      TransmissionType
+  mileage           Int?
+  color             String?
+  status            VehicleStatus          @default(AVAILABLE)
+  featured          Boolean                @default(false)
+  branchId          String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  bookings          Booking[]
+  opportunities     Opportunity[]
+  serviceBookings   ServiceBooking[]
+  testDriveBookings TestDriveBooking[]
+  images            VehicleImage[]
+  pricing           VehiclePricing?
+  specifications    VehicleSpecification[]
+  branch            Branch?                @relation(fields: [branchId], references: [id])
 
   @@index([make, model])
   @@index([status])
@@ -398,7 +346,7 @@ model Payment {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   invoicePayments InvoicePayment[]
-  serviceBooking  ServiceBooking?  @relation(fields: [bookingId], references: [id])
+  serviceBooking  ServiceBooking   @relation(fields: [bookingId], references: [id])
   branch          Branch?          @relation(fields: [branchId], references: [id])
 
   @@map("payments")
@@ -1548,14 +1496,14 @@ model CustomerLifecycle {
 }
 
 model SupportTicket {
-  id             String                 @id @default(cuid())
-  ticketNumber   String                 @unique
+  id             String           @id @default(cuid())
+  ticketNumber   String           @unique
   customerId     String
   subject        String
   description    String
-  category       TicketCategory         @default(GENERAL)
-  priority       TicketPriority         @default(MEDIUM)
-  status         TicketStatus           @default(OPEN)
+  category       TicketCategory   @default(GENERAL)
+  priority       TicketPriority   @default(MEDIUM)
+  status         TicketStatus     @default(OPEN)
   assignedTo     String?
   assignedBy     String?
   assignedAt     DateTime?
@@ -1566,20 +1514,19 @@ model SupportTicket {
   actualHours    Int?
   tags           Json?
   attachments    Json?
-  source         TicketSource           @default(WEB)
+  source         TicketSource     @default(WEB)
   satisfaction   Int?
   feedback       String?
   branchId       String?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  assigner       User?                  @relation("TicketAssigner", fields: [assignedBy], references: [id])
-  assignee       User?                  @relation("TicketAssignee", fields: [assignedTo], references: [id])
-  branch         Branch?                @relation(fields: [branchId], references: [id])
-  customer       User                   @relation(fields: [customerId], references: [id])
-  resolver       User?                  @relation("TicketResolver", fields: [resolutionBy], references: [id])
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  assigner       User?            @relation("TicketAssigner", fields: [assignedBy], references: [id])
+  assignee       User?            @relation("TicketAssignee", fields: [assignedTo], references: [id])
+  branch         Branch?          @relation(fields: [branchId], references: [id])
+  customer       User             @relation(fields: [customerId], references: [id])
+  resolver       User?            @relation("TicketResolver", fields: [resolutionBy], references: [id])
   comments       TicketComment[]
   timeline       TicketTimeline[]
-  knowledgeBase  KnowledgeBaseArticle[] @relation("TicketArticles")
 
   @@index([customerId, status])
   @@index([assignedTo, status])
@@ -1758,7 +1705,6 @@ model KnowledgeBaseArticle {
   category     KnowledgeBaseCategory @relation(fields: [categoryId], references: [id])
   reviewer     User?                 @relation("ArticleReviewer", fields: [reviewedBy], references: [id])
   ratings      KnowledgeBaseRating[]
-  tickets      SupportTicket[]       @relation("TicketArticles")
 
   @@index([categoryId, status])
   @@index([authorId, status])
@@ -1855,8 +1801,8 @@ model MarketingCampaign {
 }
 
 model Lead {
-  id             String              @id @default(cuid())
-  leadNumber     String              @unique
+  id             String             @id @default(cuid())
+  leadNumber     String             @unique
   customerId     String?
   firstName      String
   lastName       String?
@@ -1864,10 +1810,10 @@ model Lead {
   phone          String?
   company        String?
   position       String?
-  source         LeadSource          @default(WEBSITE)
+  source         LeadSource         @default(WEBSITE)
   campaignId     String?
-  status         LeadStatus          @default(NEW)
-  priority       LeadPriority        @default(MEDIUM)
+  status         LeadStatus         @default(NEW)
+  priority       LeadPriority       @default(MEDIUM)
   estimatedValue Float?
   assignedTo     String?
   assignedBy     String?
@@ -1879,15 +1825,14 @@ model Lead {
   convertedTo    String?
   convertedId    String?
   branchId       String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
   activities     LeadActivity[]
-  communications LeadCommunication[]
-  assigner       User?               @relation("LeadAssigner", fields: [assignedBy], references: [id])
-  assignee       User?               @relation("LeadAssignee", fields: [assignedTo], references: [id])
-  branch         Branch?             @relation(fields: [branchId], references: [id])
-  campaign       MarketingCampaign?  @relation(fields: [campaignId], references: [id])
-  customer       CustomerProfile?    @relation(fields: [customerId], references: [id])
+  assigner       User?              @relation("LeadAssigner", fields: [assignedBy], references: [id])
+  assignee       User?              @relation("LeadAssignee", fields: [assignedTo], references: [id])
+  branch         Branch?            @relation(fields: [branchId], references: [id])
+  campaign       MarketingCampaign? @relation(fields: [campaignId], references: [id])
+  customer       CustomerProfile?   @relation(fields: [customerId], references: [id])
 
   @@index([source])
   @@index([assignedTo])
@@ -1930,7 +1875,6 @@ model LeadCommunication {
   metadata    Json?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
-  lead        Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId])
   @@index([scheduledAt])
@@ -1950,8 +1894,6 @@ model SalesFunnel {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   opportunities Opportunity[]
-  branch        Branch?       @relation(fields: [branchId], references: [id])
-  creator       User          @relation(fields: [createdBy], references: [id])
 
   @@index([isActive])
   @@index([branchId])
@@ -1975,8 +1917,6 @@ model SalesTarget {
   metadata     Json?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  assignee     User         @relation(fields: [assignedTo], references: [id])
-  branch       Branch?      @relation(fields: [branchId], references: [id])
 
   @@index([assignedTo])
   @@index([startDate])
@@ -2007,7 +1947,6 @@ model MarketingMetric {
   metadata           Json?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
-  branch             Branch?      @relation(fields: [branchId], references: [id])
 
   @@unique([date, period, branchId])
   @@index([date, period])
@@ -2016,57 +1955,48 @@ model MarketingMetric {
 }
 
 model ChartOfAccount {
-  id             String             @id @default(cuid())
-  code           String             @unique
-  name           String
-  type           AccountType
-  parentId       String?
-  isActive       Boolean            @default(true)
-  normalBalance  BalanceType
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  parent         ChartOfAccount?    @relation("AccountParent", fields: [parentId], references: [id])
-  children       ChartOfAccount[]   @relation("AccountParent")
-  journalEntries JournalEntryItem[]
+  id            String      @id @default(cuid())
+  code          String      @unique
+  name          String
+  type          AccountType
+  parentId      String?
+  isActive      Boolean     @default(true)
+  normalBalance BalanceType
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@index([code])
   @@map("chart_of_accounts")
 }
 
 model JournalEntry {
-  id          String             @id @default(cuid())
-  entryNumber String             @unique
+  id          String      @id @default(cuid())
+  entryNumber String      @unique
   date        DateTime
   description String
   reference   String?
   totalDebit  Float
   totalCredit Float
-  status      EntryStatus        @default(DRAFT)
+  status      EntryStatus @default(DRAFT)
   createdBy   String
   approvedBy  String?
   approvedAt  DateTime?
   branchId    String?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  approver    User?              @relation("JournalEntryApprover", fields: [approvedBy], references: [id])
-  branch      Branch?            @relation(fields: [branchId], references: [id])
-  creator     User               @relation("JournalEntryCreator", fields: [createdBy], references: [id])
-  items       JournalEntryItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([date])
   @@map("journal_entries")
 }
 
 model JournalEntryItem {
-  id          String         @id @default(cuid())
+  id          String   @id @default(cuid())
   entryId     String
   accountId   String
   description String?
-  debit       Float          @default(0)
-  credit      Float          @default(0)
-  createdAt   DateTime       @default(now())
-  account     ChartOfAccount @relation(fields: [accountId], references: [id])
-  entry       JournalEntry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  debit       Float    @default(0)
+  credit      Float    @default(0)
+  createdAt   DateTime @default(now())
 
   @@index([entryId])
   @@index([accountId])
@@ -2074,29 +2004,21 @@ model JournalEntryItem {
 }
 
 model Employee {
-  id                 String              @id @default(cuid())
-  employeeNumber     String              @unique
-  userId             String              @unique
-  department         String
-  position           String
-  hireDate           DateTime
-  salary             Float
-  bankAccount        String?
-  taxNumber          String?
-  insuranceNumber    String?
-  status             EmployeeStatus      @default(ACTIVE)
-  managerId          String?
-  branchId           String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  branch             Branch?             @relation(fields: [branchId], references: [id])
-  manager            Employee?           @relation("EmployeeManager", fields: [managerId], references: [id])
-  subordinates       Employee[]          @relation("EmployeeManager")
-  user               User                @relation("EmployeeRecord", fields: [userId], references: [id])
-  leaveRequests      LeaveRequest[]
-  payrollRecords     PayrollRecord[]
-  performanceReviews PerformanceReview[]
-  trainingRecords    TrainingRecord[]
+  id              String         @id @default(cuid())
+  employeeNumber  String         @unique
+  userId          String         @unique
+  department      String
+  position        String
+  hireDate        DateTime
+  salary          Float
+  bankAccount     String?
+  taxNumber       String?
+  insuranceNumber String?
+  status          EmployeeStatus @default(ACTIVE)
+  managerId       String?
+  branchId        String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([employeeNumber])
   @@index([department])
@@ -2119,9 +2041,6 @@ model PayrollRecord {
   approvedBy  String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-  approver    User?         @relation("PayrollApprover", fields: [approvedBy], references: [id])
-  creator     User          @relation("PayrollCreator", fields: [createdBy], references: [id])
-  employee    Employee      @relation(fields: [employeeId], references: [id])
 
   @@index([employeeId, period])
   @@map("payroll_records")
@@ -2141,8 +2060,6 @@ model LeaveRequest {
   rejectedReason String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
-  approver       User?       @relation("LeaveApprover", fields: [approvedBy], references: [id])
-  employee       Employee    @relation(fields: [employeeId], references: [id])
 
   @@index([employeeId])
   @@index([startDate])
@@ -2162,8 +2079,6 @@ model PerformanceReview {
   status              String            @default("DRAFT")
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
-  employee            Employee          @relation(fields: [employeeId], references: [id])
-  reviewer            User              @relation("PerformanceReviewer", fields: [reviewerId], references: [id])
 
   @@index([employeeId, period])
   @@map("performance_reviews")
@@ -2183,7 +2098,6 @@ model TrainingRecord {
   feedback     String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  employee     Employee       @relation(fields: [employeeId], references: [id])
 
   @@index([employeeId])
   @@map("training_records")
@@ -2207,12 +2121,6 @@ model Contract {
   branchId       String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
-  approver       User?          @relation("ContractApprover", fields: [approvedBy], references: [id])
-  branch         Branch?        @relation(fields: [branchId], references: [id])
-  creator        User           @relation("ContractCreator", fields: [createdBy], references: [id])
-  customer       User           @relation("CustomerContracts", fields: [customerId], references: [id])
-  vehicle        Vehicle?       @relation(fields: [vehicleId], references: [id])
-  warranties     Warranty[]
 
   @@index([contractNumber])
   @@index([type, status])
@@ -2220,8 +2128,8 @@ model Contract {
 }
 
 model Warranty {
-  id             String          @id @default(cuid())
-  warrantyNumber String          @unique
+  id             String         @id @default(cuid())
+  warrantyNumber String         @unique
   contractId     String
   vehicleId      String
   type           WarrantyType
@@ -2229,12 +2137,9 @@ model Warranty {
   endDate        DateTime
   coverage       Json?
   terms          String?
-  status         WarrantyStatus  @default(ACTIVE)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  contract       Contract        @relation(fields: [contractId], references: [id])
-  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id])
-  claims         WarrantyClaim[]
+  status         WarrantyStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@index([warrantyNumber])
   @@index([vehicleId])
@@ -2260,11 +2165,6 @@ model WarrantyClaim {
   createdBy     String
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  approver      User?       @relation("WarrantyClaimApprover", fields: [approvedBy], references: [id])
-  creator       User        @relation("WarrantyClaimCreator", fields: [createdBy], references: [id])
-  customer      User        @relation("WarrantyClaimCustomer", fields: [customerId], references: [id])
-  vehicle       Vehicle     @relation(fields: [vehicleId], references: [id])
-  warranty      Warranty    @relation(fields: [warrantyId], references: [id])
 
   @@index([claimNumber])
   @@index([warrantyId])
@@ -2273,7 +2173,7 @@ model WarrantyClaim {
 }
 
 model MaintenanceSchedule {
-  id            String                @id @default(cuid())
+  id            String            @id @default(cuid())
   vehicleId     String
   type          MaintenanceType
   title         String
@@ -2283,15 +2183,11 @@ model MaintenanceSchedule {
   lastService   DateTime?
   nextService   DateTime
   estimatedCost Float?
-  priority      MaintenanceStatus     @default(PENDING)
-  isActive      Boolean               @default(true)
+  priority      MaintenanceStatus @default(PENDING)
+  isActive      Boolean           @default(true)
   createdBy     String
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  records       MaintenanceRecord[]
-  reminders     MaintenanceReminder[]
-  creator       User                  @relation(fields: [createdBy], references: [id])
-  vehicle       Vehicle               @relation(fields: [vehicleId], references: [id])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@index([vehicleId])
   @@index([nextService])
@@ -2300,7 +2196,7 @@ model MaintenanceSchedule {
 }
 
 model MaintenanceRecord {
-  id          String               @id @default(cuid())
+  id          String            @id @default(cuid())
   vehicleId   String
   scheduleId  String?
   type        MaintenanceType
@@ -2310,18 +2206,14 @@ model MaintenanceRecord {
   technician  String
   startDate   DateTime
   endDate     DateTime?
-  status      MaintenanceStatus    @default(IN_PROGRESS)
+  status      MaintenanceStatus @default(IN_PROGRESS)
   notes       String?
   parts       Json?
   laborHours  Float?
   odometer    Int?
   createdBy   String
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  creator     User                 @relation(fields: [createdBy], references: [id])
-  schedule    MaintenanceSchedule? @relation(fields: [scheduleId], references: [id])
-  vehicle     Vehicle              @relation(fields: [vehicleId], references: [id])
-  usedParts   MaintenancePart[]    @relation("MaintenancePartToMaintenanceRecord")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([vehicleId])
   @@index([startDate])
@@ -2330,21 +2222,18 @@ model MaintenanceRecord {
 }
 
 model MaintenanceReminder {
-  id           String              @id @default(cuid())
+  id           String            @id @default(cuid())
   scheduleId   String
   vehicleId    String
   title        String
   message      String
   reminderDate DateTime
   sentDate     DateTime?
-  status       MaintenanceStatus   @default(PENDING)
-  type         String              @default("EMAIL")
+  status       MaintenanceStatus @default(PENDING)
+  type         String            @default("EMAIL")
   createdBy    String
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  creator      User                @relation(fields: [createdBy], references: [id])
-  schedule     MaintenanceSchedule @relation(fields: [scheduleId], references: [id])
-  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id])
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@index([scheduleId])
   @@index([vehicleId])
@@ -2353,26 +2242,24 @@ model MaintenanceReminder {
 }
 
 model MaintenancePart {
-  id          String              @id @default(cuid())
-  partNumber  String              @unique
+  id          String       @id @default(cuid())
+  partNumber  String       @unique
   name        String
   category    PartCategory
   description String?
   cost        Float
   price       Float
-  quantity    Int                 @default(0)
-  minStock    Int                 @default(0)
+  quantity    Int          @default(0)
+  minStock    Int          @default(0)
   maxStock    Int?
   location    String?
   supplier    String?
-  status      PartStatus          @default(AVAILABLE)
+  status      PartStatus   @default(AVAILABLE)
   barcode     String?
   imageUrl    String?
   createdBy   String
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  creator     User                @relation(fields: [createdBy], references: [id])
-  usedIn      MaintenanceRecord[] @relation("MaintenancePartToMaintenanceRecord")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([partNumber])
   @@index([category])
@@ -2381,23 +2268,20 @@ model MaintenancePart {
 }
 
 model InsuranceCompany {
-  id            String            @id @default(cuid())
-  name          String            @unique
-  code          String            @unique
+  id            String   @id @default(cuid())
+  name          String   @unique
+  code          String   @unique
   description   String?
   contactPerson String?
   phone         String?
   email         String?
   address       String?
   website       String?
-  isActive      Boolean           @default(true)
+  isActive      Boolean  @default(true)
   branchId      String?
   createdBy     String
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  branch        Branch?           @relation(fields: [branchId], references: [id])
-  creator       User              @relation(fields: [createdBy], references: [id])
-  policies      InsurancePolicy[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([name])
   @@index([isActive])
@@ -2405,8 +2289,8 @@ model InsuranceCompany {
 }
 
 model InsurancePolicy {
-  id           String             @id @default(cuid())
-  policyNumber String             @unique
+  id           String          @id @default(cuid())
+  policyNumber String          @unique
   vehicleId    String
   customerId   String
   companyId    String
@@ -2415,22 +2299,15 @@ model InsurancePolicy {
   endDate      DateTime
   premium      Float
   coverage     Json?
-  deductible   Float              @default(0)
-  status       InsuranceStatus    @default(PENDING)
+  deductible   Float           @default(0)
+  status       InsuranceStatus @default(PENDING)
   documents    Json?
   notes        String?
   createdBy    String
   approvedBy   String?
   approvedAt   DateTime?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  claims       InsuranceClaim[]
-  payments     InsurancePayment[]
-  approver     User?              @relation("InsurancePolicyApprover", fields: [approvedBy], references: [id])
-  company      InsuranceCompany   @relation(fields: [companyId], references: [id])
-  creator      User               @relation("InsurancePolicyCreator", fields: [createdBy], references: [id])
-  customer     User               @relation("CustomerInsurancePolicies", fields: [customerId], references: [id])
-  vehicle      Vehicle            @relation(fields: [vehicleId], references: [id])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([policyNumber])
   @@index([vehicleId])
@@ -2443,8 +2320,8 @@ model InsurancePolicy {
 }
 
 model InsuranceClaim {
-  id               String             @id @default(cuid())
-  claimNumber      String             @unique
+  id               String      @id @default(cuid())
+  claimNumber      String      @unique
   policyId         String
   vehicleId        String
   customerId       String
@@ -2454,20 +2331,14 @@ model InsuranceClaim {
   incidentLocation String?
   estimatedAmount  Float?
   approvedAmount   Float?
-  status           ClaimStatus        @default(PENDING)
+  status           ClaimStatus @default(PENDING)
   documents        Json?
   notes            String?
   assignedTo       String?
   resolvedAt       DateTime?
   createdBy        String
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  assignee         User?              @relation("InsuranceClaimAssignee", fields: [assignedTo], references: [id])
-  creator          User               @relation("InsuranceClaimCreator", fields: [createdBy], references: [id])
-  customer         User               @relation("CustomerInsuranceClaims", fields: [customerId], references: [id])
-  policy           InsurancePolicy    @relation(fields: [policyId], references: [id])
-  vehicle          Vehicle            @relation(fields: [vehicleId], references: [id])
-  payments         InsurancePayment[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([claimNumber])
   @@index([policyId])
@@ -2479,26 +2350,22 @@ model InsuranceClaim {
 }
 
 model InsurancePayment {
-  id            String           @id @default(cuid())
+  id            String    @id @default(cuid())
   policyId      String?
   claimId       String?
   type          String
   amount        Float
-  currency      String           @default("EGP")
+  currency      String    @default("EGP")
   paymentMethod String
   reference     String?
-  status        String           @default("PENDING")
+  status        String    @default("PENDING")
   paymentDate   DateTime?
   dueDate       DateTime?
   notes         String?
   createdBy     String
   approvedBy    String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  approver      User?            @relation("InsurancePaymentApprover", fields: [approvedBy], references: [id])
-  claim         InsuranceClaim?  @relation(fields: [claimId], references: [id])
-  creator       User             @relation("InsurancePaymentCreator", fields: [createdBy], references: [id])
-  policy        InsurancePolicy? @relation(fields: [policyId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([policyId])
   @@index([claimId])
@@ -2524,9 +2391,6 @@ model TaxRecord {
   approvedBy String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
-  approver   User?     @relation("TaxRecordApprover", fields: [approvedBy], references: [id])
-  branch     Branch?   @relation(fields: [branchId], references: [id])
-  creator    User      @relation("TaxRecordCreator", fields: [createdBy], references: [id])
 
   @@index([type, period])
   @@index([dueDate])
@@ -2545,22 +2409,19 @@ model CommerceSettings {
 }
 
 model Product {
-  id          String          @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
   description String
   price       Float
   category    String
   images      Json
-  inStock     Boolean         @default(true)
-  quantity    Int             @default(0)
-  featured    Boolean         @default(false)
-  status      ProductStatus   @default(ACTIVE)
+  inStock     Boolean       @default(true)
+  quantity    Int           @default(0)
+  featured    Boolean       @default(false)
+  status      ProductStatus @default(ACTIVE)
   createdBy   String
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  items       OrderItem[]
-  reviews     ProductReview[]
-  creator     User            @relation("ProductCreator", fields: [createdBy], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([name])
   @@index([category])
@@ -2570,27 +2431,22 @@ model Product {
 }
 
 model Order {
-  id              String           @id @default(cuid())
-  orderNumber     String           @unique
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
   customerId      String
-  status          OrderStatus      @default(PENDING)
+  status          OrderStatus   @default(PENDING)
   subtotal        Float
-  taxAmount       Float            @default(0)
-  shippingAmount  Float            @default(0)
+  taxAmount       Float         @default(0)
+  shippingAmount  Float         @default(0)
   total           Float
   shippingAddress Json
   billingAddress  Json?
   paymentMethod   String?
-  paymentStatus   PaymentStatus    @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
   notes           String?
   createdBy       String
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  items           OrderItem[]
-  payments        OrderPayment[]
-  creator         User             @relation("OrderCreator", fields: [createdBy], references: [id])
-  customer        User             @relation("OrderCustomer", fields: [customerId], references: [id])
-  promotions      PromotionUsage[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([orderNumber])
   @@index([customerId])
@@ -2608,8 +2464,6 @@ model OrderItem {
   price      Float
   totalPrice Float
   createdAt  DateTime @default(now())
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product    Product  @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -2628,7 +2482,6 @@ model OrderPayment {
   notes         String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([status])
@@ -2636,22 +2489,20 @@ model OrderPayment {
 }
 
 model Promotion {
-  id          String           @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
   description String
   type        PromotionType
   value       Float
-  code        String           @unique
+  code        String        @unique
   startDate   DateTime
   endDate     DateTime
   usageLimit  Int
-  usedCount   Int              @default(0)
-  active      Boolean          @default(true)
+  usedCount   Int           @default(0)
+  active      Boolean       @default(true)
   createdBy   String
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  usages      PromotionUsage[]
-  creator     User             @relation("PromotionCreator", fields: [createdBy], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([code])
   @@index([active])
@@ -2661,13 +2512,11 @@ model Promotion {
 }
 
 model PromotionUsage {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   promotionId String
   orderId     String
   discount    Float
-  usedAt      DateTime  @default(now())
-  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  usedAt      DateTime @default(now())
 
   @@index([promotionId])
   @@index([orderId])
@@ -2689,9 +2538,6 @@ model ProductReview {
   helpful     Int          @default(0)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  approver    User?        @relation("ProductReviewApprover", fields: [approvedBy], references: [id])
-  customer    User?        @relation("ProductReviewCustomer", fields: [customerId], references: [id])
-  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
   @@index([customerId])
@@ -2821,6 +2667,24 @@ model ConsultationSubmission {
   updatedAt        DateTime @updatedAt
 
   @@map("consultation_submissions")
+}
+
+model MaintenancePartToMaintenanceRecord {
+  A String
+  B String
+
+  @@id([A, B], map: "_MaintenancePartToMaintenanceRecord_AB_pkey")
+  @@index([B], map: "_MaintenancePartToMaintenanceRecord_B_index")
+  @@map("_MaintenancePartToMaintenanceRecord")
+}
+
+model TicketArticles {
+  A String
+  B String
+
+  @@id([A, B], map: "_TicketArticles_AB_pkey")
+  @@index([B], map: "_TicketArticles_B_index")
+  @@map("_TicketArticles")
 }
 
 enum VehicleSpecCategory {

@@ -65,6 +65,20 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Validate payment method
+    const validPaymentMethods = ['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'MOBILE_WALLET', 'CHECK']
+    if (!validPaymentMethods.includes(paymentMethod)) {
+      console.log('Invalid payment method:', paymentMethod)
+      return NextResponse.json({ 
+        error: `Invalid payment method: ${paymentMethod}. Valid methods are: ${validPaymentMethods.join(', ')}`,
+        code: 'INVALID_PAYMENT_METHOD',
+        details: {
+          providedMethod: paymentMethod,
+          validMethods
+        }
+      }, { status: 400 })
+    }
+
     // Get invoice details
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId },
@@ -112,10 +126,10 @@ export async function POST(request: NextRequest) {
     // Create payment record
     console.log('Creating payment record...')
     
-    // Prepare payment data with conditional metadata
-    const paymentData: any = {
+    // Prepare payment data without metadata to avoid schema issues
+    const paymentData = {
       bookingId: invoiceId, // Using invoiceId as bookingId for offline payments
-      bookingType: 'SERVICE', // Default booking type
+      bookingType: 'SERVICE' as const, // Default booking type
       amount: parsedAmount,
       currency: invoice.currency,
       status: PaymentStatus.COMPLETED,
@@ -125,22 +139,7 @@ export async function POST(request: NextRequest) {
       branchId: invoice.branchId
     }
     
-    // Add metadata only if the field exists in the database
-    try {
-      // Test if metadata field exists by attempting a query
-      await db.payment.findFirst({ where: { metadata: { not: null } } })
-      paymentData.metadata = {
-        type: 'OFFLINE',
-        recordedBy: user.id,
-        referenceNumber,
-        paymentDate: paymentDate || new Date().toISOString(),
-        invoiceId: invoiceId // Track that this is an invoice payment
-      }
-      console.log('Metadata field exists, adding to payment data')
-    } catch (metadataError) {
-      console.log('Metadata field does not exist, skipping metadata')
-      // Continue without metadata if the field doesn't exist
-    }
+    console.log('Payment data prepared:', paymentData)
     
     // Create payment with error handling
     let payment
@@ -151,17 +150,7 @@ export async function POST(request: NextRequest) {
       console.log('Payment record created:', payment.id)
     } catch (createError) {
       console.error('Failed to create payment:', createError)
-      // If payment creation fails due to metadata, try without it
-      if (paymentData.metadata) {
-        console.log('Retrying payment creation without metadata')
-        const { metadata, ...paymentDataWithoutMetadata } = paymentData
-        payment = await db.payment.create({
-          data: paymentDataWithoutMetadata
-        })
-        console.log('Payment record created without metadata:', payment.id)
-      } else {
-        throw createError
-      }
+      throw new Error(`Failed to create payment record: ${createError instanceof Error ? createError.message : 'Unknown error'}`)
     }
 
     // Create invoice payment relationship
@@ -203,8 +192,8 @@ export async function POST(request: NextRequest) {
     // Create transaction record
     console.log('Creating transaction record...')
     
-    // Prepare transaction data with conditional metadata
-    const transactionData: any = {
+    // Prepare transaction data without metadata to avoid schema issues
+    const transactionData = {
       referenceId: `TXN-${Date.now()}`,
       branchId: invoice.branchId,
       type: 'INCOME',
@@ -219,23 +208,18 @@ export async function POST(request: NextRequest) {
       invoiceId
     }
     
-    // Add metadata only if the field exists in the database
-    try {
-      await db.transaction.findFirst({ where: { metadata: { not: null } } })
-      transactionData.metadata = {
-        type: 'OFFLINE',
-        recordedBy: user.id,
-        paymentId: payment.id
-      }
-      console.log('Transaction metadata field exists, adding to transaction data')
-    } catch (metadataError) {
-      console.log('Transaction metadata field does not exist, skipping metadata')
-    }
+    console.log('Transaction data prepared:', transactionData)
     
-    await db.transaction.create({
-      data: transactionData
-    })
-    console.log('Transaction record created')
+    try {
+      await db.transaction.create({
+        data: transactionData
+      })
+      console.log('Transaction record created')
+    } catch (transactionError) {
+      console.error('Failed to create transaction:', transactionError)
+      // Don't throw here, just log the error as payment is already created
+      console.warn('Transaction creation failed, but payment was successful')
+    }
 
     // Log activity
     console.log('Creating activity log...')
@@ -277,13 +261,21 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error recording offline payment:', error)
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('=== OFFLINE PAYMENT API ERROR ===')
+    console.error('Error type:', typeof error)
+    console.error('Error name:', error instanceof Error ? error.name : 'Unknown')
     console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     
     // Check for specific database connection errors
     if (error instanceof Error) {
-      if (error.message.includes('connection') || error.message.includes('timeout')) {
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        cause: error.cause
+      })
+      
+      if (error.message.includes('connection') || error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
         return NextResponse.json({ 
           error: 'Database connection error. Please try again.',
           code: 'DATABASE_CONNECTION_ERROR',
@@ -291,24 +283,38 @@ export async function POST(request: NextRequest) {
         }, { status: 503 })
       }
       
-      if (error.message.includes('prisma') || error.message.includes('query')) {
+      if (error.message.includes('prisma') || error.message.includes('query') || error.message.includes('P2025')) {
         return NextResponse.json({ 
           error: 'Database query error. Please try again.',
           code: 'DATABASE_QUERY_ERROR',
           details: 'A database error occurred while processing your request.'
         }, { status: 500 })
       }
+      
+      if (error.message.includes('Invalid') || error.message.includes('validation')) {
+        return NextResponse.json({ 
+          error: 'Validation error. Please check your input.',
+          code: 'VALIDATION_ERROR',
+          details: error.message
+        }, { status: 400 })
+      }
     }
     
     return NextResponse.json({ 
       error: 'Failed to record offline payment',
       details: error instanceof Error ? error.message : 'Unknown error',
-      code: 'INTERNAL_ERROR'
+      code: 'INTERNAL_ERROR',
+      type: typeof error,
+      name: error instanceof Error ? error.name : 'Unknown'
     }, { status: 500 })
   } finally {
     if (isConnected) {
-      await db.$disconnect()
-      console.log('Database disconnected')
+      try {
+        await db.$disconnect()
+        console.log('Database disconnected')
+      } catch (disconnectError) {
+        console.error('Error disconnecting from database:', disconnectError)
+      }
     }
   }
 }
