@@ -142,10 +142,27 @@ export async function POST(request: NextRequest) {
       // Continue without metadata if the field doesn't exist
     }
     
-    const payment = await db.payment.create({
-      data: paymentData
-    })
-    console.log('Payment record created:', payment.id)
+    // Create payment with error handling
+    let payment
+    try {
+      payment = await db.payment.create({
+        data: paymentData
+      })
+      console.log('Payment record created:', payment.id)
+    } catch (createError) {
+      console.error('Failed to create payment:', createError)
+      // If payment creation fails due to metadata, try without it
+      if (paymentData.metadata) {
+        console.log('Retrying payment creation without metadata')
+        const { metadata, ...paymentDataWithoutMetadata } = paymentData
+        payment = await db.payment.create({
+          data: paymentDataWithoutMetadata
+        })
+        console.log('Payment record created without metadata:', payment.id)
+      } else {
+        throw createError
+      }
+    }
 
     // Create invoice payment relationship
     console.log('Creating invoice payment relationship...')
