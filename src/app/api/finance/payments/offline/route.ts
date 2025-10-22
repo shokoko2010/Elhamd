@@ -111,25 +111,39 @@ export async function POST(request: NextRequest) {
 
     // Create payment record
     console.log('Creating payment record...')
-    const payment = await db.payment.create({
-      data: {
-        bookingId: invoiceId, // Using invoiceId as bookingId for offline payments
-        bookingType: 'SERVICE', // Default booking type
-        amount: parsedAmount,
-        currency: invoice.currency,
-        status: PaymentStatus.COMPLETED,
-        paymentMethod: paymentMethod as PaymentMethod,
-        transactionId: referenceNumber || `OFFLINE-${Date.now()}`,
-        notes: notes || `Offline payment - ${paymentMethod}`,
-        branchId: invoice.branchId,
-        metadata: {
-          type: 'OFFLINE',
-          recordedBy: user.id,
-          referenceNumber,
-          paymentDate: paymentDate || new Date().toISOString(),
-          invoiceId: invoiceId // Track that this is an invoice payment
-        }
+    
+    // Prepare payment data with conditional metadata
+    const paymentData: any = {
+      bookingId: invoiceId, // Using invoiceId as bookingId for offline payments
+      bookingType: 'SERVICE', // Default booking type
+      amount: parsedAmount,
+      currency: invoice.currency,
+      status: PaymentStatus.COMPLETED,
+      paymentMethod: paymentMethod as PaymentMethod,
+      transactionId: referenceNumber || `OFFLINE-${Date.now()}`,
+      notes: notes || `Offline payment - ${paymentMethod}`,
+      branchId: invoice.branchId
+    }
+    
+    // Add metadata only if the field exists in the database
+    try {
+      // Test if metadata field exists by attempting a query
+      await db.payment.findFirst({ where: { metadata: { not: null } } })
+      paymentData.metadata = {
+        type: 'OFFLINE',
+        recordedBy: user.id,
+        referenceNumber,
+        paymentDate: paymentDate || new Date().toISOString(),
+        invoiceId: invoiceId // Track that this is an invoice payment
       }
+      console.log('Metadata field exists, adding to payment data')
+    } catch (metadataError) {
+      console.log('Metadata field does not exist, skipping metadata')
+      // Continue without metadata if the field doesn't exist
+    }
+    
+    const payment = await db.payment.create({
+      data: paymentData
     })
     console.log('Payment record created:', payment.id)
 
@@ -171,26 +185,38 @@ export async function POST(request: NextRequest) {
 
     // Create transaction record
     console.log('Creating transaction record...')
-    await db.transaction.create({
-      data: {
-        referenceId: `TXN-${Date.now()}`,
-        branchId: invoice.branchId,
-        type: 'INCOME',
-        category: 'INVOICE_PAYMENT',
-        amount: parsedAmount,
-        currency: invoice.currency,
-        description: `Offline payment for invoice ${invoice.invoiceNumber}`,
-        date: new Date(paymentDate || Date.now()),
-        paymentMethod: paymentMethod as PaymentMethod,
-        reference: payment.transactionId,
-        customerId: invoice.customerId,
-        invoiceId,
-        metadata: {
-          type: 'OFFLINE',
-          recordedBy: user.id,
-          paymentId: payment.id
-        }
+    
+    // Prepare transaction data with conditional metadata
+    const transactionData: any = {
+      referenceId: `TXN-${Date.now()}`,
+      branchId: invoice.branchId,
+      type: 'INCOME',
+      category: 'INVOICE_PAYMENT',
+      amount: parsedAmount,
+      currency: invoice.currency,
+      description: `Offline payment for invoice ${invoice.invoiceNumber}`,
+      date: new Date(paymentDate || Date.now()),
+      paymentMethod: paymentMethod as PaymentMethod,
+      reference: payment.transactionId,
+      customerId: invoice.customerId,
+      invoiceId
+    }
+    
+    // Add metadata only if the field exists in the database
+    try {
+      await db.transaction.findFirst({ where: { metadata: { not: null } } })
+      transactionData.metadata = {
+        type: 'OFFLINE',
+        recordedBy: user.id,
+        paymentId: payment.id
       }
+      console.log('Transaction metadata field exists, adding to transaction data')
+    } catch (metadataError) {
+      console.log('Transaction metadata field does not exist, skipping metadata')
+    }
+    
+    await db.transaction.create({
+      data: transactionData
     })
     console.log('Transaction record created')
 
