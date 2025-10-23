@@ -6,6 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   ArrowLeft, 
   Download, 
@@ -107,7 +112,18 @@ function InvoiceDetailsContent() {
   const invoiceId = params.id as string
   const [loading, setLoading] = useState(true)
   const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState(false)
   const { toast } = useToast()
+  
+  // Payment form state
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    paymentMethod: '',
+    notes: '',
+    referenceNumber: '',
+    paymentDate: new Date().toISOString().split('T')[0]
+  })
 
   useEffect(() => {
     if (invoiceId) {
@@ -420,6 +436,105 @@ function InvoiceDetailsContent() {
         variant: 'destructive'
       })
     }
+  }
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!invoice) return
+    
+    // Validate form
+    if (!paymentForm.amount || !paymentForm.paymentMethod) {
+      toast({
+        title: 'خطأ',
+        description: 'يرجى ملء جميع الحقول المطلوبة',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    const amount = parseFloat(paymentForm.amount)
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'خطأ',
+        description: 'يرجى إدخال مبلغ صحيح',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    if (amount > invoice.totalAmount - invoice.paidAmount) {
+      toast({
+        title: 'خطأ',
+        description: `المبلغ يتجاوز المبلغ المتبقي (${formatCurrency(invoice.totalAmount - invoice.paidAmount)})`,
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    setProcessingPayment(true)
+    
+    try {
+      const response = await fetch('/api/finance/payments/offline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          invoiceId,
+          amount: paymentForm.amount,
+          paymentMethod: paymentForm.paymentMethod,
+          notes: paymentForm.notes,
+          referenceNumber: paymentForm.referenceNumber,
+          paymentDate: paymentForm.paymentDate
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        toast({
+          title: 'نجاح',
+          description: 'تم تسجيل الدفعة بنجاح'
+        })
+        
+        // Reset form and close modal
+        setPaymentForm({
+          amount: '',
+          paymentMethod: '',
+          notes: '',
+          referenceNumber: '',
+          paymentDate: new Date().toISOString().split('T')[0]
+        })
+        setShowPaymentModal(false)
+        
+        // Refresh invoice data
+        fetchInvoice()
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to process payment')
+      }
+    } catch (error) {
+      console.error('Payment error:', error)
+      toast({
+        title: 'خطأ',
+        description: error instanceof Error ? error.message : 'فشل في تسجيل الدفعة',
+        variant: 'destructive'
+      })
+    } finally {
+      setProcessingPayment(false)
+    }
+  }
+  
+  const openPaymentModal = () => {
+    if (invoice) {
+      // Pre-fill with remaining amount
+      const remainingAmount = invoice.totalAmount - invoice.paidAmount
+      setPaymentForm({
+        ...paymentForm,
+        amount: remainingAmount > 0 ? remainingAmount.toString() : ''
+      })
+    }
+    setShowPaymentModal(true)
   }
 
   if (loading) {
@@ -767,7 +882,7 @@ function InvoiceDetailsContent() {
                       </CardDescription>
                     </div>
                     {remainingAmount > 0 && (
-                      <Button>
+                      <Button onClick={openPaymentModal}>
                         <Plus className="ml-2 h-4 w-4" />
                         تسجيل دفعة
                       </Button>
@@ -791,7 +906,7 @@ function InvoiceDetailsContent() {
                           {invoice.payments.map((invoicePayment) => (
                             <tr key={invoicePayment.id} className="border-b">
                               <td className="text-right py-3 px-4">
-                                {formatDate(invoicePayment.payment.paymentDate)}
+                                {formatDate(invoicePayment.payment.createdAt)}
                               </td>
                               <td className="text-right py-3 px-4">
                                 {invoicePayment.payment.paymentMethod}
@@ -933,6 +1048,7 @@ function InvoiceDetailsContent() {
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"
+                  onClick={openPaymentModal}
                 >
                   <Plus className="ml-2 h-4 w-4" />
                   تسجيل دفعة
@@ -1010,6 +1126,133 @@ function InvoiceDetailsContent() {
           )}
         </div>
       </div>
+      
+      {/* Payment Modal */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>تسجيل دفعة جديدة</DialogTitle>
+            <DialogDescription>
+              تسجيل دفعة للفاتورة رقم {invoice?.invoiceNumber}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handlePaymentSubmit} className="space-y-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right">
+                المبلغ
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="paymentMethod" className="text-right">
+                طريقة الدفع
+              </Label>
+              <Select 
+                value={paymentForm.paymentMethod} 
+                onValueChange={(value) => setPaymentForm({...paymentForm, paymentMethod: value})}
+                required
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="اختر طريقة الدفع" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CASH">نقدي</SelectItem>
+                  <SelectItem value="BANK_TRANSFER">تحويل بنكي</SelectItem>
+                  <SelectItem value="CHECK">شيك</SelectItem>
+                  <SelectItem value="CREDIT_CARD">بطاقة ائتمان</SelectItem>
+                  <SelectItem value="DEBIT_CARD">بطاقة خصم مباشر</SelectItem>
+                  <SelectItem value="MOBILE_WALLET">محفظة إلكترونية</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="paymentDate" className="text-right">
+                تاريخ الدفع
+              </Label>
+              <Input
+                id="paymentDate"
+                type="date"
+                value={paymentForm.paymentDate}
+                onChange={(e) => setPaymentForm({...paymentForm, paymentDate: e.target.value})}
+                className="col-span-3"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="referenceNumber" className="text-right">
+                الرقم المرجعي
+              </Label>
+              <Input
+                id="referenceNumber"
+                placeholder="اختياري"
+                value={paymentForm.referenceNumber}
+                onChange={(e) => setPaymentForm({...paymentForm, referenceNumber: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="notes" className="text-right">
+                ملاحظات
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="ملاحظات اختيارية"
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
+                className="col-span-3"
+                rows={3}
+              />
+            </div>
+            
+            {invoice && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>المبلغ المتبقي:</span>
+                  <span className="font-medium">{formatCurrency(invoice.totalAmount - invoice.paidAmount)}</span>
+                </div>
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowPaymentModal(false)}
+                disabled={processingPayment}
+              >
+                إلغاء
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={processingPayment}
+              >
+                {processingPayment ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
+                    جاري المعالجة...
+                  </>
+                ) : (
+                  'تسجيل الدفعة'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

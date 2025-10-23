@@ -70,9 +70,20 @@ export async function PUT(
   request: NextRequest,
   context: RouteParams
 ) {
+  let isConnected = false
+  
   try {
+    console.log('=== INVOICE UPDATE START ===')
+    
+    // Ensure database connection
+    await db.$connect()
+    isConnected = true
+    console.log('Database connected successfully')
+    
     const { id } = await context.params
     const body = await request.json()
+    console.log('Invoice ID:', id)
+    console.log('Request body:', body)
     
     const {
       customerId,
@@ -85,10 +96,35 @@ export async function PUT(
       status
     } = body
 
+    // Validate required fields
+    if (!customerId || !items || !Array.isArray(items) || items.length === 0) {
+      console.log('Missing required fields:', { customerId: !!customerId, items: !!items, itemsLength: items?.length })
+      return NextResponse.json({ 
+        error: 'Missing required fields: customerId, items (non-empty array)',
+        code: 'MISSING_REQUIRED_FIELDS'
+      }, { status: 400 })
+    }
+
+    // Check if invoice exists
+    const existingInvoice = await db.invoice.findUnique({
+      where: { id },
+      include: { payments: true }
+    })
+    
+    if (!existingInvoice) {
+      console.log('Invoice not found:', id)
+      return NextResponse.json({ 
+        error: 'Invoice not found',
+        code: 'INVOICE_NOT_FOUND'
+      }, { status: 404 })
+    }
+
     // Calculate totals
     const subtotal = items.reduce((sum: number, item: any) => {
       return sum + (item.quantity * item.unitPrice)
     }, 0)
+
+    console.log('Calculated subtotal:', subtotal)
 
     // Calculate taxes from database tax rates
     let taxRates = await db.taxRate.findMany({
@@ -118,66 +154,177 @@ export async function PUT(
     }, 0)
 
     const totalAmount = subtotal + totalTaxAmount
-
-    // Update invoice
-    const updatedInvoice = await db.invoice.update({
-      where: { id },
-      data: {
-        customerId,
-        type,
-        status,
-        issueDate: new Date(issueDate),
-        dueDate: new Date(dueDate),
-        subtotal,
-        taxAmount: totalTaxAmount,
-        totalAmount,
-        notes,
-        terms,
-        // Update items
-        items: {
-          deleteMany: {},
-          create: items.map((item: any) => ({
-            description: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.quantity * item.unitPrice,
-            taxRate: item.taxRate || 0,
-            taxAmount: (item.quantity * item.unitPrice) * (item.taxRate || 0) / 100,
-            metadata: item.metadata || {}
-          }))
-        },
-        // Update taxes
-        taxes: {
-          deleteMany: {},
-          create: taxRates.map(taxRate => ({
-            taxType: taxRate.type,
-            rate: taxRate.rate,
-            taxAmount: subtotal * taxRate.rate / 100,
-            description: taxRate.description
-          }))
-        }
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        items: true,
-        taxes: true
-      }
+    
+    console.log('Calculated amounts:', {
+      subtotal,
+      totalTaxAmount,
+      totalAmount,
+      currentPaid: existingInvoice.paidAmount
     })
 
-    return NextResponse.json(updatedInvoice)
+    // Update invoice with transaction
+    const updatedInvoice = await db.$transaction(async (tx) => {
+      // Delete existing items and taxes
+      await tx.invoiceItem.deleteMany({
+        where: { invoiceId: id }
+      })
+      
+      await tx.invoiceTax.deleteMany({
+        where: { invoiceId: id }
+      })
+      
+      // Update invoice
+      const invoice = await tx.invoice.update({
+        where: { id },
+        data: {
+          customerId,
+          type,
+          status,
+          issueDate: new Date(issueDate),
+          dueDate: new Date(dueDate),
+          subtotal,
+          taxAmount: totalTaxAmount,
+          totalAmount,
+          notes,
+          terms,
+          // Don't reset paidAmount if there are existing payments
+          paidAmount: existingInvoice.payments.length > 0 ? existingInvoice.paidAmount : 0
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          items: true,
+          taxes: true,
+          payments: {
+            include: {
+              payment: {
+                select: {
+                  id: true,
+                  amount: true,
+                  createdAt: true,
+                  paymentMethod: true,
+                  status: true,
+                  transactionId: true,
+                  notes: true
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            }
+          }
+        }
+      })
+      
+      // Create new items
+      await tx.invoiceItem.createMany({
+        data: items.map((item: any) => ({
+          invoiceId: id,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.quantity * item.unitPrice,
+          taxRate: item.taxRate || 0,
+          taxAmount: (item.quantity * item.unitPrice) * (item.taxRate || 0) / 100,
+          metadata: item.metadata || {}
+        }))
+      })
+      
+      // Create new taxes
+      await tx.invoiceTax.createMany({
+        data: taxRates.map(taxRate => ({
+          invoiceId: id,
+          taxType: taxRate.type,
+          rate: taxRate.rate,
+          taxAmount: subtotal * taxRate.rate / 100,
+          description: taxRate.description
+        }))
+      })
+      
+      return invoice
+    })
+    
+    console.log('Invoice updated successfully:', updatedInvoice.invoiceNumber)
+
+    const successResponse = NextResponse.json({
+      success: true,
+      message: 'Invoice updated successfully',
+      invoice: updatedInvoice
+    })
+    
+    successResponse.headers.set('Access-Control-Allow-Origin', '*')
+    successResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    successResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return successResponse
   } catch (error) {
-    console.error('Error updating invoice:', error)
-    return NextResponse.json(
-      { error: 'Failed to update invoice' },
-      { status: 500 }
-    )
+    console.error('=== INVOICE UPDATE ERROR ===')
+    console.error('Error type:', typeof error)
+    console.error('Error name:', error instanceof Error ? error.name : 'Unknown')
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    
+    // Check for specific database connection errors
+    if (error instanceof Error) {
+      if (error.message.includes('connection') || error.message.includes('timeout')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Database connection error. Please try again.',
+          code: 'DATABASE_CONNECTION_ERROR',
+          details: 'Unable to connect to the database. Please try again later.'
+        }, { status: 503 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+      
+      if (error.message.includes('prisma') || error.message.includes('query')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Database query error. Please try again.',
+          code: 'DATABASE_QUERY_ERROR',
+          details: 'A database error occurred while processing your request.'
+        }, { status: 500 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+      
+      if (error.message.includes('Foreign key constraint')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Invalid customer or related data. Please check your input.',
+          code: 'FOREIGN_KEY_CONSTRAINT',
+          details: 'The specified customer or related data does not exist.'
+        }, { status: 400 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+    }
+    
+    const errorResponse = NextResponse.json({ 
+      error: 'Failed to update invoice',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      code: 'INTERNAL_ERROR'
+    }, { status: 500 })
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return errorResponse
+  } finally {
+    if (isConnected) {
+      await db.$disconnect()
+      console.log('Database disconnected')
+    }
   }
 }
 
