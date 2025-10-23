@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { getAuthUser, verifyAuth } from '@/lib/auth-server'
+import { getApiUser } from '@/lib/api-auth'
 import { PaymentStatus, PaymentMethod, InvoiceStatus } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
@@ -14,8 +15,18 @@ export async function POST(request: NextRequest) {
     isConnected = true
     console.log('Database connected successfully')
     
-    const user = await getAuthUser()
-    console.log('User authenticated:', !!user)
+    // Try both authentication methods
+    let user = null
+    
+    // First try NextAuth session
+    user = await getAuthUser()
+    console.log('NextAuth user authenticated:', !!user)
+    
+    // If no session user, try API token authentication
+    if (!user) {
+      user = await getApiUser(request)
+      console.log('API token user authenticated:', !!user)
+    }
     
     if (!user) {
       console.log('Authentication failed - no user found')
@@ -126,10 +137,32 @@ export async function POST(request: NextRequest) {
     // Create payment record
     console.log('Creating payment record...')
     
-    // Prepare payment data without metadata to avoid schema issues
+    // For offline payments, we need to create a dummy service booking first
+    // to satisfy the foreign key constraint
+    let dummyServiceBooking
+    try {
+      dummyServiceBooking = await db.serviceBooking.create({
+        data: {
+          customerId: invoice.customerId,
+          serviceTypeId: (await db.serviceType.findFirst({ select: { id: true } }))?.id || 'dummy-service-type',
+          date: new Date(paymentDate || Date.now()),
+          timeSlot: 'OFFLINE-PAYMENT',
+          status: 'COMPLETED',
+          paymentStatus: 'COMPLETED',
+          totalPrice: parsedAmount,
+          notes: `Dummy service booking for offline payment of invoice ${invoice.invoiceNumber}`
+        }
+      })
+      console.log('Dummy service booking created:', dummyServiceBooking.id)
+    } catch (bookingError) {
+      console.error('Failed to create dummy service booking:', bookingError)
+      throw new Error(`Failed to create dummy service booking: ${bookingError instanceof Error ? bookingError.message : 'Unknown error'}`)
+    }
+    
+    // Prepare payment data
     const paymentData = {
-      bookingId: invoiceId, // Using invoiceId as bookingId for offline payments
-      bookingType: 'SERVICE' as const, // Default booking type
+      bookingId: dummyServiceBooking.id,
+      bookingType: 'SERVICE' as const,
       amount: parsedAmount,
       currency: invoice.currency,
       status: PaymentStatus.COMPLETED,
@@ -321,7 +354,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    // Try both authentication methods
+    let user = null
+    
+    // First try NextAuth session
+    user = await getAuthUser()
+    
+    // If no session user, try API token authentication
+    if (!user) {
+      user = await getApiUser(request)
+    }
+    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
