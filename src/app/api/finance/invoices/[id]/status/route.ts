@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
+import { getApiUser } from '@/lib/api-auth'
 import { InvoiceStatus } from '@prisma/client'
+
+// Handle OPTIONS requests for CORS
+export async function OPTIONS(request: NextRequest) {
+  const response = new Response(null, { status: 200 })
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+  response.headers.set('Access-Control-Max-Age', '86400')
+  return response
+}
 
 export async function PUT(
   request: NextRequest,
@@ -18,15 +29,48 @@ export async function PUT(
     isConnected = true
     console.log('Database connected successfully')
     
-    const user = await getAuthUser()
-    console.log('User authenticated:', !!user)
+    // Try both authentication methods
+    let user = null
+    
+    // First try NextAuth session
+    user = await getAuthUser()
+    console.log('NextAuth user authenticated:', !!user)
+    
+    // If no session user, try API token authentication
+    if (!user) {
+      user = await getApiUser(request)
+      console.log('API token user authenticated:', !!user)
+    }
     
     if (!user) {
       console.log('Authentication failed - no user found')
-      return NextResponse.json({ 
+      const errorResponse = NextResponse.json({ 
         error: 'Authentication required. Please log in to access this feature.',
         code: 'AUTH_REQUIRED'
       }, { status: 401 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+      return errorResponse
+    }
+
+    // Check if user has permission for invoice management
+    const hasInvoicePermission = user.permissions.includes('financial.invoices.manage') || 
+                                user.permissions.includes('financial.invoices.update') ||
+                                user.role === 'ADMIN' || 
+                                user.role === 'SUPER_ADMIN' ||
+                                user.role === 'BRANCH_MANAGER'
+    
+    if (!hasInvoicePermission) {
+      console.log('Permission denied - user does not have invoice management permission')
+      const errorResponse = NextResponse.json({ 
+        error: 'Access denied. You do not have permission to update invoice status.',
+        code: 'PERMISSION_DENIED'
+      }, { status: 403 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+      return errorResponse
     }
 
     const invoiceId = params.id
@@ -83,6 +127,27 @@ export async function PUT(
           allowedTransitions: getAllowedTransitions(currentInvoice.status)
         }
       }, { status: 400 })
+    }
+    
+    // Additional validation for PAID status
+    if (status === InvoiceStatus.PAID) {
+      const totalPaid = currentInvoice.payments.reduce((sum, ip) => sum + ip.payment.amount, 0)
+      if (totalPaid < currentInvoice.totalAmount) {
+        console.log('Cannot mark as paid - insufficient payment:', {
+          totalPaid,
+          totalAmount: currentInvoice.totalAmount,
+          remaining: currentInvoice.totalAmount - totalPaid
+        })
+        return NextResponse.json({
+          error: `Cannot mark invoice as paid. Only ${totalPaid.toFixed(2)} EGP paid out of ${currentInvoice.totalAmount.toFixed(2)} EGP total.`,
+          code: 'INSUFFICIENT_PAYMENT',
+          details: {
+            totalPaid,
+            totalAmount: currentInvoice.totalAmount,
+            remainingAmount: currentInvoice.totalAmount - totalPaid
+          }
+        }, { status: 400 })
+      }
     }
 
     // Update invoice status
@@ -163,11 +228,17 @@ export async function PUT(
     }
 
     console.log('=== INVOICE STATUS UPDATE SUCCESS ===')
-    return NextResponse.json({
+    const successResponse = NextResponse.json({
       success: true,
       message: `Invoice status updated to ${status}`,
       invoice: updatedInvoice
     })
+    
+    successResponse.headers.set('Access-Control-Allow-Origin', '*')
+    successResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    successResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return successResponse
 
   } catch (error) {
     console.error('Error updating invoice status:', error)
@@ -193,11 +264,17 @@ export async function PUT(
       }
     }
     
-    return NextResponse.json({ 
+    const errorResponse = NextResponse.json({ 
       error: 'Failed to update invoice status',
       details: error instanceof Error ? error.message : 'Unknown error',
       code: 'INTERNAL_ERROR'
     }, { status: 500 })
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return errorResponse
   } finally {
     if (isConnected) {
       await db.$disconnect()

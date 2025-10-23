@@ -4,6 +4,16 @@ import { getAuthUser, verifyAuth } from '@/lib/auth-server'
 import { getApiUser } from '@/lib/api-auth'
 import { PaymentStatus, PaymentMethod, InvoiceStatus } from '@prisma/client'
 
+// Handle OPTIONS requests for CORS
+export async function OPTIONS(request: NextRequest) {
+  const response = new Response(null, { status: 200 })
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+  response.headers.set('Access-Control-Max-Age', '86400')
+  return response
+}
+
 export async function POST(request: NextRequest) {
   let isConnected = false
   
@@ -30,10 +40,32 @@ export async function POST(request: NextRequest) {
     
     if (!user) {
       console.log('Authentication failed - no user found')
-      return NextResponse.json({ 
+      const errorResponse = NextResponse.json({ 
         error: 'Authentication required. Please log in to access this feature.',
         code: 'AUTH_REQUIRED'
       }, { status: 401 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+      return errorResponse
+    }
+
+    // Check if user has permission for offline payments
+    const hasOfflinePaymentPermission = user.permissions.includes('financial.offline.payments') || 
+                                       user.role === 'ADMIN' || 
+                                       user.role === 'SUPER_ADMIN' ||
+                                       user.role === 'BRANCH_MANAGER'
+    
+    if (!hasOfflinePaymentPermission) {
+      console.log('Permission denied - user does not have offline payment permission')
+      const errorResponse = NextResponse.json({ 
+        error: 'Access denied. You do not have permission to record offline payments.',
+        code: 'PERMISSION_DENIED'
+      }, { status: 403 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+      return errorResponse
     }
 
     const body = await request.json()
@@ -91,9 +123,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Get invoice details
+    console.log('Fetching invoice details...')
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId },
       include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
         payments: {
           include: {
             payment: true
@@ -104,11 +144,28 @@ export async function POST(request: NextRequest) {
 
     if (!invoice) {
       console.log('Invoice not found:', invoiceId)
-      return NextResponse.json({ 
+      const errorResponse = NextResponse.json({ 
         error: 'Invoice not found. Please check the invoice ID and try again.',
-        code: 'INVOICE_NOT_FOUND'
+        code: 'INVOICE_NOT_FOUND',
+        details: {
+          invoiceId,
+          message: 'The specified invoice does not exist in the database'
+        }
       }, { status: 404 })
+      errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+      errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+      return errorResponse
     }
+    
+    console.log('Invoice found:', {
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmount: invoice.totalAmount,
+      currentPaid: invoice.paidAmount,
+      status: invoice.status,
+      customerName: invoice.customer?.name
+    })
 
     // Calculate total paid amount
     const totalPaid = invoice.payments.reduce((sum, ip) => sum + ip.payment.amount, 0)
@@ -137,31 +194,49 @@ export async function POST(request: NextRequest) {
     // Create payment record
     console.log('Creating payment record...')
     
-    // For offline payments, we need to create a dummy service booking first
-    // to satisfy the foreign key constraint
-    let dummyServiceBooking
+    // For offline payments, we need to create a service booking first
+    // to satisfy the foreign key constraint in the Payment model
+    let serviceBooking
     try {
-      dummyServiceBooking = await db.serviceBooking.create({
+      // Find or create a default service type for offline payments
+      let serviceType = await db.serviceType.findFirst({
+        where: { name: 'Offline Payment Service' }
+      })
+      
+      if (!serviceType) {
+        serviceType = await db.serviceType.create({
+          data: {
+            name: 'Offline Payment Service',
+            description: 'Service booking created for offline invoice payments',
+            duration: 1,
+            price: parsedAmount,
+            category: 'MAINTENANCE'
+          }
+        })
+        console.log('Created default service type for offline payments:', serviceType.id)
+      }
+      
+      serviceBooking = await db.serviceBooking.create({
         data: {
           customerId: invoice.customerId,
-          serviceTypeId: (await db.serviceType.findFirst({ select: { id: true } }))?.id || 'dummy-service-type',
+          serviceTypeId: serviceType.id,
           date: new Date(paymentDate || Date.now()),
           timeSlot: 'OFFLINE-PAYMENT',
           status: 'COMPLETED',
           paymentStatus: 'COMPLETED',
           totalPrice: parsedAmount,
-          notes: `Dummy service booking for offline payment of invoice ${invoice.invoiceNumber}`
+          notes: `Service booking for offline payment of invoice ${invoice.invoiceNumber} - ${paymentMethod}`
         }
       })
-      console.log('Dummy service booking created:', dummyServiceBooking.id)
+      console.log('Service booking created for offline payment:', serviceBooking.id)
     } catch (bookingError) {
-      console.error('Failed to create dummy service booking:', bookingError)
-      throw new Error(`Failed to create dummy service booking: ${bookingError instanceof Error ? bookingError.message : 'Unknown error'}`)
+      console.error('Failed to create service booking:', bookingError)
+      throw new Error(`Failed to create service booking: ${bookingError instanceof Error ? bookingError.message : 'Unknown error'}`)
     }
     
     // Prepare payment data
     const paymentData = {
-      bookingId: dummyServiceBooking.id,
+      bookingId: serviceBooking.id,
       bookingType: 'SERVICE' as const,
       amount: parsedAmount,
       currency: invoice.currency,
@@ -273,7 +348,7 @@ export async function POST(request: NextRequest) {
     console.log('Activity log created')
 
     console.log('=== OFFLINE PAYMENT API SUCCESS ===')
-    return NextResponse.json({
+    const successResponse = NextResponse.json({
       success: true,
       message: 'Offline payment recorded successfully',
       payment: {
@@ -292,6 +367,13 @@ export async function POST(request: NextRequest) {
         status: newStatus
       }
     })
+    
+    // Add CORS headers
+    successResponse.headers.set('Access-Control-Allow-Origin', '*')
+    successResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    successResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return successResponse
 
   } catch (error) {
     console.error('=== OFFLINE PAYMENT API ERROR ===')
@@ -333,13 +415,19 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    return NextResponse.json({ 
+    const errorResponse = NextResponse.json({ 
       error: 'Failed to record offline payment',
       details: error instanceof Error ? error.message : 'Unknown error',
       code: 'INTERNAL_ERROR',
       type: typeof error,
       name: error instanceof Error ? error.name : 'Unknown'
     }, { status: 500 })
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return errorResponse
   } finally {
     if (isConnected) {
       try {
