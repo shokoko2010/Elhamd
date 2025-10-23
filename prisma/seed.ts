@@ -604,6 +604,52 @@ async function main() {
         price: 300,
         category: 'INSPECTION',
         isActive: true
+      },
+      {
+        name: 'Offline Payment Service',
+        description: 'Service booking created for offline invoice payments',
+        duration: 1,
+        price: 0,
+        category: 'MAINTENANCE',
+        isActive: true
+      }
+    ]
+  })
+
+  // 6.1 Create Tax Rates
+  console.log('💰 Creating tax rates...')
+  const currentDate = new Date()
+  const futureDate = new Date()
+  futureDate.setFullYear(futureDate.getFullYear() + 10)
+  
+  await prisma.taxRate.createMany({
+    data: [
+      {
+        name: 'ضريبة القيمة المضافة',
+        description: 'ضريبة القيمة المضافة المطبقة في مصر',
+        rate: 14.0,
+        type: 'STANDARD',
+        isActive: true,
+        effectiveFrom: currentDate,
+        effectiveTo: futureDate
+      },
+      {
+        name: 'ضريبة الدمغة',
+        description: 'ضريبة الدمغة على الفواتير',
+        rate: 0.5,
+        type: 'REDUCED',
+        isActive: true,
+        effectiveFrom: currentDate,
+        effectiveTo: futureDate
+      },
+      {
+        name: 'ضريبة صفرية',
+        description: 'ضريبة صفرية للصادرات',
+        rate: 0.0,
+        type: 'ZERO',
+        isActive: true,
+        effectiveFrom: currentDate,
+        effectiveTo: futureDate
       }
     ]
   })

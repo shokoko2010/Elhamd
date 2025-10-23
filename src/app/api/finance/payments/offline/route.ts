@@ -366,12 +366,16 @@ export async function POST(request: NextRequest) {
     // to satisfy the foreign key constraint in the Payment model
     let serviceBooking
     try {
+      // Ensure database connection for service operations
+      await db.$connect()
+      
       // Find or create a default service type for offline payments
       let serviceType = await db.serviceType.findFirst({
         where: { name: 'Offline Payment Service' }
       })
       
       if (!serviceType) {
+        console.log('Creating default service type for offline payments...')
         serviceType = await db.serviceType.create({
           data: {
             name: 'Offline Payment Service',
@@ -382,23 +386,49 @@ export async function POST(request: NextRequest) {
           }
         })
         console.log('Created default service type for offline payments:', serviceType.id)
+      } else {
+        console.log('Found existing service type:', serviceType.id)
       }
       
+      // Create service booking with proper error handling
+      const bookingData = {
+        customerId: invoice.customerId,
+        serviceTypeId: serviceType.id,
+        date: new Date(paymentDate || Date.now()),
+        timeSlot: 'OFFLINE-PAYMENT',
+        status: 'COMPLETED' as const,
+        paymentStatus: 'COMPLETED' as const,
+        totalPrice: parsedAmount,
+        notes: `Service booking for offline payment of invoice ${invoice.invoiceNumber} - ${paymentMethod}`
+      }
+      
+      console.log('Creating service booking with data:', bookingData)
       serviceBooking = await db.serviceBooking.create({
-        data: {
-          customerId: invoice.customerId,
-          serviceTypeId: serviceType.id,
-          date: new Date(paymentDate || Date.now()),
-          timeSlot: 'OFFLINE-PAYMENT',
-          status: 'COMPLETED',
-          paymentStatus: 'COMPLETED',
-          totalPrice: parsedAmount,
-          notes: `Service booking for offline payment of invoice ${invoice.invoiceNumber} - ${paymentMethod}`
-        }
+        data: bookingData
       })
       console.log('Service booking created for offline payment:', serviceBooking.id)
+      
     } catch (bookingError) {
       console.error('Failed to create service booking:', bookingError)
+      console.error('Booking error details:', {
+        message: bookingError instanceof Error ? bookingError.message : 'Unknown error',
+        stack: bookingError instanceof Error ? bookingError.stack : 'No stack',
+        cause: bookingError instanceof Error ? bookingError.cause : 'No cause'
+      })
+      
+      // Try to provide more specific error messages
+      if (bookingError instanceof Error) {
+        if (bookingError.message.includes('Unique constraint')) {
+          throw new Error(`Service booking already exists for this invoice. Please contact support.`)
+        }
+        if (bookingError.message.includes('Foreign key constraint')) {
+          throw new Error(`Invalid customer or service type. Please check the invoice details.`)
+        }
+        if (bookingError.message.includes('connection') || bookingError.message.includes('timeout')) {
+          throw new Error(`Database connection error while creating service booking. Please try again.`)
+        }
+      }
+      
       throw new Error(`Failed to create service booking: ${bookingError instanceof Error ? bookingError.message : 'Unknown error'}`)
     }
     
@@ -417,32 +447,86 @@ export async function POST(request: NextRequest) {
     
     console.log('Payment data prepared:', paymentData)
     
-    // Create payment with error handling
+    // Create payment with enhanced error handling
     let payment
     try {
+      // Ensure database connection
+      await db.$connect()
+      
       payment = await db.payment.create({
         data: paymentData
       })
       console.log('Payment record created:', payment.id)
     } catch (createError) {
       console.error('Failed to create payment:', createError)
+      console.error('Payment creation error details:', {
+        message: createError instanceof Error ? createError.message : 'Unknown error',
+        stack: createError instanceof Error ? createError.stack : 'No stack',
+        cause: createError instanceof Error ? createError.cause : 'No cause',
+        paymentData
+      })
+      
+      // Provide specific error messages
+      if (createError instanceof Error) {
+        if (createError.message.includes('Unique constraint')) {
+          throw new Error(`Payment with this transaction ID already exists. Please use a different reference number.`)
+        }
+        if (createError.message.includes('Foreign key constraint')) {
+          throw new Error(`Invalid service booking or branch. Please check the payment details.`)
+        }
+        if (createError.message.includes('connection') || createError.message.includes('timeout')) {
+          throw new Error(`Database connection error while creating payment. Please try again.`)
+        }
+        if (createError.message.includes('Invalid value for enum')) {
+          throw new Error(`Invalid payment method or status. Please check the payment details.`)
+        }
+      }
+      
       throw new Error(`Failed to create payment record: ${createError instanceof Error ? createError.message : 'Unknown error'}`)
     }
 
     // Create invoice payment relationship
     console.log('Creating invoice payment relationship...')
-    await db.invoicePayment.create({
-      data: {
+    try {
+      // Ensure database connection
+      await db.$connect()
+      
+      await db.invoicePayment.create({
+        data: {
+          invoiceId,
+          paymentId: payment.id,
+          amount: parsedAmount,
+          paymentDate: new Date(paymentDate || Date.now()),
+          paymentMethod: paymentMethod as PaymentMethod,
+          transactionId: payment.transactionId,
+          notes: notes || `Offline payment - ${paymentMethod}`
+        }
+      })
+      console.log('Invoice payment relationship created')
+    } catch (relationshipError) {
+      console.error('Failed to create invoice payment relationship:', relationshipError)
+      console.error('Relationship error details:', {
+        message: relationshipError instanceof Error ? relationshipError.message : 'Unknown error',
+        stack: relationshipError instanceof Error ? relationshipError.stack : 'No stack',
         invoiceId,
-        paymentId: payment.id,
-        amount: parsedAmount,
-        paymentDate: new Date(paymentDate || Date.now()),
-        paymentMethod: paymentMethod as PaymentMethod,
-        transactionId: payment.transactionId,
-        notes: notes || `Offline payment - ${paymentMethod}`
+        paymentId: payment.id
+      })
+      
+      // Provide specific error messages
+      if (relationshipError instanceof Error) {
+        if (relationshipError.message.includes('Unique constraint')) {
+          throw new Error(`This payment is already linked to this invoice.`)
+        }
+        if (relationshipError.message.includes('Foreign key constraint')) {
+          throw new Error(`Invalid invoice or payment ID. Please check the details.`)
+        }
+        if (relationshipError.message.includes('connection') || relationshipError.message.includes('timeout')) {
+          throw new Error(`Database connection error while linking payment to invoice. Please try again.`)
+        }
       }
-    })
-    console.log('Invoice payment relationship created')
+      
+      throw new Error(`Failed to link payment to invoice: ${relationshipError instanceof Error ? relationshipError.message : 'Unknown error'}`)
+    }
 
     // Update invoice status based on payment
     let newStatus: InvoiceStatus = invoice.status
