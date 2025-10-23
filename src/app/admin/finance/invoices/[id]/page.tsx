@@ -463,13 +463,24 @@ function InvoiceDetailsContent() {
       return
     }
     
-    if (amount > invoice.totalAmount - invoice.paidAmount) {
-      toast({
-        title: 'خطأ',
-        description: `المبلغ يتجاوز المبلغ المتبقي (${formatCurrency(invoice.totalAmount - invoice.paidAmount)})`,
-        variant: 'destructive'
-      })
-      return
+    // Get current remaining amount from server to ensure accuracy
+    try {
+      const response = await fetch(`/api/finance/invoices/${invoiceId}`)
+      if (response.ok) {
+        const currentInvoice = await response.json()
+        const remainingAmount = currentInvoice.totalAmount - currentInvoice.paidAmount
+        
+        if (amount > remainingAmount) {
+          toast({
+            title: 'خطأ',
+            description: `المبلغ يتجاوز المبلغ المتبقي (${formatCurrency(remainingAmount)})`,
+            variant: 'destructive'
+          })
+          return
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching current invoice:', error)
     }
     
     setProcessingPayment(true)
@@ -525,14 +536,30 @@ function InvoiceDetailsContent() {
     }
   }
   
-  const openPaymentModal = () => {
-    if (invoice) {
-      // Pre-fill with remaining amount
-      const remainingAmount = invoice.totalAmount - invoice.paidAmount
-      setPaymentForm({
-        ...paymentForm,
-        amount: remainingAmount > 0 ? remainingAmount.toString() : ''
-      })
+  const openPaymentModal = async () => {
+    if (invoiceId) {
+      try {
+        // Fetch current invoice data to get accurate remaining amount
+        const response = await fetch(`/api/finance/invoices/${invoiceId}`)
+        if (response.ok) {
+          const currentInvoice = await response.json()
+          const remainingAmount = currentInvoice.totalAmount - currentInvoice.paidAmount
+          setPaymentForm({
+            ...paymentForm,
+            amount: remainingAmount > 0 ? remainingAmount.toString() : ''
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching invoice for payment:', error)
+        // Fallback to local invoice data
+        if (invoice) {
+          const remainingAmount = invoice.totalAmount - invoice.paidAmount
+          setPaymentForm({
+            ...paymentForm,
+            amount: remainingAmount > 0 ? remainingAmount.toString() : ''
+          })
+        }
+      }
     }
     setShowPaymentModal(true)
   }
@@ -1223,6 +1250,14 @@ function InvoiceDetailsContent() {
                 <div className="flex justify-between text-sm">
                   <span>المبلغ المتبقي:</span>
                   <span className="font-medium">{formatCurrency(invoice.totalAmount - invoice.paidAmount)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>الإجمالي:</span>
+                  <span>{formatCurrency(invoice.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>المدفوع:</span>
+                  <span>{formatCurrency(invoice.paidAmount)}</span>
                 </div>
               </div>
             )}
