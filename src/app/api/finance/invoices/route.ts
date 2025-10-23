@@ -154,14 +154,34 @@ export async function POST(request: NextRequest) {
       return sum + (item.quantity * item.unitPrice)
     }, 0)
 
-    // Get tax rates
-    const taxRates = await db.taxRate.findMany({
+    // Calculate taxes from database tax rates
+    let taxRates = await db.taxRate.findMany({
       where: { isActive: true }
     })
 
-    // Calculate taxes (simplified - in real app, this would be more complex)
-    const taxAmount = subtotal * 0.14 // 14% VAT as example
-    const totalAmount = subtotal + taxAmount
+    // Create default VAT rate if none exists
+    if (taxRates.length === 0) {
+      console.log('No tax rates found, creating default VAT rate...')
+      const defaultVAT = await db.taxRate.create({
+        data: {
+          name: 'ضريبة القيمة المضافة',
+          type: 'STANDARD',
+          rate: 14.0, // 14% VAT in Egypt
+          description: 'ضريبة القيمة المضافة القياسية في مصر',
+          isActive: true,
+          effectiveFrom: new Date('2020-01-01')
+        }
+      })
+      taxRates = [defaultVAT]
+      console.log('Created default VAT rate:', defaultVAT)
+    }
+
+    // Calculate total tax amount from all applicable tax rates
+    const totalTaxAmount = taxRates.reduce((sum, taxRate) => {
+      return sum + (subtotal * taxRate.rate / 100)
+    }, 0)
+
+    const totalAmount = subtotal + totalTaxAmount
 
     // Generate invoice number
     const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -176,7 +196,7 @@ export async function POST(request: NextRequest) {
         issueDate: new Date(issueDate),
         dueDate: new Date(dueDate),
         subtotal,
-        taxAmount,
+        taxAmount: totalTaxAmount,
         totalAmount,
         paidAmount: 0,
         currency: 'EGP',

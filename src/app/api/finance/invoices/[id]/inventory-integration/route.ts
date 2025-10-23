@@ -144,10 +144,37 @@ export async function POST(
       )
     )
 
-    // Update invoice totals
+    // Update invoice totals with proper tax calculation
     const allItems = [...invoice.items, ...createdItems]
     const newSubtotal = allItems.reduce((sum, item) => sum + item.totalPrice, 0)
-    const newTaxAmount = newSubtotal * 0.14 // 14% VAT
+    
+    // Get tax rates from database
+    let taxRates = await db.taxRate.findMany({
+      where: { isActive: true }
+    })
+
+    // Create default VAT rate if none exists
+    if (taxRates.length === 0) {
+      console.log('No tax rates found, creating default VAT rate...')
+      const defaultVAT = await db.taxRate.create({
+        data: {
+          name: 'ضريبة القيمة المضافة',
+          type: 'STANDARD',
+          rate: 14.0, // 14% VAT in Egypt
+          description: 'ضريبة القيمة المضافة القياسية في مصر',
+          isActive: true,
+          effectiveFrom: new Date('2020-01-01')
+        }
+      })
+      taxRates = [defaultVAT]
+      console.log('Created default VAT rate:', defaultVAT)
+    }
+    
+    // Calculate total tax amount from all applicable tax rates
+    const newTaxAmount = taxRates.reduce((sum, taxRate) => {
+      return sum + (newSubtotal * taxRate.rate / 100)
+    }, 0)
+    
     const newTotalAmount = newSubtotal + newTaxAmount
 
     await db.invoice.update({

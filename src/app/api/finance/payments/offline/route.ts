@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser, verifyAuth } from '@/lib/auth-server'
 import { getApiUser } from '@/lib/api-auth'
-import { PaymentStatus, PaymentMethod, InvoiceStatus } from '@prisma/client'
+import { PaymentStatus, PaymentMethod, InvoiceStatus, UserRole } from '@prisma/client'
+import { PERMISSIONS } from '@/lib/permissions'
 
 // Handle OPTIONS requests for CORS
 export async function OPTIONS(request: NextRequest) {
@@ -12,6 +13,151 @@ export async function OPTIONS(request: NextRequest) {
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
   response.headers.set('Access-Control-Max-Age', '86400')
   return response
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Check authentication and authorization
+    const user = await getAuthUser()
+    if (!user) {
+      // Try API token authentication
+      const apiUser = await getApiUser(request)
+      if (!apiUser) {
+        return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      }
+    }
+    
+    // Check if user has required role or permissions
+    const currentUser = user || await getApiUser(request)
+    const hasAccess = currentUser.role === UserRole.ADMIN || 
+                      currentUser.role === UserRole.SUPER_ADMIN ||
+                      currentUser.role === UserRole.BRANCH_MANAGER ||
+                      currentUser.role === UserRole.ACCOUNTANT ||
+                      currentUser.permissions.includes(PERMISSIONS.VIEW_PAYMENTS) ||
+                      currentUser.permissions.includes('financial.offline.payments')
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const status = searchParams.get('status')
+    const paymentMethod = searchParams.get('paymentMethod')
+    const customerId = searchParams.get('customerId')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const search = searchParams.get('search')
+
+    const skip = (page - 1) * limit
+
+    // Build where clause for invoice payments
+    const where: any = {}
+    
+    if (status) {
+      where.payment = { status: status }
+    }
+    
+    if (paymentMethod) {
+      where.payment = { ...where.payment, paymentMethod: paymentMethod }
+    }
+    
+    if (customerId) {
+      where.invoice = { customerId: customerId }
+    }
+    
+    if (startDate || endDate) {
+      where.paymentDate = {}
+      if (startDate) where.paymentDate.gte = new Date(startDate)
+      if (endDate) where.paymentDate.lte = new Date(endDate)
+    }
+    
+    if (search) {
+      where.OR = [
+        { payment: { transactionId: { contains: search, mode: 'insensitive' } } },
+        { payment: { notes: { contains: search, mode: 'insensitive' } } },
+        { invoice: { invoiceNumber: { contains: search, mode: 'insensitive' } } },
+        { invoice: { customer: { name: { contains: search, mode: 'insensitive' } } } },
+        { invoice: { customer: { email: { contains: search, mode: 'insensitive' } } } }
+      ]
+    }
+
+    // Get invoice payments with pagination
+    const [invoicePayments, total] = await Promise.all([
+      db.invoicePayment.findMany({
+        where,
+        include: {
+          invoice: {
+            include: {
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          payment: true
+        },
+        orderBy: {
+          paymentDate: 'desc'
+        },
+        skip,
+        take: limit
+      }),
+      db.invoicePayment.count({ where })
+    ])
+
+    // Transform data to match expected format
+    const payments = invoicePayments.map(ip => ({
+      id: ip.id,
+      amount: ip.amount,
+      currency: ip.invoice.currency,
+      status: ip.payment.status,
+      paymentMethod: ip.paymentMethod,
+      transactionId: ip.transactionId,
+      notes: ip.notes,
+      paymentDate: ip.paymentDate.toISOString(),
+      invoice: {
+        id: ip.invoice.id,
+        invoiceNumber: ip.invoice.invoiceNumber,
+        customer: ip.invoice.customer,
+        totalAmount: ip.invoice.totalAmount,
+        paidAmount: ip.invoice.paidAmount,
+        status: ip.invoice.status
+      },
+      payment: {
+        id: ip.payment.id,
+        metadata: ip.payment.metadata
+      }
+    }))
+
+    const totalPages = Math.ceil(total / limit)
+    const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0)
+
+    return NextResponse.json({
+      payments,
+      total,
+      totalAmount,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching offline payments:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch offline payments' },
+      { status: 500 }
+    )
+  }
 }
 
 export async function POST(request: NextRequest) {
