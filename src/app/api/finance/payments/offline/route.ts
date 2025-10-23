@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const search = searchParams.get('search')
+    const invoiceId = searchParams.get('invoiceId')
+    const branchId = searchParams.get('branchId')
 
     const skip = (page - 1) * limit
 
@@ -57,6 +59,9 @@ export async function GET(request: NextRequest) {
     
     if (status) {
       where.payment = { status: status }
+    } else {
+      // Default to completed payments for offline payments
+      where.payment = { status: 'COMPLETED' }
     }
     
     if (paymentMethod) {
@@ -65,6 +70,14 @@ export async function GET(request: NextRequest) {
     
     if (customerId) {
       where.invoice = { customerId: customerId }
+    }
+    
+    if (invoiceId) {
+      where.invoiceId = invoiceId
+    }
+
+    if (branchId) {
+      where.invoice = { ...where.invoice, branchId: branchId }
     }
     
     if (startDate || endDate) {
@@ -135,12 +148,21 @@ export async function GET(request: NextRequest) {
       }
     }))
 
+    // Filter for offline payments only
+    const offlinePayments = payments.filter(p => 
+      p.notes?.includes('Offline') || 
+      p.payment.metadata?.type === 'OFFLINE' ||
+      p.paymentMethod === 'CASH' ||
+      p.paymentMethod === 'BANK_TRANSFER' ||
+      p.paymentMethod === 'CHECK'
+    )
+
     const totalPages = Math.ceil(total / limit)
-    const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0)
+    const totalAmount = offlinePayments.reduce((sum, p) => sum + p.amount, 0)
 
     return NextResponse.json({
-      payments,
-      total,
+      payments: offlinePayments,
+      total: offlinePayments.length,
       totalAmount,
       pagination: {
         page,
@@ -583,135 +605,5 @@ export async function POST(request: NextRequest) {
         console.error('Error disconnecting from database:', disconnectError)
       }
     }
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    // Try both authentication methods
-    let user = null
-    
-    // First try NextAuth session
-    user = await getAuthUser()
-    
-    // If no session user, try API token authentication
-    if (!user) {
-      user = await getApiUser(request)
-    }
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const invoiceId = searchParams.get('invoiceId')
-    const branchId = searchParams.get('branchId')
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
-    const paymentMethod = searchParams.get('paymentMethod')
-
-    // Build where clause
-    const where: any = {
-      payment: {
-        status: PaymentStatus.COMPLETED
-      }
-    }
-
-    if (invoiceId) {
-      where.invoiceId = invoiceId
-    }
-
-    if (branchId) {
-      where.invoice = {
-        branchId: branchId
-      }
-    }
-
-    if (startDate || endDate) {
-      where.paymentDate = {}
-      if (startDate) where.paymentDate.gte = new Date(startDate)
-      if (endDate) where.paymentDate.lte = new Date(endDate)
-    }
-
-    if (paymentMethod) {
-      where.paymentMethod = paymentMethod
-    }
-
-    let payments
-    try {
-      // Try to fetch with metadata field
-      payments = await db.invoicePayment.findMany({
-        where,
-        include: {
-          invoice: {
-            include: {
-              customer: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              }
-            }
-          },
-          payment: true
-        },
-        orderBy: {
-          paymentDate: 'desc'
-        }
-      })
-    } catch (error) {
-      // If metadata field doesn't exist, fetch without it
-      console.log('Metadata field not found, fetching payments without metadata')
-      payments = await db.invoicePayment.findMany({
-        where,
-        include: {
-          invoice: {
-            include: {
-              customer: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              }
-            }
-          },
-          payment: {
-            select: {
-              id: true,
-              amount: true,
-              currency: true,
-              status: true,
-              paymentMethod: true,
-              transactionId: true,
-              notes: true,
-              createdAt: true
-            }
-          }
-        },
-        orderBy: {
-          paymentDate: 'desc'
-        }
-      })
-    }
-
-    // Filter for offline payments only (safely check metadata)
-    const offlinePayments = payments.filter(ip => 
-      ip.payment.notes?.includes('Offline') || 
-      (ip.payment as any).metadata?.type === 'OFFLINE'
-    )
-
-    return NextResponse.json({
-      payments: offlinePayments,
-      total: offlinePayments.length,
-      totalAmount: offlinePayments.reduce((sum, ip) => sum + ip.amount, 0)
-    })
-
-  } catch (error) {
-    console.error('Error fetching offline payments:', error)
-    return NextResponse.json({ 
-      error: 'Failed to fetch offline payments' 
-    }, { status: 500 })
   }
 }
