@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 
 export default function AuthTestPage() {
-  const { user, loading, error, authenticated, unauthenticated } = useAuth()
+  const auth = useAuth()
+  const { user, loading, error, authenticated, unauthenticated } = auth
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -89,19 +90,19 @@ export default function AuthTestPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <PermissionTest 
                 name="Admin" 
-                test={() => useAuth().isAdmin()} 
+                test={(auth) => auth.isAdmin()} 
               />
               <PermissionTest 
                 name="Staff" 
-                test={() => useAuth().isStaff()} 
+                test={(auth) => auth.isStaff()} 
               />
               <PermissionTest 
                 name="Customer" 
-                test={() => useAuth().isCustomer()} 
+                test={(auth) => auth.isCustomer()} 
               />
               <PermissionTest 
                 name="View Invoices" 
-                test={() => useAuth().canViewInvoices()} 
+                test={(auth) => auth.canViewInvoices()} 
               />
             </div>
           </CardContent>
@@ -144,8 +145,9 @@ export default function AuthTestPage() {
   )
 }
 
-function PermissionTest({ name, test }: { name: string; test: () => boolean }) {
-  const hasPermission = test()
+function PermissionTest({ name, test }: { name: string; test: (auth: ReturnType<typeof useAuth>) => boolean }) {
+  const auth = useAuth()
+  const hasPermission = test(auth)
   
   return (
     <div className={`p-3 rounded-lg border ${hasPermission ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>

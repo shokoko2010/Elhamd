@@ -3,13 +3,12 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getApiUser(request)
+    const user = await getAuthUser()
     
     if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -56,7 +55,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getApiUser(request)
+    const user = await getAuthUser()
     
     if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

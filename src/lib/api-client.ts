@@ -18,21 +18,8 @@ export class ApiClient {
   }
 
   private async getAuthHeaders(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {}
-
-    // Try to get API token from localStorage
-    if (typeof window !== 'undefined') {
-      try {
-        const token = localStorage.getItem('auth_token')
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`
-        }
-      } catch (error) {
-        console.error('Error getting auth token from localStorage:', error)
-      }
-    }
-
-    return headers
+    // NextAuth handles authentication via cookies
+    return {}
   }
 
   private async request<T>(

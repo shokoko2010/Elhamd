@@ -172,26 +172,28 @@ export default function FooterManagement() {
   const [editingColumn, setEditingColumn] = useState<FooterColumn | null>(null)
   const [newColumn, setNewColumn] = useState({ title: '', content: '', type: 'text' as const })
 
+  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    return fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    })
+  }
+
   useEffect(() => {
     fetchFooterData()
   }, [])
 
   const fetchFooterData = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
       const [settingsResponse, contentResponse, socialResponse, columnsResponse] = await Promise.all([
-        fetch('/api/site-settings', { method: 'GET', headers }),
-        fetch('/api/footer/content', { method: 'GET', headers }),
-        fetch('/api/footer/social', { method: 'GET', headers }),
-        fetch('/api/footer/columns', { method: 'GET', headers })
+        fetchWithAuth('/api/site-settings', { method: 'GET' }),
+        fetchWithAuth('/api/footer/content', { method: 'GET' }),
+        fetchWithAuth('/api/footer/social', { method: 'GET' }),
+        fetchWithAuth('/api/footer/columns', { method: 'GET' })
       ])
 
       if (settingsResponse.ok) {
@@ -223,18 +225,8 @@ export default function FooterManagement() {
   const handleSaveSettings = async () => {
     setLoading(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const response = await fetch('/api/site-settings', {
+      const response = await fetchWithAuth('/api/site-settings', {
         method: 'PUT',
-        headers,
         body: JSON.stringify({ footerSettings: settings })
       })
 
@@ -258,18 +250,8 @@ export default function FooterManagement() {
   const handleSaveContent = async () => {
     setLoading(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const response = await fetch('/api/footer/content', {
+      const response = await fetchWithAuth('/api/footer/content', {
         method: 'PUT',
-        headers,
         body: JSON.stringify(content)
       })
 
@@ -293,18 +275,8 @@ export default function FooterManagement() {
   const handleSaveSocial = async () => {
     setLoading(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const response = await fetch('/api/footer/social', {
+      const response = await fetchWithAuth('/api/footer/social', {
         method: 'PUT',
-        headers,
         body: JSON.stringify(socialLinks)
       })
 
@@ -328,18 +300,8 @@ export default function FooterManagement() {
   const handleSaveColumns = async () => {
     setLoading(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
-      const response = await fetch('/api/footer/columns', {
+      const response = await fetchWithAuth('/api/footer/columns', {
         method: 'PUT',
-        headers,
         body: JSON.stringify(columns)
       })
 
@@ -410,16 +372,9 @@ export default function FooterManagement() {
     formData.append('image', file)
 
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = {}
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
       const response = await fetch('/api/upload/image', {
         method: 'POST',
-        headers,
+        credentials: 'include',
         body: formData
       })
 

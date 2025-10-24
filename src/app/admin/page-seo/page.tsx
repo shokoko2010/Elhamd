@@ -35,7 +35,7 @@ import {
   Code
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-auth-safe'
 
 interface PageSEO {
   id?: string

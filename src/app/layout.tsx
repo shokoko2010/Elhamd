@@ -75,6 +75,9 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="referrer" content="no-referrer-when-downgrade" />
+        <meta httpEquiv="x-dns-prefetch-control" content="off" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

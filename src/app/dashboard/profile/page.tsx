@@ -27,7 +27,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-auth-safe'
 
 interface UserProfile {
   id: string
@@ -100,47 +100,25 @@ export default function ProfilePage() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
 
   useEffect(() => {
-    if (status === 'unauthenticated' && !apiUser) {
-      // Check if we have a token in localStorage
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          // Redirect to reauth page instead of login
-          router.push('/reauth')
-          return
-        }
-      } else {
-        router.push('/reauth')
-        return
-      }
+    if (status === 'unauthenticated') {
+      router.push('/auth/login')
+      return
     }
 
-    if (status === 'authenticated' || apiUser) {
+    if (status === 'authenticated') {
       fetchProfileData()
     }
-  }, [status, apiUser, router])
+  }, [status, router])
 
   const fetchProfileData = async () => {
     try {
       setLoading(true)
       
-      // Try to get token from localStorage (for API auth)
-      let token = null
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('auth_token')
-      }
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-      
       const response = await fetch('/api/dashboard/profile', {
         credentials: 'include',
-        headers
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
       
       if (response.ok) {
@@ -181,24 +159,12 @@ export default function ProfilePage() {
     try {
       setSaving(true)
       
-      // Try to get token from localStorage
-      let token = null
-      if (typeof window !== 'undefined') {
-        token = localStorage.getItem('auth_token')
-      }
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      }
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-      
       const response = await fetch('/api/dashboard/profile', {
         method: 'PUT',
         credentials: 'include',
-        headers,
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(personalInfo)
       })
 

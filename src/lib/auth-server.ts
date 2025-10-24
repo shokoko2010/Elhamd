@@ -5,14 +5,8 @@ import { PermissionService, PERMISSIONS } from './permissions'
 
 export { authOptions }
 
-// Define UserRole enum locally to avoid import issues
-export enum UserRole {
-  CUSTOMER = 'CUSTOMER',
-  STAFF = 'STAFF',
-  BRANCH_MANAGER = 'BRANCH_MANAGER',
-  ADMIN = 'ADMIN',
-  SUPER_ADMIN = 'SUPER_ADMIN'
-}
+// Use UserRole from Prisma client
+import { UserRole } from '@prisma/client'
 
 export interface AuthUser {
   id: string
@@ -26,30 +20,25 @@ export interface AuthUser {
 
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
-    console.log('=== DEBUG: getAuthUser called ===')
-    
     const session = await getServerSession(authOptions)
-    console.log('Session found:', !!session)
-    console.log('Session user:', !!session?.user)
     
     if (!session?.user) {
-      console.log('No session user found, returning null')
       return null
     }
 
-    console.log('Session user email:', session.user.email)
-    console.log('Session user role:', session.user.role)
-
     let permissions: string[] = []
     
-    // Try to get permissions, but don't fail if they don't exist yet
-    try {
-      console.log('Fetching permissions for user:', session.user.id)
-      permissions = await PermissionService.getUserPermissions(session.user.id)
-      console.log('Permissions fetched:', permissions.length)
-    } catch (error) {
-      console.warn('Could not fetch user permissions, they may not be initialized yet:', error)
-      permissions = []
+    // Try to get permissions from session first, then fallback to database
+    if (session.user.permissions && session.user.permissions.length > 0) {
+      permissions = session.user.permissions
+    } else {
+      // Try to get permissions from database
+      try {
+        permissions = await PermissionService.getUserPermissions(session.user.id)
+      } catch (error) {
+        console.warn('Could not fetch user permissions:', error)
+        permissions = []
+      }
     }
 
     // Ensure user has the minimum required permissions based on role
@@ -57,7 +46,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       // Admin users get all permissions by default
       const allPermissions = Object.values(PERMISSIONS)
       permissions = Array.from(new Set([...permissions, ...allPermissions]))
-      console.log('Admin user - all permissions granted')
     } else if (session.user.role === UserRole.BRANCH_MANAGER) {
       // Branch managers get vehicle management permissions
       const vehiclePermissions = [
@@ -67,7 +55,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
         PERMISSIONS.CREATE_VEHICLES
       ]
       permissions = Array.from(new Set([...permissions, ...vehiclePermissions]))
-      console.log('Branch manager - vehicle permissions granted')
     } else if (session.user.role === UserRole.STAFF) {
       // Staff get basic vehicle permissions
       const staffPermissions = [
@@ -75,10 +62,9 @@ export async function getAuthUser(): Promise<AuthUser | null> {
         PERMISSIONS.EDIT_VEHICLES
       ]
       permissions = Array.from(new Set([...permissions, ...staffPermissions]))
-      console.log('Staff - basic permissions granted')
     }
 
-    const authUser: AuthUser = {
+    return {
       id: session.user.id,
       email: session.user.email!,
       name: session.user.name,
@@ -87,15 +73,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       branchId: session.user.branchId,
       permissions
     }
-
-    console.log('Auth user created:', {
-      id: authUser.id,
-      email: authUser.email,
-      role: authUser.role,
-      permissionsCount: authUser.permissions.length
-    })
-
-    return authUser
   } catch (error) {
     console.error('Error getting auth user:', error)
     return null

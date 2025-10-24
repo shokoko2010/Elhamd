@@ -20,6 +20,19 @@ export interface AuthUser {
   updatedAt: Date
 }
 
+/**
+ * NextAuth Hook - The sole authentication hook for the application
+ * 
+ * This hook provides access to the NextAuth session state and authentication
+ * functionality throughout the application.
+ * 
+ * Features:
+ * - Real-time authentication state
+ * - Automatic session management
+ * - Role-based access control
+ * - Permission checking helpers
+ * - Secure logout functionality
+ */
 export function useAuth() {
   const { data: session, status } = useSession()
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -54,7 +67,7 @@ export function useAuth() {
         setError(null)
       }
     } catch (err) {
-      console.error('Auth hook error:', err)
+      console.error('NextAuth hook error:', err)
       setError(err instanceof Error ? err.message : 'Authentication error')
       setUser(null)
     } finally {
@@ -69,7 +82,7 @@ export function useAuth() {
         callbackUrl: '/login'
       })
     } catch (error) {
-      console.error('Logout error:', error)
+      console.error('NextAuth logout error:', error)
       // Force redirect even if signOut fails
       window.location.href = '/login'
     }
