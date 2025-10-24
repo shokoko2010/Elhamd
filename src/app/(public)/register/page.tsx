@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Car, Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle, CheckCircle } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({

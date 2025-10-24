@@ -20,7 +20,7 @@ import {
   User,
   LogOut
 } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 
 interface SiteSettings {
   id: string

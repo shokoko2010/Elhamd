@@ -141,24 +141,22 @@ export default function HeaderManagement() {
     fetchHeaderData()
   }, [])
 
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    return fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    })
-  }
-
   const fetchHeaderData = async () => {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const [settingsResponse, contentResponse, socialResponse, navigationResponse] = await Promise.all([
-        fetchWithAuth('/api/site-settings', { method: 'GET' }),
-        fetchWithAuth('/api/header/content', { method: 'GET' }),
-        fetchWithAuth('/api/header/social', { method: 'GET' }),
-        fetchWithAuth('/api/header/navigation', { method: 'GET' })
+        fetch('/api/site-settings', { method: 'GET', headers }),
+        fetch('/api/header/content', { method: 'GET', headers }),
+        fetch('/api/header/social', { method: 'GET', headers }),
+        fetch('/api/header/navigation', { method: 'GET', headers })
       ])
 
       if (settingsResponse.ok) {
@@ -190,8 +188,18 @@ export default function HeaderManagement() {
   const handleSaveSettings = async () => {
     setLoading(true)
     try {
-      const response = await fetchWithAuth('/api/site-settings', {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/site-settings', {
         method: 'PUT',
+        headers,
         body: JSON.stringify({ headerSettings: settings })
       })
 
@@ -215,8 +223,18 @@ export default function HeaderManagement() {
   const handleSaveContent = async () => {
     setLoading(true)
     try {
-      const response = await fetchWithAuth('/api/header/content', {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/header/content', {
         method: 'PUT',
+        headers,
         body: JSON.stringify(content)
       })
 
@@ -240,8 +258,18 @@ export default function HeaderManagement() {
   const handleSaveSocial = async () => {
     setLoading(true)
     try {
-      const response = await fetchWithAuth('/api/header/social', {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/header/social', {
         method: 'PUT',
+        headers,
         body: JSON.stringify(socialLinks)
       })
 
@@ -265,8 +293,18 @@ export default function HeaderManagement() {
   const handleSaveNavigation = async () => {
     setLoading(true)
     try {
-      const response = await fetchWithAuth('/api/header/navigation', {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/header/navigation', {
         method: 'PUT',
+        headers,
         body: JSON.stringify(navigation)
       })
 
@@ -353,9 +391,17 @@ export default function HeaderManagement() {
         return
       }
 
-      // Try upload with NextAuth
-      response = await fetchWithAuth('/api/upload/simple', {
+      // Try simple upload with auth
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = {}
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      response = await fetch('/api/upload/simple', {
         method: 'POST',
+        headers,
         body: formData
       })
 

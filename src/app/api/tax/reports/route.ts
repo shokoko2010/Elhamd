@@ -32,17 +32,6 @@ export async function GET(request: NextRequest) {
     if (branchId) where.branchId = branchId;
     if (type) where.type = type;
 
-    // Check if taxRecord table exists and is accessible
-    try {
-      await db.taxRecord.count();
-    } catch (dbError) {
-      console.error('TaxRecord table not accessible:', dbError);
-      return NextResponse.json(
-        { error: 'Tax records table is not available. Please check database configuration.' },
-        { status: 503 }
-      );
-    }
-
     // Get tax records grouped by type
     const byType = await db.taxRecord.groupBy({
       by: ['type'],

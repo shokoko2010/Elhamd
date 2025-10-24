@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 import { UserRole } from '@prisma/client'
 
 export default function DashboardPage() {

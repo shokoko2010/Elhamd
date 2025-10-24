@@ -37,7 +37,7 @@ import {
   ShoppingCart
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 import { UserRole } from '@prisma/client'
 import { api } from '@/lib/api-client'
 

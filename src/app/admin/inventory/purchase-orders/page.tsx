@@ -37,7 +37,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 import { UserRole } from '@prisma/client'
 
 interface PurchaseOrderItem {

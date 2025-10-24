@@ -263,7 +263,7 @@ class EnhancedReminderService {
     try {
       // Get upcoming appointments from API
       const response = await fetch('/api/bookings/upcoming', {
-        credentials: 'include'
+        headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
       })
       
       if (!response.ok) return
@@ -474,7 +474,7 @@ class EnhancedReminderService {
   private async getAppointmentDetails(appointmentId: string): Promise<Appointment | null> {
     try {
       const response = await fetch(`/api/bookings/${appointmentId}`, {
-        credentials: 'include'
+        headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
       })
       
       if (response.ok) {
@@ -500,8 +500,8 @@ class EnhancedReminderService {
   }
 
   private getAuthToken(): string {
-    // NextAuth handles authentication via cookies
-    return ''
+    // Get auth token from localStorage or cookie
+    return localStorage.getItem('authToken') || ''
   }
 
   // Public methods

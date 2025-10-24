@@ -28,7 +28,7 @@ import {
   X
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 import { UserRole, PermissionCategory } from '@prisma/client'
 import { PERMISSIONS, Permission } from '@/lib/permissions'
 

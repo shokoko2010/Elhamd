@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 import { PERMISSIONS } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

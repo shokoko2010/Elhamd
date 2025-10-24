@@ -13,30 +13,10 @@ const nextConfig: NextConfig = {
     dirs: ['src'],
   },
   // Exclude scripts directory from build
-  webpack: (config, { isServer, dev }) => {
+  webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = { fs: false, path: false };
     }
-    
-    // Add custom build hook for Vercel database cleaning
-    if (isServer && !dev) {
-      console.log('🔧 Build detected - checking if database cleaning is needed...')
-      
-      // Only clean database on Vercel builds or when explicitly requested
-      const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV === 'production'
-      const shouldClean = isVercel || process.env.NEXT_BUILD_CLEAN_DB === 'true'
-      
-      if (shouldClean) {
-        console.log('🌐 Database cleaning will be performed before build')
-        console.log(`🔧 Environment: VERCEL=${process.env.VERCEL}, NEXT_BUILD_CLEAN_DB=${process.env.NEXT_BUILD_CLEAN_DB}`)
-        
-        // Set environment variable for the build script
-        process.env.NEXT_BUILD_CLEAN_DB = 'true'
-      } else {
-        console.log('ℹ️ Database cleaning skipped - not in Vercel environment')
-      }
-    }
-    
     return config;
   },
   allowedDevOrigins: [

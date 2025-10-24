@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth-safe';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,13 +98,17 @@ export default function BranchesPage() {
   }, [authLoading, authenticated, router]);
 
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('auth_token');
+    console.log('Using token:', token ? 'Token found' : 'No token found');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    };
+
     return fetch(url, {
       ...options,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
   };
 

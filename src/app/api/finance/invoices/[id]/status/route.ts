@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
+import { getApiUser } from '@/lib/api-auth'
 import { InvoiceStatus } from '@prisma/client'
 
 // Handle OPTIONS requests for CORS
@@ -28,9 +29,18 @@ export async function PUT(
     isConnected = true
     console.log('Database connected successfully')
     
-    // Use NextAuth only
-    const user = await getAuthUser()
+    // Try both authentication methods
+    let user = null
+    
+    // First try NextAuth session
+    user = await getAuthUser()
     console.log('NextAuth user authenticated:', !!user)
+    
+    // If no session user, try API token authentication
+    if (!user) {
+      user = await getApiUser(request)
+      console.log('API token user authenticated:', !!user)
+    }
     
     if (!user) {
       console.log('Authentication failed - no user found')

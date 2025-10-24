@@ -76,7 +76,6 @@ export default function CreateInvoicePage() {
 }
 
 function CreateInvoiceContent() {
-  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([])
@@ -282,15 +281,6 @@ function CreateInvoiceContent() {
       return
     }
 
-    if (!user) {
-      toast({
-        title: 'خطأ',
-        description: 'يجب تسجيل الدخول لإنشاء فاتورة',
-        variant: 'destructive'
-      })
-      return
-    }
-
     setLoading(true)
     
     try {
@@ -309,8 +299,8 @@ function CreateInvoiceContent() {
         dueDate,
         notes,
         terms,
-        createdBy: user.id, // Use actual user ID
-        branchId: user.branchId // Include branch ID if available
+        createdBy: 'admin', // This should come from the authenticated user
+        status
       }
 
       const response = await fetch('/api/finance/invoices', {
@@ -322,8 +312,7 @@ function CreateInvoiceContent() {
       })
 
       if (response.ok) {
-        const result = await response.json()
-        const invoice = result.invoice || result // Handle both old and new response formats
+        const invoice = await response.json()
         toast({
           title: 'نجاح',
           description: status === 'DRAFT' ? 'تم حفظ الفاتورة كمسودة' : 'تم إنشاء وإرسال الفاتورة بنجاح'

@@ -20,19 +20,6 @@ export interface AuthUser {
   updatedAt: Date
 }
 
-/**
- * NextAuth Hook - The sole authentication hook for the application
- * 
- * This hook provides access to the NextAuth session state and authentication
- * functionality throughout the application.
- * 
- * Features:
- * - Real-time authentication state
- * - Automatic session management
- * - Role-based access control
- * - Permission checking helpers
- * - Secure logout functionality
- */
 export function useAuth() {
   const { data: session, status } = useSession()
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -40,39 +27,33 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    try {
-      if (status === 'loading') {
-        setLoading(true)
-        return
-      }
-
-      if (status === 'authenticated' && session?.user) {
-        setUser({
-          id: session.user.id || '',
-          email: session.user.email || '',
-          name: session.user.name,
-          role: session.user.role as UserRole || UserRole.CUSTOMER,
-          phone: session.user.phone,
-          branchId: session.user.branchId,
-          permissions: session.user.permissions as Permission[] || [],
-          isActive: true, // Assuming active if session exists
-          emailVerified: true, // Assuming verified if session exists
-          lastLoginAt: session.user.lastLoginAt ? new Date(session.user.lastLoginAt) : null,
-          createdAt: new Date(), // Default values
-          updatedAt: new Date()
-        })
-        setError(null)
-      } else {
-        setUser(null)
-        setError(null)
-      }
-    } catch (err) {
-      console.error('NextAuth hook error:', err)
-      setError(err instanceof Error ? err.message : 'Authentication error')
-      setUser(null)
-    } finally {
-      setLoading(false)
+    if (status === 'loading') {
+      setLoading(true)
+      return
     }
+
+    if (status === 'authenticated' && session?.user) {
+      setUser({
+        id: session.user.id,
+        email: session.user.email!,
+        name: session.user.name,
+        role: session.user.role as UserRole,
+        phone: session.user.phone,
+        branchId: session.user.branchId,
+        permissions: session.user.permissions as Permission[] || [],
+        isActive: true, // Assuming active if session exists
+        emailVerified: true, // Assuming verified if session exists
+        lastLoginAt: session.user.lastLoginAt ? new Date(session.user.lastLoginAt) : null,
+        createdAt: new Date(), // Default values
+        updatedAt: new Date()
+      })
+      setError(null)
+    } else {
+      setUser(null)
+      setError(null)
+    }
+    
+    setLoading(false)
   }, [session, status])
 
   const logout = async () => {
@@ -82,7 +63,7 @@ export function useAuth() {
         callbackUrl: '/login'
       })
     } catch (error) {
-      console.error('NextAuth logout error:', error)
+      console.error('Logout error:', error)
       // Force redirect even if signOut fails
       window.location.href = '/login'
     }
@@ -250,6 +231,3 @@ export function useAuth() {
     canManageRoleTemplates,
   }
 }
-
-// Export a default export as well for compatibility
-export default useAuth

@@ -25,17 +25,6 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    // Check if taxRecord table exists and is accessible
-    try {
-      await db.taxRecord.count();
-    } catch (dbError) {
-      console.error('TaxRecord table not accessible:', dbError);
-      return NextResponse.json(
-        { error: 'Tax records table is not available. Please check database configuration.' },
-        { status: 503 }
-      );
-    }
-
     const where: any = {};
     
     if (type) where.type = type;

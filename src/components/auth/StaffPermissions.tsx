@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 import { UserRole } from '@prisma/client'
 import { ReactNode } from 'react'
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser, verifyAuth } from '@/lib/auth-server'
+import { getApiUser } from '@/lib/api-auth'
 import { PaymentStatus, PaymentMethod, InvoiceStatus, UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -19,16 +20,21 @@ export async function GET(request: NextRequest) {
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      // Try API token authentication
+      const apiUser = await getApiUser(request)
+      if (!apiUser) {
+        return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      }
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.role === UserRole.ACCOUNTANT ||
-                      user.permissions.includes(PERMISSIONS.VIEW_PAYMENTS) ||
-                      user.permissions.includes('financial.offline.payments')
+    const currentUser = user || await getApiUser(request)
+    const hasAccess = currentUser.role === UserRole.ADMIN || 
+                      currentUser.role === UserRole.SUPER_ADMIN ||
+                      currentUser.role === UserRole.BRANCH_MANAGER ||
+                      currentUser.role === UserRole.ACCOUNTANT ||
+                      currentUser.permissions.includes(PERMISSIONS.VIEW_PAYMENTS) ||
+                      currentUser.permissions.includes('financial.offline.payments')
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -187,9 +193,18 @@ export async function POST(request: NextRequest) {
     isConnected = true
     console.log('Database connected successfully')
     
-    // Use NextAuth only
-    const user = await getAuthUser()
+    // Try both authentication methods
+    let user = null
+    
+    // First try NextAuth session
+    user = await getAuthUser()
     console.log('NextAuth user authenticated:', !!user)
+    
+    // If no session user, try API token authentication
+    if (!user) {
+      user = await getApiUser(request)
+      console.log('API token user authenticated:', !!user)
+    }
     
     if (!user) {
       console.log('Authentication failed - no user found')

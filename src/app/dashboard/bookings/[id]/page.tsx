@@ -22,7 +22,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth-safe'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Booking {
   id: string

@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development nodemon --exec \"npx tsx server.ts\" --watch server.ts --watch src --ext ts,tsx,js,jsx 2>&1 | tee dev.log",
-    "build": "npm run clean-db && next build",
+    "build": "next build",
     "start": "NODE_ENV=production tsx server.ts 2>&1 | tee server.log",
     "postinstall": "prisma generate && prisma db push --accept-data-loss && prisma db seed",
-    "clean-db": "tsx scripts/clean-database.ts",
     "seed": "ts-node prisma/seed.ts",
     "lint": "next lint",
     "db:push": "prisma db push --accept-data-loss",

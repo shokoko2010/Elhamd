@@ -6,8 +6,6 @@ import { AuthProvider } from "@/components/auth-provider";
 import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
 import { HomepageSEO } from "@/components/seo/SEO";
-import ErrorBoundary from "@/components/error-boundary";
-import { setupGlobalErrorHandlers } from "@/lib/error-handler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -67,17 +65,9 @@ export default function RootLayout({
   const { structuredData } = HomepageSEO();
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || ''
   
-  // Initialize global error handlers
-  if (typeof window !== 'undefined') {
-    setupGlobalErrorHandlers()
-  }
-  
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="referrer" content="no-referrer-when-downgrade" />
-        <meta httpEquiv="x-dns-prefetch-control" content="off" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -182,16 +172,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <ErrorBoundary>
-          <AuthProvider>
-            <AnalyticsProvider measurementId={measurementId}>
-              <SiteSettingsProvider>
-                {children}
-                <Toaster />
-              </SiteSettingsProvider>
-            </AnalyticsProvider>
-          </AuthProvider>
-        </ErrorBoundary>
+        <AuthProvider>
+          <AnalyticsProvider measurementId={measurementId}>
+            <SiteSettingsProvider>
+              {children}
+              <Toaster />
+            </SiteSettingsProvider>
+          </AnalyticsProvider>
+        </AuthProvider>
       </body>
     </html>
   );

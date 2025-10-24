@@ -110,32 +110,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function OPTIONS(request: NextRequest) {
-  const response = new NextResponse(null, { status: 200 })
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-  return response
-}
-
 export async function POST(request: NextRequest) {
+  let isConnected = false
+  
   try {
     console.log('=== INVOICE CREATION START ===')
     
+    // Ensure database connection
+    await db.$connect()
+    isConnected = true
+    console.log('Database connected successfully')
+    
     // Check authentication and authorization
     const user = await getAuthUser()
-    // Add CORS headers to all error responses
-    const errorResponse = (error: any, status: number) => {
-      const response = NextResponse.json(error, { status })
-      response.headers.set('Access-Control-Allow-Origin', '*')
-      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-      return response
-    }
-
     if (!user) {
-      console.log('No user authenticated')
-      return errorResponse({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, 401)
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
     
     console.log('User authenticated:', user.email, user.role)
@@ -149,11 +138,11 @@ export async function POST(request: NextRequest) {
     
     if (!hasAccess) {
       console.log('Permission denied for user:', user.email)
-      return errorResponse({ error: 'غير مصرح لك - صلاحيات غير كافية' }, 403)
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
     
     const body = await request.json()
-    console.log('Request body:', JSON.stringify(body, null, 2))
+    console.log('Request body:', body)
     
     const {
       customerId,
@@ -177,7 +166,7 @@ export async function POST(request: NextRequest) {
         dueDate: !!dueDate,
         createdBy: !!createdBy
       })
-      return errorResponse(
+      return NextResponse.json(
         { 
           error: 'Missing required fields',
           details: {
@@ -188,16 +177,16 @@ export async function POST(request: NextRequest) {
             createdBy: !!createdBy
           }
         },
-        400
+        { status: 400 }
       )
     }
 
     // Validate items array
     if (!Array.isArray(items) || items.length === 0) {
       console.log('Invalid items array:', items)
-      return errorResponse(
+      return NextResponse.json(
         { error: 'Items must be a non-empty array' },
-        400
+        { status: 400 }
       )
     }
 
@@ -205,12 +194,12 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       if (!item.description || !item.quantity || !item.unitPrice) {
         console.log('Invalid item:', item)
-        return errorResponse(
+        return NextResponse.json(
           { 
             error: 'Each item must have description, quantity, and unitPrice',
             details: { invalidItem: item }
           },
-          400
+          { status: 400 }
         )
       }
     }
@@ -222,30 +211,29 @@ export async function POST(request: NextRequest) {
 
     console.log('Calculated subtotal:', subtotal)
 
-    // Get tax rates - use simple approach
-    let taxRates = []
-    try {
-      taxRates = await db.taxRate.findMany({
-        where: { isActive: true }
-      })
-      console.log('Found tax rates:', taxRates.length)
-    } catch (error) {
-      console.log('Error fetching tax rates (table might not exist):', error)
-      // Continue with default tax rates
-    }
+    // Calculate taxes from database tax rates
+    let taxRates = await db.taxRate.findMany({
+      where: { isActive: true }
+    })
 
-    // Use default VAT rate if no tax rates found or table doesn't exist
+    // Create default VAT rate if none exists
     if (taxRates.length === 0) {
-      console.log('No tax rates found, using default 14% VAT')
-      taxRates = [{
-        id: 'default-vat',
-        type: 'STANDARD',
-        rate: 14.0,
-        description: 'ضريبة القيمة المضافة القياسية'
-      }]
+      console.log('No tax rates found, creating default VAT rate...')
+      const defaultVAT = await db.taxRate.create({
+        data: {
+          name: 'ضريبة القيمة المضافة',
+          type: 'STANDARD',
+          rate: 14.0, // 14% VAT in Egypt
+          description: 'ضريبة القيمة المضافة القياسية في مصر',
+          isActive: true,
+          effectiveFrom: new Date('2020-01-01')
+        }
+      })
+      taxRates = [defaultVAT]
+      console.log('Created default VAT rate:', defaultVAT)
     }
 
-    // Calculate total tax amount
+    // Calculate total tax amount from all applicable tax rates
     const totalTaxAmount = taxRates.reduce((sum, taxRate) => {
       return sum + (subtotal * taxRate.rate / 100)
     }, 0)
@@ -261,9 +249,10 @@ export async function POST(request: NextRequest) {
     // Generate invoice number
     const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
-    // Create invoice - simplified approach
-    try {
-      const invoice = await db.invoice.create({
+    // Create invoice with transaction
+    const invoice = await db.$transaction(async (tx) => {
+      // Create the invoice first
+      const newInvoice = await tx.invoice.create({
         data: {
           invoiceNumber,
           customerId,
@@ -279,90 +268,74 @@ export async function POST(request: NextRequest) {
           notes,
           terms,
           createdBy,
-          branchId: branchId || user.branchId || null,
-          items: {
-            create: items.map((item: any) => ({
-              description: item.description,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalPrice: item.quantity * item.unitPrice,
-              taxRate: item.taxRate || 0,
-              taxAmount: (item.quantity * item.unitPrice) * (item.taxRate || 0) / 100,
-              metadata: item.metadata || {}
-            }))
-          }
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          items: true
+          branchId: branchId || user.branchId || null
         }
       })
       
-      // Try to create taxes if table exists
-      try {
-        await db.invoiceTax.createMany({
-          data: taxRates.map(taxRate => ({
-            invoiceId: invoice.id,
-            taxType: taxRate.type,
-            rate: taxRate.rate,
-            taxAmount: subtotal * taxRate.rate / 100,
-            description: taxRate.description
-          }))
-        })
-        console.log('Invoice taxes created successfully')
-      } catch (taxError) {
-        console.log('Could not create invoice taxes (table might not exist):', taxError)
-        // Continue without taxes - invoice is still created
-      }
+      console.log('Invoice created:', newInvoice.id)
       
-      // Fetch complete invoice with taxes if possible
-      let completeInvoice = invoice
-      try {
-        completeInvoice = await db.invoice.findUnique({
-          where: { id: invoice.id },
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            items: true,
-            taxes: true
-          }
-        })
-      } catch (fetchError) {
-        console.log('Could not fetch taxes, returning invoice without taxes:', fetchError)
-        // Return the invoice without taxes
-      }
+      // Create invoice items
+      await tx.invoiceItem.createMany({
+        data: items.map((item: any) => ({
+          invoiceId: newInvoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.quantity * item.unitPrice,
+          taxRate: item.taxRate || 0,
+          taxAmount: (item.quantity * item.unitPrice) * (item.taxRate || 0) / 100,
+          metadata: item.metadata || {}
+        }))
+      })
       
-      console.log('Invoice created successfully:', invoice.invoiceNumber)
+      console.log('Invoice items created')
+      
+      // Create invoice taxes
+      await tx.invoiceTax.createMany({
+        data: taxRates.map(taxRate => ({
+          invoiceId: newInvoice.id,
+          taxType: taxRate.type,
+          rate: taxRate.rate,
+          taxAmount: subtotal * taxRate.rate / 100,
+          description: taxRate.description
+        }))
+      })
+      
+      console.log('Invoice taxes created')
+      
+      return newInvoice
+    })
+    
+    console.log('Invoice created successfully:', invoice.invoiceNumber)
 
-      const response = NextResponse.json({
-        success: true,
-        message: 'Invoice created successfully',
-        invoice: completeInvoice
-      }, { status: 201 })
-      
-      // Add CORS headers for Vercel deployment
-      response.headers.set('Access-Control-Allow-Origin', '*')
-      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-      
-      return response
-    } catch (createError) {
-      console.error('Error creating invoice:', createError)
-      throw createError
-    }
+    // Fetch the complete invoice with relations
+    const completeInvoice = await db.invoice.findUnique({
+      where: { id: invoice.id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        items: true,
+        taxes: true
+      }
+    })
+    
+    const successResponse = NextResponse.json({
+      success: true,
+      message: 'Invoice created successfully',
+      invoice: completeInvoice
+    }, { status: 201 })
+    
+    successResponse.headers.set('Access-Control-Allow-Origin', '*')
+    successResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    successResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return successResponse
     
   } catch (error) {
     console.error('=== INVOICE CREATION ERROR ===')
@@ -371,34 +344,72 @@ export async function POST(request: NextRequest) {
     console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     
-    // Check for specific errors
+    // Check for specific database connection errors
     if (error instanceof Error) {
+      if (error.message.includes('connection') || error.message.includes('timeout')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Database connection error. Please try again.',
+          code: 'DATABASE_CONNECTION_ERROR',
+          details: 'Unable to connect to the database. Please try again later.'
+        }, { status: 503 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+      
+      if (error.message.includes('prisma') || error.message.includes('query')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Database query error. Please try again.',
+          code: 'DATABASE_QUERY_ERROR',
+          details: 'A database error occurred while processing your request.'
+        }, { status: 500 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+      
       if (error.message.includes('Foreign key constraint')) {
-        return errorResponse({ 
+        const errorResponse = NextResponse.json({ 
           error: 'Invalid customer or branch. Please check your input.',
-          code: 'FOREIGN_KEY_CONSTRAINT'
-        }, 400)
+          code: 'FOREIGN_KEY_CONSTRAINT',
+          details: 'The specified customer or branch does not exist.'
+        }, { status: 400 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
       }
       
       if (error.message.includes('Unique constraint')) {
-        return errorResponse({ 
+        const errorResponse = NextResponse.json({ 
           error: 'Duplicate invoice number. Please try again.',
-          code: 'DUPLICATE_INVOICE'
-        }, 400)
-      }
-      
-      if (error.message.includes('connection') || error.message.includes('timeout')) {
-        return errorResponse({ 
-          error: 'Database connection error. Please try again.',
-          code: 'DATABASE_CONNECTION_ERROR'
-        }, 503)
+          code: 'DUPLICATE_INVOICE',
+          details: 'An invoice with this number already exists.'
+        }, { status: 400 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
       }
     }
     
-    return errorResponse({ 
+    const errorResponse = NextResponse.json({ 
       error: 'Failed to create invoice',
       details: error instanceof Error ? error.message : 'Unknown error',
       code: 'INTERNAL_ERROR'
-    }, 500)
+    }, { status: 500 })
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return errorResponse
+  } finally {
+    if (isConnected) {
+      await db.$disconnect()
+      console.log('Database disconnected')
+    }
   }
 }
