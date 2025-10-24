@@ -250,3 +250,6 @@ export function useAuth() {
     canManageRoleTemplates,
   }
 }
+
+// Export a default export as well for compatibility
+export default useAuth

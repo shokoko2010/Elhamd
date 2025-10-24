@@ -4,7 +4,8 @@ import { useAuth as useAuthBase } from '@/hooks/use-auth'
 
 export function useAuth() {
   try {
-    return useAuthBase()
+    const auth = useAuthBase()
+    return auth
   } catch (error) {
     console.warn('useAuth hook failed, returning safe defaults:', error)
     
@@ -77,3 +78,6 @@ export function useAuth() {
     }
   }
 }
+
+// Export default as well for compatibility
+export default useAuth

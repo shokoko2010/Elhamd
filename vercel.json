@@ -1,0 +1,29 @@
+{
+  "buildCommand": "npm run build",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": ".next"
+      }
+    }
+  ],
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "env": {
+    "NEXT_BUILD_CLEAN_DB": "true"
+  },
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1",
+      "VERCEL_CLEAN_DB": "true"
+    }
+  },
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"]
+}

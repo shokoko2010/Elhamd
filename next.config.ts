@@ -46,6 +46,28 @@ const nextConfig: NextConfig = {
     optimizeCss: true,
   },
   
+  // Custom webpack configuration for build hooks
+  webpack: (config, { isServer, dev }) => {
+    if (!isServer) {
+      config.resolve.fallback = { fs: false, path: false };
+    }
+    
+    // Add custom build hook for Vercel database cleaning
+    if (isServer && !dev) {
+      console.log('🔧 Build detected - checking if database cleaning is needed...')
+      
+      // Only clean database on Vercel builds
+      if (process.env.VERCEL === '1') {
+        console.log('🌐 Vercel environment detected - database will be cleaned before build')
+        
+        // This will be handled by the npm script, but we log it here for visibility
+        process.env.NEXT_BUILD_CLEAN_DB = 'true'
+      }
+    }
+    
+    return config;
+  },
+  
   // Headers for security and performance
   headers: async () => {
     return [
@@ -90,6 +112,7 @@ const nextConfig: NextConfig = {
   // Environment variables that should be available to the client
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
+    NEXT_BUILD_CLEAN_DB: process.env.NEXT_BUILD_CLEAN_DB,
   },
 };
 
