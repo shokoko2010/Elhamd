@@ -53,7 +53,7 @@ async function main() {
       siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
       contactEmail: 'info@elhamdimport.online',
       contactPhone: '+20 2 12345678',
-      contactAddress: 'القنطرة غرب، الجيزة، مصر',
+      contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
       socialLinks: {
         facebook: 'https://facebook.com/elhamdimport',
         twitter: 'https://twitter.com/elhamdimport',
@@ -180,7 +180,7 @@ async function main() {
       primaryPhone: '+20 2 12345678',
       secondaryPhone: '+20 1012345678',
       primaryEmail: 'info@elhamdimport.online',
-      address: 'القنطرة غرب، الجيزة، مصر',
+      address: 'القنطرة غرب، الإسماعيلية، مصر',
       workingHours: {
         Saturday: '9:00-17:00',
         Sunday: '9:00-17:00',
@@ -360,7 +360,7 @@ async function main() {
     data: {
       name: 'الفرع الرئيسي - القنطرة غرب',
       code: 'ELHAMD-MAIN',
-      address: 'القنطرة غرب، الجيزة، مصر',
+      address: 'القنطرة غرب، الإسماعيلية، مصر',
       phone: '+20 2 12345678',
       email: 'info@elhamdimport.online',
       isActive: true,
@@ -895,7 +895,7 @@ async function main() {
       tagline: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
       primaryPhone: '+20 2 12345678',
       primaryEmail: 'info@elhamdimport.online',
-      address: 'القنطرة غرب، الجيزة، مصر',
+      address: 'القنطرة غرب، الإسماعيلية، مصر',
       workingHours: 'السبت - الخميس: 9:00 ص - 5:00 م، الجمعة: مغلق',
       ctaButton: {
         text: 'احجز الآن',
