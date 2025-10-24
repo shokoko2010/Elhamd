@@ -13,10 +13,30 @@ const nextConfig: NextConfig = {
     dirs: ['src'],
   },
   // Exclude scripts directory from build
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = { fs: false, path: false };
     }
+    
+    // Add custom build hook for Vercel database cleaning
+    if (isServer && !dev) {
+      console.log('🔧 Build detected - checking if database cleaning is needed...')
+      
+      // Only clean database on Vercel builds or when explicitly requested
+      const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV === 'production'
+      const shouldClean = isVercel || process.env.NEXT_BUILD_CLEAN_DB === 'true'
+      
+      if (shouldClean) {
+        console.log('🌐 Database cleaning will be performed before build')
+        console.log(`🔧 Environment: VERCEL=${process.env.VERCEL}, NEXT_BUILD_CLEAN_DB=${process.env.NEXT_BUILD_CLEAN_DB}`)
+        
+        // Set environment variable for the build script
+        process.env.NEXT_BUILD_CLEAN_DB = 'true'
+      } else {
+        console.log('ℹ️ Database cleaning skipped - not in Vercel environment')
+      }
+    }
+    
     return config;
   },
   allowedDevOrigins: [
@@ -44,28 +64,6 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
     // optimizeCss: true, // Re-enabled now that build issues are resolved
     optimizeCss: true,
-  },
-  
-  // Custom webpack configuration for build hooks
-  webpack: (config, { isServer, dev }) => {
-    if (!isServer) {
-      config.resolve.fallback = { fs: false, path: false };
-    }
-    
-    // Add custom build hook for Vercel database cleaning
-    if (isServer && !dev) {
-      console.log('🔧 Build detected - checking if database cleaning is needed...')
-      
-      // Only clean database on Vercel builds
-      if (process.env.VERCEL === '1') {
-        console.log('🌐 Vercel environment detected - database will be cleaned before build')
-        
-        // This will be handled by the npm script, but we log it here for visibility
-        process.env.NEXT_BUILD_CLEAN_DB = 'true'
-      }
-    }
-    
-    return config;
   },
   
   // Headers for security and performance
@@ -112,7 +110,6 @@ const nextConfig: NextConfig = {
   // Environment variables that should be available to the client
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
-    NEXT_BUILD_CLEAN_DB: process.env.NEXT_BUILD_CLEAN_DB,
   },
 };
 
