@@ -48,10 +48,10 @@ export function useAuth() {
 
       if (status === 'authenticated' && session?.user) {
         setUser({
-          id: session.user.id,
-          email: session.user.email!,
+          id: session.user.id || '',
+          email: session.user.email || '',
           name: session.user.name,
-          role: session.user.role as UserRole,
+          role: session.user.role as UserRole || UserRole.CUSTOMER,
           phone: session.user.phone,
           branchId: session.user.branchId,
           permissions: session.user.permissions as Permission[] || [],
