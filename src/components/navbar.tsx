@@ -26,7 +26,7 @@ import {
   MapPin,
   Search
 } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/use-auth-safe'
 import { useSiteSettings } from '@/components/SiteSettingsProvider'
 
 // Create a safe wrapper component to handle auth state

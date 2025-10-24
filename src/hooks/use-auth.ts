@@ -27,33 +27,39 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (status === 'loading') {
-      setLoading(true)
-      return
-    }
+    try {
+      if (status === 'loading') {
+        setLoading(true)
+        return
+      }
 
-    if (status === 'authenticated' && session?.user) {
-      setUser({
-        id: session.user.id,
-        email: session.user.email!,
-        name: session.user.name,
-        role: session.user.role as UserRole,
-        phone: session.user.phone,
-        branchId: session.user.branchId,
-        permissions: session.user.permissions as Permission[] || [],
-        isActive: true, // Assuming active if session exists
-        emailVerified: true, // Assuming verified if session exists
-        lastLoginAt: session.user.lastLoginAt ? new Date(session.user.lastLoginAt) : null,
-        createdAt: new Date(), // Default values
-        updatedAt: new Date()
-      })
-      setError(null)
-    } else {
+      if (status === 'authenticated' && session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.name,
+          role: session.user.role as UserRole,
+          phone: session.user.phone,
+          branchId: session.user.branchId,
+          permissions: session.user.permissions as Permission[] || [],
+          isActive: true, // Assuming active if session exists
+          emailVerified: true, // Assuming verified if session exists
+          lastLoginAt: session.user.lastLoginAt ? new Date(session.user.lastLoginAt) : null,
+          createdAt: new Date(), // Default values
+          updatedAt: new Date()
+        })
+        setError(null)
+      } else {
+        setUser(null)
+        setError(null)
+      }
+    } catch (err) {
+      console.error('Auth hook error:', err)
+      setError(err instanceof Error ? err.message : 'Authentication error')
       setUser(null)
-      setError(null)
+    } finally {
+      setLoading(false)
     }
-    
-    setLoading(false)
   }, [session, status])
 
   const logout = async () => {
