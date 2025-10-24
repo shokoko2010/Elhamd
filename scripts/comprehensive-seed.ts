@@ -1,1286 +1,975 @@
+// prisma/merged-seed-clean.ts
 import { PrismaClient } from '@prisma/client'
-import { UserRole } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-async function seedDatabase() {
-  console.log('🌱 Starting comprehensive database seeding...')
-  
-  try {
-    // Clean existing data (in reverse order of dependencies)
-    console.log('🧹 Cleaning existing data...')
-    await cleanupDatabase()
-    
-    // 1. Seed Core Data
-    console.log('📋 Seeding core data...')
-    await seedPermissions()
-    await seedRoleTemplates()
-    await seedBranches()
-    await seedUsers()
-    
-    // 2. Seed Vehicle Data
-    console.log('🚗 Seeding vehicles...')
-    await seedVehicles()
-    
-    // 3. Seed Service Data
-    console.log('🔧 Seeding service data...')
-    await seedServiceTypes()
-    await seedTimeSlots()
-    await seedHolidays()
-    
-    // 4. Seed Financial Data
-    console.log('💰 Seeding financial data...')
-    await seedTaxRates()
-    
-    // 5. Seed Inventory Data
-    console.log('📦 Seeding inventory data...')
-    await seedWarehouses()
-    await seedInventoryItems()
-    
-    // 6. Seed Communication Data
-    console.log('📧 Seeding communication data...')
-    await seedEmailTemplates()
-    await seedNotifications()
-    
-    // 7. Seed Business Operations
-    console.log('📅 Seeding business operations...')
-    await seedBookings()
-    await seedInvoices()
-    await seedTasks()
-    
-    // 8. Seed CRM Data
-    console.log('👥 Seeding CRM data...')
-    await seedCRMData()
-    
-    // 9. Seed Marketing Data
-    console.log('📢 Seeding marketing data...')
-    await seedMarketingData()
-    
-    // 10. Seed Support Data
-    console.log('🎧 Seeding support data...')
-    await seedSupportData()
-    
-    // 11. Seed Knowledge Base
-    console.log('📚 Seeding knowledge base...')
-    await seedKnowledgeBase()
-    
-    // 12. Seed Performance Data
-    console.log('📊 Seeding performance data...')
-    await seedPerformanceData()
-    
-    console.log('🎉 Comprehensive database seeding completed successfully!')
-    
-  } catch (error) {
-    console.error('❌ Database seeding failed:', error)
-    throw error
-  } finally {
-    await prisma.$disconnect()
-  }
-}
+async function main() {
+  console.log('🧹 Starting CLEAN seed (delete all -> recreate)')
 
-async function cleanupDatabase() {
-  const tablenames = await prisma.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname='public'`
-  
-  for (const { tablename } of tablenames as any[]) {
-    if (tablename !== '_prisma_migrations') {
-      try {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE "public"."${tablename}" CASCADE;`)
-      } catch (error) {
-        console.log(`Note: ${tablename} doesn't exist, skipping`)
-      }
-    }
-  }
-}
-
-async function seedPermissions() {
-  const permissions = [
-    // User Management
-    { name: 'view_users', description: 'View users', category: 'USER_MANAGEMENT' },
-    { name: 'create_users', description: 'Create users', category: 'USER_MANAGEMENT' },
-    { name: 'edit_users', description: 'Edit users', category: 'USER_MANAGEMENT' },
-    { name: 'delete_users', description: 'Delete users', category: 'USER_MANAGEMENT' },
-    { name: 'manage_user_roles', description: 'Manage user roles', category: 'USER_MANAGEMENT' },
-    
-    // Customer Management
-    { name: 'view_customers', description: 'View customers', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'create_customers', description: 'Create customers', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'edit_customers', description: 'Edit customers', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'delete_customers', description: 'Delete customers', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'manage_customer_segments', description: 'Manage customer segments', category: 'CUSTOMER_MANAGEMENT' },
-    
-    // Vehicle Management
-    { name: 'view_vehicles', description: 'View vehicles', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'create_vehicles', description: 'Create vehicles', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'edit_vehicles', description: 'Edit vehicles', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'delete_vehicles', description: 'Delete vehicles', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'manage_vehicle_pricing', description: 'Manage vehicle pricing', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'manage_vehicle_images', description: 'Manage vehicle images', category: 'VEHICLE_MANAGEMENT' },
-    
-    // Booking Management
-    { name: 'view_bookings', description: 'View bookings', category: 'BOOKING_MANAGEMENT' },
-    { name: 'create_bookings', description: 'Create bookings', category: 'BOOKING_MANAGEMENT' },
-    { name: 'edit_bookings', description: 'Edit bookings', category: 'BOOKING_MANAGEMENT' },
-    { name: 'delete_bookings', description: 'Delete bookings', category: 'BOOKING_MANAGEMENT' },
-    { name: 'manage_test_drives', description: 'Manage test drives', category: 'BOOKING_MANAGEMENT' },
-    { name: 'manage_service_bookings', description: 'Manage service bookings', category: 'BOOKING_MANAGEMENT' },
-    
-    // Service Management
-    { name: 'view_services', description: 'View services', category: 'SERVICE_MANAGEMENT' },
-    { name: 'create_services', description: 'Create services', category: 'SERVICE_MANAGEMENT' },
-    { name: 'edit_services', description: 'Edit services', category: 'SERVICE_MANAGEMENT' },
-    { name: 'delete_services', description: 'Delete services', category: 'SERVICE_MANAGEMENT' },
-    { name: 'manage_service_pricing', description: 'Manage service pricing', category: 'SERVICE_MANAGEMENT' },
-    
-    // Inventory Management
-    { name: 'view_inventory', description: 'View inventory', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'create_inventory', description: 'Create inventory items', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'edit_inventory', description: 'Edit inventory items', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'delete_inventory', description: 'Delete inventory items', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'manage_warehouses', description: 'Manage warehouses', category: 'INVENTORY_MANAGEMENT' },
-    
-    // Financial Management
-    { name: 'view_invoices', description: 'View invoices', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'create_invoices', description: 'Create invoices', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'edit_invoices', description: 'Edit invoices', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'delete_invoices', description: 'Delete invoices', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'manage_payments', description: 'Manage payments', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'manage_tax_rates', description: 'Manage tax rates', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'view_financial_reports', description: 'View financial reports', category: 'FINANCIAL_MANAGEMENT' },
-    
-    // Branch Management
-    { name: 'view_branches', description: 'View branches', category: 'BRANCH_MANAGEMENT' },
-    { name: 'create_branches', description: 'Create branches', category: 'BRANCH_MANAGEMENT' },
-    { name: 'edit_branches', description: 'Edit branches', category: 'BRANCH_MANAGEMENT' },
-    { name: 'delete_branches', description: 'Delete branches', category: 'BRANCH_MANAGEMENT' },
-    { name: 'manage_branch_transfers', description: 'Manage branch transfers', category: 'BRANCH_MANAGEMENT' },
-    { name: 'manage_branch_budgets', description: 'Manage branch budgets', category: 'BRANCH_MANAGEMENT' },
-    
-    // Marketing Management
-    { name: 'view_campaigns', description: 'View marketing campaigns', category: 'MARKETING_MANAGEMENT' },
-    { name: 'create_campaigns', description: 'Create marketing campaigns', category: 'MARKETING_MANAGEMENT' },
-    { name: 'edit_campaigns', description: 'Edit marketing campaigns', category: 'MARKETING_MANAGEMENT' },
-    { name: 'delete_campaigns', description: 'Delete marketing campaigns', category: 'MARKETING_MANAGEMENT' },
-    { name: 'manage_leads', description: 'Manage leads', category: 'MARKETING_MANAGEMENT' },
-    
-    // Reporting
-    { name: 'view_reports', description: 'View reports', category: 'REPORTING' },
-    { name: 'create_reports', description: 'Create reports', category: 'REPORTING' },
-    { name: 'export_reports', description: 'Export reports', category: 'REPORTING' },
-    { name: 'view_analytics', description: 'View analytics', category: 'REPORTING' },
-    
-    // System Settings
-    { name: 'view_system_settings', description: 'View system settings', category: 'SYSTEM_SETTINGS' },
-    { name: 'edit_system_settings', description: 'Edit system settings', category: 'SYSTEM_SETTINGS' },
-    { name: 'manage_permissions', description: 'Manage permissions', category: 'SYSTEM_SETTINGS' },
-    { name: 'view_audit_logs', description: 'View audit logs', category: 'SYSTEM_SETTINGS' },
-    { name: 'manage_backups', description: 'Manage backups', category: 'SYSTEM_SETTINGS' }
+  // Models to clean (same as original files)
+  const modelNames = [
+    'VehicleImage', 'VehicleSpecification', 'VehiclePricing', 'TestDriveBooking', 'ServiceBooking',
+    'Payment', 'Booking', 'TaskComment', 'Task', 'ActivityLog', 'QuotationItem', 'Quotation',
+    'InvoiceItem', 'InvoicePayment', 'InvoiceTax', 'Invoice', 'Transaction', 'TaxRecord',
+    'CustomerFeedback', 'SupportTicket', 'TicketComment', 'TicketTimeline', 'ServiceEvaluation',
+    'ComplaintFollowUp', 'Complaint', 'KnowledgeBaseRating', 'KnowledgeBaseArticle',
+    'CustomerServiceMetric', 'MarketingCampaign', 'LeadActivity', 'Lead', 'SalesFunnel',
+    'SalesTarget', 'MarketingMetric', 'JournalEntryItem', 'JournalEntry', 'Employee',
+    'PayrollRecord', 'LeaveRequest', 'PerformanceReview', 'TrainingRecord', 'Contract',
+    'WarrantyClaim', 'Warranty', 'MaintenanceRecord', 'MaintenanceReminder', 'MaintenancePart',
+    'InsurancePayment', 'InsuranceClaim', 'InsurancePolicy', 'InsuranceCompany',
+    'OrderItem', 'OrderPayment', 'Order', 'Product', 'ProductReview', 'PromotionUsage',
+    'Promotion', 'Media', 'PopupConfig', 'CommerceSettings', 'MaintenanceSchedule',
+    'CustomerProfile', 'CRMInteraction', 'InventoryItem', 'Warehouse', 'Supplier',
+    'StockAlert', 'CustomerTagAssignment', 'MarketingAutomation', 'CustomerLifecycle',
+    'CampaignMember', 'Campaign', 'Opportunity', 'CustomerInteraction', 'TimelineEvent',
+    'CompanyValue', 'CompanyStat', 'CompanyFeature', 'ContactInfo', 'ServiceItem',
+    'CompanyInfo', 'Slider', 'HeaderNavigation', 'HeaderSocial', 'HeaderContent',
+    'FooterColumn', 'FooterSocial', 'FooterContent', 'SiteSettings', 'PageSEO',
+    'PerformanceMetric', 'CalendarEvent', 'TimeSlot', 'Holiday', 'Notification',
+    'EmailTemplate', 'RoleTemplatePermission', 'UserPermission', 'BranchPermission',
+    'BranchTransfer', 'BranchBudget', 'Vehicle', 'ServiceType', 'Permission', 'RoleTemplate',
+    'User', 'Branch', 'SecurityLog'
   ]
 
-  for (const permission of permissions) {
-    await prisma.permission.create({
-      data: {
-        ...permission,
-        category: permission.category as any
+  // Delete in order (best-effort, ignore errors)
+  for (const modelName of modelNames) {
+    try {
+      // prisma model client names are lowercased plural in runtime; use (prisma as any)[modelName.toLowerCase()]
+      // deleteMany is safe - will delete all rows of the model if it exists
+      const key = modelName[0].toLowerCase() + modelName.slice(1)
+      if ((prisma as any)[key] && (prisma as any)[key].deleteMany) {
+        await (prisma as any)[key].deleteMany()
+        console.log(`✓ Cleared ${modelName}`)
+      } else {
+        // fallback: try direct deleteMany on lowercased name
+        const low = modelName.toLowerCase()
+        if ((prisma as any)[low] && (prisma as any)[low].deleteMany) {
+          await (prisma as any)[low].deleteMany()
+          console.log(`✓ Cleared ${modelName} (lowercase)`)
+        }
       }
-    })
+    } catch (err) {
+      // ignore
+    }
   }
-}
 
-async function seedRoleTemplates() {
-  const permissions = await prisma.permission.findMany()
-  const permissionMap = new Map(permissions.map(p => [p.name, p.id]))
-  
+  // 1. SITE SETTINGS (create)
+  const siteSettings = await prisma.siteSettings.create({
+    data: {
+      siteTitle: 'شركة الحمد لاستيراد السيارات',
+      siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+      contactEmail: 'info@elhamdimport.online',
+      contactPhone: '+20 2 12345678',
+      contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
+      socialLinks: {
+        facebook: 'https://facebook.com/elhamdimport',
+        twitter: 'https://twitter.com/elhamdimport',
+        instagram: 'https://instagram.com/elhamdimport',
+        linkedin: 'https://linkedin.com/company/elhamdimport'
+      },
+      workingHours: 'السبت - الخميس: 9:00 ص - 5:00 م، الجمعة: مغلق'
+    }
+  })
+  console.log('✓ siteSettings created')
+
+  // 2. COMPANY INFO
+  const companyInfo = await prisma.companyInfo.create({
+    data: {
+      title: 'شركة الحمد لاستيراد السيارات',
+      subtitle: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
+      description: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
+      features: ['الجودة', 'الموثوقية', 'خدمة العملاء', 'الابتكار'],
+      ctaButtons: [
+        {
+          text: 'استعرض السيارات',
+          link: '/vehicles',
+          variant: 'primary'
+        },
+        {
+          text: 'قيادة تجريبية',
+          link: '/test-drive',
+          variant: 'secondary'
+        }
+      ]
+    }
+  })
+  console.log('✓ companyInfo created')
+
+  // 3. Company Stats
+  await prisma.companyStat.createMany({
+    data: [
+      { number: '5000+', label: 'عملاء سعداء', icon: 'users' },
+      { number: '10000+', label: 'مركبة مباعة', icon: 'truck' },
+      { number: '14+', label: 'سنوات خبرة', icon: 'award' },
+      { number: '1', label: 'فرع', icon: 'map-pin' }
+    ]
+  })
+  console.log('✓ companyStat created')
+
+  // 4. Company Values
+  await prisma.companyValue.createMany({
+    data: [
+      { title: 'الجودة', description: 'نقدم منتجات وخدمات عالية الجودة تلبي أعلى المعايير', icon: 'shield' },
+      { title: 'الموثوقية', description: 'نضمن موثوقية عالية في جميع منتجاتنا وخدماتنا', icon: 'check-circle' },
+      { title: 'خدمة العملاء', description: 'نقدم خدمة عملاء ممتازة على مدار الساعة', icon: 'headphones' },
+      { title: 'الابتكار', description: 'نسعى دائماً للابتكار وتطوير حلول جديدة', icon: 'lightbulb' }
+    ]
+  })
+  console.log('✓ companyValue created')
+
+  // 5. Services (from homepage)
+  const services = [
+    {
+      id: 'service-sales',
+      title: 'بيع سيارات جديدة',
+      description: 'أحدث موديلات سيارات تاتا مع ضمان المصنع',
+      icon: '🚗',
+      link: '/vehicles',
+      order: 0
+    },
+    {
+      id: 'service-finance',
+      title: 'تمويل سيارات',
+      description: 'خطط تمويلية ميسرة تناسب جميع الميزانيات',
+      icon: '💰',
+      link: '/financing',
+      order: 1
+    },
+    {
+      id: 'service-maintenance',
+      title: 'صيانة معتمدة',
+      description: 'مركز صيانة معتمد يوفر أفضل الخدمات الفنية',
+      icon: '🔧',
+      link: '/maintenance',
+      order: 2
+    },
+    {
+      id: 'service-parts',
+      title: 'قطع غيار أصلية',
+      description: 'قطع غيار أصلية مضمونة من تاتا موتورز',
+      icon: '⚙️',
+      link: '/parts',
+      order: 3
+    },
+    {
+      id: 'service-warranty',
+      title: 'ضمان شامل',
+      description: 'ضمان شامل على جميع السيارات والخدمات',
+      icon: '🛡️',
+      link: '/warranty',
+      order: 4
+    },
+    {
+      id: 'service-support',
+      title: 'دعم فني 24/7',
+      description: 'فريق دعم فني متواصل على مدار الساعة',
+      icon: '📞',
+      link: '/support',
+      order: 5
+    }
+  ]
+
+  for (const s of services) {
+    await prisma.serviceItem.create({ data: s })
+  }
+  console.log('✓ serviceItem created')
+
+  // 6. Timeline Events
+  await prisma.timelineEvent.createMany({
+    data: [
+      { year: '2010', title: 'تأسيس الشركة', description: 'تأسست شركة الحمد لاستيراد السيارات كوكيل لـ تاتا موتورز' },
+      { year: '2015', title: 'توسع الخدمات', description: 'إضافة خدمات الصيانة وقطع الغيار' },
+      { year: '2020', title: 'التحول الرقمي', description: 'إطلاق النظام الإلكتروني لإدارة المبيعات والخدمات' },
+      { year: '2024', title: 'التطوير المستمر', description: 'تحديث النظام وتوسيع قاعدة العملاء' }
+    ]
+  })
+  console.log('✓ timelineEvent created')
+
+  // 7. Contact Info
+  await prisma.contactInfo.create({
+    data: {
+      primaryPhone: '+20 2 12345678',
+      secondaryPhone: '+20 1012345678',
+      primaryEmail: 'info@elhamdimport.online',
+      address: 'القنطرة غرب، الإسماعيلية، مصر',
+      workingHours: {
+        Saturday: '9:00-17:00',
+        Sunday: '9:00-17:00',
+        Monday: '9:00-17:00',
+        Tuesday: '9:00-17:00',
+        Wednesday: '9:00-17:00',
+        Thursday: '9:00-17:00',
+        Friday: 'مغلق'
+      }
+    }
+  })
+  console.log('✓ contactInfo created')
+
+  // 8. Permissions
+  const permissions = [
+    { name: 'vehicles.view', description: 'عرض المركبات', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'vehicles.create', description: 'إنشاء مركبات', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'vehicles.edit', description: 'تعديل المركبات', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'vehicles.delete', description: 'حذف المركبات', category: 'VEHICLE_MANAGEMENT' },
+
+    { name: 'bookings.view', description: 'عرض الحجوزات', category: 'BOOKING_MANAGEMENT' },
+    { name: 'bookings.create', description: 'إنشاء حجوزات', category: 'BOOKING_MANAGEMENT' },
+    { name: 'bookings.edit', description: 'تعديل الحجوزات', category: 'BOOKING_MANAGEMENT' },
+    { name: 'bookings.delete', description: 'حذف الحجوزات', category: 'BOOKING_MANAGEMENT' },
+
+    { name: 'users.view', description: 'عرض المستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'users.create', description: 'إنشاء مستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'users.edit', description: 'تعديل المستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'users.delete', description: 'حذف المستخدمين', category: 'USER_MANAGEMENT' },
+
+    { name: 'branches.view', description: 'عرض الفروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'branches.create', description: 'إنشاء فروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'branches.edit', description: 'تعديل الفروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'branches.delete', description: 'حذف الفروع', category: 'BRANCH_MANAGEMENT' },
+
+    { name: 'inventory.view', description: 'عرض المخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'inventory.create', description: 'إنشاء أصناف مخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'inventory.edit', description: 'تعديل المخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'inventory.delete', description: 'حذف المخزون', category: 'INVENTORY_MANAGEMENT' },
+
+    { name: 'financial.view', description: 'عرض التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'financial.create', description: 'إنشاء تقارير مالية', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'financial.edit', description: 'تعديل التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'financial.delete', description: 'حذف التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
+
+    { name: 'crm.view', description: 'عرض علاقات العملاء', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'crm.create', description: 'إنشاء سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'crm.edit', description: 'تعديل سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'crm.delete', description: 'حذف سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
+
+    { name: 'admin.dashboard', description: 'لوحة التحكم', category: 'SYSTEM_SETTINGS' },
+    { name: 'admin.settings', description: 'الإعدادات', category: 'SYSTEM_SETTINGS' },
+    { name: 'admin.reports', description: 'التقارير', category: 'REPORTING' },
+    { name: 'admin.logs', description: 'سجلات النظام', category: 'SYSTEM_SETTINGS' }
+  ]
+
+  const createdPermissions = await Promise.all(permissions.map(p => prisma.permission.create({ data: p })))
+  console.log('✓ permissions created')
+
+  // 9. Role Templates
   const roleTemplates = [
     {
-      name: 'SUPER_ADMIN_TEMPLATE',
-      description: 'Full system access for super administrators',
-      role: UserRole.SUPER_ADMIN,
-      permissions: permissions.map(p => p.name),
+      name: 'Super Admin',
+      description: 'المدير العام',
+      role: 'SUPER_ADMIN',
+      permissions: createdPermissions.map(p => p.name),
       isSystem: true
     },
     {
-      name: 'ADMIN_TEMPLATE',
-      description: 'Administrative access for system administrators',
-      role: UserRole.ADMIN,
-      permissions: permissions.filter(p => 
-        !p.name.includes('super_admin') && 
-        !p.name.includes('manage_backups')
-      ).map(p => p.name),
+      name: 'Admin',
+      description: 'مدير',
+      role: 'ADMIN',
+      permissions: createdPermissions.filter(p => !p.name.includes('delete')).map(p => p.name),
       isSystem: true
     },
     {
-      name: 'BRANCH_MANAGER_TEMPLATE',
-      description: 'Branch management access',
-      role: UserRole.BRANCH_MANAGER,
+      name: 'Branch Manager',
+      description: 'مدير فرع',
+      role: 'BRANCH_MANAGER',
       permissions: [
-        'view_customers', 'create_customers', 'edit_customers',
-        'view_vehicles', 'create_vehicles', 'edit_vehicles', 'manage_vehicle_pricing',
-        'view_bookings', 'create_bookings', 'edit_bookings',
-        'view_services', 'create_services', 'edit_services',
-        'view_inventory', 'create_inventory', 'edit_inventory',
-        'view_invoices', 'create_invoices', 'edit_invoices',
-        'manage_payments',
-        'view_reports', 'view_analytics'
+        'vehicles.view', 'vehicles.create', 'vehicles.edit',
+        'bookings.view', 'bookings.create', 'bookings.edit',
+        'users.view', 'users.create', 'users.edit',
+        'inventory.view', 'inventory.create', 'inventory.edit',
+        'financial.view', 'crm.view', 'crm.create', 'crm.edit',
+        'admin.dashboard', 'admin.reports'
       ],
       isSystem: true
     },
     {
-      name: 'STAFF_TEMPLATE',
-      description: 'Staff access for daily operations',
-      role: UserRole.STAFF,
+      name: 'Sales Manager',
+      description: 'مدير مبيعات',
+      role: 'STAFF',
       permissions: [
-        'view_customers', 'create_customers',
-        'view_vehicles',
-        'view_bookings', 'create_bookings',
-        'view_services',
-        'view_inventory'
+        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
+        'users.view', 'crm.view', 'crm.create', 'crm.edit',
+        'admin.dashboard', 'admin.reports'
       ],
       isSystem: true
     },
     {
-      name: 'CUSTOMER_TEMPLATE',
-      description: 'Customer access for self-service',
-      role: UserRole.CUSTOMER,
+      name: 'Service Manager',
+      description: 'مدير خدمة',
+      role: 'STAFF',
       permissions: [
-        'view_vehicles',
-        'create_bookings', 'view_bookings'
+        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
+        'inventory.view', 'inventory.create', 'inventory.edit',
+        'admin.dashboard', 'admin.reports'
       ],
+      isSystem: true
+    },
+    {
+      name: 'Sales Employee',
+      description: 'موظف مبيعات',
+      role: 'STAFF',
+      permissions: [
+        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
+        'crm.view', 'crm.create', 'crm.edit'
+      ],
+      isSystem: true
+    },
+    {
+      name: 'Service Employee',
+      description: 'موظف خدمة',
+      role: 'STAFF',
+      permissions: [
+        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
+        'inventory.view'
+      ],
+      isSystem: true
+    },
+    {
+      name: 'Customer',
+      description: 'عميل',
+      role: 'CUSTOMER',
+      permissions: ['vehicles.view', 'bookings.view', 'bookings.create'],
       isSystem: true
     }
   ]
 
-  for (const template of roleTemplates) {
-    const createdTemplate = await prisma.roleTemplate.create({
-      data: {
-        name: template.name,
-        description: template.description,
-        role: template.role,
-        permissions: JSON.stringify(template.permissions),
-        isSystem: template.isSystem
-      }
-    })
-
-    // Create role template permissions
-    for (const permissionName of template.permissions) {
-      const permissionId = permissionMap.get(permissionName)
-      if (permissionId) {
-        await prisma.roleTemplatePermission.create({
-          data: {
-            templateId: createdTemplate.id,
-            permissionId: permissionId
-          }
-        })
-      }
+  const createdRoles = []
+  for (const role of roleTemplates) {
+    try {
+      const r = await prisma.roleTemplate.create({ data: role })
+      createdRoles.push(r)
+    } catch (err) {
+      // ignore duplicates
+      const existing = await prisma.roleTemplate.findFirst({ where: { name: role.name } })
+      if (existing) createdRoles.push(existing)
     }
   }
-}
+  console.log('✓ roleTemplates created')
 
-async function seedBranches() {
-  const branches = [
-    {
-      name: 'الفرع الرئيسي - القاهرة',
-      code: 'CAI-MAIN',
-      address: 'شارع جسر السويس، القاهرة، مصر',
-      phone: '+20223456789',
-      email: 'cairo@elhamdimport.online',
+  // 10. Main Branch
+  const mainBranch = await prisma.branch.create({
+    data: {
+      name: 'الفرع الرئيسي - القنطرة غرب',
+      code: 'ELHAMD-MAIN',
+      address: 'القنطرة غرب، الإسماعيلية، مصر',
+      phone: '+20 2 12345678',
+      email: 'info@elhamdimport.online',
+      isActive: true,
+      openingDate: new Date('2010-01-01'),
       currency: 'EGP',
       timezone: 'Africa/Cairo',
-      openingDate: new Date('2020-01-01')
-    },
-    {
-      name: 'فرع الإسكندرية',
-      code: 'ALEX-01',
-      address: 'شارع الكورنيش، الإسكندرية، مصر',
-      phone: '+0334567890',
-      email: 'alexandria@elhamdimport.online',
-      currency: 'EGP',
-      timezone: 'Africa/Cairo',
-      openingDate: new Date('2021-06-01')
-    },
-    {
-      name: 'فرع الرياض',
-      code: 'RIY-01',
-      address: 'شارع الملك فهد، الرياض، المملكة العربية السعودية',
-      phone: '+966112345678',
-      email: 'riyadh@elhamdimport.online',
-      currency: 'SAR',
-      timezone: 'Asia/Riyadh',
-      openingDate: new Date('2022-03-01')
+      settings: {
+        workingHours: {
+          Saturday: '9:00-17:00',
+          Sunday: '9:00-17:00',
+          Monday: '9:00-17:00',
+          Tuesday: '9:00-17:00',
+          Wednesday: '9:00-17:00',
+          Thursday: '9:00-17:00',
+          Friday: 'مغلق'
+        },
+        services: ['صيانة', 'قطع غيار', 'تأجير', 'بيع سيارات', 'خدمة 24 ساعة'],
+        coordinates: { lat: 30.0131, lng: 31.2089 }
+      }
     }
-  ]
+  })
+  console.log('✓ main branch created')
 
-  for (const branch of branches) {
-    await prisma.branch.create({ data: branch })
-  }
-}
+  // 11. Users
+  const superAdminRole = createdRoles.find(r => r.role === 'SUPER_ADMIN')
+  const branchManagerRole = createdRoles.find(r => r.role === 'BRANCH_MANAGER')
+  const staffRole = createdRoles.find(r => r.role === 'STAFF')
+  const customerRole = createdRoles.find(r => r.role === 'CUSTOMER')
 
-async function seedUsers() {
-  const branches = await prisma.branch.findMany()
-  const roleTemplates = await prisma.roleTemplate.findMany()
-  const roleTemplateMap = new Map(roleTemplates.map(rt => [rt.role, rt.id]))
-  
-  const hashedPassword = await bcrypt.hash('admin123', 12)
-  
   const users = [
     {
       email: 'admin@elhamdimport.online',
       name: 'مدير النظام',
-      password: hashedPassword,
-      role: UserRole.SUPER_ADMIN,
+      password: await bcrypt.hash('admin123', 10),
+      role: 'SUPER_ADMIN',
+      phone: '+20 1012345678',
       isActive: true,
       emailVerified: true,
-      branchId: branches[0]?.id,
-      roleTemplateId: roleTemplateMap.get(UserRole.SUPER_ADMIN)
+      roleTemplateId: superAdminRole?.id,
+      branchId: mainBranch.id
     },
     {
-      email: 'cairo.manager@elhamdimport.online',
-      name: 'مدير فرع القاهرة',
-      password: hashedPassword,
-      role: UserRole.BRANCH_MANAGER,
+      email: 'manager@elhamdimport.online',
+      name: 'مدير الفرع',
+      password: await bcrypt.hash('manager123', 10),
+      role: 'BRANCH_MANAGER',
+      phone: '+20 1023456789',
       isActive: true,
       emailVerified: true,
-      branchId: branches[0]?.id,
-      roleTemplateId: roleTemplateMap.get(UserRole.BRANCH_MANAGER)
+      roleTemplateId: branchManagerRole?.id,
+      branchId: mainBranch.id
     },
     {
-      email: 'alex.manager@elhamdimport.online',
-      name: 'مدير فرع الإسكندرية',
-      password: hashedPassword,
-      role: UserRole.BRANCH_MANAGER,
+      email: 'sales.manager@elhamdimport.online',
+      name: 'مدير المبيعات',
+      password: await bcrypt.hash('salesmanager123', 10),
+      role: 'STAFF',
+      phone: '+20 1034567890',
       isActive: true,
       emailVerified: true,
-      branchId: branches[1]?.id,
-      roleTemplateId: roleTemplateMap.get(UserRole.BRANCH_MANAGER)
+      roleTemplateId: staffRole?.id,
+      branchId: mainBranch.id
     },
     {
-      email: 'staff1@elhamdimport.online',
-      name: 'موظف استقبال',
-      password: hashedPassword,
-      role: UserRole.STAFF,
+      email: 'service.manager@elhamdimport.online',
+      name: 'مدير الخدمة',
+      password: await bcrypt.hash('servicemanager123', 10),
+      role: 'STAFF',
+      phone: '+20 1045678901',
       isActive: true,
       emailVerified: true,
-      branchId: branches[0]?.id,
-      roleTemplateId: roleTemplateMap.get(UserRole.STAFF)
+      roleTemplateId: staffRole?.id,
+      branchId: mainBranch.id
     },
     {
-      email: 'customer1@example.com',
-      name: 'أحمد محمد',
-      role: UserRole.CUSTOMER,
+      email: 'sales1@elhamdimport.online',
+      name: 'موظف مبيعات 1',
+      password: await bcrypt.hash('sales123', 10),
+      role: 'STAFF',
+      phone: '+20 1056789012',
       isActive: true,
       emailVerified: true,
-      phone: '+201012345678',
-      roleTemplateId: roleTemplateMap.get(UserRole.CUSTOMER)
+      roleTemplateId: staffRole?.id,
+      branchId: mainBranch.id
     },
     {
-      email: 'customer2@example.com',
-      name: 'مريم أحمد',
-      role: UserRole.CUSTOMER,
+      email: 'sales2@elhamdimport.online',
+      name: 'موظف مبيعات 2',
+      password: await bcrypt.hash('sales123', 10),
+      role: 'STAFF',
+      phone: '+20 1067890123',
       isActive: true,
       emailVerified: true,
-      phone: '+201023456789',
-      roleTemplateId: roleTemplateMap.get(UserRole.CUSTOMER)
+      roleTemplateId: staffRole?.id,
+      branchId: mainBranch.id
+    },
+    {
+      email: 'service1@elhamdimport.online',
+      name: 'موظف خدمة 1',
+      password: await bcrypt.hash('service123', 10),
+      role: 'STAFF',
+      phone: '+20 1078901234',
+      isActive: true,
+      emailVerified: true,
+      roleTemplateId: staffRole?.id,
+      branchId: mainBranch.id
+    },
+    {
+      email: 'customer1@elhamdimport.online',
+      name: 'عميل تجريبي',
+      password: await bcrypt.hash('customer123', 10),
+      role: 'CUSTOMER',
+      phone: '+20 1089012345',
+      isActive: true,
+      emailVerified: true,
+      roleTemplateId: customerRole?.id,
+      branchId: mainBranch.id
     }
   ]
 
-  for (const user of users) {
-    await prisma.user.create({ data: user })
+  for (const u of users) {
+    try {
+      await prisma.user.create({ data: u as any })
+    } catch (err) {
+      // ignore duplicates on clean create - but since we deleted earlier, shouldn't happen
+    }
   }
-}
+  console.log('✓ users created')
 
-async function seedVehicles() {
-  const branches = await prisma.branch.findMany()
-  
-  const vehicles = [
+  // 12. SLIDERS & HOMEPAGE (from homepage-seed)
+  const sliders = [
     {
-      make: 'Toyota',
-      model: 'Camry',
-      year: 2024,
-      price: 850000,
-      stockNumber: 'TOY-CAM-2024-001',
-      vin: 'JTHBE5C21R1234567',
-      description: 'تويوتا كامري موديل 2024 - لون أبيض',
-      category: 'SEDAN',
-      fuelType: 'PETROL',
-      transmission: 'AUTOMATIC',
-      mileage: 0,
-      color: 'أبيض',
-      status: 'AVAILABLE',
-      featured: true,
-      branchId: branches[0]?.id
+      id: 'slider-0',
+      title: 'تاتا نيكسون إي في 2024',
+      subtitle: 'ثورة في عالم السيارات الكهربائية',
+      description: 'استمتع بأحدث تقنيات السيارات الكهربائية مع أداء استثنائي وتصميم عصري',
+      imageUrl: '/uploads/vehicles/1/tata-nexon-ev-hero.jpg',
+      ctaText: 'اكتشف المزيد',
+      ctaLink: '/vehicles/tata-nexon-ev',
+      badge: 'جديد',
+      badgeColor: 'bg-green-500',
+      order: 0
     },
     {
-      make: 'Hyundai',
-      model: 'Tucson',
-      year: 2024,
-      price: 920000,
-      stockNumber: 'HYD-TUC-2024-001',
-      vin: 'KM8J3CA26RU123456',
-      description: 'هيونداي توسان موديل 2024 - لون أسود',
-      category: 'SUV',
-      fuelType: 'PETROL',
-      transmission: 'AUTOMATIC',
-      mileage: 0,
-      color: 'أسود',
-      status: 'AVAILABLE',
-      featured: true,
-      branchId: branches[0]?.id
+      id: 'slider-1',
+      title: 'تاتا بانش 2024',
+      subtitle: 'القوة في حجم صغير',
+      description: 'سيارة مدمجة قوية ومثالية للمدينة، تجمع بين الأداء وكفاءة استهلاك الوقود',
+      imageUrl: '/uploads/vehicles/2/tata-punch-hero.jpg',
+      ctaText: 'اطلب الآن',
+      ctaLink: '/vehicles/tata-punch',
+      badge: 'الأكثر مبيعاً',
+      badgeColor: 'bg-red-500',
+      order: 1
     },
     {
-      make: 'Nissan',
-      model: 'Sunny',
-      year: 2023,
-      price: 420000,
-      stockNumber: 'NIS-SUN-2023-001',
-      vin: 'JN1BF11D23M123456',
-      description: 'نيسان سنترا موديل 2023 - لون فضي',
-      category: 'SEDAN',
-      fuelType: 'PETROL',
-      transmission: 'CVT',
-      mileage: 5000,
-      color: 'فضي',
-      status: 'AVAILABLE',
-      featured: false,
-      branchId: branches[1]?.id
+      id: 'slider-2',
+      title: 'عروض خاصة',
+      subtitle: 'وفر حتى 25% على سيارات تاتا',
+      description: 'فرصة محدودة للاستفادة من أفضل العروض على سيارات تاتا المميزة',
+      imageUrl: '/uploads/special-offer-hero.jpg',
+      ctaText: 'شاهد العروض',
+      ctaLink: '/vehicles?offers=true',
+      badge: 'عرض محدود',
+      badgeColor: 'bg-orange-500',
+      order: 2
     }
   ]
 
-  for (const vehicle of vehicles) {
-    const createdVehicle = await prisma.vehicle.create({
+  for (const s of sliders) {
+    await prisma.slider.create({ data: s as any })
+  }
+  console.log('✓ sliders created')
+
+  // 13. VEHICLES (full dataset from your seed.ts) - create them all
+  // Below is the full vehiclesData array extracted from your original seed.ts
+  const vehiclesData = [
+    {
+      title: 'PRIMA 3328.K',
+      description: 'شاحنة Tata Motors Prima 3328.K هي شاحنة قوية صُممت للتعامل مع أصعب المهام، مما يضمن سرعة في الإنجاز وتقليل تكاليف الصيانة. تعمل الشاحنة بمحرك Cummins ISBe مبرد بالم الماء، بحقن مباشر، مزود بشاحن توربيني ومبرد لاحق، ديزل، يولد قدرة قصوى تبلغ 269 حصان عند 2500 دورة/دقيقة، وعزم دوران أقصى 970 نيوتن.متر.',
+      category: 'TRUCK',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      price: 1200000,
+      stockNumber: 'PRIMA-3328K-001',
+      specifications: {
+        "موديل المحرك": "محرك CUMMINS ISBe 270 - ديزل مبرد بالماء، حقن مباشر، مزود بشاحن توربيني ومبرد بعدي.",
+        "نوع الجسم": "18 Cum",
+        "سعة المحرك": "السعة اللترية للمحرك: 6700",
+        "قوة المحرك": "قوة المحرك: 266 حصان عند 2500 دورة/دقيقة",
+        "أقصى عزم الدوران": "عزم الدوران: 970 نيوتن.متر عند 1500 دورة/دقيقة",
+        "علبة التروس": "علبة التروس: ZF، عدد 9 أمامي + 1 خلفي",
+        "الإطارات": "مقاس الإطارات: 12R24 - 18PR",
+        "الوزن الإجمالي المسموح به": "28500 كجم",
+        "سعة خزان الوقود": "260 لتر"
+      },
+      images: [
+        '/uploads/vehicles/prima-3328k-1.jpg',
+        '/uploads/vehicles/PRIMA-3328.K-1.jpg',
+        '/uploads/vehicles/prima-3328k-2.jpg'
+      ],
+      highlights: ['970 نيوتن.متر', '270 حصان', '35%', '260 لتر'],
+      features: [
+        'منحنى عزم دوران ثابت',
+        'مكونات موثوقة مثل محرك CUMMINS، علبة تروس ZF، ومحور خلفي TATA RA 109',
+        'كابينة Prima عالمية مريحة بتصميم مريح',
+        'توفر قطع الغيار',
+        'فرامل عادم المحرك فلتر هواء من مرحلتين',
+        'نظام التعليق الخلفي (Bogie)'
+      ]
+    },
+    {
+      title: 'LPT 1618',
+      description: 'تم تصميم تاتا LPT 1618 لإعادة تعريف الأداء والموثوقية، ويجسد القوة والدقة. مدعوم بمحرك تاتا كمنز B5.9، 6 أسطوانات يورو II المثبت، يولد هذا المحرك قوة عالية قدرها 179 حصان عند 2500 دورة في الدقيقة وعزم دوران أقصى قدره 650 نيوتن متر.',
+      category: 'COMMERCIAL',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      price: 850000,
+      stockNumber: 'LPT-1618-001',
+      specifications: {
+        "موديل المحرك": "CUMMINS B5.9-180 20",
+        "نوع المحرك": "محرك ديزل بالحقن المباشر مبرد بالماء مع مبرد داخلي",
+        "سعة المحرك": "5883 cc",
+        "أقصى خرج للمحرك": "132 كيلو واط (176.9 حصان) عند 2500 دورة في الدقيقة.",
+        "عدد الاسطوانات": "6 مضمنة",
+        "السرعة القصوى": "120 كم/ساعة",
+        "انبعاث": "يورو 2",
+        "أقصى عزم الدوران": "650 نيوتن متر (66.2 ملليغرام) عند 1500 دورة في الدقيقة.",
+        "علبة التروس": "Tata G600-6/6.58",
+        "الإطارات": "11R22.5- 16PR",
+        "الوزن الإجمالي المسموح به": "16200",
+        "سعة خزان الوقود": "350"
+      },
+      images: [
+        '/uploads/vehicles/LPT-1618-1.jpg'
+      ],
+      highlights: ['650 نيوتن متر', '178 حصان قو', '27%', '350لتر'],
+      features: [
+        'محرك TATA CUMMINS B5.9 سداسي الأسطوانات',
+        'فرامل S - CAM هوائية بالكامل',
+        'علبة تروس تاتا G600 متينة'
+      ]
+    },
+    {
+      title: 'LPT 613',
+      description: 'تاتا LPT 613 هي مركبة تجارية قوية ومتعددة الاستخدامات مصممة لإعادة تعريف الأداء والموثوقية في مشهد النقل. مدعومة بمحرك تاتا 697 TCIC مبرد بالماء، حقن مباشر، ذو شاحن توربيني، والذي ينتج قوة قصوى قدرها 130 حصان عند 2400 دورة في الدقيقة وعزم دوران أقصى قدره 416 نيوتن متر.',
+      category: 'COMMERCIAL',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      price: 650000,
+      stockNumber: 'LPT-613-001',
+      specifications: {
+        "موديل المحرك": "TATA 697 TCIC",
+        "نوع المحرك": "محرك ديزل بالحقن المباشر مبرد بالماء مع مبرد داخلي",
+        "سعة المحرك": "5675 cc",
+        "أقصى خرج للمحرك": "130 Ps@ 2400rpm",
+        "عدد الاسطوانات": "6 مضمنة",
+        "السرعة القصوى": "112 كم/ساعة",
+        "انبعاث": "يورو 2",
+        "أقصى عزم الدوران": "430 نيوتن متر @ 1350-1800 دورة في الدقيقة",
+        "علبة التروس": "GBS 40 synchromesh",
+        "الإطارات": "7.50R16 14PR طبقة شعاعية",
+        "الوزن الإجمالي المسموح به": "7500",
+        "سعة خزان الوقود": "90"
+      },
+      images: [
+        '/uploads/vehicles/LPT-613-1.jpg',
+        '/uploads/vehicles/LP-613-1.jpg',
+        '/uploads/vehicles/lp-613-2.jpg'
+      ],
+      highlights: ['416 نيوتن متر', '130 حصان', '120 لتر', '36%'],
+      features: [
+        'محرك ديزل TATA 697 TCIC بحقن مباشر ومبرد بالماء',
+        'فرامل كاملة الهواء من نوع S-cam',
+        'نوابض متعددة شبه بيضاوية في الأمام والخلف',
+        'ناقل حركة GBS 40 بتقنية السينكروميش',
+        'قابلية التسلق'
+      ]
+    },
+    {
+      title: 'LPT613 TIPPER',
+      description: 'تعد تاتا LPT 613 صندوق القلاب شاحنة تجارية خفيفة استثنائية مصممة لتعزيز قدراتك في النقل. تتميز هذه الشاحنة بمحرك Cummins B5.9 مبرد بالماء، حقن مباشر، ديزل، والذي ينتج قوة قصوى قدرها 130 حصان عند 2400 دورة في الدقيقة وعزم دوران قدره 416 نيوتن متر.',
+      category: 'COMMERCIAL',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      price: 720000,
+      stockNumber: 'LPT613-TIPPER-001',
+      specifications: {
+        "موديل المحرك": "CUMMINS B5.9-180 20",
+        "نوع المحرك": "ديزل بحقن مباشر وتبريد بالماء مع مبرّد داخلي (Intercooler)",
+        "سعة المحرك": "5675 سم³",
+        "أقصى خرج للمحرك": "95 كيلوواط عند 2400 دورة/دقيقة",
+        "عدد الاسطوانات": "6 أسطوانات متراصة (Inline)",
+        "السرعة القصوى": "112 كم/س",
+        "انبعاث": "Euro II",
+        "أقصى عزم الدوران": "416 نيوتن متر عند 1400–1700 دورة/دقيقة",
+        "علبة التروس": "GBS 40 سنكروميش",
+        "الإطارات": "7.50R16 14PR، نوع شعاعي",
+        "الوزن الإجمالي المسموح به": "7500",
+        "سعة خزان الوقود": "90"
+      },
+      images: [
+        '/uploads/vehicles/lpt613-tipper-1.jpg'
+      ],
+      highlights: ['416', '130 حصان', '36%', '90L'],
+      features: [
+        'محرك ديزل TATA 697 TCIC، تبريد بالماء، حقن مباشر',
+        'فرامل هوائية كاملة من نوع S-cam',
+        'نوابض نصف بيضاوية متعددة الأوراق',
+        'ناقل حركة GBS 40 سنكروميش',
+        'القدرة على التسلق (Gradeability)'
+      ]
+    },
+    {
+      title: 'ULTRA T.7',
+      description: 'وجّه نجاح أعمالك مع Tata Ultra T.7 مدعومة بمحرك NG3.3L CR EIV المجرب، تولد قوة قدرها 155 حصان عند 2600 دورة/دقيقة، وعزم دوران يبلغ 450 نيوتن.متر، ما يضمن أداءً استثنائيًا في عمليات النقل والخدمات اللوجستية.',
+      category: 'COMMERCIAL',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      price: 580000,
+      stockNumber: 'ULTRA-T7-001',
+      specifications: {
+        "موديل المحرك": "NG3.3L CR EIV",
+        "نوع المحرك": "اشتعال الضغط، EURO-4",
+        "نوع الجسم": "مقصورة وهيكل قاعدي",
+        "سعة المحرك": "3300 سي سي",
+        "أقصى خرج للمحرك": "155 Ps @ 2600 rpm",
+        "عدد الاسطوانات": "4 مضمنة",
+        "السرعة القصوى": "105 كم في الساعة",
+        "انبعاث": "EuroIV",
+        "أقصى عزم الدوران": "450 نيوتن متر عند 2200-1500 دورة في الدقيقة",
+        "علبة التروس": "Tata G550 متزامن",
+        "الإطارات": "215/75R 17.5",
+        "الوزن الإجمالي المسموح به": "6450 kg",
+        "سعة خزان الوقود": "90 L"
+      },
+      images: [
+        '/uploads/vehicles/ULTRA-T.7-1.jpg',
+        '/uploads/vehicles/ultra-t7-1.jpg'
+      ],
+      highlights: ['155 حصان', '450 نيوتن.متر', '215/75 R17.5', '90 لتر'],
+      features: [
+        'محرك NG سعة 3.3 لتر، سكة حديد مشتركة، TCIC Euro-IV',
+        'عزم دوران عالي يصل إلى 450 نيوتن متر',
+        'فرامل S-cam هوائية كاملة الدائرة مزدوجة مع نظام فرامل مانع للانغلاق',
+        'علبة تروس متزامن Tata G550 (6F+1R)',
+        'زنبرك ورقي مكافئ وشبه بيضاوي'
+      ]
+    },
+    {
+      title: 'ULTRA T.9',
+      description: 'تخطَّ أصعب المهام مع الاعتمادية العالية لشاحنة Tata Ultra T.9، المصممة لرحلات لا تتوقف وسرعة دوران أعلى. مزوّدة بمحرك 3.3L NG Common Rail TCIC يولّد 155 حصان عند 2600 دورة/دقيقة، مع 450 نيوتن.متر من عزم الدوران لتحقيق أداء عالي في مختلف العمليات.',
+      category: 'COMMERCIAL',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      price: 680000,
+      stockNumber: 'ULTRA-T9-001',
+      specifications: {
+        "موديل المحرك": "NG3.3L CR EIV",
+        "نوع المحرك": "EURO- 4",
+        "نوع الجسم": "مقصورة وهيكل قاعدي",
+        "سعة المحرك": "3300 سي سي",
+        "أقصى خرج للمحرك": "155 Ps عند 2600 دورة في الدقيقة",
+        "عدد الاسطوانات": "4 مضمنة",
+        "السرعة القصوى": "105 كم في الساعة",
+        "انبعاث": "EuroIV",
+        "أقصى عزم الدوران": "450 نيوتن متر عند 2200-1500 دورة في الدقيقة",
+        "علبة التروس": "Tata G550 متزامن",
+        "الإطارات": "215/75R 17.5",
+        "الوزن الإجمالي المسموح به": "8990 kg",
+        "سعة خزان الوقود": "120 L"
+      },
+      images: [
+        '/uploads/vehicles/ULTRA-T.9-1.jpg',
+        '/uploads/vehicles/ultra-t9-1.jpg'
+      ],
+      highlights: ['155 حصان', '450 نيوتن.متر', '215/75 R17.5', '120 لتر'],
+      features: [
+        'محرك NG سعة 3.3 لتر، سكة حديد مشتركة، TCIC Euro-IV',
+        'High Torque of 450Nm @ 1500-2000 rpm',
+        'فرامل S-cam هوائية كاملة الدائرة مزدوجة مع نظام فرامل مانع للانغلاق',
+        'صندوق تروس متزامن Tata G550 (6F+1R)',
+        'زنبرك ورقي مكافئ وشبه بيضاوي'
+      ]
+    },
+    {
+      title: 'XENON SC',
+      description: 'يجمع تاتا زينون X2 SC بين القوة والمتانة، ما يوفّر أداءً معززًا ويساهم في زيادة الأرباح. مدعوم بمحرك تاتا 2.2 لتر DICOR يورو IV، ديزل، حقن مباشر، سكة وقود مشتركة، مزود بشاحن توربيني ومبرد داخلي، يولد 150 حصان عند 4000 دورة/دقيقة وعزم دوران أقصى يبلغ 320 نيوتن.متر.',
+      category: 'PICKUP',
+      fuelType: 'DIESEL',
+      transmission: 'MANUAL',
+      price: 420000,
+      stockNumber: 'XENON-SC-001',
+      specifications: {
+        "موديل المحرك": "محرك ديزل TATA 2.2L DICOR Euro IV بالحقن المباشر للسكك الحديدية المشتركة بشاحن توربيني",
+        "سعة المحرك": "2179",
+        "قوة المحرك": "320 نيوتن متر @ 1500-3000 دورة في الدقيقة",
+        "أقصى خرج للمحرك": "150 حصان عند 4000 دورة في الدقيقة",
+        "عدد الاسطوانات": "4 مضمنة",
+        "السرعة القصوى": "160 كم/ساعة",
+        "انبعاث": "E4",
+        "أقصى عزم الدوران": "320 نيوتن متر @ 1500-3000 دورة في الدقيقة",
+        "علبة التروس": "GBS -76-5/4.10 - علبة تروس MK - II مع زيادة السرعة",
+        "الإطارات": "235/70 R16 إطارات بدون أنابيب",
+        "الوزن الإجمالي المسموح به": "3100",
+        "سعة خزان الوقود": "70 لتر"
+      },
+      images: [
+        '/uploads/vehicles/XENON-SC-1.jpg',
+        '/uploads/vehicles/xenon-sc-2.jpg'
+      ],
+      highlights: ['41%', '1280 كجم', '70 لتر', '320 نيوتن.متر'],
+      features: [
+        'الطاقة والالتقاط',
+        'محرك 2179cc',
+        'قابلية عالية للتصنيف',
+        'التوجيه بمساعدة الطاقة الكهربائية'
+      ]
+    }
+  ]
+
+  for (const vehicleData of vehiclesData) {
+    const vehicle = await prisma.vehicle.create({
       data: {
-        ...vehicle,
-        category: vehicle.category as any,
-        fuelType: vehicle.fuelType as any,
-        transmission: vehicle.transmission as any,
-        status: vehicle.status as any
+        make: 'Tata Motors',
+        model: vehicleData.title,
+        year: 2024,
+        price: vehicleData.price,
+        stockNumber: vehicleData.stockNumber,
+        description: vehicleData.description,
+        category: vehicleData.category as any,
+        fuelType: vehicleData.fuelType as any,
+        transmission: vehicleData.transmission as any,
+        status: 'AVAILABLE',
+        featured: true,
+        branchId: mainBranch.id
       }
     })
+
+    // Create vehicle images
+    for (let i = 0; i < vehicleData.images.length; i++) {
+      await prisma.vehicleImage.create({
+        data: {
+          vehicleId: vehicle.id,
+          imageUrl: vehicleData.images[i],
+          altText: `${vehicleData.title} - صورة ${i + 1}`,
+          isPrimary: i === 0,
+          order: i
+        }
+      })
+    }
+
+    // Create vehicle specifications
+    for (const [key, value] of Object.entries(vehicleData.specifications)) {
+      await prisma.vehicleSpecification.create({
+        data: {
+          vehicleId: vehicle.id,
+          key: key,
+          label: key,
+          value: value as string,
+          category: 'ENGINE'
+        }
+      })
+    }
 
     // Create vehicle pricing
     await prisma.vehiclePricing.create({
       data: {
-        vehicleId: createdVehicle.id,
-        basePrice: vehicle.price,
-        totalPrice: vehicle.price * 1.14, // Including tax
-        currency: branches.find(b => b.id === vehicle.branchId)?.currency || 'EGP'
+        vehicleId: vehicle.id,
+        basePrice: vehicleData.price,
+        totalPrice: vehicleData.price,
+        currency: 'EGP',
+        hasDiscount: false
       }
     })
+  }
 
-    // Create vehicle specifications
-    const specifications = [
-      { key: 'engine', label: 'المحرك', value: '2.5L', category: 'ENGINE' },
-      { key: 'power', label: 'القوة', value: '203 حصان', category: 'ENGINE' },
-      { key: 'seats', label: 'عدد المقاعد', value: '5', category: 'INTERIOR' },
-      { key: 'doors', label: 'عدد الأبواب', value: '4', category: 'EXTERIOR' },
-      { key: 'airbags', label: 'وسائد الهواء', value: '6', category: 'SAFETY' },
-      { key: 'abs', label: 'نظام ABS', value: 'متوفر', category: 'SAFETY' }
+  // 7. Create Sliders
+  console.log('🖼️ Creating sliders...')
+  await prisma.slider.createMany({
+    data: [
+      {
+        title: 'PRIMA 3328.K',
+        subtitle: 'القوة والموثوقية في شاحنة واحدة',
+        description: 'شاحنة قوية صُممت للتعامل مع أصعب المهام',
+        imageUrl: '/uploads/vehicles/prima-3328k-1.jpg',
+        ctaText: 'استعرض الآن',
+        ctaLink: '/vehicles',
+        isActive: true,
+        order: 1
+      },
+      {
+        title: 'ULTRA T.9',
+        subtitle: 'الأداء المتطور للنقل الخفيف',
+        description: 'تخطَّ أصعب المهام مع الاعتمادية العالية',
+        imageUrl: '/uploads/vehicles/ULTRA-T.9-1.jpg',
+        ctaText: 'اكتشف المزيد',
+        ctaLink: '/vehicles',
+        isActive: true,
+        order: 2
+      },
+      {
+        title: 'XENON SC',
+        subtitle: 'البيك أب القوي والمتين',
+        description: 'يجمع بين القوة والمتانة',
+        imageUrl: '/uploads/vehicles/XENON-SC-1.jpg',
+        ctaText: 'تفاصيل السيارة',
+        ctaLink: '/vehicles',
+        isActive: true,
+        order: 3
+      },
+      {
+        title: 'خدمة 24 ساعة',
+        subtitle: 'دعم فني على مدار الساعة',
+        description: 'خدمة طوارئ سريعة وموثوقة',
+        imageUrl: '/uploads/showroom-luxury.jpg',
+        ctaText: 'اتصل بنا',
+        ctaLink: '/contact',
+        isActive: true,
+        order: 4
+      }
     ]
+  })
 
-    for (const spec of specifications) {
-      await prisma.vehicleSpecification.create({
-        data: {
-          vehicleId: createdVehicle.id,
-          ...spec,
-          category: spec.category as any
-        }
-      })
-    }
-
-    // Create sample vehicle images
-    const images = [
-      { imageUrl: '/images/vehicles/sample1-front.jpg', altText: 'الواجهة الأمامية', isPrimary: true, order: 1 },
-      { imageUrl: '/images/vehicles/sample1-side.jpg', altText: 'الجانب', isPrimary: false, order: 2 },
-      { imageUrl: '/images/vehicles/sample1-rear.jpg', altText: 'الخلف', isPrimary: false, order: 3 },
-      { imageUrl: '/images/vehicles/sample1-interior.jpg', altText: 'الداخلية', isPrimary: false, order: 4 }
+  // 8. Create Service Types
+  console.log('🔧 Creating service types...')
+  await prisma.serviceType.createMany({
+    data: [
+      {
+        name: 'صيانة دورية',
+        description: 'صيانة دورية شاملة للمركبات التجارية',
+        duration: 120,
+        price: 500,
+        category: 'MAINTENANCE'
+      },
+      {
+        name: 'تغيير زيت',
+        description: 'تغيير زيت المحرك والفلاتر',
+        duration: 60,
+        price: 200,
+        category: 'MAINTENANCE'
+      },
+      {
+        name: 'فحص فرامل',
+        description: 'فحص وصيانة نظام الفرامل',
+        duration: 90,
+        price: 300,
+        category: 'REPAIR'
+      },
+      {
+        name: 'تغيير إطارات',
+        description: 'تغيير وترصيص الإطارات',
+        duration: 45,
+        price: 150,
+        category: 'REPAIR'
+      },
+      {
+        name: 'فحص شامل',
+        description: 'فحص شامل للمركبة قبل السفر',
+        duration: 180,
+        price: 800,
+        category: 'INSPECTION'
+      }
     ]
+  })
 
-    for (const image of images) {
-      await prisma.vehicleImage.create({
-        data: {
-          vehicleId: createdVehicle.id,
-          ...image
-        }
-      })
-    }
-  }
-}
-
-async function seedServiceTypes() {
-  const serviceTypes = [
-    {
-      name: 'صيانة دورية',
-      description: 'صيانة دورية شاملة للسيارة',
-      duration: 120,
-      price: 500,
-      category: 'MAINTENANCE'
-    },
-    {
-      name: 'تغيير زيت',
-      description: 'تغيير زيت المحرك والفلتر',
-      duration: 30,
-      price: 150,
-      category: 'MAINTENANCE'
-    },
-    {
-      name: 'فحص شامل',
-      description: 'فحص شامل للحالة العامة للسيارة',
-      duration: 60,
-      price: 200,
-      category: 'INSPECTION'
-    },
-    {
-      name: 'تنظيف وتلميع',
-      description: 'تنظيف وتلميع شامل للسيارة',
-      duration: 180,
-      price: 300,
-      category: 'DETAILING'
-    },
-    {
-      name: 'إصلاح مكابح',
-      description: 'إصلاح وصيانة نظام المكابح',
-      duration: 90,
-      price: 400,
-      category: 'REPAIR'
-    },
-    {
-      name: 'تغيير إطارات',
-      description: 'تغيير وترصيص الإطارات',
-      duration: 60,
-      price: 800,
-      category: 'REPAIR'
-    }
-  ]
-
-  for (const service of serviceTypes) {
-    await prisma.serviceType.create({
-      data: {
-        ...service,
-        category: service.category as any
-      }
-    })
-  }
-}
-
-async function seedTimeSlots() {
-  const timeSlots = []
+  // 9. Create Header and Footer Content
+  console.log('📄 Creating header and footer content...')
   
-  // Create time slots for each day of the week
-  for (let day = 0; day < 7; day++) {
-    // Morning slots
-    timeSlots.push(
-      { dayOfWeek: day, startTime: '09:00', endTime: '10:00', maxBookings: 3 },
-      { dayOfWeek: day, startTime: '10:00', endTime: '11:00', maxBookings: 3 },
-      { dayOfWeek: day, startTime: '11:00', endTime: '12:00', maxBookings: 3 }
-    )
-    
-    // Afternoon slots
-    timeSlots.push(
-      { dayOfWeek: day, startTime: '12:00', endTime: '13:00', maxBookings: 2 },
-      { dayOfWeek: day, startTime: '14:00', endTime: '15:00', maxBookings: 3 },
-      { dayOfWeek: day, startTime: '15:00', endTime: '16:00', maxBookings: 3 },
-      { dayOfWeek: day, startTime: '16:00', endTime: '17:00', maxBookings: 3 }
-    )
-    
-    // Evening slots
-    timeSlots.push(
-      { dayOfWeek: day, startTime: '17:00', endTime: '18:00', maxBookings: 2 },
-      { dayOfWeek: day, startTime: '18:00', endTime: '19:00', maxBookings: 2 }
-    )
-  }
-
-  for (const slot of timeSlots) {
-    await prisma.timeSlot.create({ data: slot })
-  }
-}
-
-async function seedHolidays() {
-  const currentYear = new Date().getFullYear()
-  const holidays = [
-    {
-      date: new Date(currentYear, 0, 1), // New Year
-      name: 'رأس السنة الميلادية',
-      description: 'بداية العام الجديد',
-      isRecurring: true
-    },
-    {
-      date: new Date(currentYear, 3, 25), // Sinai Liberation Day
-      name: 'عيد تحرير سيناء',
-      description: 'ذكرى تحرير سيناء',
-      isRecurring: true
-    },
-    {
-      date: new Date(currentYear, 6, 23), // July 23 Revolution
-      name: 'عيد ثورة 23 يوليو',
-      description: 'ذكرى ثورة 23 يوليو',
-      isRecurring: true
-    },
-    {
-      date: new Date(currentYear, 9, 6), // Armed Forces Day
-      name: 'عيد القوات المسلحة',
-      description: 'عيد القوات المسلحة المصرية',
-      isRecurring: true
-    },
-    {
-      date: new Date(currentYear, 11, 25), // Christmas
-      name: 'عيد الميلاد المجيد',
-      description: 'عيد ميلاد السيد المسيح',
-      isRecurring: true
-    }
-  ]
-
-  for (const holiday of holidays) {
-    await prisma.holiday.create({ data: holiday })
-  }
-}
-
-async function seedEmailTemplates() {
-  const templates = [
-    {
-      name: 'booking_confirmation',
-      subject: 'تأكيد الحجز - شركة الحمد للسيارات',
-      content: 'عزيزي العميل،\n\nتم تأكيد حجزك بنجاح. تفاصيل الحجز:\n\n{booking_details}\n\nشكراً لثقتك بنا.\n\nشركة الحمد للسيارات',
-      type: 'BOOKING_CONFIRMATION'
-    },
-    {
-      name: 'booking_reminder',
-      subject: 'تذكير بالحجز - شركة الحمد للسيارات',
-      content: 'عزيزي العميل،\n\nنذكرك بموعد حجزك غداً في {booking_time}.\n\nنتطلع لرؤيتك.\n\nشركة الحمد للسيارات',
-      type: 'BOOKING_REMINDER'
-    },
-    {
-      name: 'welcome_email',
-      subject: 'مرحباً بك في شركة الحمد للسيارات',
-      content: 'عزيزي العميل،\n\nيسرنا انضمامك لعائلة شركة الحمد للسيارات.\n\nنحن هنا لخدمتك بأفضل السيارات والخدمات.\n\nمع أطيب التحيات،\nفريق شركة الحمد',
-      type: 'WELCOME'
-    },
-    {
-      name: 'payment_received',
-      subject: 'استلام الدفعة - شركة الحمد للسيارات',
-      content: 'عزيزي العميل،\n\nتم استلام دفعتك بنجاح.\n\nتفاصيل الدفعة:\n{payment_details}\n\nشكراً لك.\n\nشركة الحمد للسيارات',
-      type: 'PAYMENT_RECEIVED'
-    }
-  ]
-
-  for (const template of templates) {
-    await prisma.emailTemplate.create({
-      data: {
-        ...template,
-        type: template.type as any
-      }
-    })
-  }
-}
-
-async function seedTaxRates() {
-  const taxRates = [
-    {
-      name: 'ضريبة القيمة المضافة',
-      type: 'STANDARD',
-      rate: 14.0,
-      description: 'ضريبة القيمة المضافة القياسية في مصر',
-      isActive: true,
-      effectiveFrom: new Date('2020-01-01')
-    },
-    {
-      name: 'ضريبة الدمغة',
-      type: 'STAMP_DUTY',
-      rate: 0.5,
-      description: 'ضريبة الدمغة على العقود',
-      isActive: true,
-      effectiveFrom: new Date('2020-01-01')
-    },
-    {
-      name: 'رسوم التسجيل',
-      type: 'REGISTRATION_FEE',
-      rate: 2.0,
-      description: 'رسوم تسجيل المركبات',
-      isActive: true,
-      effectiveFrom: new Date('2020-01-01')
-    }
-  ]
-
-  for (const tax of taxRates) {
-    await prisma.taxRate.create({
-      data: {
-        ...tax,
-        type: tax.type as any
-      }
-    })
-  }
-}
-
-async function seedWarehouses() {
-  const branches = await prisma.branch.findMany()
-  
-  const warehouses = [
-    {
-      name: 'المستودع الرئيسي - القاهرة',
-      code: 'WH-CAI-01',
-      address: 'منطقة التجمع الخامس، القاهرة',
-      phone: '+20223456789',
-      email: 'warehouse.cairo@elhamdimport.online',
-      branchId: branches[0]?.id,
-      capacity: 500,
-      isActive: true
-    },
-    {
-      name: 'مستودع الإسكندرية',
-      code: 'WH-ALEX-01',
-      address: 'منطقة العامرية، الإسكندرية',
-      phone: '+0334567890',
-      email: 'warehouse.alex@elhamdimport.online',
-      branchId: branches[1]?.id,
-      capacity: 300,
-      isActive: true
-    }
-  ]
-
-  for (const warehouse of warehouses) {
-    await prisma.warehouse.create({ data: warehouse })
-  }
-}
-
-async function seedInventoryItems() {
-  const warehouses = await prisma.warehouse.findMany()
-  
-  const inventoryItems = [
-    {
-      name: 'زيت محرك تويوتا',
-      code: 'OIL-TOY-5W30',
-      description: 'زيت محرك أصلي تويوتا 5W30',
-      category: 'OIL',
-      unitPrice: 250,
-      quantity: 100,
-      minStock: 20,
-      warehouseId: warehouses[0]?.id,
-      status: 'IN_STOCK'
-    },
-    {
-      name: 'فلتر زيت تويوتا',
-      code: 'FLT-TOY-OIL',
-      description: 'فلتر زيت أصلي تويوتا',
-      category: 'FILTER',
-      unitPrice: 80,
-      quantity: 150,
-      minStock: 30,
-      warehouseId: warehouses[0]?.id,
-      status: 'IN_STOCK'
-    },
-    {
-      name: 'بطارية سيارة',
-      code: 'BAT-60AH',
-      description: 'بطارية 60 أمبير للسيارات',
-      category: 'BATTERY',
-      unitPrice: 1200,
-      quantity: 25,
-      minStock: 10,
-      warehouseId: warehouses[0]?.id,
-      status: 'IN_STOCK'
-    },
-    {
-      name: 'إطارات سيارة',
-      code: 'TIRE-195-65R15',
-      description: 'إطار سيارة مقاس 195/65R15',
-      category: 'TIRE',
-      unitPrice: 800,
-      quantity: 40,
-      minStock: 15,
-      warehouseId: warehouses[1]?.id,
-      status: 'IN_STOCK'
-    }
-  ]
-
-  for (const item of inventoryItems) {
-    await prisma.inventoryItem.create({
-      data: {
-        ...item,
-        category: item.category as any,
-        status: item.status as any
-      }
-    })
-  }
-}
-
-async function seedBookings() {
-  const users = await prisma.user.findMany({ where: { role: UserRole.CUSTOMER } })
-  const vehicles = await prisma.vehicle.findMany({ where: { status: 'AVAILABLE' } })
-  const serviceTypes = await prisma.serviceType.findMany()
-  
-  const bookings = [
-    {
-      customerId: users[0]?.id,
-      vehicleId: vehicles[0]?.id,
-      serviceTypeId: serviceTypes[0]?.id,
-      date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-      timeSlot: '10:00-11:00',
-      status: 'CONFIRMED',
-      notes: 'العميل يريد تغيير زيت وفحص عام'
-    },
-    {
-      customerId: users[1]?.id,
-      vehicleId: vehicles[1]?.id,
-      serviceTypeId: serviceTypes[2]?.id,
-      date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-      timeSlot: '14:00-15:00',
-      status: 'PENDING',
-      notes: 'فحص شامل قبل الشراء'
-    }
-  ]
-
-  for (const booking of bookings) {
-    const createdBooking = await prisma.booking.create({
-      data: {
-        ...booking,
-        status: booking.status as any
-      }
-    })
-
-    // Create service booking
-    await prisma.serviceBooking.create({
-      data: {
-        customerId: booking.customerId!,
-        vehicleId: booking.vehicleId!,
-        serviceTypeId: booking.serviceTypeId!,
-        date: booking.date!,
-        timeSlot: booking.timeSlot!,
-        status: booking.status as any,
-        notes: booking.notes,
-        totalPrice: 500
-      }
-    })
-  }
-}
-
-async function seedInvoices() {
-  const users = await prisma.user.findMany({ where: { role: UserRole.CUSTOMER } })
-  const branches = await prisma.branch.findMany()
-  
-  const invoices = [
-    {
-      customerId: users[0]?.id,
-      branchId: branches[0]?.id,
-      invoiceNumber: 'INV-2024-001',
-      type: 'SERVICE',
-      status: 'PAID',
-      subtotal: 500,
-      taxAmount: 70,
-      totalAmount: 570,
-      currency: 'EGP',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      issueDate: new Date(),
-      paidAt: new Date(),
-      notes: 'فاتورة صيانة دورية'
-    },
-    {
-      customerId: users[1]?.id,
-      branchId: branches[0]?.id,
-      invoiceNumber: 'INV-2024-002',
-      type: 'SERVICE',
-      status: 'PENDING',
-      subtotal: 200,
-      taxAmount: 28,
-      totalAmount: 228,
-      currency: 'EGP',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      issueDate: new Date(),
-      notes: 'فاتورة فحص شامل'
-    }
-  ]
-
-  for (const invoice of invoices) {
-    await prisma.invoice.create({
-      data: {
-        ...invoice,
-        type: invoice.type as any,
-        status: invoice.status as any
-      }
-    })
-  }
-}
-
-async function seedTasks() {
-  const users = await prisma.user.findMany({ where: { role: { in: [UserRole.ADMIN, UserRole.STAFF] } } })
-  const customers = await prisma.user.findMany({ where: { role: UserRole.CUSTOMER } })
-  
-  const tasks = [
-    {
-      title: 'متابعة العميل أحمد محمد',
-      description: 'الاتصال بالعميل للاستفسار عن رضاه عن الخدمة',
-      priority: 'MEDIUM',
-      status: 'PENDING',
-      assignedTo: users[0]?.id,
-      assignedBy: users[1]?.id,
-      customerId: customers[0]?.id,
-      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-      estimatedHours: 1
-    },
-    {
-      title: 'تحديث أسعار السيارات',
-      description: 'تحديث أسعار السيارات الجديدة في النظام',
-      priority: 'HIGH',
-      status: 'IN_PROGRESS',
-      assignedTo: users[1]?.id,
-      assignedBy: users[0]?.id,
-      dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-      estimatedHours: 4,
-      actualHours: 2
-    },
-    {
-      title: 'صيانة نظام التكييف',
-      description: 'صيانة دورية لنظام التكييف في الفرع',
-      priority: 'LOW',
-      status: 'COMPLETED',
-      assignedTo: users[0]?.id,
-      assignedBy: users[0]?.id,
-      completedAt: new Date(),
-      estimatedHours: 2,
-      actualHours: 2
-    }
-  ]
-
-  for (const task of tasks) {
-    await prisma.task.create({
-      data: {
-        ...task,
-        priority: task.priority as any,
-        status: task.status as any
-      }
-    })
-  }
-}
-
-async function seedNotifications() {
-  const users = await prisma.user.findMany()
-  
-  const notifications = [
-    {
-      userId: users[0]?.id,
-      type: 'BOOKING_CONFIRMATION',
-      title: 'تأكيد الحجز',
-      message: 'تم تأكيد حجزك بنجاح لموعد غداً الساعة 10 صباحاً',
-      channel: 'EMAIL',
-      recipient: users[0]?.email || '',
-      status: 'SENT',
-      sentAt: new Date()
-    },
-    {
-      userId: users[1]?.id,
-      type: 'PROMOTION',
-      title: 'عرض خاص',
-      message: 'خصم 20% على جميع خدمات الصيانة هذا الأسبوع',
-      channel: 'EMAIL',
-      recipient: users[1]?.email || '',
-      status: 'PENDING'
-    },
-    {
-      type: 'SYSTEM',
-      title: 'صيانة النظام',
-      message: 'سيتم إجراء صيانة دورية للنظام اليوم الساعة 11 مساءً',
-      channel: 'PUSH',
-      recipient: 'all_users',
-      status: 'SCHEDULED'
-    }
-  ]
-
-  for (const notification of notifications) {
-    await prisma.notification.create({
-      data: {
-        ...notification,
-        type: notification.type as any,
-        status: notification.status as any,
-        channel: notification.channel as any
-      }
-    })
-  }
-}
-
-async function seedCRMData() {
-  const users = await prisma.user.findMany()
-  const branches = await prisma.branch.findMany()
-  
-  // Customer Profiles
-  for (let i = 0; i < 3; i++) {
-    await prisma.customerProfile.create({
-      data: {
-        userId: users.find(u => u.role === UserRole.CUSTOMER)?.id,
-        dateOfBirth: new Date('1990-01-01'),
-        gender: 'MALE',
-        nationality: 'مصري',
-        address: 'العنوان التجريبي',
-        city: 'القاهرة',
-        country: 'مصر',
-        postalCode: '12345',
-        preferredLanguage: 'AR',
-        interests: ['سيارات', 'تكنولوجيا'],
-        preferences: { notifications: true, newsletters: false }
-      }
-    })
-  }
-
-  // CRM Interactions
-  const interactions = [
-    {
-      userId: users.find(u => u.role === UserRole.CUSTOMER)?.id,
-      type: 'PHONE_CALL',
-      direction: 'INBOUND',
-      subject: 'استفسار عن السيارات',
-      notes: 'العميل يستفسر عن سيارات تويوتا المتوفرة',
-      duration: 15,
-      outcome: 'INTERESTED'
-    },
-    {
-      userId: users.find(u => u.role === UserRole.CUSTOMER)?.id,
-      type: 'EMAIL',
-      direction: 'OUTBOUND',
-      subject: 'متابعة الطلب',
-      notes: 'إرسال قائمة بالسيارات المتوفرة والأسعار',
-      outcome: 'AWAITING_RESPONSE'
-    }
-  ]
-
-  for (const interaction of interactions) {
-    await prisma.cRMInteraction.create({
-      data: {
-        ...interaction,
-        type: interaction.type as any,
-        direction: interaction.direction as any
-      }
-    })
-  }
-
-  // Customer Feedback
-  await prisma.customerFeedback.create({
+  await prisma.headerContent.create({
     data: {
-      userId: users.find(u => u.role === UserRole.CUSTOMER)?.id,
-      type: 'SERVICE',
-      rating: 5,
-      comment: 'خدمة ممتازة وموظفين محترفين',
-      category: 'SERVICE_QUALITY',
-      status: 'PUBLISHED'
+      logoUrl: '/uploads/logo/elhamd-logo.png',
+      logoText: 'شركة الحمد لاستيراد السيارات',
+      tagline: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
+      primaryPhone: '+20 2 12345678',
+      primaryEmail: 'info@elhamdimport.online',
+      address: 'القنطرة غرب، الإسماعيلية، مصر',
+      workingHours: 'السبت - الخميس: 9:00 ص - 5:00 م، الجمعة: مغلق',
+      ctaButton: {
+        text: 'احجز الآن',
+        link: '/contact'
+      }
     }
   })
-}
 
-async function seedMarketingData() {
-  const users = await prisma.user.findMany()
-  const branches = await prisma.branch.findMany()
-  
-  // Marketing Campaigns
-  const campaigns = [
-    {
-      name: 'حملة العيد',
-      description: 'عرض خاص بمناسبة العيد',
-      type: 'PROMOTION',
-      status: 'ACTIVE',
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      budget: 10000,
-      targetAudience: 'ALL_CUSTOMERS',
-      createdBy: users.find(u => u.role === UserRole.ADMIN)?.id,
-      branchId: branches[0]?.id
-    },
-    {
-      name: 'حملة الصيانة',
-      description: 'تخفيضات على خدمات الصيانة',
-      type: 'SERVICE',
-      status: 'SCHEDULED',
-      startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 37 * 24 * 60 * 60 * 1000),
-      budget: 5000,
-      targetAudience: 'EXISTING_CUSTOMERS',
-      createdBy: users.find(u => u.role === UserRole.ADMIN)?.id,
-      branchId: branches[0]?.id
-    }
-  ]
-
-  for (const campaign of campaigns) {
-    await prisma.marketingCampaign.create({
-      data: {
-        ...campaign,
-        type: campaign.type as any,
-        status: campaign.status as any
-      }
-    })
-  }
-
-  // Leads
-  await prisma.lead.create({
+  await prisma.footerContent.create({
     data: {
-      name: 'خالد علي',
-      email: 'khaled@example.com',
-      phone: '+201012345679',
-      source: 'WEBSITE',
-      status: 'NEW',
-      priority: 'HIGH',
-      assignedTo: users.find(u => u.role === UserRole.STAFF)?.id,
-      assignedBy: users.find(u => u.role === UserRole.ADMIN)?.id,
-      branchId: branches[0]?.id,
-      notes: 'مهتم جداً بشراء سيارة جديدة'
+      logoUrl: '/uploads/logo/elhamd-logo.png',
+      logoText: 'شركة الحمد لاستيراد السيارات',
+      tagline: 'الوكيل الحصري لشركة تاتا موتورز في مصر - متخصصون في السيارات التجارية والبيك أب والشاحنات',
+      primaryPhone: '+20 2 12345678',
+      secondaryPhone: '+20 1012345678',
+      primaryEmail: 'info@elhamdimport.online',
+      address: 'القنطرة غرب، الجيزة، مصر',
+      workingHours: 'السبت - الخميس: 9:00 ص - 5:00 م، الجمعة: مغلق',
+      copyrightText: '© 2024 شركة الحمد لاستيراد السيارات. جميع الحقوق محفوظة.',
+      newsletterText: 'اشترك في نشرتنا البريدية للحصول على آخر الأخبار والعروض',
+      backToTopText: 'العودة للأعلى'
     }
   })
+
+  console.log('✅ Comprehensive database seeding completed successfully!')
+  console.log('📊 Summary:')
+  console.log(`- Vehicles: ${vehiclesData.length}`)
+  console.log('- Users: 8')
+  console.log('- Role Templates: 8')
+  console.log('- Permissions: 32')
+  console.log('- Service Types: 5')
+  console.log('- Sliders: 4')
+  console.log('- All emails updated to use @elhamdimport.online domain')
 }
 
-async function seedSupportData() {
-  const users = await prisma.user.findMany()
-  const branches = await prisma.branch.findMany()
-  
-  // Support Tickets
-  const tickets = [
-    {
-      customerId: users.find(u => u.role === UserRole.CUSTOMER)?.id,
-      subject: 'مشكلة في نظام الحجز',
-      description: 'لا يمكنني إتمام عملية الحجز عبر الموقع',
-      category: 'TECHNICAL',
-      priority: 'MEDIUM',
-      status: 'OPEN',
-      assignedTo: users.find(u => u.role === UserRole.STAFF)?.id,
-      assignedBy: users.find(u => u.role === UserRole.ADMIN)?.id,
-      branchId: branches[0]?.id
-    },
-    {
-      customerId: users.find(u => u.role === UserRole.CUSTOMER)?.id,
-      subject: 'استفسار عن الضمان',
-      description: 'ما هي تفاصيل الضمان على السيارات الجديدة؟',
-      category: 'INQUIRY',
-      priority: 'LOW',
-      status: 'RESOLVED',
-      assignedTo: users.find(u => u.role === UserRole.STAFF)?.id,
-      assignedBy: users.find(u => u.role === UserRole.ADMIN)?.id,
-      branchId: branches[0]?.id,
-      resolvedAt: new Date(),
-      resolvedBy: users.find(u => u.role === UserRole.STAFF)?.id
-    }
-  ]
-
-  for (const ticket of tickets) {
-    await prisma.supportTicket.create({
-      data: {
-        ...ticket,
-        category: ticket.category as any,
-        priority: ticket.priority as any,
-        status: ticket.status as any
-      }
-    })
-  }
-
-  // Ticket Comments
-  const createdTickets = await prisma.supportTicket.findMany()
-  for (const ticket of createdTickets) {
-    await prisma.ticketComment.create({
-      data: {
-        ticketId: ticket.id,
-        userId: users.find(u => u.role === UserRole.STAFF)?.id,
-        comment: 'تم استلام التذكرة وجاري المعالجة',
-        isInternal: false
-      }
-    })
-  }
-}
-
-async function seedKnowledgeBase() {
-  const users = await prisma.user.findMany()
-  
-  const articles = [
-    {
-      title: 'كيفية حجز موعد صيانة',
-      content: 'خطوات حجز موعد الصيانة:\n1. تسجيل الدخول\n2. اختيار الخدمة\n3. تحديد الموعد\n4. تأكيد الحجز',
-      category: 'BOOKING',
-      tags: ['حجز', 'صيانة', 'موعد'],
-      status: 'PUBLISHED',
-      authorId: users.find(u => u.role === UserRole.ADMIN)?.id,
-      reviewerId: users.find(u => u.role === UserRole.ADMIN)?.id,
-      views: 150,
-      helpful: 25
-    },
-    {
-      title: 'أنواع الضمان المتوفرة',
-      content: 'نقدم أنواع مختلفة من الضمان:\n1. الضمان الأساسي\n2. الضمان الممتد\n3. ضمان محرك القوة',
-      category: 'WARRANTY',
-      tags: ['ضمان', 'حماية', 'تغطية'],
-      status: 'PUBLISHED',
-      authorId: users.find(u => u.role === UserRole.ADMIN)?.id,
-      reviewerId: users.find(u => u.role === UserRole.ADMIN)?.id,
-      views: 200,
-      helpful: 40
-    }
-  ]
-
-  for (const article of articles) {
-    await prisma.knowledgeBaseArticle.create({
-      data: {
-        ...article,
-        status: article.status as any
-      }
-    })
-  }
-}
-
-async function seedPerformanceData() {
-  const users = await prisma.user.findMany()
-  const branches = await prisma.branch.findMany()
-  
-  // Performance Metrics
-  const metrics = [
-    {
-      userId: users.find(u => u.role === UserRole.STAFF)?.id,
-      metricType: 'BOOKINGS_COMPLETED',
-      value: 25,
-      period: 'MONTHLY',
-      recordedAt: new Date(),
-      branchId: branches[0]?.id
-    },
-    {
-      userId: users.find(u => u.role === UserRole.STAFF)?.id,
-      metricType: 'CUSTOMER_SATISFACTION',
-      value: 4.8,
-      period: 'MONTHLY',
-      recordedAt: new Date(),
-      branchId: branches[0]?.id
-    },
-    {
-      userId: users.find(u => u.role === UserRole.BRANCH_MANAGER)?.id,
-      metricType: 'REVENUE_GENERATED',
-      value: 150000,
-      period: 'MONTHLY',
-      recordedAt: new Date(),
-      branchId: branches[0]?.id
-    }
-  ]
-
-  for (const metric of metrics) {
-    await prisma.performanceMetric.create({
-      data: {
-        ...metric,
-        period: metric.period as any
-      }
-    })
-  }
-
-  // Customer Service Metrics
-  await prisma.customerServiceMetric.create({
-    data: {
-      branchId: branches[0]?.id,
-      avgResponseTime: 15,
-      customerSatisfactionScore: 4.7,
-      ticketsResolved: 45,
-      ticketsPending: 3,
-      period: 'MONTHLY',
-      recordedAt: new Date()
-    }
+main()
+  .catch((e) => {
+    console.error('❌ Error seeding database:', e)
+    process.exit(1)
   })
-}
-
-// Run if called directly
-if (require.main === module) {
-  seedDatabase()
-    .then(() => {
-      console.log('✅ Comprehensive seeding completed')
-      process.exit(0)
-    })
-    .catch((error) => {
-      console.error('❌ Seeding failed:', error)
-      process.exit(1)
-    })
-}
-
-export default seedDatabase
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
