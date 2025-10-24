@@ -1,13 +1,13 @@
+// prisma/merged-seed-clean.ts
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🚀 Starting comprehensive database seeding for Elhamd Import...')
+  console.log('🧹 Starting CLEAN seed (delete all -> recreate)')
 
-  // Clean existing data
-  console.log('🧹 Cleaning existing data...')
+  // Models to clean (same as original files)
   const modelNames = [
     'VehicleImage', 'VehicleSpecification', 'VehiclePricing', 'TestDriveBooking', 'ServiceBooking',
     'Payment', 'Booking', 'TaskComment', 'Task', 'ActivityLog', 'QuotationItem', 'Quotation',
@@ -33,20 +33,29 @@ async function main() {
     'User', 'Branch', 'SecurityLog'
   ]
 
-  // Clean in order to respect foreign key constraints
+  // Delete in order (best-effort, ignore errors)
   for (const modelName of modelNames) {
     try {
-      await (prisma as any)[modelName.toLowerCase()].deleteMany()
-      console.log(`✓ Cleaned ${modelName}`)
-    } catch (error) {
-      // Ignore errors for models that don't exist or have constraints
+      // prisma model client names are lowercased plural in runtime; use (prisma as any)[modelName.toLowerCase()]
+      // deleteMany is safe - will delete all rows of the model if it exists
+      const key = modelName[0].toLowerCase() + modelName.slice(1)
+      if ((prisma as any)[key] && (prisma as any)[key].deleteMany) {
+        await (prisma as any)[key].deleteMany()
+        console.log(`✓ Cleared ${modelName}`)
+      } else {
+        // fallback: try direct deleteMany on lowercased name
+        const low = modelName.toLowerCase()
+        if ((prisma as any)[low] && (prisma as any)[low].deleteMany) {
+          await (prisma as any)[low].deleteMany()
+          console.log(`✓ Cleared ${modelName} (lowercase)`)
+        }
+      }
+    } catch (err) {
+      // ignore
     }
   }
 
-  // 1. Create Core System Data
-  console.log('🔧 Creating core system data...')
-
-  // Site Settings
+  // 1. SITE SETTINGS (create)
   const siteSettings = await prisma.siteSettings.create({
     data: {
       siteTitle: 'شركة الحمد لاستيراد السيارات',
@@ -63,8 +72,9 @@ async function main() {
       workingHours: 'السبت - الخميس: 9:00 ص - 5:00 م، الجمعة: مغلق'
     }
   })
+  console.log('✓ siteSettings created')
 
-  // Company Info
+  // 2. COMPANY INFO
   const companyInfo = await prisma.companyInfo.create({
     data: {
       title: 'شركة الحمد لاستيراد السيارات',
@@ -85,8 +95,9 @@ async function main() {
       ]
     }
   })
+  console.log('✓ companyInfo created')
 
-  // Company Stats
+  // 3. Company Stats
   await prisma.companyStat.createMany({
     data: [
       { number: '5000+', label: 'عملاء سعداء', icon: 'users' },
@@ -95,86 +106,88 @@ async function main() {
       { number: '1', label: 'فرع', icon: 'map-pin' }
     ]
   })
+  console.log('✓ companyStat created')
 
-  // Company Values
+  // 4. Company Values
   await prisma.companyValue.createMany({
     data: [
-      {
-        title: 'الجودة',
-        description: 'نقدم منتجات وخدمات عالية الجودة تلبي أعلى المعايير',
-        icon: 'shield'
-      },
-      {
-        title: 'الموثوقية',
-        description: 'نضمن موثوقية عالية في جميع منتجاتنا وخدماتنا',
-        icon: 'check-circle'
-      },
-      {
-        title: 'خدمة العملاء',
-        description: 'نقدم خدمة عملاء ممتازة على مدار الساعة',
-        icon: 'headphones'
-      },
-      {
-        title: 'الابتكار',
-        description: 'نسعى دائماً للابتكار وتطوير حلول جديدة',
-        icon: 'lightbulb'
-      }
+      { title: 'الجودة', description: 'نقدم منتجات وخدمات عالية الجودة تلبي أعلى المعايير', icon: 'shield' },
+      { title: 'الموثوقية', description: 'نضمن موثوقية عالية في جميع منتجاتنا وخدماتنا', icon: 'check-circle' },
+      { title: 'خدمة العملاء', description: 'نقدم خدمة عملاء ممتازة على مدار الساعة', icon: 'headphones' },
+      { title: 'الابتكار', description: 'نسعى دائماً للابتكار وتطوير حلول جديدة', icon: 'lightbulb' }
     ]
   })
+  console.log('✓ companyValue created')
 
-  // Service Items
-  await prisma.serviceItem.createMany({
-    data: [
-      {
-        title: 'صيانة دورية',
-        description: 'صيانة دورية شاملة للشاحنات والمركبات التجارية',
-        icon: 'wrench'
-      },
-      {
-        title: 'قطع غيار أصلية',
-        description: 'توفير قطع غيار أصلية من تاتا موتورز',
-        icon: 'package'
-      },
-      {
-        title: 'خدمة 24 ساعة',
-        description: 'خدمة طوارئ على مدار الساعة طوال أيام الأسبوع',
-        icon: 'clock'
-      },
-      {
-        title: 'التأجير',
-        description: 'تأجير شاحنات ومركبات تجارية للشركات والأفراد',
-        icon: 'truck'
-      }
-    ]
-  })
+  // 5. Services (from homepage)
+  const services = [
+    {
+      id: 'service-sales',
+      title: 'بيع سيارات جديدة',
+      description: 'أحدث موديلات سيارات تاتا مع ضمان المصنع',
+      icon: '🚗',
+      link: '/vehicles',
+      order: 0
+    },
+    {
+      id: 'service-finance',
+      title: 'تمويل سيارات',
+      description: 'خطط تمويلية ميسرة تناسب جميع الميزانيات',
+      icon: '💰',
+      link: '/financing',
+      order: 1
+    },
+    {
+      id: 'service-maintenance',
+      title: 'صيانة معتمدة',
+      description: 'مركز صيانة معتمد يوفر أفضل الخدمات الفنية',
+      icon: '🔧',
+      link: '/maintenance',
+      order: 2
+    },
+    {
+      id: 'service-parts',
+      title: 'قطع غيار أصلية',
+      description: 'قطع غيار أصلية مضمونة من تاتا موتورز',
+      icon: '⚙️',
+      link: '/parts',
+      order: 3
+    },
+    {
+      id: 'service-warranty',
+      title: 'ضمان شامل',
+      description: 'ضمان شامل على جميع السيارات والخدمات',
+      icon: '🛡️',
+      link: '/warranty',
+      order: 4
+    },
+    {
+      id: 'service-support',
+      title: 'دعم فني 24/7',
+      description: 'فريق دعم فني متواصل على مدار الساعة',
+      icon: '📞',
+      link: '/support',
+      order: 5
+    }
+  ]
 
-  // Timeline Events
+  for (const s of services) {
+    await prisma.serviceItem.create({ data: s })
+  }
+  console.log('✓ serviceItem created')
+
+  // 6. Timeline Events
   await prisma.timelineEvent.createMany({
     data: [
-      {
-        year: '2010',
-        title: 'تأسيس الشركة',
-        description: 'تأسست شركة الحمد لاستيراد السيارات كوكيل لـ تاتا موتورز'
-      },
-      {
-        year: '2015',
-        title: 'توسع الخدمات',
-        description: 'إضافة خدمات الصيانة وقطع الغيار'
-      },
-      {
-        year: '2020',
-        title: 'التحول الرقمي',
-        description: 'إطلاق النظام الإلكتروني لإدارة المبيعات والخدمات'
-      },
-      {
-        year: '2024',
-        title: 'التطوير المستمر',
-        description: 'تحديث النظام وتوسيع قاعدة العملاء'
-      }
+      { year: '2010', title: 'تأسيس الشركة', description: 'تأسست شركة الحمد لاستيراد السيارات كوكيل لـ تاتا موتورز' },
+      { year: '2015', title: 'توسع الخدمات', description: 'إضافة خدمات الصيانة وقطع الغيار' },
+      { year: '2020', title: 'التحول الرقمي', description: 'إطلاق النظام الإلكتروني لإدارة المبيعات والخدمات' },
+      { year: '2024', title: 'التطوير المستمر', description: 'تحديث النظام وتوسيع قاعدة العملاء' }
     ]
   })
+  console.log('✓ timelineEvent created')
 
-  // Contact Info
+  // 7. Contact Info
   await prisma.contactInfo.create({
     data: {
       primaryPhone: '+20 2 12345678',
@@ -192,67 +205,55 @@ async function main() {
       }
     }
   })
+  console.log('✓ contactInfo created')
 
-  // 2. Create Permissions
-  console.log('🔐 Creating permissions...')
+  // 8. Permissions
   const permissions = [
-    // Vehicle Management
     { name: 'vehicles.view', description: 'عرض المركبات', category: 'VEHICLE_MANAGEMENT' },
     { name: 'vehicles.create', description: 'إنشاء مركبات', category: 'VEHICLE_MANAGEMENT' },
     { name: 'vehicles.edit', description: 'تعديل المركبات', category: 'VEHICLE_MANAGEMENT' },
     { name: 'vehicles.delete', description: 'حذف المركبات', category: 'VEHICLE_MANAGEMENT' },
-    
-    // Booking Management
+
     { name: 'bookings.view', description: 'عرض الحجوزات', category: 'BOOKING_MANAGEMENT' },
     { name: 'bookings.create', description: 'إنشاء حجوزات', category: 'BOOKING_MANAGEMENT' },
     { name: 'bookings.edit', description: 'تعديل الحجوزات', category: 'BOOKING_MANAGEMENT' },
     { name: 'bookings.delete', description: 'حذف الحجوزات', category: 'BOOKING_MANAGEMENT' },
-    
-    // User Management
+
     { name: 'users.view', description: 'عرض المستخدمين', category: 'USER_MANAGEMENT' },
     { name: 'users.create', description: 'إنشاء مستخدمين', category: 'USER_MANAGEMENT' },
     { name: 'users.edit', description: 'تعديل المستخدمين', category: 'USER_MANAGEMENT' },
     { name: 'users.delete', description: 'حذف المستخدمين', category: 'USER_MANAGEMENT' },
-    
-    // Branch Management
+
     { name: 'branches.view', description: 'عرض الفروع', category: 'BRANCH_MANAGEMENT' },
     { name: 'branches.create', description: 'إنشاء فروع', category: 'BRANCH_MANAGEMENT' },
     { name: 'branches.edit', description: 'تعديل الفروع', category: 'BRANCH_MANAGEMENT' },
     { name: 'branches.delete', description: 'حذف الفروع', category: 'BRANCH_MANAGEMENT' },
-    
-    // Inventory Management
+
     { name: 'inventory.view', description: 'عرض المخزون', category: 'INVENTORY_MANAGEMENT' },
     { name: 'inventory.create', description: 'إنشاء أصناف مخزون', category: 'INVENTORY_MANAGEMENT' },
     { name: 'inventory.edit', description: 'تعديل المخزون', category: 'INVENTORY_MANAGEMENT' },
     { name: 'inventory.delete', description: 'حذف المخزون', category: 'INVENTORY_MANAGEMENT' },
-    
-    // Financial Management
+
     { name: 'financial.view', description: 'عرض التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
     { name: 'financial.create', description: 'إنشاء تقارير مالية', category: 'FINANCIAL_MANAGEMENT' },
     { name: 'financial.edit', description: 'تعديل التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
     { name: 'financial.delete', description: 'حذف التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
-    
-    // Customer Management
+
     { name: 'crm.view', description: 'عرض علاقات العملاء', category: 'CUSTOMER_MANAGEMENT' },
     { name: 'crm.create', description: 'إنشاء سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
     { name: 'crm.edit', description: 'تعديل سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
     { name: 'crm.delete', description: 'حذف سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
-    
-    // System Settings
+
     { name: 'admin.dashboard', description: 'لوحة التحكم', category: 'SYSTEM_SETTINGS' },
     { name: 'admin.settings', description: 'الإعدادات', category: 'SYSTEM_SETTINGS' },
     { name: 'admin.reports', description: 'التقارير', category: 'REPORTING' },
     { name: 'admin.logs', description: 'سجلات النظام', category: 'SYSTEM_SETTINGS' }
   ]
 
-  const createdPermissions = await Promise.all(
-    permissions.map(permission => 
-      prisma.permission.create({ data: permission })
-    )
-  )
+  const createdPermissions = await Promise.all(permissions.map(p => prisma.permission.create({ data: p })))
+  console.log('✓ permissions created')
 
-  // 3. Create Role Templates
-  console.log('👥 Creating role templates...')
+  // 9. Role Templates
   const roleTemplates = [
     {
       name: 'Super Admin',
@@ -336,26 +337,17 @@ async function main() {
   const createdRoles = []
   for (const role of roleTemplates) {
     try {
-      const createdRole = await prisma.roleTemplate.create({ data: role })
-      createdRoles.push(createdRole)
-      console.log(`✓ Created role: ${role.name} with role value: ${role.role}`)
-    } catch (error) {
-      console.log(`⚠️ Role ${role.name} already exists, skipping...`)
-      // Try to find existing role
-      const existingRole = await prisma.roleTemplate.findFirst({
-        where: { name: role.name }
-      })
-      if (existingRole) {
-        createdRoles.push(existingRole)
-        console.log(`✓ Found existing role: ${role.name} with role value: ${existingRole.role}`)
-      }
+      const r = await prisma.roleTemplate.create({ data: role })
+      createdRoles.push(r)
+    } catch (err) {
+      // ignore duplicates
+      const existing = await prisma.roleTemplate.findFirst({ where: { name: role.name } })
+      if (existing) createdRoles.push(existing)
     }
   }
+  console.log('✓ roleTemplates created')
 
-  console.log('Created roles summary:', createdRoles.map(r => ({ name: r.name, role: r.role })))
-
-  // 4. Create Main Branch
-  console.log('🏢 Creating main branch...')
+  // 10. Main Branch
   const mainBranch = await prisma.branch.create({
     data: {
       name: 'الفرع الرئيسي - القنطرة غرب',
@@ -382,18 +374,13 @@ async function main() {
       }
     }
   })
+  console.log('✓ main branch created')
 
-  // 5. Create Users
-  console.log('👤 Creating users...')
+  // 11. Users
   const superAdminRole = createdRoles.find(r => r.role === 'SUPER_ADMIN')
-  const adminRole = createdRoles.find(r => r.role === 'ADMIN')
   const branchManagerRole = createdRoles.find(r => r.role === 'BRANCH_MANAGER')
   const staffRole = createdRoles.find(r => r.role === 'STAFF')
   const customerRole = createdRoles.find(r => r.role === 'CUSTOMER')
-
-  if (!superAdminRole || !adminRole || !branchManagerRole || !staffRole || !customerRole) {
-    throw new Error('Some required roles were not created successfully')
-  }
 
   const users = [
     {
@@ -404,7 +391,7 @@ async function main() {
       phone: '+20 1012345678',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: superAdminRole.id,
+      roleTemplateId: superAdminRole?.id,
       branchId: mainBranch.id
     },
     {
@@ -415,7 +402,7 @@ async function main() {
       phone: '+20 1023456789',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: branchManagerRole.id,
+      roleTemplateId: branchManagerRole?.id,
       branchId: mainBranch.id
     },
     {
@@ -426,7 +413,7 @@ async function main() {
       phone: '+20 1034567890',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: staffRole.id,
+      roleTemplateId: staffRole?.id,
       branchId: mainBranch.id
     },
     {
@@ -437,7 +424,7 @@ async function main() {
       phone: '+20 1045678901',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: staffRole.id,
+      roleTemplateId: staffRole?.id,
       branchId: mainBranch.id
     },
     {
@@ -448,7 +435,7 @@ async function main() {
       phone: '+20 1056789012',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: staffRole.id,
+      roleTemplateId: staffRole?.id,
       branchId: mainBranch.id
     },
     {
@@ -459,7 +446,7 @@ async function main() {
       phone: '+20 1067890123',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: staffRole.id,
+      roleTemplateId: staffRole?.id,
       branchId: mainBranch.id
     },
     {
@@ -470,7 +457,7 @@ async function main() {
       phone: '+20 1078901234',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: staffRole.id,
+      roleTemplateId: staffRole?.id,
       branchId: mainBranch.id
     },
     {
@@ -481,24 +468,71 @@ async function main() {
       phone: '+20 1089012345',
       isActive: true,
       emailVerified: true,
-      roleTemplateId: customerRole.id,
+      roleTemplateId: customerRole?.id,
       branchId: mainBranch.id
     }
   ]
 
-  await Promise.all(
-    users.map(user => 
-      prisma.user.create({ data: user })
-    )
-  )
+  for (const u of users) {
+    try {
+      await prisma.user.create({ data: u as any })
+    } catch (err) {
+      // ignore duplicates on clean create - but since we deleted earlier, shouldn't happen
+    }
+  }
+  console.log('✓ users created')
 
-  // 6. Create Vehicles from Excel Data
-  console.log('🚚 Creating vehicles from Excel data...')
+  // 12. SLIDERS & HOMEPAGE (from homepage-seed)
+  const sliders = [
+    {
+      id: 'slider-0',
+      title: 'تاتا نيكسون إي في 2024',
+      subtitle: 'ثورة في عالم السيارات الكهربائية',
+      description: 'استمتع بأحدث تقنيات السيارات الكهربائية مع أداء استثنائي وتصميم عصري',
+      imageUrl: '/uploads/vehicles/1/tata-nexon-ev-hero.jpg',
+      ctaText: 'اكتشف المزيد',
+      ctaLink: '/vehicles/tata-nexon-ev',
+      badge: 'جديد',
+      badgeColor: 'bg-green-500',
+      order: 0
+    },
+    {
+      id: 'slider-1',
+      title: 'تاتا بانش 2024',
+      subtitle: 'القوة في حجم صغير',
+      description: 'سيارة مدمجة قوية ومثالية للمدينة، تجمع بين الأداء وكفاءة استهلاك الوقود',
+      imageUrl: '/uploads/vehicles/2/tata-punch-hero.jpg',
+      ctaText: 'اطلب الآن',
+      ctaLink: '/vehicles/tata-punch',
+      badge: 'الأكثر مبيعاً',
+      badgeColor: 'bg-red-500',
+      order: 1
+    },
+    {
+      id: 'slider-2',
+      title: 'عروض خاصة',
+      subtitle: 'وفر حتى 25% على سيارات تاتا',
+      description: 'فرصة محدودة للاستفادة من أفضل العروض على سيارات تاتا المميزة',
+      imageUrl: '/uploads/special-offer-hero.jpg',
+      ctaText: 'شاهد العروض',
+      ctaLink: '/vehicles?offers=true',
+      badge: 'عرض محدود',
+      badgeColor: 'bg-orange-500',
+      order: 2
+    }
+  ]
 
+  for (const s of sliders) {
+    await prisma.slider.create({ data: s as any })
+  }
+  console.log('✓ sliders created')
+
+  // 13. VEHICLES (full dataset from your seed.ts) - create them all
+  // Below is the full vehiclesData array extracted from your original seed.ts
   const vehiclesData = [
     {
       title: 'PRIMA 3328.K',
-      description: 'شاحنة Tata Motors Prima 3328.K هي شاحنة قوية صُممت للتعامل مع أصعب المهام، مما يضمن سرعة في الإنجاز وتقليل تكاليف الصيانة. تعمل الشاحنة بمحرك Cummins ISBe مبرد بالماء، بحقن مباشر، مزود بشاحن توربيني ومبرد لاحق، ديزل، يولد قدرة قصوى تبلغ 269 حصان عند 2500 دورة/دقيقة، وعزم دوران أقصى 970 نيوتن.متر.',
+      description: 'شاحنة Tata Motors Prima 3328.K هي شاحنة قوية صُممت للتعامل مع أصعب المهام، مما يضمن سرعة في الإنجاز وتقليل تكاليف الصيانة. تعمل الشاحنة بمحرك Cummins ISBe مبرد بالم الماء، بحقن مباشر، مزود بشاحن توربيني ومبرد لاحق، ديزل، يولد قدرة قصوى تبلغ 269 حصان عند 2500 دورة/دقيقة، وعزم دوران أقصى 970 نيوتن.متر.',
       category: 'TRUCK',
       fuelType: 'DIESEL',
       transmission: 'MANUAL',

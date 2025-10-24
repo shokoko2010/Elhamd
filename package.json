@@ -14,6 +14,9 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:comprehensive": "tsx scripts/comprehensive-seed.ts",
+    "db:validate": "tsx scripts/validate-database.ts",
+    "db:init": "tsx scripts/initialize-production-db.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
