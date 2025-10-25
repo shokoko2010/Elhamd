@@ -120,7 +120,6 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching payments:', error)
     return NextResponse.json(
       { error: 'Failed to fetch payments' },
       { status: 500 }
@@ -246,7 +245,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(payment, { status: 201 })
   } catch (error) {
-    console.error('Error creating payment:', error)
     return NextResponse.json(
       { error: 'Failed to create payment' },
       { status: 500 }

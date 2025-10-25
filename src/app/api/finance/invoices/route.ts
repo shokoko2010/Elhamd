@@ -102,7 +102,6 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching invoices:', error)
     return NextResponse.json(
       { error: 'Failed to fetch invoices' },
       { status: 500 }
@@ -114,20 +113,15 @@ export async function POST(request: NextRequest) {
   let isConnected = false
   
   try {
-    console.log('=== INVOICE CREATION START ===')
-    
     // Ensure database connection
     await db.$connect()
     isConnected = true
-    console.log('Database connected successfully')
     
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
-    
-    console.log('User authenticated:', user.email, user.role)
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
@@ -137,12 +131,10 @@ export async function POST(request: NextRequest) {
                       user.permissions.includes(PERMISSIONS.CREATE_INVOICES)
     
     if (!hasAccess) {
-      console.log('Permission denied for user:', user.email)
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
     
     const body = await request.json()
-    console.log('Request body:', body)
     
     const {
       customerId,
@@ -158,14 +150,6 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!customerId || !items || !items.length || !issueDate || !dueDate || !createdBy) {
-      console.log('Missing required fields:', {
-        customerId: !!customerId,
-        items: !!items,
-        itemsLength: items?.length,
-        issueDate: !!issueDate,
-        dueDate: !!dueDate,
-        createdBy: !!createdBy
-      })
       return NextResponse.json(
         { 
           error: 'Missing required fields',
@@ -183,7 +167,6 @@ export async function POST(request: NextRequest) {
 
     // Validate items array
     if (!Array.isArray(items) || items.length === 0) {
-      console.log('Invalid items array:', items)
       return NextResponse.json(
         { error: 'Items must be a non-empty array' },
         { status: 400 }
@@ -193,7 +176,6 @@ export async function POST(request: NextRequest) {
     // Validate each item
     for (const item of items) {
       if (!item.description || !item.quantity || !item.unitPrice) {
-        console.log('Invalid item:', item)
         return NextResponse.json(
           { 
             error: 'Each item must have description, quantity, and unitPrice',
@@ -209,8 +191,6 @@ export async function POST(request: NextRequest) {
       return sum + (item.quantity * item.unitPrice)
     }, 0)
 
-    console.log('Calculated subtotal:', subtotal)
-
     // Calculate taxes from database tax rates
     let taxRates = await db.taxRate.findMany({
       where: { isActive: true }
@@ -218,7 +198,6 @@ export async function POST(request: NextRequest) {
 
     // Create default VAT rate if none exists
     if (taxRates.length === 0) {
-      console.log('No tax rates found, creating default VAT rate...')
       const defaultVAT = await db.taxRate.create({
         data: {
           name: 'ضريبة القيمة المضافة',
@@ -230,7 +209,6 @@ export async function POST(request: NextRequest) {
         }
       })
       taxRates = [defaultVAT]
-      console.log('Created default VAT rate:', defaultVAT)
     }
 
     // Calculate total tax amount from all applicable tax rates
@@ -239,12 +217,6 @@ export async function POST(request: NextRequest) {
     }, 0)
 
     const totalAmount = subtotal + totalTaxAmount
-    
-    console.log('Calculated amounts:', {
-      subtotal,
-      totalTaxAmount,
-      totalAmount
-    })
 
     // Generate invoice number
     const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -272,8 +244,6 @@ export async function POST(request: NextRequest) {
         }
       })
       
-      console.log('Invoice created:', newInvoice.id)
-      
       // Create invoice items
       await tx.invoiceItem.createMany({
         data: items.map((item: any) => ({
@@ -288,8 +258,6 @@ export async function POST(request: NextRequest) {
         }))
       })
       
-      console.log('Invoice items created')
-      
       // Create invoice taxes
       await tx.invoiceTax.createMany({
         data: taxRates.map(taxRate => ({
@@ -300,8 +268,6 @@ export async function POST(request: NextRequest) {
           description: taxRate.description
         }))
       })
-      
-      console.log('Invoice taxes created')
       
       return newInvoice
     })
@@ -336,14 +302,7 @@ export async function POST(request: NextRequest) {
     successResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
     
     return successResponse
-    
   } catch (error) {
-    console.error('=== INVOICE CREATION ERROR ===')
-    console.error('Error type:', typeof error)
-    console.error('Error name:', error instanceof Error ? error.name : 'Unknown')
-    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    
     // Check for specific database connection errors
     if (error instanceof Error) {
       if (error.message.includes('connection') || error.message.includes('timeout')) {
@@ -409,7 +368,6 @@ export async function POST(request: NextRequest) {
   } finally {
     if (isConnected) {
       await db.$disconnect()
-      console.log('Database disconnected')
     }
   }
 }

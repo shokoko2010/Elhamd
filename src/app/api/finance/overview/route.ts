@@ -197,7 +197,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(financialOverview)
 
   } catch (error) {
-    console.error('Error fetching financial overview:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch financial overview' 
     }, { status: 500 })

@@ -106,7 +106,6 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching quotations:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -142,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate customer exists and user has access
-    const customer = await db.customer.findUnique({
+    const customer = await db.user.findUnique({
       where: { id: customerId }
     })
 
@@ -232,7 +231,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(quotation, { status: 201 })
   } catch (error) {
-    console.error('Error creating quotation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

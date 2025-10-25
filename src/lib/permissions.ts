@@ -377,8 +377,6 @@ export class PermissionService {
   }
 
   static async getUserPermissions(userId: string): Promise<Permission[]> {
-    console.log('=== DEBUG: getUserPermissions called for userId:', userId)
-    
     try {
       const user = await db.user.findUnique({
         where: { id: userId },
@@ -393,15 +391,7 @@ export class PermissionService {
         }
       })
 
-      console.log('User found:', !!user)
-      if (user) {
-        console.log('User role:', user.role)
-        console.log('Role template:', user.roleTemplate?.name)
-        console.log('Direct permissions count:', user.permissions.length)
-      }
-
       if (!user) {
-        console.log('No user found, returning empty permissions')
         return []
       }
 
@@ -409,14 +399,12 @@ export class PermissionService {
 
       // For admin users, return all permissions to simplify
       if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
-        console.log('User is admin, returning all permissions')
         return Object.values(PERMISSIONS)
       }
 
       // Start with role template permissions
       if (user.roleTemplate?.permissions) {
         try {
-          console.log('Processing role template permissions...')
           // Check if permissions are already stored as an array or as JSON string
           let templatePermissions: string[] = []
           if (typeof user.roleTemplate.permissions === 'string') {
@@ -424,8 +412,6 @@ export class PermissionService {
           } else if (Array.isArray(user.roleTemplate.permissions)) {
             templatePermissions = user.roleTemplate.permissions
           }
-          
-          console.log('Template permissions parsed:', templatePermissions.length)
           
           // Convert permission IDs to Permission names
           const permissionNames = await db.permission.findMany({
@@ -435,9 +421,8 @@ export class PermissionService {
           
           const templatePerms = permissionNames.map(p => p.name as Permission)
           permissions = [...permissions, ...templatePerms]
-          console.log('Template permissions added:', templatePerms.length)
         } catch (error) {
-          console.error('Error parsing role template permissions:', error)
+          // Error parsing role template permissions
         }
       }
 
@@ -446,16 +431,14 @@ export class PermissionService {
         try {
           const customPermissions = JSON.parse(user.customPermissions)
           permissions = [...permissions, ...customPermissions]
-          console.log('Custom permissions added:', customPermissions.length)
         } catch (error) {
-          console.error('Error parsing custom permissions:', error)
+          // Error parsing custom permissions
         }
       }
 
       // Add individual user permissions
       const userPermissions = user.permissions.map(up => up.permission.name as Permission)
       permissions = [...permissions, ...userPermissions]
-      console.log('User permissions added:', userPermissions.length)
 
       // Add branch-specific permissions if user is assigned to a branch
       if (user.branchId) {
@@ -464,20 +447,17 @@ export class PermissionService {
           try {
             const branchPermissions = JSON.parse(branchPermission.permissions)
             permissions = [...permissions, ...branchPermissions]
-            console.log('Branch permissions added:', branchPermissions.length)
           } catch (error) {
-            console.error('Error parsing branch permissions:', error)
+            // Error parsing branch permissions
           }
         }
       }
 
       // Remove duplicates
       const uniquePermissions = [...new Set(permissions)]
-      console.log('Final permissions count:', uniquePermissions.length)
       
       return uniquePermissions
     } catch (error) {
-      console.error('Error in getUserPermissions:', error)
       return []
     }
   }
