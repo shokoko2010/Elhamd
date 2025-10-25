@@ -232,14 +232,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user exists
-    const existingUser = await db.user.findUnique({
+    // Check if user exists (accept either ID or email)
+    let existingUser = null;
+    
+    // First try to find by ID
+    existingUser = await db.user.findUnique({
       where: { id: createdBy }
-    })
+    });
+    
+    // If not found, try to find by email
+    if (!existingUser) {
+      existingUser = await db.user.findUnique({
+        where: { email: createdBy }
+      });
+    }
+    
+    // If still not found, try common admin values
+    if (!existingUser && (createdBy === 'admin' || createdBy === 'system')) {
+      // Find any admin or super_admin user
+      existingUser = await db.user.findFirst({
+        where: {
+          role: {
+            in: ['ADMIN', 'SUPER_ADMIN']
+          },
+          isActive: true
+        }
+      });
+    }
 
     if (!existingUser) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { 
+          error: 'User not found',
+          details: `No user found with identifier: ${createdBy}`,
+          suggestion: 'Please provide a valid user ID or email'
+        },
         { 
           status: 400,
           headers: {
@@ -250,6 +277,9 @@ export async function POST(request: NextRequest) {
         }
       )
     }
+
+    // Use the found user's ID
+    const actualUserId = existingUser.id;
 
     // Check if customer exists
     const existingCustomer = await db.user.findUnique({
@@ -364,7 +394,7 @@ export async function POST(request: NextRequest) {
           currency: 'EGP',
           notes,
           terms,
-          createdBy,
+          createdBy: actualUserId,
           branchId: branchId || user.branchId || null
         }
       })
