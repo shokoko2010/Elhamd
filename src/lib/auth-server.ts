@@ -2,13 +2,15 @@ import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/authOptions'
 import { PermissionService, PERMISSIONS } from './permissions'
+import { UserRole as PrismaUserRole } from '@prisma/client'
 
 export { authOptions }
 
-// Define UserRole enum locally to avoid import issues
+// Define UserRole enum locally to match Prisma enum
 export enum UserRole {
   CUSTOMER = 'CUSTOMER',
   STAFF = 'STAFF',
+  ACCOUNTANT = 'ACCOUNTANT',
   BRANCH_MANAGER = 'BRANCH_MANAGER',
   ADMIN = 'ADMIN',
   SUPER_ADMIN = 'SUPER_ADMIN'
@@ -26,56 +28,50 @@ export interface AuthUser {
 
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
-    console.log('=== DEBUG: getAuthUser called ===')
-    
     const session = await getServerSession(authOptions)
-    console.log('Session found:', !!session)
-    console.log('Session user:', !!session?.user)
     
     if (!session?.user) {
-      console.log('No session user found, returning null')
       return null
     }
-
-    console.log('Session user email:', session.user.email)
-    console.log('Session user role:', session.user.role)
 
     let permissions: string[] = []
     
     // Try to get permissions, but don't fail if they don't exist yet
     try {
-      console.log('Fetching permissions for user:', session.user.id)
       permissions = await PermissionService.getUserPermissions(session.user.id)
-      console.log('Permissions fetched:', permissions.length)
     } catch (error) {
-      console.warn('Could not fetch user permissions, they may not be initialized yet:', error)
-      permissions = []
-    }
-
-    // Ensure user has the minimum required permissions based on role
-    if (session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN) {
-      // Admin users get all permissions by default
-      const allPermissions = Object.values(PERMISSIONS)
-      permissions = Array.from(new Set([...permissions, ...allPermissions]))
-      console.log('Admin user - all permissions granted')
-    } else if (session.user.role === UserRole.BRANCH_MANAGER) {
-      // Branch managers get vehicle management permissions
-      const vehiclePermissions = [
-        PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
-        PERMISSIONS.VIEW_VEHICLES,
-        PERMISSIONS.EDIT_VEHICLES,
-        PERMISSIONS.CREATE_VEHICLES
-      ]
-      permissions = Array.from(new Set([...permissions, ...vehiclePermissions]))
-      console.log('Branch manager - vehicle permissions granted')
-    } else if (session.user.role === UserRole.STAFF) {
-      // Staff get basic vehicle permissions
-      const staffPermissions = [
-        PERMISSIONS.VIEW_VEHICLES,
-        PERMISSIONS.EDIT_VEHICLES
-      ]
-      permissions = Array.from(new Set([...permissions, ...staffPermissions]))
-      console.log('Staff - basic permissions granted')
+      // If permissions fail, get default permissions based on role
+      const userRole = session.user.role
+      if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
+        permissions = Object.values(PERMISSIONS)
+      } else if (userRole === UserRole.ACCOUNTANT) {
+        permissions = [
+          PERMISSIONS.VIEW_INVOICES,
+          PERMISSIONS.CREATE_INVOICES,
+          PERMISSIONS.EDIT_INVOICES,
+          PERMISSIONS.DELETE_INVOICES,
+          PERMISSIONS.VIEW_QUOTATIONS,
+          PERMISSIONS.CREATE_QUOTATIONS,
+          PERMISSIONS.EDIT_QUOTATIONS,
+          PERMISSIONS.DELETE_QUOTATIONS,
+          PERMISSIONS.VIEW_PAYMENTS,
+          PERMISSIONS.CREATE_PAYMENTS,
+          PERMISSIONS.EDIT_PAYMENTS,
+          PERMISSIONS.VIEW_FINANCIAL_REPORTS
+        ]
+      } else if (userRole === UserRole.BRANCH_MANAGER) {
+        permissions = [
+          PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
+          PERMISSIONS.VIEW_VEHICLES,
+          PERMISSIONS.EDIT_VEHICLES,
+          PERMISSIONS.CREATE_VEHICLES
+        ]
+      } else if (userRole === UserRole.STAFF) {
+        permissions = [
+          PERMISSIONS.VIEW_VEHICLES,
+          PERMISSIONS.EDIT_VEHICLES
+        ]
+      }
     }
 
     const authUser: AuthUser = {
@@ -88,16 +84,8 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       permissions
     }
 
-    console.log('Auth user created:', {
-      id: authUser.id,
-      email: authUser.email,
-      role: authUser.role,
-      permissionsCount: authUser.permissions.length
-    })
-
     return authUser
   } catch (error) {
-    console.error('Error getting auth user:', error)
     return null
   }
 }
@@ -202,7 +190,6 @@ export async function verifyAuth(request: Request) {
     
     return { success: true, user }
   } catch (error) {
-    console.error('Auth verification error:', error)
     return { success: false, error: 'Authentication failed' }
   }
 }
@@ -251,7 +238,6 @@ export async function authorize(request: NextRequest, options?: { roles?: UserRo
 
     return { user }
   } catch (error) {
-    console.error('Authorization error:', error)
     return {
       error: NextResponse.json(
         { error: 'Authorization failed' },

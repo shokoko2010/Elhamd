@@ -12,18 +12,15 @@ export const setupSocket = (io: Server) => {
   const clientConnections = new Map<string, { lastWelcome: number, welcomeCount: number }>()
   
   io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
     
     // Join rooms based on user role
     socket.on('join-room', (room: string) => {
       socket.join(room);
-      console.log(`Client ${socket.id} joined room: ${room}`);
     });
 
     // Leave room
     socket.on('leave-room', (room: string) => {
       socket.leave(room);
-      console.log(`Client ${socket.id} left room: ${room}`);
     });
 
     // Handle booking notifications
@@ -129,7 +126,6 @@ export const setupSocket = (io: Server) => {
 
     // Handle disconnect
     socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
       // Clean up client connection tracking
       clientConnections.delete(socket.id);
     });

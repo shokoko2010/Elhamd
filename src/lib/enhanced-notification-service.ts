@@ -59,7 +59,6 @@ export class EnhancedNotificationService {
     this.emailService = {
       send: async (to: string, subject: string, html: string, text: string) => {
         try {
-          console.log('Sending email:', { to, subject })
           // In production, integrate with SendGrid, Mailgun, or AWS SES
           return { success: true, messageId: `email_${Date.now()}` }
         } catch (error) {
@@ -73,7 +72,6 @@ export class EnhancedNotificationService {
     this.smsService = {
       send: async (to: string, message: string) => {
         try {
-          console.log('Sending SMS:', { to, message: message.substring(0, 50) + '...' })
           // In production, integrate with Egyptian SMS providers like:
           // - Vodafone SMS API
           // - Etisalat SMS API  
@@ -91,7 +89,6 @@ export class EnhancedNotificationService {
     this.pushService = {
       send: async (to: string, title: string, body: string, data?: any) => {
         try {
-          console.log('Sending push notification:', { to, title, body })
           // In production, integrate with:
           // - Firebase Cloud Messaging (FCM)
           // - Apple Push Notification Service (APNS)
@@ -434,7 +431,6 @@ export class EnhancedNotificationService {
     }
 
     // In production, integrate with WhatsApp Business API
-    console.log('Sending WhatsApp message:', { to: phoneNumber, message })
     
     return {
       success: true,
@@ -672,7 +668,6 @@ export class EnhancedNotificationService {
 
   async updateUserNotificationPreferences(userId: string, preferences: any) {
     // In production, update user preferences in database
-    console.log('Updating notification preferences for user:', userId, preferences)
     return { success: true }
   }
 }

@@ -8,12 +8,30 @@ import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     
     // Check if user has required role or permissions
@@ -24,7 +42,14 @@ export async function GET(request: NextRequest) {
                       user.permissions.includes(PERMISSIONS.VIEW_INVOICES)
     
     if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { 
+        status: 403,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -100,27 +125,41 @@ export async function GET(request: NextRequest) {
         hasNext: page < totalPages,
         hasPrev: page > 1
       }
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }
     })
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch invoices' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      }
     )
   }
 }
 
 export async function POST(request: NextRequest) {
-  let isConnected = false
-  
   try {
-    // Ensure database connection
-    await db.$connect()
-    isConnected = true
-    
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     
     // Check if user has required role or permissions
@@ -131,7 +170,14 @@ export async function POST(request: NextRequest) {
                       user.permissions.includes(PERMISSIONS.CREATE_INVOICES)
     
     if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { 
+        status: 403,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     
     const body = await request.json()
@@ -161,7 +207,14 @@ export async function POST(request: NextRequest) {
             createdBy: !!createdBy
           }
         },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        }
       )
     }
 
@@ -169,7 +222,14 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { error: 'Items must be a non-empty array' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        }
       )
     }
 
@@ -181,7 +241,14 @@ export async function POST(request: NextRequest) {
             error: 'Each item must have description, quantity, and unitPrice',
             details: { invalidItem: item }
           },
-          { status: 400 }
+          { 
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+            }
+          }
         )
       }
     }
@@ -272,8 +339,6 @@ export async function POST(request: NextRequest) {
       return newInvoice
     })
     
-    console.log('Invoice created successfully:', invoice.invoiceNumber)
-
     // Fetch the complete invoice with relations
     const completeInvoice = await db.invoice.findUnique({
       where: { id: invoice.id },
@@ -291,83 +356,31 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    const successResponse = NextResponse.json({
+    return NextResponse.json({
       success: true,
       message: 'Invoice created successfully',
       invoice: completeInvoice
-    }, { status: 201 })
+    }, { 
+      status: 201,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }
+    })
     
-    successResponse.headers.set('Access-Control-Allow-Origin', '*')
-    successResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    successResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-    
-    return successResponse
   } catch (error) {
-    // Check for specific database connection errors
-    if (error instanceof Error) {
-      if (error.message.includes('connection') || error.message.includes('timeout')) {
-        const errorResponse = NextResponse.json({ 
-          error: 'Database connection error. Please try again.',
-          code: 'DATABASE_CONNECTION_ERROR',
-          details: 'Unable to connect to the database. Please try again later.'
-        }, { status: 503 })
-        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
-        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-        return errorResponse
-      }
-      
-      if (error.message.includes('prisma') || error.message.includes('query')) {
-        const errorResponse = NextResponse.json({ 
-          error: 'Database query error. Please try again.',
-          code: 'DATABASE_QUERY_ERROR',
-          details: 'A database error occurred while processing your request.'
-        }, { status: 500 })
-        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
-        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-        return errorResponse
-      }
-      
-      if (error.message.includes('Foreign key constraint')) {
-        const errorResponse = NextResponse.json({ 
-          error: 'Invalid customer or branch. Please check your input.',
-          code: 'FOREIGN_KEY_CONSTRAINT',
-          details: 'The specified customer or branch does not exist.'
-        }, { status: 400 })
-        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
-        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-        return errorResponse
-      }
-      
-      if (error.message.includes('Unique constraint')) {
-        const errorResponse = NextResponse.json({ 
-          error: 'Duplicate invoice number. Please try again.',
-          code: 'DUPLICATE_INVOICE',
-          details: 'An invoice with this number already exists.'
-        }, { status: 400 })
-        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
-        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-        return errorResponse
-      }
-    }
-    
-    const errorResponse = NextResponse.json({ 
+    console.error('Invoice creation error:', error)
+    return NextResponse.json({ 
       error: 'Failed to create invoice',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      code: 'INTERNAL_ERROR'
-    }, { status: 500 })
-    
-    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
-    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-    
-    return errorResponse
-  } finally {
-    if (isConnected) {
-      await db.$disconnect()
-    }
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }
+    })
   }
 }

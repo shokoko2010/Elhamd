@@ -241,7 +241,6 @@ export class PerformanceAnalyticsService {
     })
 
     // Log report (in real implementation, this would send to monitoring service)
-    console.log('Daily Performance Report:', report.summary)
   }
 
   // Get current metrics

@@ -312,7 +312,6 @@ class EnhancedApiService {
     const cacheStats = enhancedCache.getStats()
     this.metrics.cacheHitRate = parseFloat(cacheStats.hitRate) || 0
 
-    console.log('API Performance Metrics:', {
       ...this.metrics,
       activeRequests: this.activeRequests.size,
       queueSize: this.requestQueue.length,

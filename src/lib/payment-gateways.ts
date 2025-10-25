@@ -100,7 +100,6 @@ export class FawryGateway implements PaymentGateway {
       }
 
       // In production, this would call Fawry's actual API
-      console.log('Fawry payment request:', fawryRequest)
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500))
@@ -245,7 +244,6 @@ export class PayMobGateway implements PaymentGateway {
       const paymentKey = `paymob_key_${Date.now()}`
 
       // In production, this would call PayMob's actual API
-      console.log('PayMob payment request:', {
         apiKey,
         integrationId,
         amount: request.amount,
@@ -374,7 +372,6 @@ export class VodafoneCashGateway implements PaymentGateway {
       }
 
       // Vodafone Cash API integration
-      console.log('Vodafone Cash payment request:', {
         amount: request.amount,
         currency: request.currency,
         customerPhone: request.customerPhone,

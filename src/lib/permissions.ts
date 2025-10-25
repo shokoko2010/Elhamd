@@ -1,5 +1,15 @@
 import { db } from '@/lib/db'
-import { UserRole, PermissionCategory } from '@prisma/client'
+import { UserRole as PrismaUserRole, PermissionCategory } from '@prisma/client'
+
+// Define UserRole enum locally to match Prisma enum
+export enum UserRole {
+  CUSTOMER = 'CUSTOMER',
+  ADMIN = 'ADMIN',
+  ACCOUNTANT = 'ACCOUNTANT',
+  STAFF = 'STAFF',
+  BRANCH_MANAGER = 'BRANCH_MANAGER',
+  SUPER_ADMIN = 'SUPER_ADMIN'
+}
 
 // Permission constants
 export const PERMISSIONS = {
@@ -53,6 +63,13 @@ export const PERMISSIONS = {
   
   // Enhanced Financial Permissions
   VIEW_INVOICES: 'view_invoices',
+  CREATE_QUOTATIONS: 'create_quotations',
+  EDIT_QUOTATIONS: 'edit_quotations',
+  DELETE_QUOTATIONS: 'delete_quotations',
+  VIEW_PAYMENTS: 'view_payments',
+  CREATE_PAYMENTS: 'create_payments',
+  EDIT_PAYMENTS: 'edit_payments',
+  VIEW_FINANCIAL_REPORTS: 'view_financial_reports',
   APPROVE_INVOICES: 'approve_invoices',
   SEND_INVOICES: 'send_invoices',
   DOWNLOAD_INVOICES: 'download_invoices',
@@ -280,6 +297,67 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_ANALYTICS,
     PERMISSIONS.EXPORT_DATA
   ],
+  [UserRole.ACCOUNTANT]: [
+    // User Management (very limited)
+    PERMISSIONS.VIEW_USERS,
+    
+    // Vehicle Management (view only)
+    PERMISSIONS.VIEW_VEHICLES,
+    
+    // Booking Management (view only)
+    PERMISSIONS.VIEW_BOOKINGS,
+    
+    // Service Management (view only)
+    PERMISSIONS.VIEW_SERVICES,
+    
+    // Inventory Management (view only)
+    PERMISSIONS.VIEW_INVENTORY,
+    
+    // Financial Management (full access)
+    PERMISSIONS.VIEW_FINANCIALS,
+    PERMISSIONS.VIEW_INVOICES,
+    PERMISSIONS.CREATE_INVOICES,
+    PERMISSIONS.EDIT_INVOICES,
+    PERMISSIONS.DELETE_INVOICES,
+    PERMISSIONS.APPROVE_INVOICES,
+    PERMISSIONS.SEND_INVOICES,
+    PERMISSIONS.DOWNLOAD_INVOICES,
+    PERMISSIONS.CREATE_QUOTATIONS,
+    PERMISSIONS.EDIT_QUOTATIONS,
+    PERMISSIONS.DELETE_QUOTATIONS,
+    PERMISSIONS.MANAGE_QUOTATIONS,
+    PERMISSIONS.APPROVE_QUOTATIONS,
+    PERMISSIONS.CONVERT_QUOTATIONS,
+    PERMISSIONS.VIEW_PAYMENTS,
+    PERMISSIONS.CREATE_PAYMENTS,
+    PERMISSIONS.EDIT_PAYMENTS,
+    PERMISSIONS.MANAGE_PAYMENTS,
+    PERMISSIONS.PROCESS_OFFLINE_PAYMENTS,
+    PERMISSIONS.MANAGE_PAYMENT_METHODS,
+    PERMISSIONS.VIEW_PAYMENT_HISTORY,
+    PERMISSIONS.REFUND_PAYMENTS,
+    PERMISSIONS.MANAGE_TAX_SETTINGS,
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.EXPORT_FINANCIAL_DATA,
+    PERMISSIONS.VIEW_FINANCIAL_OVERVIEW,
+    PERMISSIONS.ACCESS_FINANCE_DASHBOARD,
+    PERMISSIONS.VIEW_FINANCIAL_REPORTS,
+    
+    // Branch Management (view only)
+    PERMISSIONS.VIEW_BRANCHES,
+    
+    // Customer Management
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.CREATE_CUSTOMERS,
+    PERMISSIONS.EDIT_CUSTOMERS,
+    PERMISSIONS.VIEW_CUSTOMER_HISTORY,
+    
+    // Reporting
+    PERMISSIONS.GENERATE_REPORTS,
+    PERMISSIONS.VIEW_ANALYTICS,
+    PERMISSIONS.EXPORT_DATA,
+    PERMISSIONS.MANAGE_DASHBOARDS
+  ],
   [UserRole.STAFF]: [
     // User Management (very limited)
     PERMISSIONS.VIEW_USERS,
@@ -356,7 +434,7 @@ export class PermissionService {
   }
 
   static async initializeRoleTemplates() {
-    const roles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF, UserRole.CUSTOMER]
+    const roles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.BRANCH_MANAGER, UserRole.STAFF, UserRole.CUSTOMER]
     
     for (const role of roles) {
       const permissions = DEFAULT_ROLE_PERMISSIONS[role]
@@ -422,7 +500,39 @@ export class PermissionService {
           const templatePerms = permissionNames.map(p => p.name as Permission)
           permissions = [...permissions, ...templatePerms]
         } catch (error) {
-          // Error parsing role template permissions
+          // Error parsing role template permissions - use default permissions
+          if (user.role === UserRole.ACCOUNTANT) {
+            permissions = [
+              PERMISSIONS.VIEW_INVOICES,
+              PERMISSIONS.CREATE_INVOICES,
+              PERMISSIONS.EDIT_INVOICES,
+              PERMISSIONS.DELETE_INVOICES,
+              PERMISSIONS.VIEW_QUOTATIONS,
+              PERMISSIONS.CREATE_QUOTATIONS,
+              PERMISSIONS.EDIT_QUOTATIONS,
+              PERMISSIONS.DELETE_QUOTATIONS,
+              PERMISSIONS.VIEW_PAYMENTS,
+              PERMISSIONS.CREATE_PAYMENTS,
+              PERMISSIONS.EDIT_PAYMENTS,
+              PERMISSIONS.VIEW_FINANCIAL_REPORTS
+            ]
+          } else if (user.role === UserRole.BRANCH_MANAGER) {
+            permissions = [
+              PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
+              PERMISSIONS.VIEW_VEHICLES,
+              PERMISSIONS.EDIT_VEHICLES,
+              PERMISSIONS.CREATE_VEHICLES,
+              PERMISSIONS.VIEW_INVOICES,
+              PERMISSIONS.CREATE_INVOICES,
+              PERMISSIONS.EDIT_INVOICES
+            ]
+          } else if (user.role === UserRole.STAFF) {
+            permissions = [
+              PERMISSIONS.VIEW_VEHICLES,
+              PERMISSIONS.EDIT_VEHICLES,
+              PERMISSIONS.VIEW_INVOICES
+            ]
+          }
         }
       }
 
@@ -458,6 +568,53 @@ export class PermissionService {
       
       return uniquePermissions
     } catch (error) {
+      // Return default permissions based on role if database fails
+      try {
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { role: true }
+        })
+        
+        if (user) {
+          if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+            return Object.values(PERMISSIONS)
+          } else if (user.role === UserRole.ACCOUNTANT) {
+            return [
+              PERMISSIONS.VIEW_INVOICES,
+              PERMISSIONS.CREATE_INVOICES,
+              PERMISSIONS.EDIT_INVOICES,
+              PERMISSIONS.DELETE_INVOICES,
+              PERMISSIONS.VIEW_QUOTATIONS,
+              PERMISSIONS.CREATE_QUOTATIONS,
+              PERMISSIONS.EDIT_QUOTATIONS,
+              PERMISSIONS.DELETE_QUOTATIONS,
+              PERMISSIONS.VIEW_PAYMENTS,
+              PERMISSIONS.CREATE_PAYMENTS,
+              PERMISSIONS.EDIT_PAYMENTS,
+              PERMISSIONS.VIEW_FINANCIAL_REPORTS
+            ]
+          } else if (user.role === UserRole.BRANCH_MANAGER) {
+            return [
+              PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
+              PERMISSIONS.VIEW_VEHICLES,
+              PERMISSIONS.EDIT_VEHICLES,
+              PERMISSIONS.CREATE_VEHICLES,
+              PERMISSIONS.VIEW_INVOICES,
+              PERMISSIONS.CREATE_INVOICES,
+              PERMISSIONS.EDIT_INVOICES
+            ]
+          } else if (user.role === UserRole.STAFF) {
+            return [
+              PERMISSIONS.VIEW_VEHICLES,
+              PERMISSIONS.EDIT_VEHICLES,
+              PERMISSIONS.VIEW_INVOICES
+            ]
+          }
+        }
+      } catch (e) {
+        // Final fallback
+      }
+      
       return []
     }
   }

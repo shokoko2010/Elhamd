@@ -245,7 +245,6 @@ export const TestDriveBookingService = {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      console.log(`Updated test drive booking ${bookingId} to status: ${status}`)
     } catch (error) {
       console.error('Error updating test drive booking status:', error)
       throw error
@@ -260,7 +259,6 @@ export const TestDriveBookingService = {
     notes?: string
   }): Promise<string> {
     // This would need a POST endpoint - for now return mock ID
-    console.log('Creating new test drive booking:', data)
     return 'mock-booking-id'
   }
 }
@@ -315,7 +313,6 @@ export const ServiceBookingService = {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      console.log(`Updated service booking ${bookingId} to status: ${status}`)
     } catch (error) {
       console.error('Error updating service booking status:', error)
       throw error
@@ -332,7 +329,6 @@ export const ServiceBookingService = {
     totalPrice?: number
   }): Promise<string> {
     // This would need a POST endpoint - for now return mock ID
-    console.log('Creating new service booking:', data)
     return 'mock-booking-id'
   }
 }

@@ -84,7 +84,6 @@ export class ImageUploadService {
     try {
       // For now, we'll just log the deletion
       // In a real implementation, you might want to delete the file from the server
-      console.log('Image deletion requested:', imagePath)
     } catch (error) {
       console.error('Error deleting vehicle image:', error)
       throw error

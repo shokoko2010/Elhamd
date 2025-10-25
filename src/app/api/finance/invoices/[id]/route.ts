@@ -73,17 +73,13 @@ export async function PUT(
   let isConnected = false
   
   try {
-    console.log('=== INVOICE UPDATE START ===')
     
     // Ensure database connection
     await db.$connect()
     isConnected = true
-    console.log('Database connected successfully')
     
     const { id } = await context.params
     const body = await request.json()
-    console.log('Invoice ID:', id)
-    console.log('Request body:', body)
     
     const {
       customerId,
@@ -98,7 +94,6 @@ export async function PUT(
 
     // Validate required fields
     if (!customerId || !items || !Array.isArray(items) || items.length === 0) {
-      console.log('Missing required fields:', { customerId: !!customerId, items: !!items, itemsLength: items?.length })
       return NextResponse.json({ 
         error: 'Missing required fields: customerId, items (non-empty array)',
         code: 'MISSING_REQUIRED_FIELDS'
@@ -112,7 +107,6 @@ export async function PUT(
     })
     
     if (!existingInvoice) {
-      console.log('Invoice not found:', id)
       return NextResponse.json({ 
         error: 'Invoice not found',
         code: 'INVOICE_NOT_FOUND'
@@ -124,7 +118,6 @@ export async function PUT(
       return sum + (item.quantity * item.unitPrice)
     }, 0)
 
-    console.log('Calculated subtotal:', subtotal)
 
     // Calculate taxes from database tax rates
     let taxRates = await db.taxRate.findMany({
@@ -133,7 +126,6 @@ export async function PUT(
 
     // Create default VAT rate if none exists
     if (taxRates.length === 0) {
-      console.log('No tax rates found, creating default VAT rate...')
       const defaultVAT = await db.taxRate.create({
         data: {
           name: 'ضريبة القيمة المضافة',
@@ -145,7 +137,6 @@ export async function PUT(
         }
       })
       taxRates = [defaultVAT]
-      console.log('Created default VAT rate:', defaultVAT)
     }
 
     // Calculate total tax amount from all applicable tax rates
@@ -155,7 +146,6 @@ export async function PUT(
 
     const totalAmount = subtotal + totalTaxAmount
     
-    console.log('Calculated amounts:', {
       subtotal,
       totalTaxAmount,
       totalAmount,
@@ -250,7 +240,6 @@ export async function PUT(
       return invoice
     })
     
-    console.log('Invoice updated successfully:', updatedInvoice.invoiceNumber)
 
     const successResponse = NextResponse.json({
       success: true,
@@ -323,7 +312,6 @@ export async function PUT(
   } finally {
     if (isConnected) {
       await db.$disconnect()
-      console.log('Database disconnected')
     }
   }
 }

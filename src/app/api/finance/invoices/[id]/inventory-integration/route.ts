@@ -155,7 +155,6 @@ export async function POST(
 
     // Create default VAT rate if none exists
     if (taxRates.length === 0) {
-      console.log('No tax rates found, creating default VAT rate...')
       const defaultVAT = await db.taxRate.create({
         data: {
           name: 'ضريبة القيمة المضافة',
@@ -167,7 +166,6 @@ export async function POST(
         }
       })
       taxRates = [defaultVAT]
-      console.log('Created default VAT rate:', defaultVAT)
     }
     
     // Calculate total tax amount from all applicable tax rates

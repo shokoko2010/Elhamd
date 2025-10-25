@@ -186,28 +186,23 @@ export async function POST(request: NextRequest) {
   let isConnected = false
   
   try {
-    console.log('=== OFFLINE PAYMENT API START ===')
     
     // Ensure database connection
     await db.$connect()
     isConnected = true
-    console.log('Database connected successfully')
     
     // Try both authentication methods
     let user = null
     
     // First try NextAuth session
     user = await getAuthUser()
-    console.log('NextAuth user authenticated:', !!user)
     
     // If no session user, try API token authentication
     if (!user) {
       user = await getApiUser(request)
-      console.log('API token user authenticated:', !!user)
     }
     
     if (!user) {
-      console.log('Authentication failed - no user found')
       const errorResponse = NextResponse.json({ 
         error: 'Authentication required. Please log in to access this feature.',
         code: 'AUTH_REQUIRED'
@@ -225,7 +220,6 @@ export async function POST(request: NextRequest) {
                                        user.role === 'BRANCH_MANAGER'
     
     if (!hasOfflinePaymentPermission) {
-      console.log('Permission denied - user does not have offline payment permission')
       const errorResponse = NextResponse.json({ 
         error: 'Access denied. You do not have permission to record offline payments.',
         code: 'PERMISSION_DENIED'
@@ -237,13 +231,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('Request body:', body)
     
     const { invoiceId, amount, paymentMethod, notes, referenceNumber, paymentDate } = body
 
     // Validate required fields
     if (!invoiceId || !amount || !paymentMethod) {
-      console.log('Missing required fields:', { 
         invoiceId: !!invoiceId, 
         amount: !!amount, 
         paymentMethod: !!paymentMethod,
@@ -265,7 +257,6 @@ export async function POST(request: NextRequest) {
     // Validate amount is a positive number
     const parsedAmount = parseFloat(amount)
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      console.log('Invalid amount:', amount)
       return NextResponse.json({ 
         error: 'Payment amount must be a positive number',
         code: 'INVALID_AMOUNT',
@@ -279,7 +270,6 @@ export async function POST(request: NextRequest) {
     // Validate payment method
     const validPaymentMethods = ['CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'MOBILE_WALLET', 'CHECK']
     if (!validPaymentMethods.includes(paymentMethod)) {
-      console.log('Invalid payment method:', paymentMethod)
       return NextResponse.json({ 
         error: `Invalid payment method: ${paymentMethod}. Valid methods are: ${validPaymentMethods.join(', ')}`,
         code: 'INVALID_PAYMENT_METHOD',
@@ -291,7 +281,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Get invoice details
-    console.log('Fetching invoice details...')
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -311,7 +300,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (!invoice) {
-      console.log('Invoice not found:', invoiceId)
       const errorResponse = NextResponse.json({ 
         error: 'Invoice not found. Please check the invoice ID and try again.',
         code: 'INVOICE_NOT_FOUND',
@@ -326,7 +314,6 @@ export async function POST(request: NextRequest) {
       return errorResponse
     }
     
-    console.log('Invoice found:', {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       totalAmount: invoice.totalAmount,
@@ -341,7 +328,6 @@ export async function POST(request: NextRequest) {
 
     // Check if payment amount exceeds invoice total
     if (newTotalPaid > invoice.totalAmount) {
-      console.log('Payment amount exceeds invoice total:', {
         paymentAmount: parsedAmount,
         currentTotal: totalPaid,
         newTotal: newTotalPaid,
@@ -360,7 +346,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create payment record
-    console.log('Creating payment record...')
     
     // For offline payments, we need to create a service booking first
     // to satisfy the foreign key constraint in the Payment model
@@ -375,7 +360,6 @@ export async function POST(request: NextRequest) {
       })
       
       if (!serviceType) {
-        console.log('Creating default service type for offline payments...')
         serviceType = await db.serviceType.create({
           data: {
             name: 'Offline Payment Service',
@@ -385,9 +369,7 @@ export async function POST(request: NextRequest) {
             category: 'MAINTENANCE'
           }
         })
-        console.log('Created default service type for offline payments:', serviceType.id)
       } else {
-        console.log('Found existing service type:', serviceType.id)
       }
       
       // Create service booking with proper error handling
@@ -402,11 +384,9 @@ export async function POST(request: NextRequest) {
         notes: `Service booking for offline payment of invoice ${invoice.invoiceNumber} - ${paymentMethod}`
       }
       
-      console.log('Creating service booking with data:', bookingData)
       serviceBooking = await db.serviceBooking.create({
         data: bookingData
       })
-      console.log('Service booking created for offline payment:', serviceBooking.id)
       
     } catch (bookingError) {
       console.error('Failed to create service booking:', bookingError)
@@ -445,7 +425,6 @@ export async function POST(request: NextRequest) {
       branchId: invoice.branchId
     }
     
-    console.log('Payment data prepared:', paymentData)
     
     // Create payment with enhanced error handling
     let payment
@@ -456,7 +435,6 @@ export async function POST(request: NextRequest) {
       payment = await db.payment.create({
         data: paymentData
       })
-      console.log('Payment record created:', payment.id)
     } catch (createError) {
       console.error('Failed to create payment:', createError)
       console.error('Payment creation error details:', {
@@ -486,7 +464,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create invoice payment relationship
-    console.log('Creating invoice payment relationship...')
     try {
       // Ensure database connection
       await db.$connect()
@@ -502,7 +479,6 @@ export async function POST(request: NextRequest) {
           notes: notes || `Offline payment - ${paymentMethod}`
         }
       })
-      console.log('Invoice payment relationship created')
     } catch (relationshipError) {
       console.error('Failed to create invoice payment relationship:', relationshipError)
       console.error('Relationship error details:', {
@@ -537,7 +513,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Update invoice
-    console.log('Updating invoice status...')
     await db.invoice.update({
       where: { id: invoiceId },
       data: {
@@ -547,10 +522,8 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       }
     })
-    console.log('Invoice updated with status:', newStatus)
 
     // Create transaction record
-    console.log('Creating transaction record...')
     
     // Prepare transaction data without metadata to avoid schema issues
     const transactionData = {
@@ -568,13 +541,11 @@ export async function POST(request: NextRequest) {
       invoiceId
     }
     
-    console.log('Transaction data prepared:', transactionData)
     
     try {
       await db.transaction.create({
         data: transactionData
       })
-      console.log('Transaction record created')
     } catch (transactionError) {
       console.error('Failed to create transaction:', transactionError)
       // Don't throw here, just log the error as payment is already created
@@ -582,7 +553,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Log activity
-    console.log('Creating activity log...')
     await db.activityLog.create({
       data: {
         action: 'RECORDED_OFFLINE_PAYMENT',
@@ -597,9 +567,7 @@ export async function POST(request: NextRequest) {
         }
       }
     })
-    console.log('Activity log created')
 
-    console.log('=== OFFLINE PAYMENT API SUCCESS ===')
     const successResponse = NextResponse.json({
       success: true,
       message: 'Offline payment recorded successfully',
@@ -684,7 +652,6 @@ export async function POST(request: NextRequest) {
     if (isConnected) {
       try {
         await db.$disconnect()
-        console.log('Database disconnected')
       } catch (disconnectError) {
         console.error('Error disconnecting from database:', disconnectError)
       }

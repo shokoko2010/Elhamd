@@ -501,7 +501,6 @@ export class SecurityService {
   // Log audit event
   async logAuditEvent(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
     // This would save to database
-    console.log('Audit Event:', auditLog)
   }
 
   // Get audit logs for user
@@ -533,7 +532,6 @@ export class SecurityService {
     }
 
     // This would save to database
-    console.log('Security Event:', securityEvent)
 
     // Check for critical events that need immediate attention
     if (event.severity === 'CRITICAL') {
@@ -579,7 +577,6 @@ export class SecurityService {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
     // This would create session in database
-    console.log('Session created:', { userId, sessionId, deviceInfo })
 
     // Log security event
     await this.logSecurityEvent({
@@ -602,7 +599,6 @@ export class SecurityService {
   // Invalidate session (logout)
   async invalidateSession(sessionId: string, userId: string): Promise<void> {
     // This would remove session from database
-    console.log('Session invalidated:', { sessionId, userId })
 
     // Log security event
     await this.logSecurityEvent({
@@ -627,13 +623,11 @@ export class SecurityService {
     const deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
     // This would save to user's security settings
-    console.log('Trusted device registered:', { userId, deviceId, deviceInfo })
   }
 
   // Remove trusted device
   async removeTrustedDevice(userId: string, deviceId: string): Promise<void> {
     // This would remove from user's security settings
-    console.log('Trusted device removed:', { userId, deviceId })
   }
 
   // Helper methods

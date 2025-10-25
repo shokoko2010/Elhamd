@@ -2705,6 +2705,7 @@ enum LogSeverity {
 enum UserRole {
   CUSTOMER
   ADMIN
+  ACCOUNTANT
   STAFF
   BRANCH_MANAGER
   SUPER_ADMIN

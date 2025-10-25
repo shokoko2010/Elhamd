@@ -54,7 +54,6 @@ class FawryGateway implements PaymentGateway {
       // In production, you would integrate with Fawry's API
       // This is a simulation for demonstration
       
-      console.log('Processing Fawry payment:', {
         amount: data.amount,
         currency: data.currency,
         customerEmail: data.customerEmail
@@ -109,7 +108,6 @@ class PayMobGateway implements PaymentGateway {
 
   async processPayment(data: PaymentRequest): Promise<PaymentResponse> {
     try {
-      console.log('Processing PayMob payment:', {
         amount: data.amount,
         currency: data.currency,
         customerEmail: data.customerEmail
@@ -176,7 +174,6 @@ class VodafoneCashGateway implements PaymentGateway {
         }
       }
 
-      console.log('Processing Vodafone Cash payment:', {
         amount: data.amount,
         currency: data.currency,
         customerPhone: data.customerPhone

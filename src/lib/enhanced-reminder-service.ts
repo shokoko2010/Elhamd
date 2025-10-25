@@ -428,19 +428,16 @@ class EnhancedReminderService {
         await this.sendSMSViaSNS(to, content)
         break
       default:
-        console.log('SMS would be sent to:', to, 'Content:', content)
     }
   }
 
   private async sendSMSViaTwilio(to: string, content: string): Promise<void> {
     // Implementation for Twilio SMS
-    console.log('Sending SMS via Twilio to:', to, 'Content:', content)
     // Actual implementation would use Twilio SDK
   }
 
   private async sendSMSViaSNS(to: string, content: string): Promise<void> {
     // Implementation for AWS SNS SMS
-    console.log('Sending SMS via SNS to:', to, 'Content:', content)
     // Actual implementation would use AWS SDK
   }
 
@@ -455,19 +452,16 @@ class EnhancedReminderService {
         await this.sendEmailViaSES(to, subject, content)
         break
       default:
-        console.log('Email would be sent to:', to, 'Subject:', subject, 'Content:', content)
     }
   }
 
   private async sendEmailViaSendGrid(to: string, subject: string, content: string): Promise<void> {
     // Implementation for SendGrid
-    console.log('Sending email via SendGrid to:', to, 'Subject:', subject)
     // Actual implementation would use SendGrid SDK
   }
 
   private async sendEmailViaSES(to: string, subject: string, content: string): Promise<void> {
     // Implementation for AWS SES
-    console.log('Sending email via SES to:', to, 'Subject:', subject)
     // Actual implementation would use AWS SDK
   }
 

@@ -9,7 +9,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('=== DATA INTEGRITY CHECK START ===')
     
     const results = {
       invoices: { issues: [], total: 0, fixed: 0 },
@@ -20,7 +19,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Check Invoice Data Integrity
-    console.log('Checking invoice data integrity...')
     const invoices = await db.invoice.findMany({
       include: {
         items: true,
@@ -143,7 +141,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Check Payment Data Integrity
-    console.log('Checking payment data integrity...')
     const payments = await db.payment.findMany({
       include: {
         serviceBooking: {
@@ -185,7 +182,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Check InvoicePayment Relationships
-    console.log('Checking invoice-payment relationships...')
     const invoicePayments = await db.invoicePayment.findMany({
       include: {
         invoice: true,
@@ -249,7 +245,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Check Inventory Data Integrity
-    console.log('Checking inventory data integrity...')
     const inventoryItems = await db.inventoryItem.findMany()
 
     results.inventory.total = inventoryItems.length
@@ -303,7 +298,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Check Transaction Data Integrity
-    console.log('Checking transaction data integrity...')
     const transactions = await db.transaction.findMany()
 
     results.transactions.total = transactions.length
@@ -346,7 +340,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('=== DATA INTEGRITY CHECK COMPLETE ===')
 
     return NextResponse.json({
       success: true,

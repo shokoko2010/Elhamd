@@ -665,7 +665,6 @@ export class EnhancedMediaService {
 
   private async applyWatermark(imagePath: string): Promise<void> {
     // In production, implement watermarking using sharp or image-js
-    console.log('Applying watermark to:', imagePath)
   }
 
   private async generateAITags(buffer: Buffer, category: string): Promise<string[]> {

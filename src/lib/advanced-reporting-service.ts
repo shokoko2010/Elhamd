@@ -797,7 +797,6 @@ export class AdvancedReportingService {
     }
 
     // In a real implementation, this would be stored in the database
-    console.log('Scheduled report:', scheduledReport)
     return scheduledReport
   }
 

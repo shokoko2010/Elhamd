@@ -35,7 +35,6 @@ export async function POST(
     // 3. Log the email sending activity
 
     // For now, we'll just simulate the email sending
-    console.log(`Sending invoice ${invoice.invoiceNumber} to ${invoice.customer.email}`)
 
     return NextResponse.json({ 
       success: true,

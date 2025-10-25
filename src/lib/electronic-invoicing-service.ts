@@ -193,7 +193,6 @@ export class ElectronicInvoicingService {
   }
 
   async sendInvoiceEmail(invoice: any, email: string): Promise<boolean> {
-    console.log(`Sending invoice ${invoice.invoiceNumber} to ${email}`)
     return true
   }
 
@@ -214,7 +213,6 @@ export class ElectronicInvoicingService {
   }
 
   async recordPayment(invoiceId: string, paymentData: any): Promise<boolean> {
-    console.log(`Recording payment for invoice ${invoiceId}:`, paymentData)
     return true
   }
 

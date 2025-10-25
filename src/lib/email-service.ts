@@ -11,7 +11,6 @@ interface EmailOptions {
 export async function sendEmail(options: EmailOptions): Promise<void> {
   try {
     // In a real implementation, use a service like SendGrid, Mailgun, or AWS SES
-    console.log('Sending email:', {
       to: options.to,
       subject: options.subject,
       html: options.html
@@ -20,7 +19,6 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     // Simulate email sending
     await new Promise(resolve => setTimeout(resolve, 1000))
     
-    console.log('Email sent successfully')
   } catch (error) {
     console.error('Error sending email:', error)
     throw new Error('Failed to send email')
