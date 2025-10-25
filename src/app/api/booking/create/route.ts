@@ -6,9 +6,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { BookingStatus, PaymentStatus } from '@prisma/client'
 import { emailService } from '@/lib/email'
+import { getAuthUser, authorize } from '@/lib/auth-server'
+import { PERMISSIONS } from '@/lib/permissions'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication and authorization
+    const authResult = await authorize(request, {
+      permissions: [PERMISSIONS.CREATE_BOOKINGS]
+    })
+    
+    if (authResult.error) {
+      return authResult.error
+    }
+    
+    const user = authResult.user
     const body = await request.json()
     const {
       customerId,

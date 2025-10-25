@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { emailService } from '@/lib/email'
+import { apiMiddleware } from '@/lib/api-middleware'
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
+export const POST = apiMiddleware.withPublicAuth(
+  async (request: NextRequest, context: any) => {
+    const { body } = context
     const { name, email, phone, subject, message, department } = body
 
     // Validate required fields
@@ -76,12 +77,9 @@ export async function POST(request: NextRequest) {
       message: 'تم إرسال رسالتك بنجاح',
       id: contactSubmission.id
     })
-
-  } catch (error) {
-    console.error('Error submitting contact form:', error)
-    return NextResponse.json(
-      { error: 'فشل في إرسال الرسالة. يرجى المحاولة مرة أخرى.' },
-      { status: 500 }
-    )
+  },
+  {
+    rateLimit: { endpoint: 'contact', limit: 5 }, // 5 submissions per hour
+    sanitizeInput: true
   }
-}
+)

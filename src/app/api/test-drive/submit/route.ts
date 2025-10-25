@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { emailService } from '@/lib/email'
+import { apiMiddleware } from '@/lib/api-middleware'
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
+export const POST = apiMiddleware.withPublicAuth(
+  async (request: NextRequest, context: any) => {
+    const { body } = context
     const { 
       name, 
       email, 
@@ -90,12 +91,9 @@ export async function POST(request: NextRequest) {
       message: 'تم حجز تجربة القيادة بنجاح',
       id: testDriveBooking.id
     })
-
-  } catch (error) {
-    console.error('Error submitting test drive booking:', error)
-    return NextResponse.json(
-      { error: 'فشل في حجز تجربة القيادة. يرجى المحاولة مرة أخرى.' },
-      { status: 500 }
-    )
+  },
+  {
+    rateLimit: { endpoint: 'test-drive', limit: 3 }, // 3 submissions per hour
+    sanitizeInput: true
   }
-}
+)

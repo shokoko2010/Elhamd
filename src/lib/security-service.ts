@@ -258,6 +258,57 @@ export class SecurityService {
 
   // Password Management
 
+  // Password strength validation
+  validatePasswordStrength(password: string): { 
+    score: number; 
+    feedback: string[] 
+  } {
+    const feedback: string[] = []
+    let score = 0
+
+    // Length check
+    if (password.length >= 8) {
+      score += 1
+    } else {
+      feedback.push('Password should be at least 8 characters long')
+    }
+
+    if (password.length >= 12) {
+      score += 1
+    }
+
+    // Character variety checks
+    if (/[a-z]/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('Include lowercase letters')
+    }
+
+    if (/[A-Z]/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('Include uppercase letters')
+    }
+
+    if (/\d/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('Include numbers')
+    }
+
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      score += 1
+    } else {
+      feedback.push('Include special characters')
+    }
+
+    // Bonus points for complexity
+    if (password.length >= 16) score += 1
+    if (/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/.test(password)) score += 1
+
+    return { score, feedback }
+  }
+
   // Validate password against policy
   validatePassword(password: string): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
@@ -641,34 +692,93 @@ export class SecurityService {
     return response
   }
 
-  // Rate limiting method
-  async rateLimit(request: NextRequest, key: string): Promise<{
+  // Rate limiting method with proper implementation
+  private rateLimitStore = new Map<string, { count: number; resetTime: number }>()
+
+  async rateLimit(request: NextRequest, key: string, customLimit?: number): Promise<{
     allowed: boolean
     remaining: number
     resetTime: number
   }> {
-    // Simple in-memory rate limiting (in production, use Redis or similar)
     const now = Date.now()
-    const windowMs = 15 * 60 * 1000 // 15 minutes
-    const maxRequests = key === 'api' ? 100 : key === 'booking-service' ? 20 : 10
+    const windowMs = 60 * 60 * 1000 // 1 hour window
+    const maxRequests = customLimit || this.getRateLimitForKey(key)
     
-    // Create a simple key for the rate limit
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    // Get client IP
+    const ip = request.ip || 
+                 request.headers.get('x-forwarded-for')?.split(',')[0] || 
+                 request.headers.get('x-real-ip') || 
+                 'unknown'
+    
     const rateLimitKey = `${key}:${ip}`
     
-    // In a real implementation, this would use a proper rate limiting store
-    // For now, we'll use a simple mock implementation
-    const mockData = {
-      requests: 5, // Mock current request count
-      resetTime: now + windowMs
+    // Clean up expired entries
+    this.cleanupExpiredRateLimits(now)
+    
+    // Get current rate limit data
+    let rateLimitData = this.rateLimitStore.get(rateLimitKey)
+    
+    if (!rateLimitData || now > rateLimitData.resetTime) {
+      // Create new entry or reset expired one
+      rateLimitData = {
+        count: 1,
+        resetTime: now + windowMs
+      }
+      this.rateLimitStore.set(rateLimitKey, rateLimitData)
+    } else {
+      // Increment count
+      rateLimitData.count++
     }
     
-    const remaining = Math.max(0, maxRequests - mockData.requests)
+    const remaining = Math.max(0, maxRequests - rateLimitData.count)
+    const allowed = rateLimitData.count <= maxRequests
+    
+    // Log rate limit violations
+    if (!allowed) {
+      console.warn(`Rate limit exceeded for ${rateLimitKey}: ${rateLimitData.count}/${maxRequests}`)
+      await this.logSecurityEvent({
+        userId: 'anonymous',
+        eventType: 'RATE_LIMIT_EXCEEDED',
+        eventDescription: `Rate limit exceeded for endpoint: ${key}`,
+        ipAddress: ip,
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        severity: 'WARNING',
+        metadata: { 
+          endpoint: key, 
+          requests: rateLimitData.count, 
+          limit: maxRequests 
+        }
+      })
+    }
     
     return {
-      allowed: mockData.requests <= maxRequests,
+      allowed,
       remaining,
-      resetTime: mockData.resetTime
+      resetTime: rateLimitData.resetTime
+    }
+  }
+
+  private getRateLimitForKey(key: string): number {
+    const limits: Record<string, number> = {
+      'api': 1000,        // General API
+      'login': 10,        // Login attempts
+      'register': 5,      // Registration attempts
+      'contact': 10,      // Contact form submissions
+      'test-drive': 5,    // Test drive bookings
+      'booking': 20,      // Service bookings
+      'upload': 50,       // File uploads
+      'admin': 200,       // Admin operations
+      'default': 100      // Default limit
+    }
+    
+    return limits[key] || limits.default
+  }
+
+  private cleanupExpiredRateLimits(now: number): void {
+    for (const [key, data] of this.rateLimitStore.entries()) {
+      if (now > data.resetTime) {
+        this.rateLimitStore.delete(key)
+      }
     }
   }
 
