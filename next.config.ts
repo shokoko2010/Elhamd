@@ -44,6 +44,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
     // optimizeCss: true, // Re-enabled now that build issues are resolved
     optimizeCss: true,
+    // Disable optimizeCssImports to prevent preload warnings
+    optimizeCssImports: false,
   },
   
   // Headers for security and performance

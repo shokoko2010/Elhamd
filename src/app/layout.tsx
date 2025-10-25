@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
 import { HomepageSEO } from "@/components/seo/SEO";
+import { SessionManager } from "@/components/session-manager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -175,6 +176,7 @@ export default function RootLayout({
         <AuthProvider>
           <AnalyticsProvider measurementId={measurementId}>
             <SiteSettingsProvider>
+              <SessionManager />
               {children}
               <Toaster />
             </SiteSettingsProvider>

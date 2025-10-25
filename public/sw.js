@@ -9,7 +9,7 @@ const STATIC_URLS = [
   '/',
   '/vehicles',
   '/test-drive', 
-  '/service',
+  '/service-booking',
   '/contact',
   '/about',
   '/offline'
@@ -49,13 +49,17 @@ self.addEventListener('install', (event) => {
         // Use addAll with error handling for individual URLs
         return Promise.allSettled(
           STATIC_URLS.map(url => 
-            fetch(url)
+            fetch(url, { method: 'GET', credentials: 'include' })
               .then(response => {
                 if (response.ok) {
                   return cache.put(url, response);
+                } else if (response.status === 404) {
+                  console.warn(`Page not found, skipping cache for ${url}: ${response.status}`);
+                  return Promise.resolve();
+                } else {
+                  console.warn(`Failed to cache ${url}: ${response.status}`);
+                  return Promise.resolve();
                 }
-                console.warn(`Failed to cache ${url}: ${response.status}`);
-                return Promise.resolve();
               })
               .catch(error => {
                 console.warn(`Failed to cache ${url}:`, error);
@@ -477,13 +481,17 @@ self.addEventListener('message', (event) => {
         // Use Promise.allSettled to handle individual URL failures
         return Promise.allSettled(
           event.data.urls.map(url => 
-            fetch(url)
+            fetch(url, { method: 'GET', credentials: 'include' })
               .then(response => {
                 if (response.ok) {
                   return cache.put(url, response);
+                } else if (response.status === 404) {
+                  console.warn(`Page not found, skipping cache for ${url}: ${response.status}`);
+                  return Promise.resolve();
+                } else {
+                  console.warn(`Failed to cache ${url}: ${response.status}`);
+                  return Promise.resolve();
                 }
-                console.warn(`Failed to cache ${url}: ${response.status}`);
-                return Promise.resolve();
               })
               .catch(error => {
                 console.warn(`Failed to cache ${url}:`, error);

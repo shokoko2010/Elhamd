@@ -58,24 +58,56 @@ export function useAuth() {
 
   const logout = async () => {
     try {
+      // Clear local state first
+      setUser(null)
+      setError(null)
+      setLoading(false)
+      
+      // Then sign out from NextAuth
       await signOut({ 
         redirect: true,
         callbackUrl: '/login'
       })
     } catch (error) {
       console.error('Logout error:', error)
+      // Clear local state on error as well
+      setUser(null)
+      setError(null)
+      setLoading(false)
       // Force redirect even if signOut fails
       window.location.href = '/login'
     }
   }
 
   const update = async () => {
-    // NextAuth handles session updates automatically
-    // This is a placeholder for any manual refresh logic
+    // Force a session refresh
     if (status === 'authenticated') {
       setLoading(true)
-      // NextAuth will automatically refresh the session
-      setTimeout(() => setLoading(false), 100)
+      try {
+        // Trigger a session refresh by calling the update endpoint
+        const response = await fetch('/api/auth/session', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (response.ok) {
+          // Session is valid, NextAuth will automatically update the session
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } else {
+          // Session is invalid, clear local state
+          setUser(null)
+          setError(null)
+        }
+      } catch (error) {
+        console.error('Session refresh error:', error)
+        setUser(null)
+        setError(null)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
