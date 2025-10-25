@@ -146,12 +146,6 @@ export async function PUT(
 
     const totalAmount = subtotal + totalTaxAmount
     
-      subtotal,
-      totalTaxAmount,
-      totalAmount,
-      currentPaid: existingInvoice.paidAmount
-    })
-
     // Update invoice with transaction
     const updatedInvoice = await db.$transaction(async (tx) => {
       // Delete existing items and taxes

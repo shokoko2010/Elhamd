@@ -11,6 +11,7 @@ interface EmailOptions {
 export async function sendEmail(options: EmailOptions): Promise<void> {
   try {
     // In a real implementation, use a service like SendGrid, Mailgun, or AWS SES
+    console.log('Sending email:', {
       to: options.to,
       subject: options.subject,
       html: options.html

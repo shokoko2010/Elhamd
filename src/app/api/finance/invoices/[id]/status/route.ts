@@ -119,10 +119,6 @@ export async function PUT(
     if (status === InvoiceStatus.PAID) {
       const totalPaid = currentInvoice.payments.reduce((sum, ip) => sum + ip.payment.amount, 0)
       if (totalPaid < currentInvoice.totalAmount) {
-          totalPaid,
-          totalAmount: currentInvoice.totalAmount,
-          remaining: currentInvoice.totalAmount - totalPaid
-        })
         return NextResponse.json({
           error: `Cannot mark invoice as paid. Only ${totalPaid.toFixed(2)} EGP paid out of ${currentInvoice.totalAmount.toFixed(2)} EGP total.`,
           code: 'INSUFFICIENT_PAYMENT',
@@ -320,6 +316,7 @@ async function sendInvoiceStatusNotification(
 ) {
   // This would integrate with your email service
   // For now, we'll just log it
+  console.log('Status update notification:', {
     invoiceNumber: invoice.invoiceNumber,
     customerEmail: invoice.customer?.email,
     newStatus,

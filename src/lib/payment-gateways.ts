@@ -244,6 +244,7 @@ export class PayMobGateway implements PaymentGateway {
       const paymentKey = `paymob_key_${Date.now()}`
 
       // In production, this would call PayMob's actual API
+      console.log('PayMob API call:', {
         apiKey,
         integrationId,
         amount: request.amount,
@@ -372,6 +373,7 @@ export class VodafoneCashGateway implements PaymentGateway {
       }
 
       // Vodafone Cash API integration
+      console.log('Vodafone Cash payment processing:', {
         amount: request.amount,
         currency: request.currency,
         customerPhone: request.customerPhone,

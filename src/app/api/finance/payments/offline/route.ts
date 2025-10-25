@@ -236,13 +236,6 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!invoiceId || !amount || !paymentMethod) {
-        invoiceId: !!invoiceId, 
-        amount: !!amount, 
-        paymentMethod: !!paymentMethod,
-        invoiceIdValue: invoiceId,
-        amountValue: amount,
-        paymentMethodValue: paymentMethod
-      })
       return NextResponse.json({ 
         error: 'Missing required fields: invoiceId, amount, paymentMethod',
         code: 'MISSING_FIELDS',
@@ -314,6 +307,7 @@ export async function POST(request: NextRequest) {
       return errorResponse
     }
     
+    console.log('Processing offline payment for invoice:', {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
       totalAmount: invoice.totalAmount,
@@ -328,6 +322,7 @@ export async function POST(request: NextRequest) {
 
     // Check if payment amount exceeds invoice total
     if (newTotalPaid > invoice.totalAmount) {
+      console.log('Payment amount exceeds invoice total:', {
         paymentAmount: parsedAmount,
         currentTotal: totalPaid,
         newTotal: newTotalPaid,
