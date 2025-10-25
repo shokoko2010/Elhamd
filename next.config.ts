@@ -17,6 +17,21 @@ const nextConfig: NextConfig = {
     if (!isServer) {
       config.resolve.fallback = { fs: false, path: false };
     }
+    
+    // Disable preloading that causes warnings
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        ...config.optimization.splitChunks,
+        chunks: 'all',
+        cacheGroups: {
+          ...config.optimization.splitChunks?.cacheGroups,
+          default: false,
+          vendors: false,
+        },
+      },
+    };
+    
     return config;
   },
   allowedDevOrigins: [
@@ -42,10 +57,12 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable optimized package imports
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // optimizeCss: true, // Re-enabled now that build issues are resolved
-    optimizeCss: true,
-    // Disable optimizeCssImports to prevent preload warnings
+    // Disable CSS optimization to prevent preload warnings
+    optimizeCss: false,
     optimizeCssImports: false,
+    // Disable other optimizations that cause preload warnings
+    optimizeServerReact: true,
+    serverComponentsExternalPackages: ['@prisma/client'],
   },
   
   // Headers for security and performance

@@ -31,6 +31,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
+      console.log('No session found in getAuthUser')
       return null
     }
 
@@ -40,6 +41,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     try {
       permissions = await PermissionService.getUserPermissions(session.user.id)
     } catch (error) {
+      console.warn('Failed to get permissions, using defaults:', error)
       // If permissions fail, get default permissions based on role
       const userRole = session.user.role
       if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
@@ -86,6 +88,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 
     return authUser
   } catch (error) {
+    console.error('Error in getAuthUser:', error)
     return null
   }
 }

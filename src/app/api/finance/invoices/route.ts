@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { getAuthUserWithFallback } from '@/lib/fallback-auth'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -21,9 +21,10 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication and authorization
-    const user = await getAuthUser()
+    // Check authentication and authorization with fallback
+    const user = await getAuthUserWithFallback(request)
     if (!user) {
+      console.log('Authentication failed for GET /api/finance/invoices')
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
         status: 401,
         headers: {
@@ -149,9 +150,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication and authorization
-    const user = await getAuthUser()
+    // Check authentication and authorization with fallback
+    const user = await getAuthUserWithFallback(request)
     if (!user) {
+      console.log('Authentication failed for POST /api/finance/invoices')
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
         status: 401,
         headers: {
