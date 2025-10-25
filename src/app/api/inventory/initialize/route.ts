@@ -4,11 +4,11 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { createAuthHandler, UserRole } from '@/lib/auth-server'
+import { authorize, UserRole } from '@/lib/auth-server'
 
 const authHandler = async (request: NextRequest) => {
   try {
-    return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,] })
+    return await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
   } catch (error) {
     return null
   }
