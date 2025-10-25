@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUserWithFallback } from '@/lib/fallback-auth'
+import { authenticateUser } from '@/lib/simple-auth'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -21,8 +21,8 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication and authorization with fallback
-    const user = await getAuthUserWithFallback(request)
+    // Check authentication using enhanced method
+    const user = await authenticateUser(request)
     if (!user) {
       console.log('Authentication failed for GET /api/crm/customers')
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
@@ -165,8 +165,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication and authorization with fallback
-    const user = await getAuthUserWithFallback(request)
+    // Check authentication using enhanced method
+    const user = await authenticateUser(request)
     if (!user) {
       console.log('Authentication failed for POST /api/crm/customers')
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
