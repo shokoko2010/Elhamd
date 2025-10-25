@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     const usersWithStats = users.map(user => ({
       ...user,
       totalBookings: (user._count.testDriveBookings || 0) + (user._count.serviceBookings || 0),
-      totalSpent: 0 // TODO: Calculate from bookings/invoices when implemented
+      totalSpent: 0 // Calculate from bookings/invoices when implemented
     }))
 
     return NextResponse.json({

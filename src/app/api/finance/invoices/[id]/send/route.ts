@@ -26,9 +26,11 @@ export async function POST(
       )
     }
 
-    // TODO: Implement actual email sending logic here
+    // Payment integration would be implemented here
     // This would typically involve:
     // 1. Generate PDF invoice
+    // 2. Attach to email
+    // 3. Send via email service
     // 2. Send email to customer with invoice attached
     // 3. Log the email sending activity
 

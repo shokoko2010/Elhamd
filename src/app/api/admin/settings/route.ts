@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     // For development/testing - bypass authentication temporarily
     // TODO: Remove this in production
     if (process.env.NODE_ENV === 'development') {
+      // Development bypass logic
       const defaultCompanySettings: CompanySettings = {
         name: 'الحمد للسيارات',
         email: 'info@elhamd-cars.com',

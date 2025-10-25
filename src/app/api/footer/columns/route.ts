@@ -79,8 +79,6 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    console.log('=== DEBUG: Footer Columns PUT API Called ===')
-    
     const user = await getAuthUser()
     if (!user) {
       console.log('No authenticated user found')

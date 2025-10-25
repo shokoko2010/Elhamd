@@ -3,12 +3,12 @@ import { getAuthUser } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('=== DEBUG: Auth check API called ===')
+
     
     const user = await getAuthUser()
     
     if (!user) {
-      console.log('No user found in auth check')
+  
       return NextResponse.json({
         authenticated: false,
         user: null,
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    console.log('User found in auth check:', user.email)
+
     
     return NextResponse.json({
       authenticated: true,

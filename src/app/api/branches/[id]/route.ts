@@ -58,8 +58,6 @@ export async function PUT(
 ) {
   try {
     const { id } = await context.params
-    console.log('=== DEBUG: Branch Update API Called ===')
-    console.log('Branch ID:', id)
     
     const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
     

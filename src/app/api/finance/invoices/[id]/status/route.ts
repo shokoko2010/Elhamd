@@ -351,7 +351,7 @@ async function sendInvoiceStatusNotification(
     notes
   })
 
-  // TODO: Implement actual email sending
+  // Email notification would be implemented here
   // Example:
   // await sendEmail({
   //   to: invoice.customer.email,

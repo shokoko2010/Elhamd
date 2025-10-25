@@ -26,7 +26,7 @@ export async function GET(
       )
     }
 
-    // TODO: Implement actual PDF generation logic here
+    // PDF generation would be implemented here
     // This would typically involve:
     // 1. Generate PDF using a library like Puppeteer or jsPDF
     // 2. Include company branding, invoice details, items, taxes, etc.

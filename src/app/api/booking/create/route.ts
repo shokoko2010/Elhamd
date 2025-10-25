@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the booking if email fails
     }
 
-    // TODO: Create payment record if needed
+    // Payment integration would be implemented here when needed
 
     return NextResponse.json({
       success: true,
