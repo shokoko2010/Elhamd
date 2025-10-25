@@ -59,7 +59,9 @@ export const authOptions = {
     })
   ],
   session: {
-    strategy: 'jwt' as const
+    strategy: 'jwt' as const,
+    maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60, // 1 hour
   },
   secret: process.env.NEXTAUTH_SECRET,
   url: process.env.NEXTAUTH_URL || 'https://elhamdimport.com',

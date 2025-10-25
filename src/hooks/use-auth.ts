@@ -58,23 +58,66 @@ export function useAuth() {
 
   const logout = async () => {
     try {
+      console.log('Starting logout process...')
+      
       // Clear local state first
       setUser(null)
       setError(null)
       setLoading(false)
       
+      // Call our custom logout API to ensure all cookies are cleared
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        console.log('Logout API call successful')
+        const data = await response.json()
+        console.log('Logout response:', data)
+      } else {
+        console.error('Logout API call failed:', response.status)
+      }
+      
       // Then sign out from NextAuth
       await signOut({ 
-        redirect: true,
-        callbackUrl: '/login'
+        redirect: false // We'll handle redirect manually
       })
+      
+      console.log('NextAuth signOut completed')
+      
+      // Clear any remaining local storage
+      try {
+        localStorage.clear()
+        sessionStorage.clear()
+      } catch (error) {
+        console.log('Storage clear error:', error)
+      }
+      
+      // Force redirect to login
+      window.location.href = '/login'
+      
     } catch (error) {
       console.error('Logout error:', error)
       // Clear local state on error as well
       setUser(null)
       setError(null)
       setLoading(false)
-      // Force redirect even if signOut fails
+      
+      // Try to clear cookies via API even on error
+      try {
+        await fetch('/api/auth/signout', {
+          method: 'POST',
+          credentials: 'include',
+        })
+      } catch (apiError) {
+        console.error('Fallback logout API failed:', apiError)
+      }
+      
+      // Force redirect even if everything fails
       window.location.href = '/login'
     }
   }
