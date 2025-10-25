@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { authenticateUser } from '@/lib/simple-auth'
+import { authenticateProductionUser } from '@/lib/production-auth'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -21,11 +21,17 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication using enhanced method
-    const user = await authenticateUser(request)
+    console.log('🔍 GET /api/finance/invoices: Starting request...')
+    
+    // Check authentication using production method
+    const user = await authenticateProductionUser(request)
     if (!user) {
-      console.log('Authentication failed for GET /api/finance/invoices')
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
+      console.log('❌ GET /api/finance/invoices: Authentication failed')
+      return NextResponse.json({ 
+        error: 'غير مصرح لك - يرجى تسجيل الدخول',
+        code: 'AUTH_REQUIRED',
+        timestamp: new Date().toISOString()
+      }, { 
         status: 401,
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -150,11 +156,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication using enhanced method
-    const user = await authenticateUser(request)
+    console.log('🔍 POST /api/finance/invoices: Starting request...')
+    
+    // Check authentication using production method
+    const user = await authenticateProductionUser(request)
     if (!user) {
-      console.log('Authentication failed for POST /api/finance/invoices')
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
+      console.log('❌ POST /api/finance/invoices: Authentication failed')
+      return NextResponse.json({ 
+        error: 'غير مصرح لك - يرجى تسجيل الدخول',
+        code: 'AUTH_REQUIRED',
+        timestamp: new Date().toISOString()
+      }, { 
         status: 401,
         headers: {
           'Access-Control-Allow-Origin': '*',

@@ -62,7 +62,7 @@ export const authOptions = {
     strategy: 'jwt' as const
   },
   secret: process.env.NEXTAUTH_SECRET,
-  url: process.env.NEXTAUTH_URL,
+  url: process.env.NEXTAUTH_URL || 'https://elhamdimport.com',
   trustHost: true,
   callbacks: {
     async jwt({ token, user }) {
@@ -97,7 +97,7 @@ export const authOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? undefined : undefined
+        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
       }
     },
     callbackUrl: {
@@ -106,7 +106,8 @@ export const authOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
       }
     },
     csrfToken: {
@@ -115,7 +116,8 @@ export const authOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
       }
     }
   },
