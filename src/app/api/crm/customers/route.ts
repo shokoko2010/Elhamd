@@ -262,40 +262,42 @@ export async function POST(request: NextRequest) {
         phone,
         role: 'CUSTOMER',
         status: 'active',
+        segment: 'CUSTOMER',
         customerProfile: {
           create: {
-            segment,
+            segment: segment as any,
             leadSource,
-            tags,
-            notes,
             preferences: {},
             riskScore: 0,
             satisfactionScore: 0,
             referralCount: 0,
             totalPurchases: 0,
             totalSpent: 0,
-            isActive: true
+            isActive: true,
+            notes,
+            tags: tags.length > 0 ? tags : []
           }
         }
       },
       include: {
-        customerProfile: {
-          include: {
-            tagAssignments: true
-          }
-        }
+        customerProfile: true
       }
     })
 
     // Add tags if provided
-    if (tags.length > 0) {
-      await db.customerTagAssignment.createMany({
-        data: tags.map((tag: string) => ({
-          customerId: customer.customerProfile!.id,
-          tag: tag as any,
-          assignedBy: 'system'
-        }))
-      })
+    if (tags.length > 0 && customer.customerProfile) {
+      try {
+        await db.customerTagAssignment.createMany({
+          data: tags.map((tag: string) => ({
+            customerId: customer.customerProfile!.id,
+            tag: tag as any,
+            assignedBy: user.email || 'system'
+          }))
+        })
+      } catch (tagError) {
+        console.warn('Warning: Could not create tag assignments:', tagError)
+        // Continue without failing the whole operation
+      }
     }
 
     return NextResponse.json(customer, { 

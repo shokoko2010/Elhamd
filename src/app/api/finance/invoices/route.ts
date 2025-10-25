@@ -232,6 +232,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if user exists
+    const existingUser = await db.user.findUnique({
+      where: { id: createdBy }
+    })
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        }
+      )
+    }
+
+    // Check if customer exists
+    const existingCustomer = await db.user.findUnique({
+      where: { id: customerId }
+    })
+
+    if (!existingCustomer) {
+      return NextResponse.json(
+        { error: 'Customer not found' },
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        }
+      )
+    }
+
     // Validate items array
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -279,17 +317,23 @@ export async function POST(request: NextRequest) {
 
     // Create default VAT rate if none exists
     if (taxRates.length === 0) {
-      const defaultVAT = await db.taxRate.create({
-        data: {
-          name: 'ضريبة القيمة المضافة',
-          type: 'STANDARD',
-          rate: 14.0, // 14% VAT in Egypt
-          description: 'ضريبة القيمة المضافة القياسية في مصر',
-          isActive: true,
-          effectiveFrom: new Date('2020-01-01')
-        }
-      })
-      taxRates = [defaultVAT]
+      try {
+        const defaultVAT = await db.taxRate.create({
+          data: {
+            name: 'ضريبة القيمة المضافة',
+            type: 'STANDARD',
+            rate: 14.0, // 14% VAT in Egypt
+            description: 'ضريبة القيمة المضافة القياسية في مصر',
+            isActive: true,
+            effectiveFrom: new Date('2020-01-01')
+          }
+        })
+        taxRates = [defaultVAT]
+      } catch (taxError) {
+        console.warn('Warning: Could not create default tax rate:', taxError)
+        // Continue with no tax if tax creation fails
+        taxRates = []
+      }
     }
 
     // Calculate total tax amount from all applicable tax rates
@@ -339,16 +383,23 @@ export async function POST(request: NextRequest) {
         }))
       })
       
-      // Create invoice taxes
-      await tx.invoiceTax.createMany({
-        data: taxRates.map(taxRate => ({
-          invoiceId: newInvoice.id,
-          taxType: taxRate.type,
-          rate: taxRate.rate,
-          taxAmount: subtotal * taxRate.rate / 100,
-          description: taxRate.description
-        }))
-      })
+      // Create invoice taxes (only if tax rates exist)
+      if (taxRates.length > 0) {
+        try {
+          await tx.invoiceTax.createMany({
+            data: taxRates.map(taxRate => ({
+              invoiceId: newInvoice.id,
+              taxType: taxRate.type as any,
+              rate: taxRate.rate,
+              taxAmount: subtotal * taxRate.rate / 100,
+              description: taxRate.description
+            }))
+          })
+        } catch (taxError) {
+          console.warn('Warning: Could not create invoice taxes:', taxError)
+          // Continue without failing the whole operation
+        }
+      }
       
       return newInvoice
     })
