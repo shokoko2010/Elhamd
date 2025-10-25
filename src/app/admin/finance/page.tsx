@@ -131,17 +131,7 @@ export default function FinancePage() {
 
 function FinanceContent() {
   const { user, hasPermission } = useAuth()
-  const [activeTab, setActiveTab] = useState('overview')
-  const [loading, setLoading] = useState(true)
-  const [overview, setOverview] = useState<FinancialOverview | null>(null)
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [dateRange, setDateRange] = useState('month')
-  const { toast } = useToast()
-
+  
   // Check permissions
   const canViewInvoices = hasPermission(PERMISSIONS.VIEW_INVOICES) || hasPermission(PERMISSIONS.VIEW_FINANCIALS)
   const canCreateInvoices = hasPermission(PERMISSIONS.CREATE_INVOICES)
@@ -155,6 +145,43 @@ function FinanceContent() {
   const canProcessOfflinePayments = hasPermission(PERMISSIONS.PROCESS_OFFLINE_PAYMENTS)
   const canViewFinancialOverview = hasPermission(PERMISSIONS.VIEW_FINANCIAL_OVERVIEW)
   const canAccessFinanceDashboard = hasPermission(PERMISSIONS.ACCESS_FINANCE_DASHBOARD)
+
+  // Set default tab based on user permissions
+  const getDefaultTab = () => {
+    if (canViewInvoices) return 'invoices'
+    if (canManageQuotations) return 'quotations'
+    if (canManagePayments || canViewPaymentHistory) return 'payments'
+    if (canViewFinancialOverview) return 'reports'
+    return 'invoices' // Fallback
+  }
+
+  const [activeTab, setActiveTab] = useState(getDefaultTab())
+  const [loading, setLoading] = useState(true)
+  const [overview, setOverview] = useState<FinancialOverview | null>(null)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [dateRange, setDateRange] = useState('month')
+  const { toast } = useToast()
+
+  // Update active tab when permissions change
+  useEffect(() => {
+    if (user) {
+      const newDefaultTab = getDefaultTab()
+      // Only update if current tab is not accessible
+      const accessibleTabs = []
+      if (canViewInvoices) accessibleTabs.push('invoices')
+      if (canManageQuotations) accessibleTabs.push('quotations')
+      if (canManagePayments || canViewPaymentHistory) accessibleTabs.push('payments')
+      if (canViewFinancialOverview) accessibleTabs.push('reports')
+      
+      if (!accessibleTabs.includes(activeTab)) {
+        setActiveTab(newDefaultTab)
+      }
+    }
+  }, [user, canViewInvoices, canManageQuotations, canManagePayments, canViewFinancialOverview, activeTab])
 
   // Redirect if user doesn't have any finance permissions
   useEffect(() => {
@@ -173,7 +200,7 @@ function FinanceContent() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const tab = urlParams.get('tab')
-    if (tab && ['overview', 'invoices', 'quotations', 'payments', 'reports'].includes(tab)) {
+    if (tab && ['invoices', 'quotations', 'payments', 'reports'].includes(tab)) {
       setActiveTab(tab)
     }
   }, [])
