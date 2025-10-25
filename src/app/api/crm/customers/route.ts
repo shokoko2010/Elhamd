@@ -8,23 +8,48 @@ import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    },
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.role === UserRole.SALES_MANAGER ||
+                      user.role === UserRole.ACCOUNTANT ||
                       user.permissions.includes(PERMISSIONS.VIEW_CUSTOMERS)
     
     if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { 
+        status: 403,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -114,12 +139,25 @@ export async function GET(request: NextRequest) {
         hasNext: page < totalPages,
         hasPrev: page > 1
       }
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }
     })
   } catch (error) {
     console.error('Error fetching customers:', error)
     return NextResponse.json(
       { error: 'Failed to fetch customers' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      }
     )
   }
 }
@@ -129,18 +167,32 @@ export async function POST(request: NextRequest) {
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.role === UserRole.SALES_MANAGER ||
+                      user.role === UserRole.ACCOUNTANT ||
                       user.permissions.includes(PERMISSIONS.CREATE_CUSTOMERS)
     
     if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { 
+        status: 403,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      })
     }
     const body = await request.json()
     
@@ -158,7 +210,14 @@ export async function POST(request: NextRequest) {
     if (!email) {
       return NextResponse.json(
         { error: 'Email is required' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        }
       )
     }
 
@@ -170,7 +229,14 @@ export async function POST(request: NextRequest) {
     if (existingCustomer) {
       return NextResponse.json(
         { error: 'Customer with this email already exists' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        }
       )
     }
 
@@ -218,12 +284,26 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json(customer, { status: 201 })
+    return NextResponse.json(customer, { 
+      status: 201,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }
+    })
   } catch (error) {
     console.error('Error creating customer:', error)
     return NextResponse.json(
       { error: 'Failed to create customer' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      }
     )
   }
 }
