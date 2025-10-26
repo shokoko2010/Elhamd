@@ -144,6 +144,38 @@ export default function Footer() {
     return typeof item === 'string' ? item : ''
   }
 
+  const renderFooterItem = (item: any, columnType: string) => {
+    const text = getItemText(item)
+    const href = generateLinkHref(item)
+    
+    if (!text) return null
+    
+    const linkClasses = "text-gray-300 hover:text-white transition-colors"
+    
+    switch (columnType) {
+      case 'LINKS':
+      case 'CONTACT':
+        return (
+          <Link href={href} className={linkClasses}>
+            {text}
+          </Link>
+        )
+      case 'SOCIAL':
+        return (
+          <Link 
+            href={href} 
+            className={linkClasses}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {text}
+          </Link>
+        )
+      default:
+        return <span className="text-gray-300">{text}</span>
+    }
+  }
+
   const getSocialIcon = (platform: string, url: string) => {
     const iconMap: { [key: string]: any } = {
       facebook: Facebook,
@@ -224,32 +256,7 @@ export default function Footer() {
                 <ul className="space-y-2">
                   {parseContent(column.content).map((item, index) => (
                     <li key={index}>
-                      {column.type === 'LINKS' ? (
-                        <Link 
-                          href={generateLinkHref(item)} 
-                          className="text-gray-300 hover:text-white transition-colors"
-                        >
-                          {getItemText(item)}
-                        </Link>
-                      ) : column.type === 'CONTACT' ? (
-                        <Link 
-                          href={generateLinkHref(item)} 
-                          className="text-gray-300 hover:text-white transition-colors"
-                        >
-                          {getItemText(item)}
-                        </Link>
-                      ) : column.type === 'SOCIAL' ? (
-                        <Link 
-                          href={generateLinkHref(item)} 
-                          className="text-gray-300 hover:text-white transition-colors"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {getItemText(item)}
-                        </Link>
-                      ) : (
-                        <span className="text-gray-300">{getItemText(item)}</span>
-                      )}
+                      {renderFooterItem(item, column.type)}
                     </li>
                   ))}
                 </ul>
