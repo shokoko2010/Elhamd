@@ -44,38 +44,108 @@ export async function POST(request: NextRequest) {
 
     console.log('File details:', { name: file.name, size: file.size, type: file.type })
 
-    // Initialize image optimization service
-    const imageService = ImageOptimizationService.getInstance()
+    // Check if we're in production with read-only filesystem
+    const isProduction = process.env.NODE_ENV === 'production'
+    const isReadOnly = isProduction || process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
 
-    let result
-    if (type === 'vehicle') {
-      result = await imageService.saveVehicleImage(file, entityId, isPrimary, order)
-    } else if (type === 'service') {
-      result = await imageService.saveServiceImage(file, entityId)
-    } else if (type === 'general') {
-      // For general uploads, just save to a general folder
-      result = await imageService.saveGeneralImage(file, entityId)
-    } else {
-      console.log('Invalid upload type:', type)
-      return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 })
+    if (isReadOnly) {
+      console.log('Read-only filesystem detected, using base64 fallback')
+      
+      // For production, fall back to base64 encoding
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const base64 = buffer.toString('base64')
+      
+      // Generate unique filename
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substring(2, 15)
+      const extension = file.name.split('.').pop()
+      const filename = `${type}_${entityId}_${timestamp}_${randomId}.${extension}`
+
+      // Create data URL
+      const mimeType = file.type
+      const dataUrl = `data:${mimeType};base64,${base64}`
+
+      return NextResponse.json({
+        success: true,
+        url: dataUrl,
+        filename,
+        filesize: buffer.length,
+        metadata: {
+          type,
+          entityId,
+          isPrimary,
+          order,
+          isBase64: true
+        }
+      })
     }
 
-    console.log('Image saved successfully:', result)
+    // Try to use ImageOptimizationService (development mode)
+    try {
+      const imageService = ImageOptimizationService.getInstance()
 
-    return NextResponse.json({
-      success: true,
-      url: type === 'vehicle' ? result.optimizedUrl : result.url,
-      originalUrl: type === 'vehicle' ? result.originalUrl : undefined,
-      thumbnails: result.thumbnails,
-      filename: result.filename,
-      filesize: result.filesize,
-      metadata: {
-        type,
-        entityId,
-        isPrimary,
-        order
+      let result
+      if (type === 'vehicle') {
+        result = await imageService.saveVehicleImage(file, entityId, isPrimary, order)
+      } else if (type === 'service') {
+        result = await imageService.saveServiceImage(file, entityId)
+      } else if (type === 'general') {
+        // For general uploads, just save to a general folder
+        result = await imageService.saveGeneralImage(file, entityId)
+      } else {
+        console.log('Invalid upload type:', type)
+        return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 })
       }
-    })
+
+      console.log('Image saved successfully:', result)
+
+      return NextResponse.json({
+        success: true,
+        url: type === 'vehicle' ? result.optimizedUrl : result.url,
+        originalUrl: type === 'vehicle' ? result.originalUrl : undefined,
+        thumbnails: result.thumbnails,
+        filename: result.filename,
+        filesize: result.filesize,
+        metadata: {
+          type,
+          entityId,
+          isPrimary,
+          order,
+          isBase64: false
+        }
+      })
+
+    } catch (imageServiceError) {
+      console.log('ImageOptimizationService failed, falling back to base64:', imageServiceError)
+      
+      // Fallback to base64
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const base64 = buffer.toString('base64')
+      
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substring(2, 15)
+      const extension = file.name.split('.').pop()
+      const filename = `${type}_${entityId}_${timestamp}_${randomId}.${extension}`
+
+      const mimeType = file.type
+      const dataUrl = `data:${mimeType};base64,${base64}`
+
+      return NextResponse.json({
+        success: true,
+        url: dataUrl,
+        filename,
+        filesize: buffer.length,
+        metadata: {
+          type,
+          entityId,
+          isPrimary,
+          order,
+          isBase64: true
+        }
+      })
+    }
 
   } catch (error) {
     console.error('Error uploading image:', error)
