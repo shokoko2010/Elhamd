@@ -64,7 +64,7 @@ export const authOptions = {
     updateAge: 60 * 60, // 1 hour
   },
   secret: process.env.NEXTAUTH_SECRET,
-  url: process.env.NEXTAUTH_URL || 'https://elhamdimport.com',
+  baseUrl: process.env.NEXTAUTH_URL || 'https://elhamdimport.com',
   trustHost: true,
   debug: process.env.NODE_ENV === 'development',
   callbacks: {
@@ -91,38 +91,6 @@ export const authOptions = {
   pages: {
     signIn: '/login',
     signUp: '/register'
-  },
-  cookies: {
-    sessionToken: {
-      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
-      }
-    },
-    callbackUrl: {
-      name: 'next-auth.callback-url',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
-      }
-    },
-    csrfToken: {
-      name: 'next-auth.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? '.elhamdimport.com' : undefined
-      }
-    }
   },
   useSecureCookies: process.env.NODE_ENV === 'production',
   debug: process.env.NODE_ENV === 'development'

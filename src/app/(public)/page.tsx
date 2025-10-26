@@ -182,7 +182,7 @@ export default function Home() {
         }
 
         // Fetch vehicles
-        const vehiclesResponse = await fetch('/api/vehicles?limit=8')
+        const vehiclesResponse = await fetch('/api/public/vehicles?limit=8')
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
           setFeaturedVehicles(vehiclesData?.vehicles || [])

@@ -51,6 +51,9 @@ export function useAuth() {
     } else if (status === 'unauthenticated') {
       setUser(null)
       setError(null)
+    } else if (status === 'error') {
+      setUser(null)
+      setError('Session error occurred')
     }
     
     setLoading(false)
@@ -137,8 +140,15 @@ export function useAuth() {
         })
         
         if (response.ok) {
-          // Session is valid, NextAuth will automatically update the session
-          await new Promise(resolve => setTimeout(resolve, 100))
+          const sessionData = await response.json()
+          if (sessionData) {
+            // Session is valid, NextAuth will automatically update the session
+            await new Promise(resolve => setTimeout(resolve, 100))
+          } else {
+            // Session is null/invalid, clear local state
+            setUser(null)
+            setError(null)
+          }
         } else {
           // Session is invalid, clear local state
           setUser(null)
@@ -147,7 +157,7 @@ export function useAuth() {
       } catch (error) {
         console.error('Session refresh error:', error)
         setUser(null)
-        setError(null)
+        setError('Failed to refresh session')
       } finally {
         setLoading(false)
       }
