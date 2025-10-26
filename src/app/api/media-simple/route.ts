@@ -6,23 +6,32 @@ import path from 'path'
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const user = await authorize(request, { 
-      roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] 
-    })
+    // Try to authenticate, but allow public access for media listing
+    let user = null;
+    try {
+      user = await authorize(request, { 
+        roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] 
+      });
+    } catch (authError) {
+      // Continue without authentication for public access
+      console.log('⚠️ No authentication, proceeding with public access');
+    }
     
     const { searchParams } = new URL(request.url)
     
     // Parse query parameters
-    const limit = parseInt(searchParams.get('limit') || '50') // Increased default limit
+    const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
     const category = searchParams.get('category')
     const search = searchParams.get('search')
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
     
-    // Build where clause
+    // Build where clause - only show public media for unauthenticated users
     const where: any = {}
+    if (!user) {
+      where.isPublic = true
+    }
     if (category && category !== 'all') where.category = category
     if (search) {
       where.OR = [
@@ -41,7 +50,7 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { [sortBy]: sortOrder },
       skip: offset,
-      take: Math.min(limit, 100) // Max 100 items
+      take: Math.min(limit, 100)
     })
     
     // Transform data
@@ -83,10 +92,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error fetching media:', error)
-    if (error instanceof Error && error.message.includes('Authentication')) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
+    console.error('❌ Error fetching media:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch media' },
       { status: 500 }
@@ -96,37 +102,55 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const user = await authorize(request, { 
+    console.log('🔄 Starting file upload process...')
+    
+    // Authenticate user for upload
+    const authResult = await authorize(request, { 
       roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] 
-    })
+    });
+    
+    if (authResult.error) {
+      console.error('❌ Authentication failed:', authResult.error);
+      return authResult.error;
+    }
+    
+    const user = authResult.user;
+    console.log('✅ User authenticated:', user.email);
     
     const formData = await request.formData()
     const file = formData.get('file') as File
     const options = JSON.parse(formData.get('options') as string || '{}')
     
+    console.log('📁 File received:', file?.name, file?.size, file?.type)
+    
     if (!file) {
+      console.error('❌ No file provided')
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
     
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
     if (!allowedTypes.includes(file.type)) {
+      console.error('❌ Invalid file type:', file.type)
       return NextResponse.json({ error: 'Invalid file type. Only images are allowed.' }, { status: 400 })
     }
     
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
+      console.error('❌ File too large:', file.size)
       return NextResponse.json({ error: 'File too large. Maximum size is 10MB.' }, { status: 400 })
     }
     
     // Create uploads directory if it doesn't exist
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'media')
+    console.log('📂 Uploads directory:', uploadsDir)
+    
     try {
       await mkdir(uploadsDir, { recursive: true })
+      console.log('✅ Directory created/verified')
     } catch (error) {
-      // Directory might already exist
+      console.log('ℹ️ Directory might already exist:', error)
     }
     
     // Generate unique filename
@@ -136,10 +160,14 @@ export async function POST(request: NextRequest) {
     const filename = `${timestamp}_${random}.${extension}`
     const filepath = path.join(uploadsDir, filename)
     
+    console.log('💾 Saving file:', filename, 'to', filepath)
+    
     // Convert file to buffer and save
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     await writeFile(filepath, buffer)
+    
+    console.log('✅ File saved successfully')
     
     // Create URL path
     const url = `/uploads/media/${filename}`
@@ -172,9 +200,12 @@ export async function POST(request: NextRequest) {
       createdBy: user.id
     }
     
+    console.log('💾 Saving to database...')
     const createdMedia = await db.media.create({
       data: mediaData
     })
+    
+    console.log('✅ Saved to database with ID:', createdMedia.id)
     
     return NextResponse.json({
       success: true,
@@ -201,10 +232,7 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error uploading file:', error)
-    if (error instanceof Error && error.message.includes('Authentication')) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
+    console.error('❌ Error uploading file:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to upload file' },
       { status: 500 }
@@ -215,9 +243,13 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Authenticate user
-    const user = await authorize(request, { 
+    const authResult = await authorize(request, { 
       roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] 
-    })
+    });
+    
+    if (authResult.error) {
+      return authResult.error;
+    }
     
     const { searchParams } = new URL(request.url)
     const mediaId = searchParams.get('id')
@@ -255,10 +287,7 @@ export async function PUT(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error updating media:', error)
-    if (error instanceof Error && error.message.includes('Authentication')) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
+    console.error('❌ Error updating media:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update media' },
       { status: 500 }
@@ -269,9 +298,13 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Authenticate user
-    const user = await authorize(request, { 
+    const authResult = await authorize(request, { 
       roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] 
-    })
+    });
+    
+    if (authResult.error) {
+      return authResult.error;
+    }
     
     const { searchParams } = new URL(request.url)
     const mediaId = searchParams.get('id')
@@ -310,10 +343,7 @@ export async function DELETE(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error deleting media:', error)
-    if (error instanceof Error && error.message.includes('Authentication')) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
+    console.error('❌ Error deleting media:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete media' },
       { status: 500 }
