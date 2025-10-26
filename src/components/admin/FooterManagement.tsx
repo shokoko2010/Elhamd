@@ -19,6 +19,7 @@ import {
   Upload, 
   Download, 
   Eye,
+  EyeOff,
   Settings,
   Layout,
   Type,
@@ -171,6 +172,7 @@ export default function FooterManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingColumn, setEditingColumn] = useState<FooterColumn | null>(null)
   const [newColumn, setNewColumn] = useState({ title: '', content: '', type: 'text' as const })
+  const [showHtmlPreview, setShowHtmlPreview] = useState(false)
 
   useEffect(() => {
     fetchFooterData()
@@ -770,14 +772,211 @@ export default function FooterManagement() {
                   <h3 className="font-medium">Additional Content</h3>
                   
                   <div>
-                    <Label htmlFor="copyrightText">Copyright Text</Label>
-                    <Textarea
-                      id="copyrightText"
-                      value={content.copyrightText || ''}
-                      onChange={(e) => setContent(prev => ({ ...prev, copyrightText: e.target.value }))}
-                      placeholder="Enter copyright text"
-                      rows={2}
-                    />
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="copyrightText">Copyright Text</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowHtmlPreview(!showHtmlPreview)}
+                        className="text-xs"
+                      >
+                        {showHtmlPreview ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                        {showHtmlPreview ? 'Hide Preview' : 'Show Preview'}
+                      </Button>
+                    </div>
+                    <div className="border rounded-md">
+                      <div className="flex items-center gap-2 p-2 border-b bg-gray-50">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const selectedText = textarea.value.substring(start, end)
+                              const newText = `<strong>${selectedText}</strong>`
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 8, start + 8 + selectedText.length)
+                            }
+                          }}
+                          className="font-bold"
+                        >
+                          B
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const selectedText = textarea.value.substring(start, end)
+                              const newText = `<em>${selectedText}</em>`
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 4, start + 4 + selectedText.length)
+                            }
+                          }}
+                          className="italic"
+                        >
+                          I
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const selectedText = textarea.value.substring(start, end)
+                              const newText = `<u>${selectedText}</u>`
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 3, start + 3 + selectedText.length)
+                            }
+                          }}
+                          className="underline"
+                        >
+                          U
+                        </Button>
+                        <div className="w-px h-6 bg-gray-300"></div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const selectedText = textarea.value.substring(start, end)
+                              const newText = `<a href="#" title="link">${selectedText}</a>`
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 9, start + 9 + 4)
+                            }
+                          }}
+                        >
+                          <Globe className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const selectedText = textarea.value.substring(start, end)
+                              const newText = `<span style="color: #3B82F6">${selectedText}</span>`
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 25, start + 25 + selectedText.length)
+                            }
+                          }}
+                          className="text-blue-500"
+                        >
+                          A
+                        </Button>
+                        <div className="w-px h-6 bg-gray-300"></div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const newText = `&copy; `
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 6, start + 6)
+                            }
+                          }}
+                        >
+                          ©
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const newText = `&reg; `
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 6, start + 6)
+                            }
+                          }}
+                        >
+                          ®
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const textarea = document.getElementById('copyrightText') as HTMLTextAreaElement
+                            if (textarea) {
+                              const start = textarea.selectionStart
+                              const end = textarea.selectionEnd
+                              const newText = `&trade; `
+                              textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
+                              setContent(prev => ({ ...prev, copyrightText: textarea.value }))
+                              textarea.focus()
+                              textarea.setSelectionRange(start + 7, start + 7)
+                            }
+                          }}
+                        >
+                          ™
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="copyrightText"
+                        value={content.copyrightText || ''}
+                        onChange={(e) => setContent(prev => ({ ...prev, copyrightText: e.target.value }))}
+                        placeholder="Enter copyright text (HTML supported)"
+                        rows={4}
+                        className="border-0 focus:ring-0 font-mono text-sm"
+                      />
+                    </div>
+                    
+                    {/* HTML Preview */}
+                    {showHtmlPreview && (
+                      <div className="mt-2 p-3 border rounded-md bg-gray-50">
+                        <div className="text-xs text-gray-500 mb-1">Preview:</div>
+                        <div 
+                          className="text-sm text-gray-700"
+                          dangerouslySetInnerHTML={{ 
+                            __html: content.copyrightText || `© ${new Date().getFullYear()} Al-Hamd Cars. All rights reserved.` 
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-500 mt-1">
+                      HTML tags supported: &lt;strong&gt;, &lt;em&gt;, &lt;u&gt;, &lt;a&gt;, &lt;span&gt;, &amp;copy;, &amp;reg;, &amp;trade;
+                    </p>
                   </div>
 
                   <div>
