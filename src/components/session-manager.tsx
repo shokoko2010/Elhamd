@@ -41,12 +41,10 @@ export function SessionManager() {
   useEffect(() => {
     // Handle session changes
     if (status === 'unauthenticated') {
-      console.log('SessionManager: User is unauthenticated, clearing storage')
+      console.log('SessionManager: User is unauthenticated')
       
-      // Clear any local storage items that might persist after logout
+      // Only clear specific non-NextAuth storage items
       const keysToClear = [
-        'next-auth.csrf-token',
-        'next-auth.callback-url',
         'user-preferences',
         'cart-items',
         'booking-draft',
@@ -63,13 +61,8 @@ export function SessionManager() {
         }
       })
       
-      // Clear all storage if possible
-      try {
-        localStorage.clear()
-        sessionStorage.clear()
-      } catch (error) {
-        console.log('Storage clear error:', error)
-      }
+      // DON'T clear all storage - this interferes with NextAuth
+      // NextAuth needs its own tokens to work properly
       
       // Only redirect to login if trying to access protected routes
       const isPublicRoute = PUBLIC_ROUTES.some(route => {
