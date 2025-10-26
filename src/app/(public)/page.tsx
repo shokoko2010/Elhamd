@@ -357,13 +357,13 @@ export default function Home() {
               <div className="text-center mb-16">
                 <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
                   <Car className="ml-2 h-4 w-4" />
-                  سياراتنا
+                  {companyInfo?.features?.[0] || 'سياراتنا'}
                 </Badge>
                 <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
-                  استعرض سيارات تاتا
+                  {companyInfo?.title || 'استعرض سيارات تاتا'}
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  استعرض أحدث سيارات تاتا التجارية والخفيفة بأفضل الأسعار والمواصفات
+                  {companyInfo?.subtitle || 'استعرض أحدث سيارات تاتا التجارية والخفيفة بأفضل الأسعار والمواصفات'}
                 </p>
               </div>
             

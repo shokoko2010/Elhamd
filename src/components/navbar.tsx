@@ -29,10 +29,20 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { useSiteSettings } from '@/components/SiteSettingsProvider'
 
+interface NavigationItem {
+  id: string
+  label: string
+  href: string
+  order: number
+  isVisible: boolean
+  children?: NavigationItem[]
+}
+
 // Create a safe wrapper component to handle auth state
 function AuthAwareNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [navigation, setNavigation] = useState<NavigationItem[]>([])
   const pathname = usePathname()
   const { user, loading, logout } = useAuth()
   const { settings } = useSiteSettings()
@@ -40,17 +50,53 @@ function AuthAwareNavbar() {
 
   useEffect(() => {
     setIsMounted(true)
+    fetchNavigation()
   }, [])
 
-  const navigation = [
-    { name: 'الرئيسية', href: '/', icon: Car },
-    { name: 'السيارات', href: '/vehicles', icon: Car },
-    { name: 'بحث', href: '/search', icon: Search },
-    { name: 'قيادة تجريبية', href: '/test-drive', icon: Calendar },
-    { name: 'حجز خدمة', href: '/service-booking', icon: Wrench },
-    { name: 'استشارة', href: '/consultation', icon: Phone },
-    { name: 'اتصل بنا', href: '/contact', icon: Phone },
-  ]
+  const fetchNavigation = async () => {
+    try {
+      const response = await fetch('/api/header/navigation')
+      if (response.ok) {
+        const navData = await response.json()
+        setNavigation(navData)
+      }
+    } catch (error) {
+      console.error('Error fetching navigation:', error)
+      // Fallback to default navigation
+      setNavigation([
+        { id: '1', label: 'الرئيسية', href: '/', order: 1, isVisible: true },
+        { id: '2', label: 'السيارات', href: '/vehicles', order: 2, isVisible: true },
+        { id: '3', label: 'بحث', href: '/search', order: 3, isVisible: true },
+        { id: '4', label: 'قيادة تجريبية', href: '/test-drive', order: 4, isVisible: true },
+        { id: '5', label: 'حجز خدمة', href: '/service-booking', order: 5, isVisible: true },
+        { id: '6', label: 'استشارة', href: '/consultation', order: 6, isVisible: true },
+        { id: '7', label: 'اتصل بنا', href: '/contact', order: 7, isVisible: true },
+      ])
+    }
+  }
+
+  const getIconForLabel = (label: string) => {
+    const iconMap: { [key: string]: any } = {
+      'الرئيسية': Car,
+      'Home': Car,
+      'السيارات': Car,
+      'Vehicles': Car,
+      'بحث': Search,
+      'Search': Search,
+      'قيادة تجريبية': Calendar,
+      'Test Drive': Calendar,
+      'حجز خدمة': Wrench,
+      'Service Booking': Wrench,
+      'استشارة': Phone,
+      'Consultation': Phone,
+      'اتصل بنا': Phone,
+      'Contact': Phone,
+      'Services': Wrench,
+      'About Us': User,
+      'About': User,
+    }
+    return iconMap[label] || Car
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -102,23 +148,26 @@ function AuthAwareNavbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => {
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-blue-600 ${
-                    isActive(item.href) 
-                      ? 'text-blue-600' 
-                      : 'text-gray-600'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.name}</span>
-                </Link>
-              )
-            })}
+            {navigation
+              .filter(item => item.isVisible)
+              .sort((a, b) => a.order - b.order)
+              .map((item) => {
+                const Icon = getIconForLabel(item.label)
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-blue-600 ${
+                      isActive(item.href) 
+                        ? 'text-blue-600' 
+                        : 'text-gray-600'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
           </div>
 
           {/* Contact Info */}
@@ -232,24 +281,27 @@ function AuthAwareNavbar() {
         {isMenuOpen && (
           <div className="md:hidden border-t bg-white">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              {navigation.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                      isActive(item.href) 
-                        ? 'bg-blue-50 text-blue-600' 
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{item.name}</span>
-                  </Link>
-                )
-              })}
+              {navigation
+                .filter(item => item.isVisible)
+                .sort((a, b) => a.order - b.order)
+                .map((item) => {
+                  const Icon = getIconForLabel(item.label)
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                        isActive(item.href) 
+                          ? 'bg-blue-50 text-blue-600' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </Link>
+                  )
+                })}
               
               <div className="border-t pt-3 mt-3">
                 <div className="px-3 py-2 text-xs text-gray-500 uppercase font-medium">

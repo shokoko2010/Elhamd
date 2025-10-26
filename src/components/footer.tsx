@@ -159,22 +159,27 @@ export default function Footer() {
           {/* Company Info */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt={settings.siteTitle} className="h-8 w-auto" />
+              {footerContent?.logoUrl || settings.logoUrl ? (
+                <img src={footerContent?.logoUrl || settings.logoUrl} alt={footerContent?.logoText || settings.siteTitle} className="h-8 w-auto" />
               ) : (
                 <Car className="h-8 w-8" style={{ color: settings.primaryColor }} />
               )}
-              <span className="text-xl font-bold">{settings.siteTitle}</span>
+              <span className="text-xl font-bold">{footerContent?.logoText || settings.siteTitle}</span>
             </div>
             <p className="text-gray-300 mb-4">
-              {settings.siteDescription}
+              {footerContent?.tagline || settings.siteDescription}
             </p>
-            {settings.socialLinks && (
+            {(footerSocial || settings.socialLinks) && (
               <div className="flex space-x-4">
-                {settings.socialLinks.facebook && getSocialIcon('facebook', settings.socialLinks.facebook)}
-                {settings.socialLinks.twitter && getSocialIcon('twitter', settings.socialLinks.twitter)}
-                {settings.socialLinks.instagram && getSocialIcon('instagram', settings.socialLinks.instagram)}
-                {settings.socialLinks.linkedin && getSocialIcon('linkedin', settings.socialLinks.linkedin)}
+                {footerSocial?.facebook && getSocialIcon('facebook', footerSocial.facebook)}
+                {footerSocial?.twitter && getSocialIcon('twitter', footerSocial.twitter)}
+                {footerSocial?.instagram && getSocialIcon('instagram', footerSocial.instagram)}
+                {footerSocial?.linkedin && getSocialIcon('linkedin', footerSocial.linkedin)}
+                {footerSocial?.youtube && getSocialIcon('youtube', footerSocial.youtube)}
+                {settings.socialLinks?.facebook && getSocialIcon('facebook', settings.socialLinks.facebook)}
+                {settings.socialLinks?.twitter && getSocialIcon('twitter', settings.socialLinks.twitter)}
+                {settings.socialLinks?.instagram && getSocialIcon('instagram', settings.socialLinks.instagram)}
+                {settings.socialLinks?.linkedin && getSocialIcon('linkedin', settings.socialLinks.linkedin)}
               </div>
             )}
           </div>
@@ -209,7 +214,7 @@ export default function Footer() {
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © {new Date().getFullYear()} {settings.siteTitle}. جميع الحقوق محفوظة.
+              {footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings.siteTitle}. جميع الحقوق محفوظة.`}
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
