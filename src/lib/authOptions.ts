@@ -66,6 +66,7 @@ export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   url: process.env.NEXTAUTH_URL || 'https://elhamdimport.com',
   trustHost: true,
+  debug: process.env.NODE_ENV === 'development',
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -124,5 +125,5 @@ export const authOptions = {
     }
   },
   useSecureCookies: process.env.NODE_ENV === 'production',
-  debug: true
+  debug: process.env.NODE_ENV === 'development'
 }

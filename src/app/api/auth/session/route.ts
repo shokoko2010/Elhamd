@@ -6,23 +6,14 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
+    // Return session in NextAuth format
     if (session) {
-      return NextResponse.json({ 
-        valid: true,
-        user: session.user 
-      })
+      return NextResponse.json(session)
     } else {
-      return NextResponse.json({ 
-        valid: false,
-        user: null 
-      }, { status: 401 })
+      return NextResponse.json(null)
     }
   } catch (error) {
     console.error('Session validation error:', error)
-    return NextResponse.json({ 
-      valid: false,
-      user: null,
-      error: 'Session validation failed'
-    }, { status: 500 })
+    return NextResponse.json(null, { status: 500 })
   }
 }

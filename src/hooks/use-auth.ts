@@ -48,7 +48,7 @@ export function useAuth() {
         updatedAt: new Date()
       })
       setError(null)
-    } else {
+    } else if (status === 'unauthenticated') {
       setUser(null)
       setError(null)
     }
