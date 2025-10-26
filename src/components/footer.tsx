@@ -93,10 +93,24 @@ export default function Footer() {
   }, [])
 
   const parseContent = (content: string) => {
-    return content.split('\n').filter(line => line.trim())
+    try {
+      // Try to parse as JSON first
+      const parsed = JSON.parse(content)
+      return Array.isArray(parsed) ? parsed : content.split('\n').filter(line => line.trim())
+    } catch {
+      // Fallback to old format (split by newlines)
+      return content.split('\n').filter(line => line.trim())
+    }
   }
 
-  const generateLinkHref = (item: string) => {
+  const generateLinkHref = (item: string | any) => {
+    // Handle both string (old format) and object (new format)
+    if (typeof item === 'object' && item.href) {
+      return item.href
+    }
+    
+    const text = typeof item === 'string' ? item : item.text || ''
+    
     // Map Arabic text to appropriate routes
     const linkMap: { [key: string]: string } = {
       'الرئيسية': '/',
@@ -108,10 +122,26 @@ export default function Footer() {
       'قيادة تجريبية': '/test-drive',
       'حجز الخدمة': '/service-booking',
       'التمويل': '/financing',
-      'الصيانة': '/maintenance'
+      'الصيانة': '/maintenance',
+      'سياسة الخصوصية': '/privacy',
+      'الشروط والأحكام': '/terms',
+      'الأسئلة الشائعة': '/faq',
+      'خريطة الموقع': '/sitemap',
+      'الدعم الفني': '/support',
+      'الضمان': '/warranty',
+      'قطع الغيار': '/parts'
     }
     
-    return linkMap[item] || `/${item.toLowerCase().replace(/\s+/g, '-')}`
+    return linkMap[text] || `/${text.toLowerCase().replace(/\s+/g, '-')}`
+  }
+
+  const getItemText = (item: string | any) => {
+    // Handle both string (old format) and object (new format)
+    if (typeof item === 'object' && item.text) {
+      return item.text
+    }
+    
+    return typeof item === 'string' ? item : ''
   }
 
   const getSocialIcon = (platform: string, url: string) => {
@@ -194,15 +224,31 @@ export default function Footer() {
                 <ul className="space-y-2">
                   {parseContent(column.content).map((item, index) => (
                     <li key={index}>
-                      {column.type === 'links' ? (
+                      {column.type === 'LINKS' ? (
                         <Link 
                           href={generateLinkHref(item)} 
                           className="text-gray-300 hover:text-white transition-colors"
                         >
-                          {item}
+                          {getItemText(item)}
+                        </Link>
+                      ) : column.type === 'CONTACT' ? (
+                        <Link 
+                          href={generateLinkHref(item)} 
+                          className="text-gray-300 hover:text-white transition-colors"
+                        >
+                          {getItemText(item)}
+                        </Link>
+                      ) : column.type === 'SOCIAL' ? (
+                        <Link 
+                          href={generateLinkHref(item)} 
+                          className="text-gray-300 hover:text-white transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {getItemText(item)}
                         </Link>
                       ) : (
-                        <span className="text-gray-300">{item}</span>
+                        <span className="text-gray-300">{getItemText(item)}</span>
                       )}
                     </li>
                   ))}

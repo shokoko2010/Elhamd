@@ -18,23 +18,31 @@ interface NavigationItem {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Fetching navigation data...')
+    
     // Get navigation from site settings first (for public access)
     const settings = await db.siteSettings.findFirst()
+    console.log('✅ Settings found:', !!settings)
     
     if (settings?.headerSettings?.navigation) {
+      console.log('✅ Returning navigation from site settings')
       return NextResponse.json(settings.headerSettings.navigation)
     }
 
     // Fallback to HeaderNavigation table
+    console.log('🔄 Falling back to headerNavigation table...')
     const navigationItems = await db.headerNavigation.findMany({
       orderBy: { order: 'asc' }
     })
+    
+    console.log(`✅ Found ${navigationItems.length} items in headerNavigation table`)
     
     if (navigationItems.length > 0) {
       return NextResponse.json(navigationItems)
     }
     
     // Return default navigation as last resort
+    console.log('🔄 Returning default navigation...')
     return NextResponse.json([
       { id: '1', label: 'الرئيسية', href: '/', order: 1, isVisible: true },
       { id: '2', label: 'السيارات', href: '/vehicles', order: 2, isVisible: true },
@@ -45,7 +53,7 @@ export async function GET(request: NextRequest) {
       { id: '7', label: 'اتصل بنا', href: '/contact', order: 7, isVisible: true }
     ])
   } catch (error) {
-    console.error('Error fetching navigation:', error)
+    console.error('❌ Error fetching navigation:', error)
     return NextResponse.json(
       { error: 'Failed to fetch navigation' },
       { status: 500 }

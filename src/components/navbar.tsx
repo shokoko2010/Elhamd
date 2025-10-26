@@ -118,7 +118,7 @@ function AuthAwareNavbar() {
             <div className="flex items-center">
               <Link href="/" className="flex items-center space-x-2">
                 <Car className="h-8 w-8 text-blue-600" />
-                <span className="text-xl font-bold text-gray-900">Al-Hamd Import</span>
+                <span className="text-xl font-bold text-gray-900">Al-Hamd Cars</span>
               </Link>
             </div>
             <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
@@ -438,7 +438,7 @@ export default function Navbar() {
             <div className="flex items-center">
               <Link href="/" className="flex items-center space-x-2">
                 <Car className="h-8 w-8 text-blue-600" />
-                <span className="text-xl font-bold text-gray-900">شركة الحمد لاستيراد السيارات</span>
+                <span className="text-xl font-bold text-gray-900">Al-Hamd Cars</span>
               </Link>
             </div>
             <div className="flex items-center space-x-2">
