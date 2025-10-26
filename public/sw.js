@@ -4,7 +4,7 @@ const DYNAMIC_CACHE_NAME = 'elhamd-imports-dynamic-v1';
 const IMAGE_CACHE_NAME = 'elhamd-imports-images-v1';
 const API_CACHE_NAME = 'elhamd-imports-api-v1';
 
-// Cache URLs
+// Cache URLs - Only cache existing pages to avoid 404 errors
 const STATIC_URLS = [
   '/',
   '/vehicles',
@@ -12,6 +12,13 @@ const STATIC_URLS = [
   '/service-booking',
   '/contact',
   '/about',
+  '/warranty',
+  '/sitemap',
+  '/support',
+  '/faq',
+  '/parts',
+  '/privacy',
+  '/terms',
   '/offline'
 ];
 
