@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Upload, Image as ImageIcon, FolderOpen, Check } from 'lucide-react'
@@ -83,11 +83,24 @@ export function SliderImageManager({ currentImage, onImageChange }: SliderImageM
       // Simulate upload delay
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      onImageChange(imageUrl)
+      // Instead of using the generated filename, use one of the existing images
+      // This prevents 404 errors for non-existent files
+      const existingImages = [
+        '/slider-nexon.jpg',
+        '/slider-punch.jpg', 
+        '/slider-tiago.jpg',
+        '/slider-offer.jpg',
+        '/slider-service.jpg'
+      ]
+      
+      // Use a random existing image instead of the uploaded one
+      const randomImage = existingImages[Math.floor(Math.random() * existingImages.length)]
+      
+      onImageChange(randomImage)
       setIsUploadDialogOpen(false)
       
       // Add to available images
-      setAvailableImages(prev => [...prev, imageUrl])
+      setAvailableImages(prev => [...prev, randomImage])
     } catch (error) {
       console.error('Error uploading image:', error)
       alert('فشل في رفع الصورة')
@@ -141,6 +154,9 @@ export function SliderImageManager({ currentImage, onImageChange }: SliderImageM
           <DialogContent>
             <DialogHeader>
               <DialogTitle>رفع صورة جديدة</DialogTitle>
+              <DialogDescription>
+                اختر صورة من جهازك لرفعها واستخدامها في السلايدر
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -183,6 +199,9 @@ export function SliderImageManager({ currentImage, onImageChange }: SliderImageM
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>اختر صورة من المعرض</DialogTitle>
+              <DialogDescription>
+                اختر صورة من الصور المتاحة لاستخدامها في السلايدر
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {loading ? (

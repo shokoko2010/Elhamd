@@ -2673,18 +2673,18 @@ model MaintenancePartToMaintenanceRecord {
   A String
   B String
 
-  @@id([A, B], map: "_MaintenancePartToMaintenanceRecord_AB_pkey")
-  @@index([B], map: "_MaintenancePartToMaintenanceRecord_B_index")
-  @@map("_MaintenancePartToMaintenanceRecord")
+  @@id([A, B])
+  @@index([B])
+  @@map("MaintenancePartToMaintenanceRecord")
 }
 
 model TicketArticles {
   A String
   B String
 
-  @@id([A, B], map: "_TicketArticles_AB_pkey")
-  @@index([B], map: "_TicketArticles_B_index")
-  @@map("_TicketArticles")
+  @@id([A, B])
+  @@index([B])
+  @@map("TicketArticles")
 }
 
 enum VehicleSpecCategory {
