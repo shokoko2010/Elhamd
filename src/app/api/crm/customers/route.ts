@@ -170,8 +170,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let isConnected = false
+  
   try {
     console.log('🔍 POST /api/crm/customers: Starting request...')
+    
+    // Ensure database connection
+    await db.$connect()
+    isConnected = true
     
     // Check authentication using production method
     const user = await authenticateProductionUser(request)
@@ -191,6 +197,8 @@ export async function POST(request: NextRequest) {
       })
     }
     
+    console.log(`✅ POST /api/crm/customers: User authenticated: ${user.email}, Role: ${user.role}`)
+    
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
                       user.role === UserRole.SUPER_ADMIN ||
@@ -198,8 +206,17 @@ export async function POST(request: NextRequest) {
                       user.role === UserRole.ACCOUNTANT ||
                       user.permissions.includes(PERMISSIONS.CREATE_CUSTOMERS)
     
+    console.log(`✅ POST /api/crm/customers: Access check: ${hasAccess}`)
+    
     if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { 
+      return NextResponse.json({ 
+        error: 'غير مصرح لك - صلاحيات غير كافية',
+        details: {
+          userRole: user.role,
+          userPermissions: user.permissions,
+          requiredPermission: PERMISSIONS.CREATE_CUSTOMERS
+        }
+      }, { 
         status: 403,
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -208,7 +225,9 @@ export async function POST(request: NextRequest) {
         }
       })
     }
+    
     const body = await request.json()
+    console.log('✅ POST /api/crm/customers: Request body parsed:', body)
     
     const {
       name,
@@ -235,12 +254,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log(`✅ POST /api/crm/customers: Checking if customer exists: ${email}`)
+    
     // Check if customer already exists
     const existingCustomer = await db.user.findUnique({
       where: { email }
     })
 
     if (existingCustomer) {
+      console.log(`❌ POST /api/crm/customers: Customer already exists: ${email}`)
       return NextResponse.json(
         { error: 'Customer with this email already exists' },
         { 
@@ -254,6 +276,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log(`✅ POST /api/crm/customers: Creating new customer: ${email}`)
+    
     // Create customer
     const customer = await db.user.create({
       data: {
@@ -284,6 +308,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log(`✅ POST /api/crm/customers: Customer created successfully: ${customer.id}`)
+
     // Add tags if provided
     if (tags.length > 0 && customer.customerProfile) {
       try {
@@ -294,13 +320,14 @@ export async function POST(request: NextRequest) {
             assignedBy: user.email || 'system'
           }))
         })
+        console.log(`✅ POST /api/crm/customers: Tags added successfully`)
       } catch (tagError) {
         console.warn('Warning: Could not create tag assignments:', tagError)
         // Continue without failing the whole operation
       }
     }
 
-    return NextResponse.json(customer, { 
+    const response = NextResponse.json(customer, { 
       status: 201,
       headers: {
         'Access-Control-Allow-Origin': '*',
@@ -308,18 +335,70 @@ export async function POST(request: NextRequest) {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       }
     })
+    
+    console.log(`✅ POST /api/crm/customers: Response sent successfully`)
+    return response
+    
   } catch (error) {
-    console.error('Error creating customer:', error)
-    return NextResponse.json(
-      { error: 'Failed to create customer' },
-      { 
-        status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-        }
+    console.error('=== CUSTOMER CREATION ERROR ===')
+    console.error('Error type:', typeof error)
+    console.error('Error name:', error instanceof Error ? error.name : 'Unknown')
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    
+    // Check for specific database connection errors
+    if (error instanceof Error) {
+      if (error.message.includes('connection') || error.message.includes('timeout')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Database connection error. Please try again.',
+          code: 'DATABASE_CONNECTION_ERROR',
+          details: 'Unable to connect to the database. Please try again later.'
+        }, { status: 503 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
       }
-    )
+      
+      if (error.message.includes('prisma') || error.message.includes('query')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Database query error. Please try again.',
+          code: 'DATABASE_QUERY_ERROR',
+          details: 'A database error occurred while processing your request.'
+        }, { status: 500 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+      
+      if (error.message.includes('Foreign key constraint')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Invalid data provided. Please check your input.',
+          code: 'FOREIGN_KEY_CONSTRAINT',
+          details: 'The provided data is invalid or references non-existent records.'
+        }, { status: 400 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+    }
+    
+    const errorResponse = NextResponse.json({ 
+      error: 'Failed to create customer',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      code: 'INTERNAL_ERROR'
+    }, { status: 500 })
+    
+    errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    
+    return errorResponse
+  } finally {
+    if (isConnected) {
+      await db.$disconnect()
+    }
   }
 }
