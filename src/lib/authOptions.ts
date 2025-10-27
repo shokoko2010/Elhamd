@@ -63,9 +63,9 @@ export const authOptions = {
     maxAge: 24 * 60 * 60, // 24 hours
     updateAge: 60 * 60, // 1 hour
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-development',
   // Use the correct URL configuration
-  url: process.env.NEXTAUTH_URL,
+  baseUrl: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   trustHost: true,
   debug: process.env.NODE_ENV === 'development',
   callbacks: {
@@ -94,38 +94,4 @@ export const authOptions = {
     signUp: '/register'
   },
   useSecureCookies: process.env.NODE_ENV === 'production',
-  cookies: {
-    sessionToken: {
-      name: process.env.NODE_ENV === 'production' 
-        ? '__Secure-next-auth.session-token' 
-        : 'next-auth.session-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production'
-        // Remove domain to avoid cross-domain issues
-      }
-    },
-    callbackUrl: {
-      name: '__Secure-next-auth.callback-url',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production'
-        // Remove domain to avoid cross-domain issues
-      }
-    },
-    csrfToken: {
-      name: '__Host-next-auth.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production'
-      }
-    }
-  },
-  debug: process.env.NODE_ENV === 'development'
 }

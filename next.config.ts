@@ -32,6 +32,15 @@ const nextConfig: NextConfig = {
       },
     };
     
+    // Fix CSS preload warnings
+    if (!isServer) {
+      config.module.rules.push({
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader'],
+        sideEffects: true,
+      });
+    }
+    
     return config;
   },
   allowedDevOrigins: [
@@ -61,6 +70,12 @@ const nextConfig: NextConfig = {
     optimizeCss: false,
     // Disable other optimizations that cause preload warnings
     optimizeServerReact: true,
+    // Optimize CSS loading
+    adjustFontFallbacks: false,
+    // Disable font preload warnings
+    fontLoaders: [
+      { loader: '@next/font/google', options: { subsets: ['latin'] } },
+    ],
   },
   
   // Server external packages

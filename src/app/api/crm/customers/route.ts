@@ -278,17 +278,26 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ POST /api/crm/customers: Creating new customer: ${email}`)
     
-    // Create customer
-    const customer = await db.user.create({
-      data: {
-        email,
-        name,
-        phone,
-        role: 'CUSTOMER',
-        status: 'active',
-        segment: 'CUSTOMER',
-        customerProfile: {
-          create: {
+    // Create customer with simplified data first
+    try {
+      const customer = await db.user.create({
+        data: {
+          email,
+          name,
+          phone,
+          role: 'CUSTOMER',
+          status: 'active',
+          segment: 'CUSTOMER'
+        }
+      })
+
+      console.log(`✅ POST /api/crm/customers: Basic customer created: ${customer.id}`)
+      
+      // Now create the customer profile
+      try {
+        const customerProfile = await db.customerProfile.create({
+          data: {
+            userId: customer.id,
             segment: segment as any,
             leadSource,
             preferences: {},
@@ -301,29 +310,41 @@ export async function POST(request: NextRequest) {
             notes,
             tags: tags.length > 0 ? tags : []
           }
-        }
-      },
-      include: {
-        customerProfile: true
+        })
+
+        console.log(`✅ POST /api/crm/customers: Customer profile created: ${customerProfile.id}`)
+        
+        // Return the complete customer data
+        const completeCustomer = await db.user.findUnique({
+          where: { id: customer.id },
+          include: {
+            customerProfile: true
+          }
+        })
+
+        const response = NextResponse.json(completeCustomer, { 
+          status: 201,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        })
+        
+        console.log(`✅ POST /api/crm/customers: Response sent successfully`)
+        return response
+
+      } catch (profileError) {
+        console.error('❌ POST /api/crm/customers: Error creating customer profile:', profileError)
+        // Delete the user if profile creation fails
+        await db.user.delete({ where: { id: customer.id } })
+        throw profileError
       }
-    })
 
-    console.log(`✅ POST /api/crm/customers: Customer created successfully: ${customer.id}`)
-
-    // Skip tag assignments for now to avoid potential issues
-    console.log(`✅ POST /api/crm/customers: Skipping tag assignments to avoid errors`)
-
-    const response = NextResponse.json(customer, { 
-      status: 201,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      }
-    })
-    
-    console.log(`✅ POST /api/crm/customers: Response sent successfully`)
-    return response
+    } catch (userError) {
+      console.error('❌ POST /api/crm/customers: Error creating user:', userError)
+      throw userError
+    }
     
   } catch (error) {
     console.error('=== CUSTOMER CREATION ERROR ===')
