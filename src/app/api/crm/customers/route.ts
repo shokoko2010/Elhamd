@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, executeWithRetry } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/production-auth-vercel'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -175,10 +175,6 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 POST /api/crm/customers: Starting request...')
     
-    // Ensure database connection
-    await db.$connect()
-    isConnected = true
-    
     // Check authentication using production method
     const user = await authenticateProductionUser(request)
     if (!user) {
@@ -254,15 +250,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`✅ POST /api/crm/customers: Checking if customer exists: ${email}`)
+    // Clean and validate email
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        }
+      )
+    }
+
+    // Clean phone number
+    const cleanPhone = phone ? phone.trim() : null
     
-    // Check if customer already exists
-    const existingCustomer = await db.user.findUnique({
-      where: { email }
+    console.log(`✅ POST /api/crm/customers: Checking if customer exists: ${cleanEmail}`)
+    
+    // Check if customer already exists using retry helper
+    const existingCustomer = await executeWithRetry(async () => {
+      return await db.user.findUnique({
+        where: { email: cleanEmail }
+      })
     })
 
     if (existingCustomer) {
-      console.log(`❌ POST /api/crm/customers: Customer already exists: ${email}`)
+      console.log(`❌ POST /api/crm/customers: Customer already exists: ${cleanEmail}`)
       return NextResponse.json(
         { error: 'Customer with this email already exists' },
         { 
@@ -276,50 +293,56 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`✅ POST /api/crm/customers: Creating new customer: ${email}`)
+    console.log(`✅ POST /api/crm/customers: Creating new customer: ${cleanEmail}`)
     
-    // Create customer with simplified data first
+    // Create customer with simplified data using retry helper
     try {
-      const customer = await db.user.create({
-        data: {
-          email,
-          name,
-          phone,
-          role: 'CUSTOMER',
-          status: 'active',
-          segment: 'CUSTOMER'
-        }
+      const customer = await executeWithRetry(async () => {
+        return await db.user.create({
+          data: {
+            email: cleanEmail,
+            name: name ? name.trim() : null,
+            phone: cleanPhone,
+            role: 'CUSTOMER',
+            status: 'active',
+            segment: 'CUSTOMER'
+          }
+        })
       })
 
       console.log(`✅ POST /api/crm/customers: Basic customer created: ${customer.id}`)
       
-      // Now create the customer profile
+      // Now create the customer profile with simplified data using retry helper
       try {
-        const customerProfile = await db.customerProfile.create({
-          data: {
-            userId: customer.id,
-            segment: segment as any,
-            leadSource,
-            preferences: {},
-            riskScore: 0,
-            satisfactionScore: 0,
-            referralCount: 0,
-            totalPurchases: 0,
-            totalSpent: 0,
-            isActive: true,
-            notes,
-            tags: tags.length > 0 ? tags : []
-          }
+        const customerProfile = await executeWithRetry(async () => {
+          return await db.customerProfile.create({
+            data: {
+              userId: customer.id,
+              segment: segment as any,
+              leadSource: leadSource || 'Invoice Creation',
+              preferences: {},
+              riskScore: 0,
+              satisfactionScore: 0,
+              referralCount: 0,
+              totalPurchases: 0,
+              totalSpent: 0,
+              isActive: true,
+              notes: notes ? notes.trim() : null,
+              tags: tags.length > 0 ? tags : []
+            }
+          })
         })
 
         console.log(`✅ POST /api/crm/customers: Customer profile created: ${customerProfile.id}`)
         
-        // Return the complete customer data
-        const completeCustomer = await db.user.findUnique({
-          where: { id: customer.id },
-          include: {
-            customerProfile: true
-          }
+        // Return the complete customer data using retry helper
+        const completeCustomer = await executeWithRetry(async () => {
+          return await db.user.findUnique({
+            where: { id: customer.id },
+            include: {
+              customerProfile: true
+            }
+          })
         })
 
         const response = NextResponse.json(completeCustomer, { 
@@ -336,9 +359,19 @@ export async function POST(request: NextRequest) {
 
       } catch (profileError) {
         console.error('❌ POST /api/crm/customers: Error creating customer profile:', profileError)
-        // Delete the user if profile creation fails
-        await db.user.delete({ where: { id: customer.id } })
-        throw profileError
+        // Don't delete the user if profile creation fails - the user is still valid
+        // Just return the basic customer data
+        const response = NextResponse.json(customer, { 
+          status: 201,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          }
+        })
+        
+        console.log(`✅ POST /api/crm/customers: Basic customer response sent successfully`)
+        return response
       }
 
     } catch (userError) {
@@ -355,7 +388,7 @@ export async function POST(request: NextRequest) {
     
     // Check for specific database connection errors
     if (error instanceof Error) {
-      if (error.message.includes('connection') || error.message.includes('timeout')) {
+      if (error.message.includes('connection') || error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
         const errorResponse = NextResponse.json({ 
           error: 'Database connection error. Please try again.',
           code: 'DATABASE_CONNECTION_ERROR',
@@ -367,7 +400,7 @@ export async function POST(request: NextRequest) {
         return errorResponse
       }
       
-      if (error.message.includes('prisma') || error.message.includes('query')) {
+      if (error.message.includes('prisma') || error.message.includes('query') || error.message.includes('database')) {
         const errorResponse = NextResponse.json({ 
           error: 'Database query error. Please try again.',
           code: 'DATABASE_QUERY_ERROR',
@@ -379,11 +412,23 @@ export async function POST(request: NextRequest) {
         return errorResponse
       }
       
-      if (error.message.includes('Foreign key constraint')) {
+      if (error.message.includes('Foreign key constraint') || error.message.includes('unique constraint')) {
         const errorResponse = NextResponse.json({ 
           error: 'Invalid data provided. Please check your input.',
-          code: 'FOREIGN_KEY_CONSTRAINT',
+          code: 'CONSTRAINT_VIOLATION',
           details: 'The provided data is invalid or references non-existent records.'
+        }, { status: 400 })
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*')
+        errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        return errorResponse
+      }
+      
+      if (error.message.includes('Invalid email')) {
+        const errorResponse = NextResponse.json({ 
+          error: 'Invalid email format provided.',
+          code: 'INVALID_EMAIL',
+          details: 'Please provide a valid email address.'
         }, { status: 400 })
         errorResponse.headers.set('Access-Control-Allow-Origin', '*')
         errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
@@ -393,8 +438,8 @@ export async function POST(request: NextRequest) {
     }
     
     const errorResponse = NextResponse.json({ 
-      error: 'Failed to create customer',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Failed to create customer. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : 'An unexpected error occurred.',
       code: 'INTERNAL_ERROR'
     }, { status: 500 })
     
@@ -405,7 +450,11 @@ export async function POST(request: NextRequest) {
     return errorResponse
   } finally {
     if (isConnected) {
-      await db.$disconnect()
+      try {
+        await db.$disconnect()
+      } catch (disconnectError) {
+        console.error('❌ Error disconnecting from database:', disconnectError)
+      }
     }
   }
 }
