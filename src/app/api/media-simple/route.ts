@@ -1,48 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { authorize, UserRole } from '@/lib/auth-server'
+import { getSimpleAuthUser, UserRole } from '@/lib/simple-production-auth'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
-// Temporary auth bypass for debugging - will be removed after fixing NextAuth
+// Simple auth function
 async function getAuthUser(request: NextRequest) {
   try {
-    // Try normal auth first
-    const authResult = await authorize(request, { 
-      roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] 
-    });
-    
-    if (authResult.user) {
-      return authResult.user;
+    const user = await getSimpleAuthUser(request);
+    if (user) {
+      return user;
     }
   } catch (error) {
-    console.log('⚠️ Normal auth failed, trying fallback...');
+    console.log('⚠️ Auth failed:', error);
   }
   
-  // Fallback: Check for API key or use first admin user
+  // Fallback: Check for API key
   const apiKey = request.headers.get('x-api-key');
   if (apiKey === 'vercel-media-upload-key') {
-    // Get first admin user from database
-    const adminUser = await db.user.findFirst({
-      where: {
-        role: {
-          in: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
-        },
-        isActive: true
-      }
-    });
-    
-    if (adminUser) {
-      console.log('✅ Using fallback admin user:', adminUser.email);
-      return {
-        id: adminUser.id,
-        email: adminUser.email,
-        name: adminUser.name,
-        role: adminUser.role,
-        phone: adminUser.phone,
-        branchId: adminUser.branchId,
-        permissions: []
-      };
+    const user = await getSimpleAuthUser(request);
+    if (user) {
+      return user;
     }
   }
   
@@ -54,10 +32,7 @@ export async function GET(request: NextRequest) {
     // Try to authenticate, but allow public access for media listing
     let user = null;
     try {
-      const authResult = await authorize(request, { 
-        roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF] 
-      });
-      if (authResult.user) user = authResult.user;
+      user = await getSimpleAuthUser(request);
     } catch (authError) {
       // Continue without authentication for public access
       console.log('⚠️ No authentication, proceeding with public access');
@@ -290,7 +265,7 @@ export async function PUT(request: NextRequest) {
     // Authenticate user with fallback
     let user = null;
     try {
-      user = await getAuthUser(request);
+      user = await getSimpleAuthUser(request);
     } catch (authError) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
@@ -344,7 +319,7 @@ export async function DELETE(request: NextRequest) {
     // Authenticate user with fallback
     let user = null;
     try {
-      user = await getAuthUser(request);
+      user = await getSimpleAuthUser(request);
     } catch (authError) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }

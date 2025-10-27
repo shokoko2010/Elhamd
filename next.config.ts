@@ -59,11 +59,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
     // Disable CSS optimization to prevent preload warnings
     optimizeCss: false,
-    optimizeCssImports: false,
     // Disable other optimizations that cause preload warnings
     optimizeServerReact: true,
-    serverComponentsExternalPackages: ['@prisma/client'],
   },
+  
+  // Server external packages
+  serverExternalPackages: ['@prisma/client'],
   
   // Headers for security and performance
   headers: async () => {
