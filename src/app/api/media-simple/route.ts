@@ -114,8 +114,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let isConnected = false
+  
   try {
     console.log('🔄 Starting file upload process...')
+    
+    // Connect to database
+    await db.$connect()
+    isConnected = true
     
     // Get authenticated user (production fallback)
     const user = await getAuthUser(request)
@@ -141,11 +147,11 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(response)
     }
     
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024
+    // Validate file size (max 5MB for production)
+    const maxSize = 5 * 1024 * 1024
     if (file.size > maxSize) {
       console.error('❌ File too large:', file.size)
-      const response = NextResponse.json({ error: 'File too large. Maximum size is 10MB.' }, { status: 400 })
+      const response = NextResponse.json({ error: 'File too large. Maximum size is 5MB.' }, { status: 400 })
       return addCorsHeaders(response)
     }
     
@@ -179,10 +185,10 @@ export async function POST(request: NextRequest) {
     // Create URL path
     const url = `/uploads/media/${filename}`
     
-    // Save to database with simplified data
+    // Prepare media data with validation
     const mediaData = {
       filename: filename,
-      originalName: file.name,
+      originalName: file.name.substring(0, 255), // Limit length
       path: url,
       url: url,
       thumbnailUrl: url, // For now, same as URL
@@ -190,11 +196,11 @@ export async function POST(request: NextRequest) {
       size: file.size,
       width: null, // Will be updated if we process the image
       height: null,
-      altText: options.altText || '',
-      title: options.title || file.name,
-      description: options.description || '',
-      tags: JSON.stringify(options.tags || []),
-      category: options.category || 'other',
+      altText: (options.altText || '').substring(0, 500),
+      title: (options.title || file.name).substring(0, 255),
+      description: (options.description || '').substring(0, 1000),
+      tags: JSON.stringify((options.tags || []).slice(0, 10)), // Limit tags
+      category: (options.category || 'other').substring(0, 50),
       entityId: null,
       isPublic: options.isPublic !== false,
       isFeatured: options.isFeatured === true,
@@ -208,9 +214,27 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('💾 Saving to database...')
-    const createdMedia = await db.media.create({
-      data: mediaData
-    })
+    
+    // Save to database with retry logic
+    let createdMedia
+    try {
+      createdMedia = await db.media.create({
+        data: mediaData
+      })
+    } catch (dbError) {
+      console.error('❌ Database error:', dbError)
+      
+      // Try to clean up the file if database save failed
+      try {
+        const fs = await import('fs/promises')
+        await fs.unlink(filepath)
+        console.log('🧹 Cleaned up file due to database error')
+      } catch (cleanupError) {
+        console.warn('Could not clean up file:', cleanupError)
+      }
+      
+      throw dbError
+    }
     
     console.log('✅ Saved to database with ID:', createdMedia.id)
     
@@ -251,12 +275,22 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Failed to upload file',
-        details: error instanceof Error ? error.stack : 'No details available'
+        details: process.env.NODE_ENV === 'development' ? 
+          (error instanceof Error ? error.stack : 'No details available') : 
+          'Contact support for assistance'
       },
       { status: 500 }
     )
     
     return addCorsHeaders(response)
+  } finally {
+    if (isConnected) {
+      try {
+        await db.$disconnect()
+      } catch (disconnectError) {
+        console.warn('Could not disconnect from database:', disconnectError)
+      }
+    }
   }
 }
 
