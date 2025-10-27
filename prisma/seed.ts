@@ -207,53 +207,121 @@ async function main() {
   })
   console.log('✓ contactInfo created')
 
-  // 8. Permissions
+  // 8. Permissions - using the correct permission names from the system
   const permissions = [
-    { name: 'vehicles.view', description: 'عرض المركبات', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'vehicles.create', description: 'إنشاء مركبات', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'vehicles.edit', description: 'تعديل المركبات', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'vehicles.delete', description: 'حذف المركبات', category: 'VEHICLE_MANAGEMENT' },
+    // User Management
+    { name: 'view_users', description: 'عرض المستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'create_users', description: 'إنشاء مستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'edit_users', description: 'تعديل المستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'delete_users', description: 'حذف المستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'manage_user_roles', description: 'إدارة أدوار المستخدمين', category: 'USER_MANAGEMENT' },
+    { name: 'manage_user_permissions', description: 'إدارة صلاحيات المستخدمين', category: 'USER_MANAGEMENT' },
 
-    { name: 'bookings.view', description: 'عرض الحجوزات', category: 'BOOKING_MANAGEMENT' },
-    { name: 'bookings.create', description: 'إنشاء حجوزات', category: 'BOOKING_MANAGEMENT' },
-    { name: 'bookings.edit', description: 'تعديل الحجوزات', category: 'BOOKING_MANAGEMENT' },
-    { name: 'bookings.delete', description: 'حذف الحجوزات', category: 'BOOKING_MANAGEMENT' },
+    // Vehicle Management
+    { name: 'view_vehicles', description: 'عرض المركبات', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'create_vehicles', description: 'إنشاء مركبات', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'edit_vehicles', description: 'تعديل المركبات', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'delete_vehicles', description: 'حذف المركبات', category: 'VEHICLE_MANAGEMENT' },
+    { name: 'manage_vehicle_inventory', description: 'إدارة مخزون المركبات', category: 'VEHICLE_MANAGEMENT' },
 
-    { name: 'users.view', description: 'عرض المستخدمين', category: 'USER_MANAGEMENT' },
-    { name: 'users.create', description: 'إنشاء مستخدمين', category: 'USER_MANAGEMENT' },
-    { name: 'users.edit', description: 'تعديل المستخدمين', category: 'USER_MANAGEMENT' },
-    { name: 'users.delete', description: 'حذف المستخدمين', category: 'USER_MANAGEMENT' },
+    // Booking Management
+    { name: 'view_bookings', description: 'عرض الحجوزات', category: 'BOOKING_MANAGEMENT' },
+    { name: 'create_bookings', description: 'إنشاء حجوزات', category: 'BOOKING_MANAGEMENT' },
+    { name: 'edit_bookings', description: 'تعديل الحجوزات', category: 'BOOKING_MANAGEMENT' },
+    { name: 'delete_bookings', description: 'حذف الحجوزات', category: 'BOOKING_MANAGEMENT' },
+    { name: 'manage_booking_status', description: 'إدارة حالة الحجوزات', category: 'BOOKING_MANAGEMENT' },
 
-    { name: 'branches.view', description: 'عرض الفروع', category: 'BRANCH_MANAGEMENT' },
-    { name: 'branches.create', description: 'إنشاء فروع', category: 'BRANCH_MANAGEMENT' },
-    { name: 'branches.edit', description: 'تعديل الفروع', category: 'BRANCH_MANAGEMENT' },
-    { name: 'branches.delete', description: 'حذف الفروع', category: 'BRANCH_MANAGEMENT' },
+    // Service Management
+    { name: 'view_services', description: 'عرض الخدمات', category: 'SERVICE_MANAGEMENT' },
+    { name: 'create_services', description: 'إنشاء خدمات', category: 'SERVICE_MANAGEMENT' },
+    { name: 'edit_services', description: 'تعديل الخدمات', category: 'SERVICE_MANAGEMENT' },
+    { name: 'delete_services', description: 'حذف الخدمات', category: 'SERVICE_MANAGEMENT' },
+    { name: 'manage_service_schedule', description: 'إدارة جدول الخدمات', category: 'SERVICE_MANAGEMENT' },
 
-    { name: 'inventory.view', description: 'عرض المخزون', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'inventory.create', description: 'إنشاء أصناف مخزون', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'inventory.edit', description: 'تعديل المخزون', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'inventory.delete', description: 'حذف المخزون', category: 'INVENTORY_MANAGEMENT' },
+    // Inventory Management
+    { name: 'view_inventory', description: 'عرض المخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'create_inventory_items', description: 'إنشاء أصناف مخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'edit_inventory_items', description: 'تعديل أصناف المخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'delete_inventory_items', description: 'حذف أصناف المخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'manage_warehouses', description: 'إدارة المستودعات', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'manage_suppliers', description: 'إدارة الموردين', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'sync_vehicles_to_inventory', description: 'مزامنة المركبات مع المخزون', category: 'INVENTORY_MANAGEMENT' },
+    { name: 'initialize_inventory_data', description: 'تهيئة بيانات المخزون', category: 'INVENTORY_MANAGEMENT' },
 
-    { name: 'financial.view', description: 'عرض التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'financial.create', description: 'إنشاء تقارير مالية', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'financial.edit', description: 'تعديل التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'financial.delete', description: 'حذف التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
+    // Financial Management
+    { name: 'view_financials', description: 'عرض البيانات المالية', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'create_invoices', description: 'إنشاء فواتير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'edit_invoices', description: 'تعديل الفواتير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'delete_invoices', description: 'حذف الفواتير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'manage_payments', description: 'إدارة المدفوعات', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'view_reports', description: 'عرض التقارير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'export_financial_data', description: 'تصدير البيانات المالية', category: 'FINANCIAL_MANAGEMENT' },
 
-    { name: 'crm.view', description: 'عرض علاقات العملاء', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'crm.create', description: 'إنشاء سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'crm.edit', description: 'تعديل سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'crm.delete', description: 'حذف سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
+    // Enhanced Financial Permissions
+    { name: 'view_invoices', description: 'عرض الفواتير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'create_quotations', description: 'إنشاء عروض أسعار', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'edit_quotations', description: 'تعديل عروض الأسعار', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'delete_quotations', description: 'حذف عروض الأسعار', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'view_payments', description: 'عرض المدفوعات', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'create_payments', description: 'إنشاء مدفوعات', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'edit_payments', description: 'تعديل المدفوعات', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'view_financial_reports', description: 'عرض التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'approve_invoices', description: 'الموافقة على الفواتير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'send_invoices', description: 'إرسال الفواتير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'download_invoices', description: 'تحميل الفواتير', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'manage_quotations', description: 'إدارة عروض الأسعار', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'approve_quotations', description: 'الموافقة على عروض الأسعار', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'convert_quotations', description: 'تحويل عروض الأسعار', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'process_offline_payments', description: 'معالجة المدفوعات النقدية', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'manage_payment_methods', description: 'إدارة طرق الدفع', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'view_payment_history', description: 'عرض سجل المدفوعات', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'refund_payments', description: 'استرداد المدفوعات', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'manage_tax_settings', description: 'إدارة إعدادات الضرائب', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'view_financial_overview', description: 'عرض نظرة عامة مالية', category: 'FINANCIAL_MANAGEMENT' },
+    { name: 'access_finance_dashboard', description: 'الوصول للوحة التحكم المالية', category: 'FINANCIAL_MANAGEMENT' },
 
-    { name: 'admin.dashboard', description: 'لوحة التحكم', category: 'SYSTEM_SETTINGS' },
-    { name: 'admin.settings', description: 'الإعدادات', category: 'SYSTEM_SETTINGS' },
-    { name: 'admin.reports', description: 'التقارير', category: 'REPORTING' },
-    { name: 'admin.logs', description: 'سجلات النظام', category: 'SYSTEM_SETTINGS' }
+    // Branch Management
+    { name: 'view_branches', description: 'عرض الفروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'create_branches', description: 'إنشاء فروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'edit_branches', description: 'تعديل الفروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'delete_branches', description: 'حذف الفروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'manage_branch_staff', description: 'إدارة موظفي الفروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'manage_branch_budget', description: 'إدارة ميزانية الفروع', category: 'BRANCH_MANAGEMENT' },
+    { name: 'approve_branch_transfers', description: 'الموافقة على تحويلات الفروع', category: 'BRANCH_MANAGEMENT' },
+
+    // Customer Management
+    { name: 'view_customers', description: 'عرض العملاء', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'create_customers', description: 'إنشاء عملاء', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'edit_customers', description: 'تعديل العملاء', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'delete_customers', description: 'حذف العملاء', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'manage_customer_profiles', description: 'إدارة ملفات العملاء', category: 'CUSTOMER_MANAGEMENT' },
+    { name: 'view_customer_history', description: 'عرض سجل العملاء', category: 'CUSTOMER_MANAGEMENT' },
+
+    // Marketing Management
+    { name: 'view_campaigns', description: 'عرض الحملات', category: 'MARKETING_MANAGEMENT' },
+    { name: 'create_campaigns', description: 'إنشاء حملات', category: 'MARKETING_MANAGEMENT' },
+    { name: 'edit_campaigns', description: 'تعديل الحملات', category: 'MARKETING_MANAGEMENT' },
+    { name: 'delete_campaigns', description: 'حذف الحملات', category: 'MARKETING_MANAGEMENT' },
+    { name: 'manage_email_templates', description: 'إدارة قوالب البريد الإلكتروني', category: 'MARKETING_MANAGEMENT' },
+
+    // System Settings
+    { name: 'view_system_settings', description: 'عرض إعدادات النظام', category: 'SYSTEM_SETTINGS' },
+    { name: 'manage_system_settings', description: 'إدارة إعدادات النظام', category: 'SYSTEM_SETTINGS' },
+    { name: 'manage_roles_templates', description: 'إدارة أدوار وقوالب', category: 'SYSTEM_SETTINGS' },
+    { name: 'view_system_logs', description: 'عرض سجلات النظام', category: 'SYSTEM_SETTINGS' },
+    { name: 'manage_backups', description: 'إدارة النسخ الاحتياطية', category: 'SYSTEM_SETTINGS' },
+
+    // Reporting
+    { name: 'generate_reports', description: 'إنشاء تقارير', category: 'REPORTING' },
+    { name: 'view_analytics', description: 'عرض التحليلات', category: 'REPORTING' },
+    { name: 'export_data', description: 'تصدير البيانات', category: 'REPORTING' },
+    { name: 'manage_dashboards', description: 'إدارة لوحات التحكم', category: 'REPORTING' }
   ]
 
   const createdPermissions = await Promise.all(permissions.map(p => prisma.permission.create({ data: p })))
   console.log('✓ permissions created')
 
-  // 9. Role Templates
+  // 9. Role Templates - using the correct permission names
   const roleTemplates = [
     {
       name: 'Super Admin',
@@ -274,12 +342,12 @@ async function main() {
       description: 'مدير فرع',
       role: 'BRANCH_MANAGER',
       permissions: [
-        'vehicles.view', 'vehicles.create', 'vehicles.edit',
-        'bookings.view', 'bookings.create', 'bookings.edit',
-        'users.view', 'users.create', 'users.edit',
-        'inventory.view', 'inventory.create', 'inventory.edit',
-        'financial.view', 'crm.view', 'crm.create', 'crm.edit',
-        'admin.dashboard', 'admin.reports'
+        'view_vehicles', 'create_vehicles', 'edit_vehicles',
+        'view_bookings', 'create_bookings', 'edit_bookings',
+        'view_users', 'create_users', 'edit_users',
+        'view_inventory', 'create_inventory_items', 'edit_inventory_items',
+        'view_financials', 'view_customers', 'create_customers', 'edit_customers',
+        'view_reports', 'view_analytics'
       ],
       isSystem: true
     },
@@ -288,9 +356,9 @@ async function main() {
       description: 'مدير مبيعات',
       role: 'STAFF',
       permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'users.view', 'crm.view', 'crm.create', 'crm.edit',
-        'admin.dashboard', 'admin.reports'
+        'view_vehicles', 'view_bookings', 'create_bookings', 'edit_bookings',
+        'view_users', 'view_customers', 'create_customers', 'edit_customers',
+        'view_reports', 'view_analytics'
       ],
       isSystem: true
     },
@@ -299,9 +367,10 @@ async function main() {
       description: 'مدير خدمة',
       role: 'STAFF',
       permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'inventory.view', 'inventory.create', 'inventory.edit',
-        'admin.dashboard', 'admin.reports'
+        'view_vehicles', 'view_bookings', 'create_bookings', 'edit_bookings',
+        'view_inventory', 'create_inventory_items', 'edit_inventory_items',
+        'view_services', 'create_services', 'edit_services',
+        'view_reports', 'view_analytics'
       ],
       isSystem: true
     },
@@ -310,8 +379,8 @@ async function main() {
       description: 'موظف مبيعات',
       role: 'STAFF',
       permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'crm.view', 'crm.create', 'crm.edit'
+        'view_vehicles', 'view_bookings', 'create_bookings', 'edit_bookings',
+        'view_customers', 'create_customers', 'edit_customers'
       ],
       isSystem: true
     },
@@ -320,8 +389,8 @@ async function main() {
       description: 'موظف خدمة',
       role: 'STAFF',
       permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'inventory.view'
+        'view_vehicles', 'view_bookings', 'create_bookings', 'edit_bookings',
+        'view_inventory', 'view_services'
       ],
       isSystem: true
     },
@@ -329,7 +398,7 @@ async function main() {
       name: 'Customer',
       description: 'عميل',
       role: 'CUSTOMER',
-      permissions: ['vehicles.view', 'bookings.view', 'bookings.create'],
+      permissions: ['view_vehicles', 'view_bookings', 'create_bookings'],
       isSystem: true
     }
   ]

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSimpleAuthUser, UserRole } from '@/lib/simple-production-auth'
+import { getProductionAuthUser, UserRole } from '@/lib/production-auth-vercel'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
-// Simple auth function
+// Production auth function optimized for Vercel
 async function getAuthUser(request: NextRequest) {
   try {
-    const user = await getSimpleAuthUser(request);
+    const user = await getProductionAuthUser(request);
     if (user) {
       return user;
     }
@@ -18,7 +18,7 @@ async function getAuthUser(request: NextRequest) {
   // Fallback: Check for API key
   const apiKey = request.headers.get('x-api-key');
   if (apiKey === 'vercel-media-upload-key') {
-    const user = await getSimpleAuthUser(request);
+    const user = await getProductionAuthUser(request);
     if (user) {
       return user;
     }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Try to authenticate, but allow public access for media listing
     let user = null;
     try {
-      user = await getSimpleAuthUser(request);
+      user = await getProductionAuthUser(request);
     } catch (authError) {
       // Continue without authentication for public access
       console.log('⚠️ No authentication, proceeding with public access');
@@ -265,7 +265,7 @@ export async function PUT(request: NextRequest) {
     // Authenticate user with fallback
     let user = null;
     try {
-      user = await getSimpleAuthUser(request);
+      user = await getProductionAuthUser(request);
     } catch (authError) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
@@ -319,7 +319,7 @@ export async function DELETE(request: NextRequest) {
     // Authenticate user with fallback
     let user = null;
     try {
-      user = await getSimpleAuthUser(request);
+      user = await getProductionAuthUser(request);
     } catch (authError) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }

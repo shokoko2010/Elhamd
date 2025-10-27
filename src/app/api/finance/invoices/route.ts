@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { authenticateProductionUser } from '@/lib/simple-production-auth'
+import { authenticateProductionUser } from '@/lib/production-auth-vercel'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
