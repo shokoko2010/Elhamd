@@ -65,7 +65,7 @@ export const authOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-development',
   // Use the correct URL configuration
-  baseUrl: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+  url: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   trustHost: true,
   debug: process.env.NODE_ENV === 'development',
   callbacks: {

@@ -363,6 +363,7 @@ model TimeSlot {
   updatedAt   DateTime         @updatedAt
   bookings    ServiceBooking[]
 
+  @@unique([dayOfWeek, startTime, endTime])
   @@map("time_slots")
 }
 
