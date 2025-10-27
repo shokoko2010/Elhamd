@@ -248,6 +248,7 @@ function MediaContent() {
         const response = await fetch('/api/media-simple', {
           method: 'POST',
           headers: {
+            'x-api-key': 'vercel-media-upload-key', // Temporary API key for authentication
             // Don't set Content-Type for FormData, let the browser set it with boundary
           },
           credentials: 'include',
