@@ -3,16 +3,28 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    // Add CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    };
+
+    // Handle OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 200, headers });
+    }
+
+    const user = await authenticateProductionUser(request)
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
     }
 
     const { searchParams } = new URL(request.url)
@@ -69,33 +81,39 @@ export async function GET(request: NextRequest) {
       totalExpenses,
       invoicesData
     ] = await Promise.all([
-      db.invoice.aggregate({
-        where: {
-          ...where,
-          status: 'PAID'
-        },
-        _sum: {
-          totalAmount: true
-        }
+      executeWithRetry(async () => {
+        return await db.invoice.aggregate({
+          where: {
+            ...where,
+            status: 'PAID'
+          },
+          _sum: {
+            totalAmount: true
+          }
+        });
       }),
-      db.transaction.aggregate({
-        where: {
-          ...where,
-          type: 'EXPENSE'
-        },
-        _sum: {
-          amount: true
-        }
+      executeWithRetry(async () => {
+        return await db.transaction.aggregate({
+          where: {
+            ...where,
+            type: 'EXPENSE'
+          },
+          _sum: {
+            amount: true
+          }
+        });
       }),
-      db.invoice.findMany({
-        where: {
-          ...where,
-          status: 'PAID'
-        },
-        select: {
-          totalAmount: true,
-          createdAt: true
-        }
+      executeWithRetry(async () => {
+        return await db.invoice.findMany({
+          where: {
+            ...where,
+            status: 'PAID'
+          },
+          select: {
+            totalAmount: true,
+            createdAt: true
+          }
+        });
       })
     ])
 
@@ -109,23 +127,29 @@ export async function GET(request: NextRequest) {
       newCustomers,
       leadsData
     ] = await Promise.all([
-      db.customerProfile.count(),
-      db.customerProfile.count({
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate
-          }
-        }
+      executeWithRetry(async () => {
+        return await db.customerProfile.count();
       }),
-      db.lead.findMany({
-        where: {
-          ...where
-        },
-        select: {
-          status: true,
-          estimatedValue: true
-        }
+      executeWithRetry(async () => {
+        return await db.customerProfile.count({
+          where: {
+            createdAt: {
+              gte: startDate,
+              lte: endDate
+            }
+          }
+        });
+      }),
+      executeWithRetry(async () => {
+        return await db.lead.findMany({
+          where: {
+            ...where
+          },
+          select: {
+            status: true,
+            estimatedValue: true
+          }
+        });
       })
     ])
 
@@ -139,23 +163,29 @@ export async function GET(request: NextRequest) {
       resolvedTickets,
       ticketsData
     ] = await Promise.all([
-      db.supportTicket.count({ where }),
-      db.supportTicket.count({
-        where: {
-          ...where,
-          status: 'RESOLVED'
-        }
+      executeWithRetry(async () => {
+        return await db.supportTicket.count({ where });
       }),
-      db.supportTicket.findMany({
-        where: {
-          ...where,
-          status: 'RESOLVED',
-          resolvedAt: { not: null }
-        },
-        select: {
-          createdAt: true,
-          resolvedAt: true
-        }
+      executeWithRetry(async () => {
+        return await db.supportTicket.count({
+          where: {
+            ...where,
+            status: 'RESOLVED'
+          }
+        });
+      }),
+      executeWithRetry(async () => {
+        return await db.supportTicket.findMany({
+          where: {
+            ...where,
+            status: 'RESOLVED',
+            resolvedAt: { not: null }
+          },
+          select: {
+            createdAt: true,
+            resolvedAt: true
+          }
+        });
       })
     ])
 
@@ -176,28 +206,34 @@ export async function GET(request: NextRequest) {
       activeCampaigns,
       campaignsData
     ] = await Promise.all([
-      db.marketingCampaign.count({ where }),
-      db.marketingCampaign.count({
-        where: {
-          ...where,
-          status: 'ACTIVE'
-        }
+      executeWithRetry(async () => {
+        return await db.marketingCampaign.count({ where });
       }),
-      db.marketingCampaign.findMany({
-        where: {
-          ...where,
-          budget: { not: null }
-        },
-        select: {
-          budget: true,
-          leads: {
-            select: {
-              id: true,
-              estimatedValue: true,
-              status: true
+      executeWithRetry(async () => {
+        return await db.marketingCampaign.count({
+          where: {
+            ...where,
+            status: 'ACTIVE'
+          }
+        });
+      }),
+      executeWithRetry(async () => {
+        return await db.marketingCampaign.findMany({
+          where: {
+            ...where,
+            budget: { not: null }
+          },
+          select: {
+            budget: true,
+            leads: {
+              select: {
+                id: true,
+                estimatedValue: true,
+                status: true
+              }
             }
           }
-        }
+        });
       })
     ])
 
@@ -224,60 +260,68 @@ export async function GET(request: NextRequest) {
       inventoryValue,
       lowStockItems
     ] = await Promise.all([
-      db.inventoryItem.aggregate({
-        where: {
-          ...(branchId && branchId !== 'all' && { branchId })
-        },
-        _sum: {
-          totalValue: true
-        }
-      }),
-      db.inventoryItem.count({
-        where: {
-          ...(branchId && branchId !== 'all' && { branchId }),
-          quantity: {
-            lte: 10 // Low stock threshold
+      executeWithRetry(async () => {
+        return await db.inventoryItem.aggregate({
+          where: {
+            ...(branchId && branchId !== 'all' && { branchId })
+          },
+          _sum: {
+            totalValue: true
           }
-        }
+        });
+      }),
+      executeWithRetry(async () => {
+        return await db.inventoryItem.count({
+          where: {
+            ...(branchId && branchId !== 'all' && { branchId }),
+            quantity: {
+              lte: 10 // Low stock threshold
+            }
+          }
+        });
       })
     ])
 
     // Fetch top selling products (from invoices)
-    const topSellingProducts = await db.invoiceItem.groupBy({
-      by: ['vehicleId'],
-      where: {
-        invoice: {
-          ...where,
-          status: 'PAID'
-        }
-      },
-      _sum: {
-        quantity: true,
-        totalPrice: true
-      },
-      orderBy: {
+    const topSellingProducts = await executeWithRetry(async () => {
+      return await db.invoiceItem.groupBy({
+        by: ['vehicleId'],
+        where: {
+          invoice: {
+            ...where,
+            status: 'PAID'
+          }
+        },
         _sum: {
-          quantity: 'desc'
-        }
-      },
-      take: 10
-    })
+          quantity: true,
+          totalPrice: true
+        },
+        orderBy: {
+          _sum: {
+            quantity: 'desc'
+          }
+        },
+        take: 10
+      });
+    });
 
     // Get vehicle details for top selling products
     const vehicleIds = topSellingProducts.map(item => item.vehicleId)
-    const vehicles = await db.vehicle.findMany({
-      where: {
-        id: {
-          in: vehicleIds
+    const vehicles = await executeWithRetry(async () => {
+      return await db.vehicle.findMany({
+        where: {
+          id: {
+            in: vehicleIds
+          }
+        },
+        select: {
+          id: true,
+          make: true,
+          model: true,
+          year: true
         }
-      },
-      select: {
-        id: true,
-        make: true,
-        model: true,
-        year: true
-      }
-    })
+      });
+    });
 
     const topSellingProductsWithDetails = topSellingProducts.map(item => {
       const vehicle = vehicles.find(v => v.id === item.vehicleId)
@@ -292,43 +336,45 @@ export async function GET(request: NextRequest) {
     // Fetch top performers (employees with best performance)
     const topPerformers = await Promise.all([
       // Top performers by revenue
-      db.user.findMany({
-        where: {
-          role: {
-            in: ['SALES', 'MANAGER']
-          }
-        },
-        select: {
-          id: true,
-          name: true,
-          role: true,
-          invoices: {
-            where: {
-              ...where,
-              status: 'PAID'
-            },
-            select: {
-              totalAmount: true
+      executeWithRetry(async () => {
+        return await db.user.findMany({
+          where: {
+            role: {
+              in: ['SALES', 'MANAGER']
             }
           },
-          assignedTickets: {
-            where: {
-              ...where,
-              satisfaction: { not: null }
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            invoices: {
+              where: {
+                ...where,
+                status: 'PAID'
+              },
+              select: {
+                totalAmount: true
+              }
             },
-            select: {
-              satisfaction: true
+            assignedTickets: {
+              where: {
+                ...where,
+                satisfaction: { not: null }
+              },
+              select: {
+                satisfaction: true
+              }
             }
-          }
-        },
-        orderBy: {
-          invoices: {
-            _sum: {
-              totalAmount: 'desc'
+          },
+          orderBy: {
+            invoices: {
+              _sum: {
+                totalAmount: 'desc'
+              }
             }
-          }
-        },
-        take: 5
+          },
+          take: 5
+        });
       })
     ])
 
@@ -370,12 +416,16 @@ export async function GET(request: NextRequest) {
       topPerformers: topPerformersWithMetrics
     }
 
-    return NextResponse.json(reportData)
+    return NextResponse.json(reportData, { headers })
   } catch (error) {
     console.error('Error fetching overview report:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }}
     )
   }
 }

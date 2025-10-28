@@ -3,15 +3,27 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-server';
+import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server';
 import { db } from '@/lib/db';
 import { TaxType, TaxStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser();
+    // Add CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    };
+
+    // Handle OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 200, headers });
+    }
+
+    const user = await authenticateProductionUser(request);
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
     }
 
     const { searchParams } = new URL(request.url);
@@ -39,32 +51,38 @@ export async function GET(request: NextRequest) {
     }
 
     const [taxRecords, total] = await Promise.all([
-      db.taxRecord.findMany({
-        where,
-        include: {
-          creator: {
-            select: { id: true, name: true, email: true },
+      executeWithRetry(async () => {
+        return await db.taxRecord.findMany({
+          where,
+          include: {
+            creator: {
+              select: { id: true, name: true, email: true },
+            },
+            approver: {
+              select: { id: true, name: true, email: true },
+            },
+            branch: {
+              select: { id: true, name: true, code: true },
+            },
           },
-          approver: {
-            select: { id: true, name: true, email: true },
-          },
-          branch: {
-            select: { id: true, name: true, code: true },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        });
       }),
-      db.taxRecord.count({ where }),
+      executeWithRetry(async () => {
+        return await db.taxRecord.count({ where });
+      }),
     ]);
 
     // Calculate statistics
-    const stats = await db.taxRecord.groupBy({
-      by: ['status'],
-      _sum: { amount: true },
-      _count: { id: true },
-      where,
+    const stats = await executeWithRetry(async () => {
+      return await db.taxRecord.groupBy({
+        by: ['status'],
+        _sum: { amount: true },
+        _count: { id: true },
+        where,
+      });
     });
 
     const totalAmount = stats.reduce((sum, stat) => sum + (stat._sum.amount || 0), 0);
@@ -87,21 +105,37 @@ export async function GET(request: NextRequest) {
         overdueCount,
         totalRecords: total,
       },
-    });
+    }, { headers });
   } catch (error) {
     console.error('Error fetching tax records:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch tax records' },
-      { status: 500 }
+      { error: 'Failed to fetch tax records', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }}
     );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser();
+    // Add CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    };
+
+    // Handle OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 200, headers });
+    }
+
+    const user = await authenticateProductionUser(request);
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
     }
 
     const body = await request.json();
@@ -125,37 +159,43 @@ export async function POST(request: NextRequest) {
     }
 
     // Create tax record
-    const taxRecord = await db.taxRecord.create({
-      data: {
-        type,
-        period,
-        amount: parseFloat(amount),
-        dueDate: new Date(dueDate),
-        reference,
-        documents,
-        notes,
-        branchId,
-        createdBy: user.id,
-      },
-      include: {
-        creator: {
-          select: { id: true, name: true, email: true },
+    const taxRecord = await executeWithRetry(async () => {
+      return await db.taxRecord.create({
+        data: {
+          type,
+          period,
+          amount: parseFloat(amount),
+          dueDate: new Date(dueDate),
+          reference,
+          documents,
+          notes,
+          branchId,
+          createdBy: user.id,
         },
-        approver: {
-          select: { id: true, name: true, email: true },
+        include: {
+          creator: {
+            select: { id: true, name: true, email: true },
+          },
+          approver: {
+            select: { id: true, name: true, email: true },
+          },
+          branch: {
+            select: { id: true, name: true, code: true },
+          },
         },
-        branch: {
-          select: { id: true, name: true, code: true },
-        },
-      },
+      });
     });
 
-    return NextResponse.json(taxRecord, { status: 201 });
+    return NextResponse.json(taxRecord, { status: 201, headers });
   } catch (error) {
     console.error('Error creating tax record:', error);
     return NextResponse.json(
-      { error: 'Failed to create tax record' },
-      { status: 500 }
+      { error: 'Failed to create tax record', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }}
     );
   }
 }

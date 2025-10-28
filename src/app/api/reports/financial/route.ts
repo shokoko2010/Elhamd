@@ -3,16 +3,28 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    // Add CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    };
+
+    // Handle OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 200, headers });
+    }
+
+    const user = await authenticateProductionUser(request)
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
     }
 
     const { searchParams } = new URL(request.url)
@@ -85,23 +97,27 @@ export async function GET(request: NextRequest) {
         revenueData,
         expensesData
       ] = await Promise.all([
-        db.invoice.aggregate({
-          where: {
-            ...monthWhere,
-            status: 'PAID'
-          },
-          _sum: {
-            totalAmount: true
-          }
+        executeWithRetry(async () => {
+          return await db.invoice.aggregate({
+            where: {
+              ...monthWhere,
+              status: 'PAID'
+            },
+            _sum: {
+              totalAmount: true
+            }
+          });
         }),
-        db.transaction.aggregate({
-          where: {
-            ...monthWhere,
-            type: 'EXPENSE'
-          },
-          _sum: {
-            amount: true
-          }
+        executeWithRetry(async () => {
+          return await db.transaction.aggregate({
+            where: {
+              ...monthWhere,
+              type: 'EXPENSE'
+            },
+            _sum: {
+              amount: true
+            }
+          });
         })
       ])
 
@@ -133,51 +149,57 @@ export async function GET(request: NextRequest) {
       monthlyTrend
     ] = await Promise.all([
       // Revenue by category/type
-      db.invoice.groupBy({
-        by: ['type'],
-        where: {
-          ...currentPeriodWhere,
-          status: 'PAID'
-        },
-        _sum: {
-          totalAmount: true
-        },
-        _count: {
-          _all: true
-        }
+      executeWithRetry(async () => {
+        return await db.invoice.groupBy({
+          by: ['type'],
+          where: {
+            ...currentPeriodWhere,
+            status: 'PAID'
+          },
+          _sum: {
+            totalAmount: true
+          },
+          _count: {
+            _all: true
+          }
+        });
       }),
       // Expenses by category
-      db.transaction.groupBy({
-        by: ['category'],
-        where: {
-          ...currentPeriodWhere,
-          type: 'EXPENSE'
-        },
-        _sum: {
-          amount: true
-        },
-        _count: {
-          _all: true
-        }
+      executeWithRetry(async () => {
+        return await db.transaction.groupBy({
+          by: ['category'],
+          where: {
+            ...currentPeriodWhere,
+            type: 'EXPENSE'
+          },
+          _sum: {
+            amount: true
+          },
+          _count: {
+            _all: true
+          }
+        });
       }),
       // Top invoices
-      db.invoice.findMany({
-        where: {
-          ...currentPeriodWhere,
-          status: 'PAID'
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true
+      executeWithRetry(async () => {
+        return await db.invoice.findMany({
+          where: {
+            ...currentPeriodWhere,
+            status: 'PAID'
+          },
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true
+              }
             }
-          }
-        },
-        orderBy: {
-          totalAmount: 'desc'
-        },
-        take: 10
+          },
+          orderBy: {
+            totalAmount: 'desc'
+          },
+          take: 10
+        });
       }),
       // Monthly trend for the last 6 months
       Promise.all(Array.from({ length: 6 }, async (_, i) => {
@@ -186,31 +208,35 @@ export async function GET(request: NextRequest) {
         const monthEnd = endOfMonth(monthDate)
         
         const [revenue, expenses] = await Promise.all([
-          db.invoice.aggregate({
-            where: {
-              ...where,
-              createdAt: {
-                gte: monthStart,
-                lte: monthEnd
+          executeWithRetry(async () => {
+            return await db.invoice.aggregate({
+              where: {
+                ...where,
+                createdAt: {
+                  gte: monthStart,
+                  lte: monthEnd
+                },
+                status: 'PAID'
               },
-              status: 'PAID'
-            },
-            _sum: {
-              totalAmount: true
-            }
+              _sum: {
+                totalAmount: true
+              }
+            });
           }),
-          db.transaction.aggregate({
-            where: {
-              ...where,
-              createdAt: {
-                gte: monthStart,
-                lte: monthEnd
+          executeWithRetry(async () => {
+            return await db.transaction.aggregate({
+              where: {
+                ...where,
+                createdAt: {
+                  gte: monthStart,
+                  lte: monthEnd
+                },
+                type: 'EXPENSE'
               },
-              type: 'EXPENSE'
-            },
-            _sum: {
-              amount: true
-            }
+              _sum: {
+                amount: true
+              }
+            });
           })
         ])
 
@@ -235,12 +261,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(financialReport)
+    return NextResponse.json(financialReport, { headers })
   } catch (error) {
     console.error('Error fetching financial report:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }}
     )
   }
 }

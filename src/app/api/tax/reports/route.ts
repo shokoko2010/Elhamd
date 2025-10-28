@@ -3,15 +3,27 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-server';
+import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server';
 import { db } from '@/lib/db';
 import { TaxType, TaxStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser();
+    // Add CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    };
+
+    // Handle OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 200, headers });
+    }
+
+    const user = await authenticateProductionUser(request);
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
     }
 
     const { searchParams } = new URL(request.url);
@@ -33,48 +45,56 @@ export async function GET(request: NextRequest) {
     if (type) where.type = type;
 
     // Get tax records grouped by type
-    const byType = await db.taxRecord.groupBy({
-      by: ['type'],
-      _sum: { amount: true },
-      _count: { id: true },
-      where,
+    const byType = await executeWithRetry(async () => {
+      return await db.taxRecord.groupBy({
+        by: ['type'],
+        _sum: { amount: true },
+        _count: { id: true },
+        where,
+      });
     });
 
     // Get tax records grouped by status
-    const byStatus = await db.taxRecord.groupBy({
-      by: ['status'],
-      _sum: { amount: true },
-      _count: { id: true },
-      where,
+    const byStatus = await executeWithRetry(async () => {
+      return await db.taxRecord.groupBy({
+        by: ['status'],
+        _sum: { amount: true },
+        _count: { id: true },
+        where,
+      });
     });
 
     // Get tax records grouped by period (monthly)
-    const byPeriod = await db.taxRecord.groupBy({
-      by: ['period'],
-      _sum: { amount: true },
-      _count: { id: true },
-      where,
-      orderBy: { period: 'asc' },
+    const byPeriod = await executeWithRetry(async () => {
+      return await db.taxRecord.groupBy({
+        by: ['period'],
+        _sum: { amount: true },
+        _count: { id: true },
+        where,
+        orderBy: { period: 'asc' },
+      });
     });
 
     // Get monthly trends for the last 12 months
     const twelveMonthsAgo = new Date();
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-    const monthlyTrends = await db.taxRecord.findMany({
-      where: {
-        ...where,
-        dueDate: {
-          gte: twelveMonthsAgo,
+    const monthlyTrends = await executeWithRetry(async () => {
+      return await db.taxRecord.findMany({
+        where: {
+          ...where,
+          dueDate: {
+            gte: twelveMonthsAgo,
+          },
         },
-      },
-      select: {
-        dueDate: true,
-        amount: true,
-        status: true,
-        type: true,
-      },
-      orderBy: { dueDate: 'asc' },
+        select: {
+          dueDate: true,
+          amount: true,
+          status: true,
+          type: true,
+        },
+        orderBy: { dueDate: 'asc' },
+      });
     });
 
     // Process monthly trends
@@ -113,7 +133,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate summary statistics
-    const allRecords = await db.taxRecord.findMany({ where });
+    const allRecords = await executeWithRetry(async () => {
+      return await db.taxRecord.findMany({ where });
+    });
     const totalTaxAmount = allRecords.reduce((sum, record) => sum + record.amount, 0);
     const paidAmount = allRecords
       .filter(r => r.status === 'PAID')
@@ -129,23 +151,25 @@ export async function GET(request: NextRequest) {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-    const upcomingPayments = await db.taxRecord.findMany({
-      where: {
-        ...where,
-        dueDate: {
-          gte: new Date(),
-          lte: thirtyDaysFromNow,
+    const upcomingPayments = await executeWithRetry(async () => {
+      return await db.taxRecord.findMany({
+        where: {
+          ...where,
+          dueDate: {
+            gte: new Date(),
+            lte: thirtyDaysFromNow,
+          },
+          status: {
+            in: ['PENDING', 'CALCULATED'],
+          },
         },
-        status: {
-          in: ['PENDING', 'CALCULATED'],
+        include: {
+          branch: {
+            select: { id: true, name: true, code: true },
+          },
         },
-      },
-      include: {
-        branch: {
-          select: { id: true, name: true, code: true },
-        },
-      },
-      orderBy: { dueDate: 'asc' },
+        orderBy: { dueDate: 'asc' },
+      });
     });
 
     // Get tax efficiency metrics
@@ -169,12 +193,16 @@ export async function GET(request: NextRequest) {
       monthlyTrends: Object.values(monthlyData),
       upcomingPayments,
       efficiencyMetrics,
-    });
+    }, { headers });
   } catch (error) {
     console.error('Error generating tax report:', error);
     return NextResponse.json(
-      { error: 'Failed to generate tax report' },
-      { status: 500 }
+      { error: 'Failed to generate tax report', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }}
     );
   }
 }

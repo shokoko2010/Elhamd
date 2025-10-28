@@ -3,16 +3,28 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    // Add CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    };
+
+    // Handle OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 200, headers });
+    }
+
+    const user = await authenticateProductionUser(request)
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
     }
 
     const { searchParams } = new URL(request.url)
@@ -86,44 +98,50 @@ export async function GET(request: NextRequest) {
         totalCustomersAtEnd,
         activeCustomers
       ] = await Promise.all([
-        db.customerProfile.count({
-          where: {
-            ...monthWhere
-          }
-        }),
-        db.customerProfile.count({
-          where: {
-            createdAt: {
-              lte: monthEnd
+        executeWithRetry(async () => {
+          return await db.customerProfile.count({
+            where: {
+              ...monthWhere
             }
-          }
+          });
         }),
-        db.customerProfile.count({
-          where: {
-            createdAt: {
-              lte: monthEnd
-            },
-            OR: [
-              {
-                invoices: {
-                  some: {
-                    createdAt: {
-                      gte: subDays(monthEnd, 90) // Active in last 90 days
-                    }
-                  }
-                }
-              },
-              {
-                serviceBookings: {
-                  some: {
-                    createdAt: {
-                      gte: subDays(monthEnd, 90)
-                    }
-                  }
-                }
+        executeWithRetry(async () => {
+          return await db.customerProfile.count({
+            where: {
+              createdAt: {
+                lte: monthEnd
               }
-            ]
-          }
+            }
+          });
+        }),
+        executeWithRetry(async () => {
+          return await db.customerProfile.count({
+            where: {
+              createdAt: {
+                lte: monthEnd
+              },
+              OR: [
+                {
+                  invoices: {
+                    some: {
+                      createdAt: {
+                        gte: subDays(monthEnd, 90) // Active in last 90 days
+                      }
+                    }
+                  }
+                },
+                {
+                  serviceBookings: {
+                    some: {
+                      createdAt: {
+                        gte: subDays(monthEnd, 90)
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          });
         })
       ])
 
@@ -154,104 +172,116 @@ export async function GET(request: NextRequest) {
       churnRate
     ] = await Promise.all([
       // Customer segments
-      db.customerProfile.groupBy({
-        by: ['segment'],
-        where: {
-          ...where
-        },
-        _count: {
-          _all: true
-        }
+      executeWithRetry(async () => {
+        return await db.customerProfile.groupBy({
+          by: ['segment'],
+          where: {
+            ...where
+          },
+          _count: {
+            _all: true
+          }
+        });
       }),
       // Top customers by revenue
-      db.customerProfile.findMany({
-        where: {
-          ...where
-        },
-        include: {
-          invoices: {
-            where: {
-              status: 'PAID'
-            },
-            select: {
-              totalAmount: true
+      executeWithRetry(async () => {
+        return await db.customerProfile.findMany({
+          where: {
+            ...where
+          },
+          include: {
+            invoices: {
+              where: {
+                status: 'PAID'
+              },
+              select: {
+                totalAmount: true
+              }
             }
-          }
-        },
-        orderBy: {
-          invoices: {
-            _sum: {
-              totalAmount: 'desc'
+          },
+          orderBy: {
+            invoices: {
+              _sum: {
+                totalAmount: 'desc'
+              }
             }
-          }
-        },
-        take: 10
+          },
+          take: 10
+        });
       }),
       // Customer acquisition sources
-      db.lead.groupBy({
-        by: ['source'],
-        where: {
-          ...currentPeriodWhere,
-          status: 'CLOSED_WON'
-        },
-        _count: {
-          _all: true
-        }
+      executeWithRetry(async () => {
+        return await db.lead.groupBy({
+          by: ['source'],
+          where: {
+            ...currentPeriodWhere,
+            status: 'CLOSED_WON'
+          },
+          _count: {
+            _all: true
+          }
+        });
       }),
       // Customer lifetime value
-      db.customerProfile.findMany({
-        where: {
-          ...where
-        },
-        include: {
-          invoices: {
-            where: {
-              status: 'PAID'
-            },
-            select: {
-              totalAmount: true,
-              createdAt: true
+      executeWithRetry(async () => {
+        return await db.customerProfile.findMany({
+          where: {
+            ...where
+          },
+          include: {
+            invoices: {
+              where: {
+                status: 'PAID'
+              },
+              select: {
+                totalAmount: true,
+                createdAt: true
+              }
             }
           }
-        }
+        });
       }),
       // Churn rate calculation
       Promise.all([
         // Customers at start of period
-        db.customerProfile.count({
-          where: {
-            createdAt: {
-              lte: subDays(startDate, 1)
+        executeWithRetry(async () => {
+          return await db.customerProfile.count({
+            where: {
+              createdAt: {
+                lte: subDays(startDate, 1)
+              }
             }
-          }
+          });
         }),
         // Customers who churned in period
-        db.customerProfile.count({
-          where: {
-            createdAt: {
-              lte: subDays(startDate, 1)
-            },
-            AND: [
-              {
-                invoices: {
-                  none: {
-                    createdAt: {
-                      gte: startDate
-                    }
-                  }
-                }
+        executeWithRetry(async () => {
+          return await db.customerProfile.count({
+            where: {
+              createdAt: {
+                lte: subDays(startDate, 1)
               },
-              {
-                serviceBookings: {
-                  none: {
-                    createdAt: {
-                      gte: startDate
+              AND: [
+                {
+                  invoices: {
+                    none: {
+                      createdAt: {
+                        gte: startDate
+                      }
+                    }
+                  }
+                },
+                {
+                  serviceBookings: {
+                    none: {
+                      createdAt: {
+                        gte: startDate
+                      }
                     }
                   }
                 }
-              }
-            ]
-          }
+              ]
+            }
+          });
         })
       ])
     ])
@@ -302,12 +332,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(customerReport)
+    return NextResponse.json(customerReport, { headers })
   } catch (error) {
     console.error('Error fetching customer report:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      }}
     )
   }
 }
