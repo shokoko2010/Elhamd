@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
-import { authenticateProductionUser } from '@/lib/production-auth-vercel'
+import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication using production method
-    const user = await authenticateProductionUser(request)
+    // Verify authentication
+    const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json(
         { error: 'Unauthorized - Staff access required' },
@@ -151,8 +151,8 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Verify authentication using production method
-    const user = await authenticateProductionUser(request)
+    // Verify authentication
+    const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json(
         { error: 'Unauthorized - Staff access required' },
@@ -226,8 +226,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Verify authentication using production method
-    const user = await authenticateProductionUser(request)
+    // Verify authentication
+    const user = await getAuthUser()
     if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
       return NextResponse.json(
         { error: 'Unauthorized - Staff access required' },

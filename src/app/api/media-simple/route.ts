@@ -1,32 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getSimpleAuthUser, UserRole } from '@/lib/simple-production-auth'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
-// Production auth fallback - always return admin user for simplicity
+// Simple auth function
 async function getAuthUser(request: NextRequest) {
-  return {
-    id: 'production-admin-user',
-    email: 'admin@elhamdimport.online',
-    role: 'ADMIN'
+  try {
+    const user = await getSimpleAuthUser(request);
+    if (user) {
+      return user;
+    }
+  } catch (error) {
+    console.log('⚠️ Auth failed:', error);
   }
-}
-
-// Add CORS headers to all responses
-function addCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-API-Key')
-  return response
-}
-
-export async function OPTIONS(request: NextRequest) {
-  return addCorsHeaders(new NextResponse(null, { status: 200 }))
+  
+  // Fallback: Check for API key
+  const apiKey = request.headers.get('x-api-key');
+  if (apiKey === 'vercel-media-upload-key') {
+    const user = await getSimpleAuthUser(request);
+    if (user) {
+      return user;
+    }
+  }
+  
+  throw new Error('Authentication required');
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Allow public access for media listing
+    // Try to authenticate, but allow public access for media listing
+    let user = null;
+    try {
+      user = await getSimpleAuthUser(request);
+    } catch (authError) {
+      // Continue without authentication for public access
+      console.log('⚠️ No authentication, proceeding with public access');
+    }
+    
     const { searchParams } = new URL(request.url)
     
     // Parse query parameters
@@ -38,10 +49,10 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'desc'
     
     // Build where clause - only show public media for unauthenticated users
-    const where: any = {
-      isPublic: true
+    const where: any = {}
+    if (!user) {
+      where.isPublic = true
     }
-    
     if (category && category !== 'all') where.category = category
     if (search) {
       where.OR = [
@@ -92,7 +103,7 @@ export async function GET(request: NextRequest) {
       optimizedFiles: []
     }))
     
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       data: {
         files,
@@ -101,31 +112,30 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    return addCorsHeaders(response)
-    
   } catch (error) {
     console.error('❌ Error fetching media:', error)
-    const response = NextResponse.json(
+    return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch media' },
       { status: 500 }
     )
-    return addCorsHeaders(response)
   }
 }
 
 export async function POST(request: NextRequest) {
-  let isConnected = false
-  
   try {
     console.log('🔄 Starting file upload process...')
     
-    // Connect to database
-    await db.$connect()
-    isConnected = true
-    
-    // Get authenticated user (production fallback)
-    const user = await getAuthUser(request)
-    console.log('✅ User authenticated:', user.email)
+    // Authenticate user for upload with fallback
+    let user = null;
+    try {
+      user = await getAuthUser(request);
+      console.log('✅ User authenticated:', user.email);
+    } catch (authError) {
+      console.error('❌ Authentication failed:', authError);
+      return NextResponse.json({ 
+        error: 'Authentication required for file upload' 
+      }, { status: 401 });
+    }
     
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -135,24 +145,21 @@ export async function POST(request: NextRequest) {
     
     if (!file) {
       console.error('❌ No file provided')
-      const response = NextResponse.json({ error: 'No file provided' }, { status: 400 })
-      return addCorsHeaders(response)
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
     
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
     if (!allowedTypes.includes(file.type)) {
       console.error('❌ Invalid file type:', file.type)
-      const response = NextResponse.json({ error: 'Invalid file type. Only images are allowed.' }, { status: 400 })
-      return addCorsHeaders(response)
+      return NextResponse.json({ error: 'Invalid file type. Only images are allowed.' }, { status: 400 })
     }
     
-    // Validate file size (max 5MB for production)
-    const maxSize = 5 * 1024 * 1024
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
       console.error('❌ File too large:', file.size)
-      const response = NextResponse.json({ error: 'File too large. Maximum size is 5MB.' }, { status: 400 })
-      return addCorsHeaders(response)
+      return NextResponse.json({ error: 'File too large. Maximum size is 10MB.' }, { status: 400 })
     }
     
     // Create uploads directory if it doesn't exist
@@ -185,10 +192,10 @@ export async function POST(request: NextRequest) {
     // Create URL path
     const url = `/uploads/media/${filename}`
     
-    // Prepare media data with validation
+    // Save to database
     const mediaData = {
       filename: filename,
-      originalName: file.name.substring(0, 255), // Limit length
+      originalName: file.name,
       path: url,
       url: url,
       thumbnailUrl: url, // For now, same as URL
@@ -196,11 +203,11 @@ export async function POST(request: NextRequest) {
       size: file.size,
       width: null, // Will be updated if we process the image
       height: null,
-      altText: (options.altText || '').substring(0, 500),
-      title: (options.title || file.name).substring(0, 255),
-      description: (options.description || '').substring(0, 1000),
-      tags: JSON.stringify((options.tags || []).slice(0, 10)), // Limit tags
-      category: (options.category || 'other').substring(0, 50),
+      altText: options.altText || '',
+      title: options.title || file.name,
+      description: options.description || '',
+      tags: JSON.stringify(options.tags || []),
+      category: options.category || 'other',
       entityId: null,
       isPublic: options.isPublic !== false,
       isFeatured: options.isFeatured === true,
@@ -214,31 +221,13 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('💾 Saving to database...')
-    
-    // Save to database with retry logic
-    let createdMedia
-    try {
-      createdMedia = await db.media.create({
-        data: mediaData
-      })
-    } catch (dbError) {
-      console.error('❌ Database error:', dbError)
-      
-      // Try to clean up the file if database save failed
-      try {
-        const fs = await import('fs/promises')
-        await fs.unlink(filepath)
-        console.log('🧹 Cleaned up file due to database error')
-      } catch (cleanupError) {
-        console.warn('Could not clean up file:', cleanupError)
-      }
-      
-      throw dbError
-    }
+    const createdMedia = await db.media.create({
+      data: mediaData
+    })
     
     console.log('✅ Saved to database with ID:', createdMedia.id)
     
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       message: 'File uploaded successfully',
       data: {
@@ -262,49 +251,30 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    return addCorsHeaders(response)
-    
   } catch (error) {
     console.error('❌ Error uploading file:', error)
-    console.error('Error details:', {
-      name: error instanceof Error ? error.name : 'Unknown',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : 'No stack trace'
-    })
-    
-    const response = NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Failed to upload file',
-        details: process.env.NODE_ENV === 'development' ? 
-          (error instanceof Error ? error.stack : 'No details available') : 
-          'Contact support for assistance'
-      },
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to upload file' },
       { status: 500 }
     )
-    
-    return addCorsHeaders(response)
-  } finally {
-    if (isConnected) {
-      try {
-        await db.$disconnect()
-      } catch (disconnectError) {
-        console.warn('Could not disconnect from database:', disconnectError)
-      }
-    }
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    // Get authenticated user
-    const user = await getAuthUser(request)
+    // Authenticate user with fallback
+    let user = null;
+    try {
+      user = await getSimpleAuthUser(request);
+    } catch (authError) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     
     const { searchParams } = new URL(request.url)
     const mediaId = searchParams.get('id')
     
     if (!mediaId) {
-      const response = NextResponse.json({ error: 'Media ID required' }, { status: 400 })
-      return addCorsHeaders(response)
+      return NextResponse.json({ error: 'Media ID required' }, { status: 400 })
     }
     
     const body = await request.json()
@@ -322,7 +292,7 @@ export async function PUT(request: NextRequest) {
       }
     })
     
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       data: {
         id: updatedMedia.id,
@@ -335,29 +305,30 @@ export async function PUT(request: NextRequest) {
       }
     })
     
-    return addCorsHeaders(response)
-    
   } catch (error) {
     console.error('❌ Error updating media:', error)
-    const response = NextResponse.json(
+    return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update media' },
       { status: 500 }
     )
-    return addCorsHeaders(response)
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Get authenticated user
-    const user = await getAuthUser(request)
+    // Authenticate user with fallback
+    let user = null;
+    try {
+      user = await getSimpleAuthUser(request);
+    } catch (authError) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
     
     const { searchParams } = new URL(request.url)
     const mediaId = searchParams.get('id')
     
     if (!mediaId) {
-      const response = NextResponse.json({ error: 'Media ID required' }, { status: 400 })
-      return addCorsHeaders(response)
+      return NextResponse.json({ error: 'Media ID required' }, { status: 400 })
     }
     
     // Get media info before deletion
@@ -366,8 +337,7 @@ export async function DELETE(request: NextRequest) {
     })
     
     if (!media) {
-      const response = NextResponse.json({ error: 'Media not found' }, { status: 404 })
-      return addCorsHeaders(response)
+      return NextResponse.json({ error: 'Media not found' }, { status: 404 })
     }
     
     // Delete media from database
@@ -385,19 +355,16 @@ export async function DELETE(request: NextRequest) {
       console.warn('Could not delete file from filesystem:', error)
     }
     
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       message: 'Media deleted successfully'
     })
     
-    return addCorsHeaders(response)
-    
   } catch (error) {
     console.error('❌ Error deleting media:', error)
-    const response = NextResponse.json(
+    return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete media' },
       { status: 500 }
     )
-    return addCorsHeaders(response)
   }
 }

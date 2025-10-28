@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
-import { authenticateProductionUser } from '@/lib/production-auth-vercel'
-import { UserRole } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
-  let isConnected = false
-  
   try {
-    // Verify authentication using production method
-    const user = await authenticateProductionUser(request)
-    if (!user || !([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role))) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Staff access required' },
-        { status: 401 }
-      )
-    }
-    
     const formData = await request.formData()
     const file = formData.get('file') as File
     
@@ -72,42 +59,9 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('=== MEDIA UPLOAD ERROR ===')
-    console.error('Error type:', typeof error)
-    console.error('Error name:', error instanceof Error ? error.name : 'Unknown')
-    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    
-    // Check for specific file system errors
-    if (error instanceof Error) {
-      if (error.message.includes('ENOENT') || error.message.includes('no such file')) {
-        return NextResponse.json({ 
-          error: 'Upload directory not found. Please contact administrator.',
-          code: 'DIRECTORY_NOT_FOUND'
-        }, { status: 500 })
-      }
-      
-      if (error.message.includes('EACCES') || error.message.includes('permission')) {
-        return NextResponse.json({ 
-          error: 'Permission denied. Please contact administrator.',
-          code: 'PERMISSION_DENIED'
-        }, { status: 500 })
-      }
-      
-      if (error.message.includes('ENOSPC') || error.message.includes('disk full')) {
-        return NextResponse.json({ 
-          error: 'Disk full. Please contact administrator.',
-          code: 'DISK_FULL'
-        }, { status: 500 })
-      }
-    }
-    
+    console.error('Error uploading file:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to upload file',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        code: 'UPLOAD_ERROR'
-      },
+      { error: error instanceof Error ? error.message : 'Failed to upload file' },
       { status: 500 }
     )
   }

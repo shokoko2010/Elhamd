@@ -312,8 +312,7 @@ function CreateInvoiceContent() {
       })
 
       if (response.ok) {
-        const result = await response.json()
-        const invoice = result.invoice
+        const invoice = await response.json()
         toast({
           title: 'نجاح',
           description: status === 'DRAFT' ? 'تم حفظ الفاتورة كمسودة' : 'تم إنشاء وإرسال الفاتورة بنجاح'
