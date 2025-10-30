@@ -954,13 +954,184 @@ async function main() {
     }
   })
 
+  // 13. Departments and Positions for Employee Management
+  const departments = await Promise.all([
+    prisma.department.create({ data: { name: 'الإدارة العليا', description: 'المديرون التنفيذيون وكبار المديرين' } }),
+    prisma.department.create({ data: { name: 'المبيعات', description: 'فريق المبيعات والتسويق' } }),
+    prisma.department.create({ data: { name: 'الخدمة الفنية', description: 'الفنيون والهندسة' } }),
+    prisma.department.create({ data: { name: 'المحاسبة والمالية', description: 'المحاسبون والماليون' } }),
+    prisma.department.create({ data: { name: 'الموارد البشرية', description: 'إدارة الموظفين والشؤون الإدارية' } }),
+    prisma.department.create({ data: { name: 'المخزون والمشتريات', description: 'إدارة المخزون والمشتريات' } })
+  ])
+  console.log('✓ departments created')
+
+  const positions = await Promise.all([
+    // الإدارة العليا
+    prisma.position.create({ data: { title: 'المدير العام', departmentId: departments[0].id, level: 'EXECUTIVE' } }),
+    prisma.position.create({ data: { title: 'مدير الفرع', departmentId: departments[0].id, level: 'SENIOR' } }),
+    
+    // المبيعات
+    prisma.position.create({ data: { title: 'مدير المبيعات', departmentId: departments[1].id, level: 'SENIOR' } }),
+    prisma.position.create({ data: { title: 'مندوب مبيعات', departmentId: departments[1].id, level: 'MID' } }),
+    prisma.position.create({ data: { title: 'مساعد مبيعات', departmentId: departments[1].id, level: 'JUNIOR' } }),
+    
+    // الخدمة الفنية
+    prisma.position.create({ data: { title: 'مدير الخدمة', departmentId: departments[2].id, level: 'SENIOR' } }),
+    prisma.position.create({ data: { title: 'فني أول', departmentId: departments[2].id, level: 'MID' } }),
+    prisma.position.create({ data: { title: 'فني', departmentId: departments[2].id, level: 'JUNIOR' } }),
+    
+    // المحاسبة والمالية
+    prisma.position.create({ data: { title: 'المحاسب الرئيسي', departmentId: departments[3].id, level: 'SENIOR' } }),
+    prisma.position.create({ data: { title: 'محاسب', departmentId: departments[3].id, level: 'MID' } }),
+    
+    // الموارد البشرية
+    prisma.position.create({ data: { title: 'مدير الموارد البشرية', departmentId: departments[4].id, level: 'SENIOR' } }),
+    prisma.position.create({ data: { title: 'أخصائي موارد بشرية', departmentId: departments[4].id, level: 'MID' } }),
+    
+    // المخزون والمشتريات
+    prisma.position.create({ data: { title: 'مدير المشتريات', departmentId: departments[5].id, level: 'SENIOR' } }),
+    prisma.position.create({ data: { title: 'مسؤول مخزون', departmentId: departments[5].id, level: 'MID' } })
+  ])
+  console.log('✓ positions created')
+
+  // 14. Create Employee Records for existing staff users
+  const staffUsers = await prisma.user.findMany({
+    where: {
+      role: {
+        in: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'STAFF']
+      }
+    }
+  })
+
+  for (const user of staffUsers) {
+    try {
+      let departmentId, positionId
+      
+      // Assign department and position based on role
+      switch (user.role) {
+        case 'SUPER_ADMIN':
+          departmentId = departments[0].id // الإدارة العليا
+          positionId = positions[0].id // المدير العام
+          break
+        case 'ADMIN':
+        case 'BRANCH_MANAGER':
+          departmentId = departments[0].id // الإدارة العليا
+          positionId = positions[1].id // مدير الفرع
+          break
+        case 'STAFF':
+          if (user.email?.includes('sales')) {
+            departmentId = departments[1].id // المبيعات
+            positionId = positions[3].id // مندوب مبيعات
+          } else if (user.email?.includes('service')) {
+            departmentId = departments[2].id // الخدمة الفنية
+            positionId = positions[5].id // فني أول
+          } else {
+            departmentId = departments[1].id // المبيعات افتراضياً
+            positionId = positions[4].id // مساعد مبيعات
+          }
+          break
+        default:
+          departmentId = departments[1].id // المبيعات افتراضياً
+          positionId = positions[4].id // مساعد مبيعات
+      }
+
+      // Generate employee number
+      const employeeCount = await prisma.employee.count()
+      const employeeNumber = `EMP${String(employeeCount + 1).padStart(4, '0')}`
+
+      await prisma.employee.create({
+        data: {
+          employeeNumber,
+          userId: user.id,
+          departmentId,
+          positionId,
+          hireDate: new Date('2023-01-01'),
+          salary: user.role === 'SUPER_ADMIN' ? 25000 : 
+                 user.role === 'ADMIN' || user.role === 'BRANCH_MANAGER' ? 18000 : 
+                 user.email?.includes('manager') ? 15000 : 8000,
+          status: 'ACTIVE',
+          branchId: mainBranch.id,
+          emergencyContact: {
+            name: 'طوارئ',
+            phone: '+20 1123456789',
+            relationship: 'عائلة'
+          },
+          notes: 'موظف أساسي في الشركة'
+        }
+      })
+    } catch (err) {
+      // Ignore if employee already exists
+      console.log(`Note: Employee for ${user.email} may already exist`)
+    }
+  }
+  console.log('✓ employees created')
+
+  // 15. Sample Leave Requests
+  const employees = await prisma.employee.findMany({
+    include: { user: true }
+  })
+
+  if (employees.length > 0) {
+    await prisma.leaveRequest.createMany({
+      data: [
+        {
+          employeeId: employees[0].id,
+          leaveType: 'ANNUAL',
+          startDate: new Date('2024-06-15'),
+          endDate: new Date('2024-06-19'),
+          totalDays: 5,
+          reason: 'إجازة سنوية مع العائلة',
+          status: 'APPROVED',
+          approvedBy: staffUsers[0].id,
+          approvedAt: new Date('2024-06-01')
+        },
+        {
+          employeeId: employees[1]?.id || employees[0].id,
+          leaveType: 'SICK',
+          startDate: new Date('2024-05-20'),
+          endDate: new Date('2024-05-21'),
+          totalDays: 2,
+          reason: 'إجازة مرضية',
+          status: 'APPROVED',
+          approvedBy: staffUsers[0].id,
+          approvedAt: new Date('2024-05-19')
+        }
+      ]
+    })
+    console.log('✓ leave requests created')
+
+    // 16. Sample Payroll Records
+    await prisma.payrollRecord.createMany({
+      data: employees.map((emp, index) => ({
+        employeeId: emp.id,
+        period: '2024-05',
+        basicSalary: emp.salary,
+        allowances: emp.salary * 0.2, // 20% allowances
+        deductions: emp.salary * 0.1, // 10% deductions
+        overtime: Math.random() > 0.5 ? emp.salary * 0.05 : 0, // Random overtime
+        bonus: Math.random() > 0.7 ? emp.salary * 0.1 : 0, // Random bonus
+        netSalary: emp.salary * 1.1, // Basic + allowances - deductions
+        payDate: new Date('2024-05-31'),
+        status: 'PAID',
+        createdBy: staffUsers[0].id,
+        approvedBy: staffUsers[0].id
+      }))
+    })
+    console.log('✓ payroll records created')
+  }
+
   console.log('✅ Comprehensive database seeding completed successfully!')
   console.log('📊 Summary:')
   console.log(`- Vehicles: ${vehiclesData.length}`)
   console.log('- Users: 8')
+  console.log('- Employees: Created for staff users')
+  console.log('- Departments: 6')
+  console.log('- Positions: 14')
   console.log('- Role Templates: 8')
   console.log('- Permissions: 32')
   console.log('- Service Types: 5')
+  console.log('- Leave Requests: Sample data')
+  console.log('- Payroll Records: Sample data')
   console.log('- Sliders: 4')
   console.log('- All emails updated to use @elhamdimport.online domain')
 }
