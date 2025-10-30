@@ -46,8 +46,7 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             email: true,
-            phone: true,
-            avatar: true
+            phone: true
           }
         },
         branch: {
@@ -128,8 +127,7 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             email: true,
-            phone: true,
-            avatar: true
+            phone: true
           }
         },
         branch: {
