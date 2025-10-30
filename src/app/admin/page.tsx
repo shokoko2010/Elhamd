@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
 import { 
   LayoutDashboard, 
   Car, 
@@ -33,7 +32,110 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  Plus,
+  Edit,
+  Trash2,
+  Download,
+  Upload,
+  Filter,
+  RefreshCw,
+  LogOut,
+  HelpCircle,
+  MessageSquare,
+  Phone,
+  Mail,
+  MapPin,
+  Star,
+  Award,
+  Target,
+  Zap,
+  Database,
+  Server,
+  Monitor,
+  Smartphone,
+  Globe,
+  Cpu,
+  HardDrive,
+  Wifi,
+  Battery,
+  Volume2,
+  Sun,
+  Moon,
+  User,
+  UserPlus,
+  UserMinus,
+  Key,
+  Eye,
+  EyeOff,
+  Copy,
+  Share2,
+  Link,
+  Paperclip,
+  Image,
+  Video,
+  Music,
+  Camera,
+  Mic,
+  Headphones,
+  Printer,
+  Save,
+  Undo,
+  Redo,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Minimize,
+  RotateCw,
+  RotateCcw,
+  Move,
+  Scissors,
+  Clipboard,
+  Archive,
+  Inbox,
+  Send,
+  Reply,
+  Forward,
+  Flag,
+  Bookmark,
+  Heart,
+  ThumbsUp,
+  ThumbsDown,
+  AtSign,
+  Hash,
+  DollarSign,
+  Euro,
+  PoundSterling,
+  Yen,
+  TrendingDown,
+  Activity,
+  Pulse,
+  Thermometer,
+  Droplet,
+  Wind,
+  Cloud,
+  CloudRain,
+  CloudSnow,
+  AlertTriangle,
+  XCircle,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  MoreVertical,
+  MoreHorizontal,
+  PlusCircle,
+  MinusCircle,
+  CheckSquare,
+  Square,
+  Radio,
+  Checkbox,
+  Truck
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -169,33 +271,160 @@ function DashboardContent() {
       items: [
         { id: 'overview', label: 'نظرة عامة', icon: LayoutDashboard },
         { id: 'analytics', label: 'التحليلات', icon: BarChart3 },
+        { id: 'reports', label: 'التقارير', icon: FileText },
       ]
     },
     {
-      title: 'العمليات الأساسية',
+      title: 'المبيعات والعملاء',
       items: [
         { id: 'vehicles', label: 'المركبات', icon: Car },
         { id: 'bookings', label: 'الحجوزات', icon: Calendar },
         { id: 'personnel', label: 'الأفراد', icon: Users },
-        { id: 'inventory', label: 'المخزون', icon: Package },
+        { id: 'customers', label: 'العملاء', icon: UserPlus },
+        { id: 'sales', label: 'المبيعات', icon: DollarSign },
+        { id: 'quotations', label: 'عروض الأسعار', icon: FileCheck },
+        { id: 'invoices', label: 'الفواتير', icon: CreditCard },
       ]
     },
     {
-      title: 'الإدارة',
+      title: 'المخزون والعمليات',
+      items: [
+        { id: 'inventory', label: 'المخزون', icon: Package },
+        { id: 'maintenance', label: 'الصيانة', icon: Wrench },
+        { id: 'service', label: 'الخدمات', icon: Tool },
+        { id: 'parts', label: 'قطع الغيار', icon: Settings },
+        { id: 'suppliers', label: 'الموردون', icon: Truck },
+        { id: 'warehouse', label: 'المستودع', icon: Building },
+      ]
+    },
+    {
+      title: 'الموارد البشرية',
       items: [
         { id: 'hr', label: 'الموارد البشرية', icon: Building },
-        { id: 'accounting', label: 'المحاسبة', icon: Calculator },
-        { id: 'contracts', label: 'العقود', icon: FileText },
-        { id: 'maintenance', label: 'الصيانة', icon: Wrench },
+        { id: 'employees', label: 'الموظفون', icon: UserCheck },
+        { id: 'attendance', label: 'الحضور والانصراف', icon: Clock },
+        { id: 'payroll', label: 'الرواتب', icon: Calculator },
+        { id: 'leaves', label: 'الإجازات', icon: Calendar },
+        { id: 'performance', label: 'تقييم الأداء', icon: Award },
       ]
     },
     {
-      title: 'النظام',
+      title: 'المالية والمحاسبة',
+      items: [
+        { id: 'accounting', label: 'المحاسبة', icon: Calculator },
+        { id: 'expenses', label: 'المصروفات', icon: CreditCard },
+        { id: 'revenue', label: 'الإيرادات', icon: TrendingUp },
+        { id: 'budget', label: 'الميزانية', icon: Target },
+        { id: 'tax', label: 'الضرائب', icon: FileText },
+        { id: 'banking', label: 'الحسابات البنكية', icon: Building },
+      ]
+    },
+    {
+      title: 'العقود والقانون',
+      items: [
+        { id: 'contracts', label: 'العقود', icon: FileText },
+        { id: 'legal', label: 'الشؤون القانونية', icon: Shield },
+        { id: 'insurance', label: 'التأمين', icon: Shield },
+        { id: 'documents', label: 'الوثائق', icon: Archive },
+      ]
+    },
+    {
+      title: 'النظام والإعدادات',
       items: [
         { id: 'permissions', label: 'الصلاحيات', icon: Lock },
-        { id: 'search', label: 'بحث', icon: Search },
-        { id: 'notifications', label: 'إشعارات', icon: Bell },
+        { id: 'users', label: 'المستخدمون', icon: Users },
+        { id: 'roles', label: 'الأدوار', icon: UserCheck },
+        { id: 'settings', label: 'الإعدادات', icon: Settings },
+        { id: 'backup', label: 'النسخ الاحتياطي', icon: Database },
+        { id: 'logs', label: 'السجلات', icon: FileText },
       ]
+    },
+    {
+      title: 'التواصل والدعم',
+      items: [
+        { id: 'notifications', label: 'الإشعارات', icon: Bell },
+        { id: 'messages', label: 'الرسائل', icon: MessageSquare },
+        { id: 'support', label: 'الدعم الفني', icon: HelpCircle },
+        { id: 'feedback', label: 'ملاحظات', icon: MessageSquare },
+        { id: 'contact', label: 'اتصل بنا', icon: Phone },
+      ]
+    },
+    {
+      title: 'الأدوات والبحث',
+      items: [
+        { id: 'search', label: 'بحث', icon: Search },
+        { id: 'filter', label: 'تصفية', icon: Filter },
+        { id: 'export', label: 'تصدير', icon: Download },
+        { id: 'import', label: 'استيراد', icon: Upload },
+        { id: 'print', label: 'طباعة', icon: Printer },
+      ]
+    }
+  ]
+
+  const quickActionItems = [
+    {
+      title: 'إضافة مركبة جديدة',
+      description: 'إضافة سيارة جديدة للمعرض',
+      icon: Car,
+      action: () => router.push('/admin/vehicles?action=add'),
+      color: 'bg-blue-500 hover:bg-blue-600',
+      badge: null
+    },
+    {
+      title: 'حجز قيادة تجريبية',
+      description: 'إنشاء حجز جديد لقيادة تجريبية',
+      icon: Calendar,
+      action: () => router.push('/admin/bookings?action=create&type=test-drive'),
+      color: 'bg-green-500 hover:bg-green-600',
+      badge: quickActions.pendingBookings || null
+    },
+    {
+      title: 'إضافة عميل جديد',
+      description: 'تسجيل عميل جديد في النظام',
+      icon: UserPlus,
+      action: () => router.push('/admin/customers?action=add'),
+      color: 'bg-purple-500 hover:bg-purple-600',
+      badge: null
+    },
+    {
+      title: 'إنشاء فاتورة',
+      description: 'إصدار فاتورة بيع جديدة',
+      icon: CreditCard,
+      action: () => router.push('/admin/invoices?action=create'),
+      color: 'bg-orange-500 hover:bg-orange-600',
+      badge: null
+    },
+    {
+      title: 'صيانة مجدولة',
+      description: 'جدولة صيانة للمركبات',
+      icon: Wrench,
+      action: () => router.push('/admin/maintenance?action=schedule'),
+      color: 'bg-red-500 hover:bg-red-600',
+      badge: quickActions.pendingMaintenance || null
+    },
+    {
+      title: 'طلب قطع غيار',
+      description: 'طلب قطع غيار من الموردين',
+      icon: Package,
+      action: () => router.push('/admin/inventory/purchase-orders?action=create'),
+      color: 'bg-indigo-500 hover:bg-indigo-600',
+      badge: null
+    },
+    {
+      title: 'تقرير مبيعات',
+      description: 'عرض تقرير المبيعات الشهري',
+      icon: BarChart3,
+      action: () => router.push('/admin/reports?type=sales'),
+      color: 'bg-teal-500 hover:bg-teal-600',
+      badge: null
+    },
+    {
+      title: 'إشعارات جديدة',
+      description: 'عرض الإشعارات غير المقروءة',
+      icon: Bell,
+      action: () => router.push('/admin/notifications'),
+      color: 'bg-pink-500 hover:bg-pink-600',
+      badge: quickActions.pendingNotifications || null
     }
   ]
 
@@ -218,12 +447,26 @@ function DashboardContent() {
                 <Car className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">لوحة التحكم</h1>
+                <h1 className="text-xl font-bold text-gray-900">لوحة تحكم الإدارة</h1>
                 <p className="text-sm text-gray-500">نظام إدارة بيع السيارات</p>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                جديد
+              </Button>
+              <Button variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                تحديث
+              </Button>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                تصدير
+              </Button>
+            </div>
             <Button variant="outline" size="sm">
               <Bell className="h-4 w-4 mr-2" />
               الإشعارات
@@ -235,7 +478,10 @@ function DashboardContent() {
             </Button>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-              <span className="text-sm font-medium">المدير</span>
+              <span className="text-sm font-medium hidden md:block">المدير</span>
+              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -243,8 +489,8 @@ function DashboardContent() {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed lg:static lg:translate-x-0 z-30 w-64 h-full bg-white shadow-lg transition-transform duration-300 ease-in-out`}>
-          <nav className="p-4 space-y-6">
+        <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed lg:static lg:translate-x-0 z-30 w-64 h-full bg-white shadow-lg transition-transform duration-300 ease-in-out flex flex-col`}>
+          <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
             {menuItems.map((section) => (
               <div key={section.title}>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -268,10 +514,10 @@ function DashboardContent() {
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                         }`}
                       >
-                        <Icon className="h-4 w-4" />
-                        {item.label}
+                        <Icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{item.label}</span>
                         {item.id === 'notifications' && quickActions.pendingNotifications > 0 && (
-                          <Badge variant="destructive" className="mr-auto h-5 w-5 p-0 flex items-center justify-center text-xs">
+                          <Badge variant="destructive" className="mr-auto h-5 w-5 p-0 flex items-center justify-center text-xs flex-shrink-0">
                             {quickActions.pendingNotifications}
                           </Badge>
                         )}
@@ -282,6 +528,21 @@ function DashboardContent() {
               </div>
             ))}
           </nav>
+          
+          {/* Sidebar Footer */}
+          <div className="p-4 border-t border-gray-200 space-y-2">
+            <Button variant="outline" size="sm" className="w-full justify-start">
+              <HelpCircle className="h-4 w-4 mr-2" />
+              المساعدة
+            </Button>
+            <Button variant="outline" size="sm" className="w-full justify-start text-red-600 hover:text-red-700">
+              <LogOut className="h-4 w-4 mr-2" />
+              تسجيل الخروج
+            </Button>
+            <div className="text-xs text-gray-500 text-center pt-2">
+              نسخة 1.0.0
+            </div>
+          </div>
         </aside>
 
         {/* Main Content */}
@@ -295,7 +556,7 @@ function DashboardContent() {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              {/* Overview Tab */}
+              {/* Overview Tab - Quick Actions Only */}
               <TabsContent value="overview" className="space-y-6">
                 {/* Alert Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -309,6 +570,13 @@ function DashboardContent() {
                     <CardContent>
                       <div className="text-2xl font-bold text-red-600">{formatNumber(quickActions.overduePayments || 0)}</div>
                       <p className="text-sm text-red-700">مدفوعات متأخرة تحتاج إلى متابعة</p>
+                      <Button 
+                        size="sm" 
+                        className="mt-2 bg-red-600 hover:bg-red-700"
+                        onClick={() => router.push('/admin/finance/payments?status=overdue')}
+                      >
+                        معاينة
+                      </Button>
                     </CardContent>
                   </Card>
 
@@ -322,6 +590,13 @@ function DashboardContent() {
                     <CardContent>
                       <div className="text-2xl font-bold text-yellow-600">{formatNumber(quickActions.pendingBookings || 0)}</div>
                       <p className="text-sm text-yellow-700">حجوزات تحتاج إلى مراجعة</p>
+                      <Button 
+                        size="sm" 
+                        className="mt-2 bg-yellow-600 hover:bg-yellow-700"
+                        onClick={() => router.push('/admin/bookings?status=pending')}
+                      >
+                        معاينة
+                      </Button>
                     </CardContent>
                   </Card>
 
@@ -335,11 +610,64 @@ function DashboardContent() {
                     <CardContent>
                       <div className="text-2xl font-bold text-green-600">{formatNumber(quickActions.lowStockVehicles || 0)}</div>
                       <p className="text-sm text-green-700">مركبات متاحة للبيع</p>
+                      <Button 
+                        size="sm" 
+                        className="mt-2 bg-green-600 hover:bg-green-700"
+                        onClick={() => router.push('/admin/vehicles?status=available')}
+                      >
+                        معاينة
+                      </Button>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* KPI Cards */}
+                {/* Quick Actions Grid */}
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">الإجراءات السريعة</h2>
+                      <p className="text-gray-600">الوصول السريع لأهم الوظائف اليومية</p>
+                    </div>
+                    <Button variant="outline" onClick={() => window.location.reload()}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      تحديث
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {quickActionItems.map((action, index) => {
+                      const Icon = action.icon
+                      return (
+                        <Card 
+                          key={index} 
+                          className="group cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-blue-200"
+                          onClick={action.action}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className={`w-12 h-12 ${action.color} rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform`}>
+                                <Icon className="h-6 w-6" />
+                              </div>
+                              {action.badge && (
+                                <Badge variant="destructive" className="h-6 w-6 p-0 flex items-center justify-center text-xs">
+                                  {action.badge}
+                                </Badge>
+                              )}
+                            </div>
+                            <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+                              {action.title}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {action.description}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <Card className="hover:shadow-lg transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -405,95 +733,6 @@ function DashboardContent() {
                       <div className="mt-2 flex items-center text-xs text-green-600">
                         <TrendingUp className="h-3 w-3 mr-1" />
                         +23% من الشهر الماضي
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle>آخر الحجوزات</CardTitle>
-                          <CardDescription>آخر 5 حجوزات في النظام</CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => setActiveTab('bookings')}>
-                          عرض الكل
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {recentBookings.length === 0 ? (
-                          <p className="text-center text-gray-500 py-8">لا توجد حجوزات حديثة</p>
-                        ) : (
-                          recentBookings.slice(0, 5).map((booking: any) => (
-                            <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                  {booking.type === 'test-drive' ? (
-                                    <Car className="h-5 w-5 text-blue-600" />
-                                  ) : (
-                                    <Wrench className="h-5 w-5 text-blue-600" />
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="font-medium">{booking.customerName}</p>
-                                  <p className="text-sm text-gray-600">
-                                    {booking.vehicleName || booking.serviceName}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="mb-1">{getStatusBadge(booking.status)}</div>
-                                <p className="text-xs text-gray-500">
-                                  {formatDate(booking.date)} {booking.timeSlot}
-                                </p>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle>آخر المركبات</CardTitle>
-                          <CardDescription>آخر 4 مركبات مضافة</CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => setActiveTab('vehicles')}>
-                          عرض الكل
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {recentVehicles.length === 0 ? (
-                          <p className="text-center text-gray-500 py-8">لا توجد مركبات حديثة</p>
-                        ) : (
-                          recentVehicles.slice(0, 4).map((vehicle: any) => (
-                            <div key={vehicle.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                                  <Car className="h-5 w-5 text-gray-600" />
-                                </div>
-                                <div>
-                                  <p className="font-medium">{vehicle.make} {vehicle.model}</p>
-                                  <p className="text-sm text-gray-600">{vehicle.year} • {vehicle.category}</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="mb-1">{getStatusBadge(vehicle.status)}</div>
-                                <p className="text-sm font-medium">{formatPrice(vehicle.price)}</p>
-                              </div>
-                            </div>
-                          ))
-                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -630,11 +869,51 @@ function DashboardContent() {
               </TabsContent>
 
               {/* Placeholder for other tabs */}
-              {['inventory', 'hr', 'accounting', 'contracts', 'maintenance', 'permissions', 'search', 'notifications', 'analytics'].map((tab) => (
+              {[
+                'reports', 'customers', 'sales', 'quotations', 'invoices', 'service', 'parts', 'suppliers', 'warehouse',
+                'employees', 'attendance', 'payroll', 'leaves', 'performance', 'expenses', 'revenue', 'budget', 'tax', 'banking',
+                'legal', 'insurance', 'documents', 'users', 'roles', 'settings', 'backup', 'logs', 'messages', 'support', 'feedback', 'contact',
+                'filter', 'export', 'import', 'print', 'inventory', 'hr', 'accounting', 'contracts', 'maintenance', 'permissions', 'search', 'notifications', 'analytics'
+              ].map((tab) => (
                 <TabsContent key={tab} value={tab} className="space-y-6">
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">
+                        {tab === 'reports' && 'التقارير'}
+                        {tab === 'customers' && 'إدارة العملاء'}
+                        {tab === 'sales' && 'المبيعات'}
+                        {tab === 'quotations' && 'عروض الأسعار'}
+                        {tab === 'invoices' && 'الفواتير'}
+                        {tab === 'service' && 'الخدمات'}
+                        {tab === 'parts' && 'قطع الغيار'}
+                        {tab === 'suppliers' && 'الموردون'}
+                        {tab === 'warehouse' && 'المستودع'}
+                        {tab === 'employees' && 'الموظفون'}
+                        {tab === 'attendance' && 'الحضور والانصراف'}
+                        {tab === 'payroll' && 'الرواتب'}
+                        {tab === 'leaves' && 'الإجازات'}
+                        {tab === 'performance' && 'تقييم الأداء'}
+                        {tab === 'expenses' && 'المصروفات'}
+                        {tab === 'revenue' && 'الإيرادات'}
+                        {tab === 'budget' && 'الميزانية'}
+                        {tab === 'tax' && 'الضرائب'}
+                        {tab === 'banking' && 'الحسابات البنكية'}
+                        {tab === 'legal' && 'الشؤون القانونية'}
+                        {tab === 'insurance' && 'التأمين'}
+                        {tab === 'documents' && 'الوثائق'}
+                        {tab === 'users' && 'المستخدمون'}
+                        {tab === 'roles' && 'الأدوار'}
+                        {tab === 'settings' && 'الإعدادات'}
+                        {tab === 'backup' && 'النسخ الاحتياطي'}
+                        {tab === 'logs' && 'السجلات'}
+                        {tab === 'messages' && 'الرسائل'}
+                        {tab === 'support' && 'الدعم الفني'}
+                        {tab === 'feedback' && 'ملاحظات'}
+                        {tab === 'contact' && 'اتصل بنا'}
+                        {tab === 'filter' && 'التصفية'}
+                        {tab === 'export' && 'التصدير'}
+                        {tab === 'import' && 'الاستيراد'}
+                        {tab === 'print' && 'الطباعة'}
                         {tab === 'inventory' && 'إدارة المخزون'}
                         {tab === 'hr' && 'الموارد البشرية'}
                         {tab === 'accounting' && 'المحاسبة'}
@@ -646,6 +925,41 @@ function DashboardContent() {
                         {tab === 'analytics' && 'التحليلات'}
                       </h2>
                       <p className="text-gray-600">
+                        {tab === 'reports' && 'عرض وتصدير التقارير المختلفة'}
+                        {tab === 'customers' && 'إدارة بيانات العملاء والتفاعلات'}
+                        {tab === 'sales' && 'إدارة عمليات البيع والمتابعة'}
+                        {tab === 'quotations' && 'إنشاء وإدارة عروض الأسعار'}
+                        {tab === 'invoices' && 'إدارة الفواتير والمدفوعات'}
+                        {tab === 'service' && 'إدارة خدمات الصيانة والإصلاح'}
+                        {tab === 'parts' && 'إدارة قطع الغيار والمستلزمات'}
+                        {tab === 'suppliers' && 'إدارة بيانات الموردين والطلبات'}
+                        {tab === 'warehouse' && 'إدارة المستودعات والمخزون'}
+                        {tab === 'employees' && 'إدارة بيانات الموظفين'}
+                        {tab === 'attendance' && 'تتبع الحضور والانصراف'}
+                        {tab === 'payroll' && 'إدارة الرواتب والحوافز'}
+                        {tab === 'leaves' && 'إدارة طلبات الإجازات'}
+                        {tab === 'performance' && 'تقييم أداء الموظفين'}
+                        {tab === 'expenses' && 'تتبع وإدارة المصروفات'}
+                        {tab === 'revenue' && 'تتبع الإيرادات والأرباح'}
+                        {tab === 'budget' && 'إدارة الميزانيات والتخطيط'}
+                        {tab === 'tax' && 'إدارة الضرائب والإقرارات'}
+                        {tab === 'banking' && 'إدارة الحسابات البنكية والتحويلات'}
+                        {tab === 'legal' && 'إدارة الشؤون القانونية والاستشارات'}
+                        {tab === 'insurance' && 'إدارة وثائق التأمين والتعويضات'}
+                        {tab === 'documents' && 'إدارة الوثائق والأرشيف'}
+                        {tab === 'users' && 'إدارة حسابات المستخدمين'}
+                        {tab === 'roles' && 'إدارة الأدوار والصلاحيات'}
+                        {tab === 'settings' && 'إعدادات النظام والتكوين'}
+                        {tab === 'backup' && 'إدارة النسخ الاحتياطية والاستعادة'}
+                        {tab === 'logs' && 'عرض سجلات النظام والنشاط'}
+                        {tab === 'messages' && 'إدارة الرسائل والتواصل'}
+                        {tab === 'support' && 'الدعم الفني وحل المشكلات'}
+                        {tab === 'feedback' && 'جمع ملاحظات العملاء والموظفين'}
+                        {tab === 'contact' && 'معلومات الاتصال والتواصل'}
+                        {tab === 'filter' && 'تصفية البحث والنتائج'}
+                        {tab === 'export' && 'تصدير البيانات والتقارير'}
+                        {tab === 'import' && 'استيراد البيانات من مصادر مختلفة'}
+                        {tab === 'print' && 'طباعة التقارير والوثائق'}
                         {tab === 'inventory' && 'إدارة قطع الغيار والمستلزمات'}
                         {tab === 'hr' && 'إدارة شؤون الموظفين'}
                         {tab === 'accounting' && 'إدارة الحسابات والمدفوعات'}
@@ -657,10 +971,49 @@ function DashboardContent() {
                         {tab === 'analytics' && 'التحليلات والتقارير'}
                       </p>
                     </div>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      إضافة جديد
+                    </Button>
                   </div>
                   <Card>
                     <CardContent className="p-12 text-center">
                       <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        {tab === 'reports' && <FileText className="h-8 w-8 text-gray-400" />}
+                        {tab === 'customers' && <Users className="h-8 w-8 text-gray-400" />}
+                        {tab === 'sales' && <DollarSign className="h-8 w-8 text-gray-400" />}
+                        {tab === 'quotations' && <FileCheck className="h-8 w-8 text-gray-400" />}
+                        {tab === 'invoices' && <CreditCard className="h-8 w-8 text-gray-400" />}
+                        {tab === 'service' && <Wrench className="h-8 w-8 text-gray-400" />}
+                        {tab === 'parts' && <Settings className="h-8 w-8 text-gray-400" />}
+                        {tab === 'suppliers' && <Truck className="h-8 w-8 text-gray-400" />}
+                        {tab === 'warehouse' && <Building className="h-8 w-8 text-gray-400" />}
+                        {tab === 'employees' && <UserCheck className="h-8 w-8 text-gray-400" />}
+                        {tab === 'attendance' && <Clock className="h-8 w-8 text-gray-400" />}
+                        {tab === 'payroll' && <Calculator className="h-8 w-8 text-gray-400" />}
+                        {tab === 'leaves' && <Calendar className="h-8 w-8 text-gray-400" />}
+                        {tab === 'performance' && <Award className="h-8 w-8 text-gray-400" />}
+                        {tab === 'expenses' && <CreditCard className="h-8 w-8 text-gray-400" />}
+                        {tab === 'revenue' && <TrendingUp className="h-8 w-8 text-gray-400" />}
+                        {tab === 'budget' && <Target className="h-8 w-8 text-gray-400" />}
+                        {tab === 'tax' && <FileText className="h-8 w-8 text-gray-400" />}
+                        {tab === 'banking' && <Building className="h-8 w-8 text-gray-400" />}
+                        {tab === 'legal' && <Shield className="h-8 w-8 text-gray-400" />}
+                        {tab === 'insurance' && <Shield className="h-8 w-8 text-gray-400" />}
+                        {tab === 'documents' && <Archive className="h-8 w-8 text-gray-400" />}
+                        {tab === 'users' && <Users className="h-8 w-8 text-gray-400" />}
+                        {tab === 'roles' && <UserCheck className="h-8 w-8 text-gray-400" />}
+                        {tab === 'settings' && <Settings className="h-8 w-8 text-gray-400" />}
+                        {tab === 'backup' && <Database className="h-8 w-8 text-gray-400" />}
+                        {tab === 'logs' && <FileText className="h-8 w-8 text-gray-400" />}
+                        {tab === 'messages' && <MessageSquare className="h-8 w-8 text-gray-400" />}
+                        {tab === 'support' && <HelpCircle className="h-8 w-8 text-gray-400" />}
+                        {tab === 'feedback' && <MessageSquare className="h-8 w-8 text-gray-400" />}
+                        {tab === 'contact' && <Phone className="h-8 w-8 text-gray-400" />}
+                        {tab === 'filter' && <Filter className="h-8 w-8 text-gray-400" />}
+                        {tab === 'export' && <Download className="h-8 w-8 text-gray-400" />}
+                        {tab === 'import' && <Upload className="h-8 w-8 text-gray-400" />}
+                        {tab === 'print' && <Printer className="h-8 w-8 text-gray-400" />}
                         {tab === 'inventory' && <Package className="h-8 w-8 text-gray-400" />}
                         {tab === 'hr' && <Building className="h-8 w-8 text-gray-400" />}
                         {tab === 'accounting' && <Calculator className="h-8 w-8 text-gray-400" />}
@@ -672,6 +1025,41 @@ function DashboardContent() {
                         {tab === 'analytics' && <BarChart3 className="h-8 w-8 text-gray-400" />}
                       </div>
                       <h3 className="text-lg font-semibold mb-2">
+                        {tab === 'reports' && 'التقارير'}
+                        {tab === 'customers' && 'إدارة العملاء'}
+                        {tab === 'sales' && 'المبيعات'}
+                        {tab === 'quotations' && 'عروض الأسعار'}
+                        {tab === 'invoices' && 'الفواتير'}
+                        {tab === 'service' && 'الخدمات'}
+                        {tab === 'parts' && 'قطع الغيار'}
+                        {tab === 'suppliers' && 'الموردون'}
+                        {tab === 'warehouse' && 'المستودع'}
+                        {tab === 'employees' && 'الموظفون'}
+                        {tab === 'attendance' && 'الحضور والانصراف'}
+                        {tab === 'payroll' && 'الرواتب'}
+                        {tab === 'leaves' && 'الإجازات'}
+                        {tab === 'performance' && 'تقييم الأداء'}
+                        {tab === 'expenses' && 'المصروفات'}
+                        {tab === 'revenue' && 'الإيرادات'}
+                        {tab === 'budget' && 'الميزانية'}
+                        {tab === 'tax' && 'الضرائب'}
+                        {tab === 'banking' && 'الحسابات البنكية'}
+                        {tab === 'legal' && 'الشؤون القانونية'}
+                        {tab === 'insurance' && 'التأمين'}
+                        {tab === 'documents' && 'الوثائق'}
+                        {tab === 'users' && 'المستخدمون'}
+                        {tab === 'roles' && 'الأدوار'}
+                        {tab === 'settings' && 'الإعدادات'}
+                        {tab === 'backup' && 'النسخ الاحتياطي'}
+                        {tab === 'logs' && 'السجلات'}
+                        {tab === 'messages' && 'الرسائل'}
+                        {tab === 'support' && 'الدعم الفني'}
+                        {tab === 'feedback' && 'ملاحظات'}
+                        {tab === 'contact' && 'اتصل بنا'}
+                        {tab === 'filter' && 'التصفية'}
+                        {tab === 'export' && 'التصدير'}
+                        {tab === 'import' && 'الاستيراد'}
+                        {tab === 'print' && 'الطباعة'}
                         {tab === 'inventory' && 'إدارة المخزون'}
                         {tab === 'hr' && 'الموارد البشرية'}
                         {tab === 'accounting' && 'المحاسبة'}
@@ -683,7 +1071,13 @@ function DashboardContent() {
                         {tab === 'analytics' && 'التحليلات'}
                       </h3>
                       <p className="text-gray-600 mb-4">هذه الوحدة قيد التطوير</p>
-                      <Button variant="outline">قريباً</Button>
+                      <div className="flex gap-2 justify-center">
+                        <Button variant="outline">قريباً</Button>
+                        <Button variant="outline">
+                          <HelpCircle className="mr-2 h-4 w-4" />
+                          المساعدة
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
