@@ -3,45 +3,108 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { AdvancedReportingService } from '@/lib/advanced-reporting-service'
-
-const reportingService = AdvancedReportingService.getInstance()
+import { db } from '@/lib/db'
+import { getAuthUser } from '@/lib/auth-server'
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get dashboard summary with all key metrics
-    const dashboardSummary = await reportingService.getDashboardSummary()
-
-    // Get additional real-time metrics
-    const now = new Date()
-    const todayStart = new Date(now.setHours(0, 0, 0, 0))
-    const todayEnd = new Date(now.setHours(23, 59, 59, 999))
-
-    // Get today's stats
-    const todayStats = {
-      sales: await getTodaySales(),
-      newCustomers: await getTodayNewCustomers(),
-      services: await getTodayServices(),
-      revenue: await getTodayRevenue()
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get alerts and notifications
-    const alerts = await getSystemAlerts()
+    const now = new Date()
+    const todayStart = startOfDay(now)
+    const todayEnd = endOfDay(now)
+    const weekStart = startOfWeek(now, { weekStartsOn: 0 })
+    const weekEnd = endOfWeek(now, { weekStartsOn: 0 })
+    const monthStart = startOfMonth(now)
+    const monthEnd = endOfMonth(now)
+    const yearStart = startOfYear(now)
+    const yearEnd = endOfYear(now)
 
-    // Get quick stats for different periods
+    // Get real-time stats from database
+    const [
+      todayStats,
+      weekStats,
+      monthStats,
+      yearStats,
+      recentInvoices,
+      recentCustomers,
+      lowStockVehicles,
+      overdueInvoices
+    ] = await Promise.all([
+      // Today's stats
+      getPeriodStats(todayStart, todayEnd),
+      // Week stats
+      getPeriodStats(weekStart, weekEnd),
+      // Month stats
+      getPeriodStats(monthStart, monthEnd),
+      // Year stats
+      getPeriodStats(yearStart, yearEnd),
+      // Recent invoices
+      db.invoice.findMany({
+        where: {
+          createdAt: { gte: todayStart }
+        },
+        include: {
+          customer: {
+            select: { name: true, email: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      }),
+      // Recent customers
+      db.user.count({
+        where: {
+          createdAt: { gte: todayStart },
+          role: 'CUSTOMER'
+        }
+      }),
+      // Low stock vehicles
+      db.vehicle.count({
+        where: {
+          status: 'SOLD'
+        }
+      }),
+      // Overdue invoices
+      db.invoice.count({
+        where: {
+          status: 'OVERDUE',
+          dueDate: { lt: now }
+        }
+      })
+    ])
+
+    // Generate alerts based on real data
+    const alerts = await generateSystemAlerts(lowStockVehicles, overdueInvoices)
+
     const quickStats = {
       today: todayStats,
-      thisWeek: await getPeriodStats('weekly'),
-      thisMonth: await getPeriodStats('monthly'),
-      thisYear: await getPeriodStats('yearly')
+      thisWeek: weekStats,
+      thisMonth: monthStats,
+      thisYear: yearStats
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        summary: dashboardSummary,
+        summary: {
+          totalRevenue: monthStats.revenue,
+          totalSales: monthStats.sales,
+          totalCustomers: await db.user.count({ where: { role: 'CUSTOMER' } }),
+          totalVehicles: await db.vehicle.count(),
+          averageOrderValue: monthStats.sales > 0 ? monthStats.revenue / monthStats.sales : 0,
+          conversionRate: 0 // TODO: Calculate based on leads vs conversions
+        },
         quickStats,
         alerts,
+        recentActivity: {
+          invoices: recentInvoices,
+          newCustomers: recentCustomers
+        },
         lastUpdated: new Date().toISOString()
       }
     })
@@ -54,123 +117,97 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper functions to get various statistics
-async function getTodaySales() {
+async function getPeriodStats(startDate: Date, endDate: Date) {
   try {
-    // This would query the database for today's sales
-    // For now, return mock data
-    return 12
-  } catch (error) {
-    console.error('Error getting today sales:', error)
-    return 0
-  }
-}
-
-async function getTodayNewCustomers() {
-  try {
-    // This would query the database for today's new customers
-    return 5
-  } catch (error) {
-    console.error('Error getting today new customers:', error)
-    return 0
-  }
-}
-
-async function getTodayServices() {
-  try {
-    // This would query the database for today's services
-    return 8
-  } catch (error) {
-    console.error('Error getting today services:', error)
-    return 0
-  }
-}
-
-async function getTodayRevenue() {
-  try {
-    // This would query the database for today's revenue
-    return 125000
-  } catch (error) {
-    console.error('Error getting today revenue:', error)
-    return 0
-  }
-}
-
-async function getPeriodStats(period: 'weekly' | 'monthly' | 'yearly') {
-  try {
-    const report = await reportingService.generateReport({
-      type: 'sales',
-      period,
-      startDate: getPeriodStartDate(period),
-      endDate: new Date(),
-      format: 'json'
-    })
+    const [invoices, paidInvoices, transactions] = await Promise.all([
+      // Total invoices
+      db.invoice.count({
+        where: {
+          createdAt: { gte: startDate, lte: endDate }
+        }
+      }),
+      // Paid invoices
+      db.invoice.aggregate({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          status: 'PAID'
+        },
+        _sum: { totalAmount: true },
+        _count: { _all: true }
+      }),
+      // All transactions
+      db.transaction.aggregate({
+        where: {
+          date: { gte: startDate, lte: endDate }
+        },
+        _sum: { amount: true }
+      })
+    ])
 
     return {
-      revenue: report.summary.totalRevenue,
-      sales: report.summary.totalVehiclesSold,
-      averageOrderValue: report.summary.averageSalePrice,
-      conversionRate: report.summary.conversionRate
+      sales: invoices,
+      revenue: paidInvoices._sum.totalAmount || 0,
+      paidSales: paidInvoices._count._all || 0,
+      totalTransactions: transactions._sum.amount || 0
     }
   } catch (error) {
-    console.error(`Error getting ${period} stats:`, error)
+    console.error('Error getting period stats:', error)
     return {
-      revenue: 0,
       sales: 0,
-      averageOrderValue: 0,
-      conversionRate: 0
+      revenue: 0,
+      paidSales: 0,
+      totalTransactions: 0
     }
   }
 }
 
-function getPeriodStartDate(period: 'weekly' | 'monthly' | 'yearly'): Date {
-  const now = new Date()
-  switch (period) {
-    case 'weekly':
-      return new Date(now.setDate(now.getDate() - 7))
-    case 'monthly':
-      return new Date(now.setMonth(now.getMonth() - 1))
-    case 'yearly':
-      return new Date(now.setFullYear(now.getFullYear() - 1))
-    default:
-      return new Date(now.setMonth(now.getMonth() - 1))
-  }
-}
+async function generateSystemAlerts(lowStock: number, overdueCount: number) {
+  const alerts = []
 
-async function getSystemAlerts() {
-  try {
-    // This would check various system conditions and generate alerts
-    return [
-      {
-        id: '1',
-        type: 'inventory',
-        severity: 'warning',
-        title: 'Low Stock Alert',
-        message: 'Only 5 vehicles remaining in stock',
-        timestamp: new Date().toISOString(),
-        action: '/admin/inventory'
-      },
-      {
-        id: '2',
-        type: 'performance',
-        severity: 'info',
-        title: 'Performance milestone',
-        message: 'Sales target achieved for this month',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        action: '/admin/reports/sales'
-      },
-      {
-        id: '3',
-        type: 'system',
-        severity: 'error',
-        title: 'System Maintenance',
-        message: 'Scheduled maintenance in 2 hours',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        action: '/admin/system'
-      }
-    ]
-  } catch (error) {
-    console.error('Error getting system alerts:', error)
-    return []
+  if (lowStock > 0) {
+    alerts.push({
+      id: 'low-stock',
+      type: 'inventory',
+      severity: lowStock > 10 ? 'error' : 'warning',
+      title: 'Low Stock Alert',
+      message: `${lowStock} vehicles sold out, need to restock`,
+      timestamp: new Date().toISOString(),
+      action: '/admin/inventory'
+    })
   }
+
+  if (overdueCount > 0) {
+    alerts.push({
+      id: 'overdue-invoices',
+      type: 'financial',
+      severity: overdueCount > 5 ? 'error' : 'warning',
+      title: 'Overdue Invoices',
+      message: `${overdueCount} invoices are overdue and need follow-up`,
+      timestamp: new Date().toISOString(),
+      action: '/admin/finance'
+    })
+  }
+
+  // Check for recent high-value sales
+  const recentHighValueSale = await db.invoice.findFirst({
+    where: {
+      createdAt: { gte: startOfDay(new Date()) },
+      totalAmount: { gte: 100000 }
+    },
+    orderBy: { totalAmount: 'desc' }
+  })
+
+  if (recentHighValueSale) {
+    alerts.push({
+      id: 'high-value-sale',
+      type: 'performance',
+      severity: 'success',
+      title: 'High Value Sale!',
+      message: `Sale of ${new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(recentHighValueSale.totalAmount)} completed`,
+      timestamp: new Date().toISOString(),
+      action: '/admin/finance'
+    })
+  }
+
+  return alerts
 }

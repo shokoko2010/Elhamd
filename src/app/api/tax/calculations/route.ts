@@ -3,6 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { getAuthUser } from '@/lib/auth-server'
 
 interface TaxCalculation {
   id: string
@@ -21,74 +23,61 @@ interface TaxCalculation {
 
 export async function GET(request: NextRequest) {
   try {
-    // Mock tax calculations data - in a real system, this would be calculated from actual data
-    const calculations: TaxCalculation[] = [
-      {
-        id: '1',
-        period: 'يناير 2024',
-        taxableIncome: 125000,
-        taxAmount: 17500,
-        effectiveRate: 14,
-        deductions: 15000,
-        credits: 2000,
-        netTax: 15500,
-        status: 'paid',
-        dueDate: '2024-02-15',
-        filedDate: '2024-02-10',
-        paidDate: '2024-02-12'
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const year = searchParams.get('year')
+    const status = searchParams.get('status')
+
+    // Build where clause
+    const where: any = {}
+    if (year) {
+      where.period = { contains: year, mode: 'insensitive' }
+    }
+    if (status) {
+      where.status = status
+    }
+
+    // Fetch real tax calculations from database
+    const taxRecords = await db.taxRecord.findMany({
+      where,
+      orderBy: {
+        period: 'desc'
       },
-      {
-        id: '2',
-        period: 'فبراير 2024',
-        taxableIncome: 142000,
-        taxAmount: 19880,
-        effectiveRate: 14,
-        deductions: 18000,
-        credits: 2500,
-        netTax: 17380,
-        status: 'paid',
-        dueDate: '2024-03-15',
-        filedDate: '2024-03-12',
-        paidDate: '2024-03-14'
-      },
-      {
-        id: '3',
-        period: 'مارس 2024',
-        taxableIncome: 138000,
-        taxAmount: 19320,
-        effectiveRate: 14,
-        deductions: 16500,
-        credits: 1800,
-        netTax: 17520,
-        status: 'filed',
-        dueDate: '2024-04-15',
-        filedDate: '2024-04-10'
-      },
-      {
-        id: '4',
-        period: 'أبريل 2024',
-        taxableIncome: 155000,
-        taxAmount: 21700,
-        effectiveRate: 14,
-        deductions: 20000,
-        credits: 3000,
-        netTax: 18700,
-        status: 'calculated',
-        dueDate: '2024-05-15'
-      },
-      {
-        id: '5',
-        period: 'مايو 2024',
-        taxableIncome: 148000,
-        taxAmount: 20720,
-        effectiveRate: 14,
-        deductions: 19000,
-        credits: 2200,
-        netTax: 18520,
-        status: 'draft',
-        dueDate: '2024-06-15'
+      include: {
+        invoice: {
+          select: {
+            invoiceNumber: true,
+            totalAmount: true,
+            customer: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
       }
-    ]
+    })
+
+    // Transform database records to match expected format
+    const calculations: TaxCalculation[] = taxRecords.map(record => ({
+      id: record.id,
+      period: record.period,
+      taxableIncome: record.taxableIncome,
+      taxAmount: record.taxAmount,
+      effectiveRate: record.taxableIncome > 0 ? (record.taxAmount / record.taxableIncome) * 100 : 0,
+      deductions: record.deductions,
+      credits: record.credits,
+      netTax: record.netTax,
+      status: record.status as 'draft' | 'calculated' | 'filed' | 'paid',
+      dueDate: record.dueDate.toISOString().split('T')[0],
+      filedDate: record.filedDate?.toISOString().split('T')[0],
+      paidDate: record.paidDate?.toISOString().split('T')[0]
+    }))
 
     return NextResponse.json({ calculations })
   } catch (error) {
@@ -102,31 +91,68 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { period, taxableIncome, deductions, credits } = body
 
-    // Calculate tax amount (simplified calculation)
-    const taxAmount = taxableIncome * 0.14 // 14% tax rate
-    const netTax = Math.max(0, taxAmount - deductions - credits)
+    // Validate required fields
+    if (!period || taxableIncome === undefined) {
+      return NextResponse.json(
+        { error: 'Missing required fields: period, taxableIncome' },
+        { status: 400 }
+      )
+    }
+
+    // Calculate tax amount based on current tax rates
+    const taxRates = await db.taxRate.findMany({
+      where: { isActive: true }
+    })
+
+    let taxAmount = 0
+    if (taxRates.length > 0) {
+      // Use the highest applicable tax rate
+      const highestRate = Math.max(...taxRates.map(rate => rate.rate))
+      taxAmount = taxableIncome * (highestRate / 100)
+    } else {
+      // Default to 14% if no tax rates are configured
+      taxAmount = taxableIncome * 0.14
+    }
+
+    const netTax = Math.max(0, taxAmount - (deductions || 0) - (credits || 0))
     const effectiveRate = taxableIncome > 0 ? (netTax / taxableIncome) * 100 : 0
 
-    // Create new tax calculation
-    const newCalculation: TaxCalculation = {
-      id: `calc_${Date.now()}`,
-      period,
-      taxableIncome,
-      taxAmount,
-      effectiveRate,
-      deductions: deductions || 0,
-      credits: credits || 0,
-      netTax,
-      status: 'draft',
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    }
+    // Create new tax calculation in database
+    const newCalculation = await db.taxRecord.create({
+      data: {
+        period,
+        taxableIncome,
+        taxAmount,
+        deductions: deductions || 0,
+        credits: credits || 0,
+        netTax,
+        status: 'DRAFT',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      }
+    })
 
     return NextResponse.json({
       success: true,
-      calculation: newCalculation,
+      calculation: {
+        id: newCalculation.id,
+        period: newCalculation.period,
+        taxableIncome: newCalculation.taxableIncome,
+        taxAmount: newCalculation.taxAmount,
+        effectiveRate,
+        deductions: newCalculation.deductions,
+        credits: newCalculation.credits,
+        netTax: newCalculation.netTax,
+        status: newCalculation.status,
+        dueDate: newCalculation.dueDate.toISOString().split('T')[0]
+      },
       message: 'Tax calculation created successfully'
     })
   } catch (error) {

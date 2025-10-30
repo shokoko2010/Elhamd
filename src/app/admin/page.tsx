@@ -160,11 +160,12 @@ function DashboardContent() {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-13">
+          <TabsList className="grid w-full grid-cols-14">
             <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
             <TabsTrigger value="vehicles">المركبات</TabsTrigger>
             <TabsTrigger value="bookings">الحجوزات</TabsTrigger>
-            <TabsTrigger value="crm">العملاء</TabsTrigger>
+            <TabsTrigger value="customers">العملاء</TabsTrigger>
+            <TabsTrigger value="employees">الموظفين</TabsTrigger>
             <TabsTrigger value="inventory">المخزون</TabsTrigger>
             <TabsTrigger value="hr">الموارد البشرية</TabsTrigger>
             <TabsTrigger value="accounting">المحاسبة</TabsTrigger>
@@ -409,7 +410,7 @@ function DashboardContent() {
                     <CardTitle>نظام إدارة علاقات العملاء (CRM)</CardTitle>
                     <CardDescription>إدارة العملاء والتفاعلات والتجزئة</CardDescription>
                   </div>
-                  <Button onClick={() => router.push('/admin/crm')}>
+                  <Button onClick={() => router.push('/admin/customers')}>
                     <Users className="mr-2 h-4 w-4" />
                     إدارة العملاء
                   </Button>
@@ -422,8 +423,69 @@ function DashboardContent() {
                   <p className="text-gray-600 mb-4">
                     إدارة العملاء، تتبع التفاعلات، وتجزئة العملاء لتحسين الخدمة
                   </p>
-                  <Button onClick={() => router.push('/admin/crm')}>
-                    الذهاب إلى نظام CRM
+                  <Button onClick={() => router.push('/admin/customers')}>
+                    <Users className="mr-2 h-4 w-4" />
+                    إدارة العملاء
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="customers" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>إدارة العملاء</CardTitle>
+                    <CardDescription>عرض وإدارة جميع العملاء في النظام</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/customers')}>
+                    <Users className="mr-2 h-4 w-4" />
+                    إدارة العملاء
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">إدارة العملاء</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة بيانات العملاء، تتبع التفاعلات، وتحليل سلوك العملاء
+                  </p>
+                  <Button onClick={() => router.push('/admin/customers')}>
+                    <Users className="mr-2 h-4 w-4" />
+                    إدارة العملاء
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="employees" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>إدارة الموظفين</CardTitle>
+                    <CardDescription>عرض وإدارة جميع الموظفين في النظام</CardDescription>
+                  </div>
+                  <Button onClick={() => router.push('/admin/employees')}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    إدارة الموظفين
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <UserCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">إدارة الموظفين</h3>
+                  <p className="text-gray-600 mb-4">
+                    إدارة بيانات الموظفين، الرواتب، الإجازات، وتقييم الأداء
+                  </p>
+                  <Button onClick={() => router.push('/admin/employees')}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    إدارة الموظفين
                   </Button>
                 </div>
               </CardContent>
@@ -467,9 +529,9 @@ function DashboardContent() {
                     <CardTitle>نظام الموارد البشرية</CardTitle>
                     <CardDescription>إدارة الموظفين والرواتب والإجازات</CardDescription>
                   </div>
-                  <Button onClick={() => router.push('/admin/hr')}>
+                  <Button onClick={() => router.push('/admin/employees')}>
                     <UserCheck className="mr-2 h-4 w-4" />
-                    الموارد البشرية
+                    إدارة الموظفين
                   </Button>
                 </div>
               </CardHeader>
@@ -480,9 +542,9 @@ function DashboardContent() {
                   <p className="text-gray-600 mb-4">
                     إدارة الموظفين، الرواتب، الإجازات، وتقييم الأداء
                   </p>
-                  <Button onClick={() => router.push('/admin/hr')}>
+                  <Button onClick={() => router.push('/admin/employees')}>
                     <UserCheck className="mr-2 h-4 w-4" />
-                    الموارد البشرية
+                    إدارة الموظفين
                   </Button>
                 </div>
               </CardContent>

@@ -1,795 +1,706 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { 
-  CalendarDays, 
-  Car, 
-  Settings, 
-  Bell, 
-  CreditCard, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle,
-  Users,
-  TrendingUp,
-  Target,
-  Phone,
-  Mail,
-  MapPin,
-  BarChart3,
-  Activity,
-  ClipboardList,
-  Package,
-  ShoppingCart,
+  User, 
+  Calendar, 
+  DollarSign, 
+  Award, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Building,
+  Clock,
   FileText,
-  UserPlus,
-  Plus,
-  Edit,
-  Trash2,
-  Search,
-  Filter
+  Settings,
+  Bell
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
-import TaskManagement from '@/components/employee/EnhancedTaskManagement'
-import CarManagement from '@/components/employee/CarManagement'
-import OrderManagement from '@/components/employee/OrderManagement'
-import InvoiceManagement from '@/components/employee/InvoiceManagement'
-import UserManagement from '@/components/employee/UserManagement'
+import { format } from 'date-fns'
+import { ar } from 'date-fns/locale'
+import { useAuth } from '@/hooks/use-auth'
 
-interface EmployeeStats {
-  totalBookings: number
-  todayBookings: number
-  completedBookings: number
-  pendingBookings: number
-  customerSatisfaction: number
-  averageResponseTime: number
-  totalCars: number
-  availableCars: number
-  totalOrders: number
-  pendingOrders: number
-  totalInvoices: number
-  paidInvoices: number
-  totalUsers: number
-  activeUsers: number
-}
-
-interface Task {
+interface EmployeeProfile {
   id: string
-  title: string
-  description: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
-  dueDate: string
-  assignedBy: string
-  customer?: {
+  employeeNumber: string
+  user: {
+    id: string
     name: string
     email: string
-    phone: string
+    phone?: string
+    avatar?: string
   }
-  booking?: {
+  department: string
+  position: string
+  hireDate: string
+  salary: number
+  status: 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'SUSPENDED'
+  branch?: {
     id: string
-    type: string
-    date: string
-    timeSlot: string
-  }
-}
-
-interface Appointment {
-  id: string
-  type: 'test_drive' | 'service'
-  customerName: string
-  customerPhone: string
-  customerEmail: string
-  vehicle?: {
-    make: string
-    model: string
-    year: number
-  }
-  serviceType?: {
     name: string
   }
-  date: string
-  timeSlot: string
-  status: string
-  notes?: string
-}
-
-interface PerformanceMetrics {
-  bookingsHandled: number
-  averageHandlingTime: number
-  customerRating: number
-  conversionRate: number
-  revenueGenerated: number
-  tasksCompleted: number
-}
-
-interface Car {
-  id: string
-  make: string
-  model: string
-  year: number
-  price: number
-  type: 'new' | 'used'
-  status: 'available' | 'sold' | 'reserved'
-  mileage?: number
-  fuelType: string
-  transmission: string
-  description: string
-  images: string[]
-  features: string[]
-}
-
-interface Order {
-  id: string
-  customerName: string
-  customerEmail: string
-  customerPhone: string
-  carId: string
-  carDetails: {
-    make: string
-    model: string
-    year: number
-    price: number
+  emergencyContact?: {
+    name: string
+    phone: string
+    relationship: string
   }
-  status: 'pending' | 'confirmed' | 'processing' | 'completed' | 'cancelled'
-  orderDate: string
-  totalAmount: number
-  paymentStatus: 'pending' | 'paid' | 'failed'
   notes?: string
 }
 
-interface Invoice {
+interface LeaveRequest {
   id: string
-  orderId: string
-  customerName: string
-  customerEmail: string
-  items: {
-    description: string
-    quantity: number
-    unitPrice: number
-    totalPrice: number
-  }[]
-  subtotal: number
-  tax: number
-  total: number
-  status: 'draft' | 'sent' | 'paid' | 'overdue'
-  issueDate: string
-  dueDate: string
-  paidDate?: string
-}
-
-interface User {
-  id: string
-  name: string
-  email: string
-  phone: string
-  role: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN'
-  status: 'active' | 'inactive' | 'suspended'
+  leaveType: 'ANNUAL' | 'SICK' | 'MATERNITY' | 'PATERNITY' | 'UNPAID' | 'EMERGENCY' | 'STUDY'
+  startDate: string
+  endDate: string
+  totalDays: number
+  reason?: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED'
   createdAt: string
-  lastLogin?: string
 }
 
-export default function EmployeeDashboardPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const { user, logout } = useAuth()
-  
-  const [stats, setStats] = useState<EmployeeStats>({
-    totalBookings: 0,
-    todayBookings: 0,
-    completedBookings: 0,
-    pendingBookings: 0,
-    customerSatisfaction: 0,
-    averageResponseTime: 0,
-    totalCars: 0,
-    availableCars: 0,
-    totalOrders: 0,
-    pendingOrders: 0,
-    totalInvoices: 0,
-    paidInvoices: 0,
-    totalUsers: 0,
-    activeUsers: 0
+interface PayrollRecord {
+  id: string
+  period: string
+  basicSalary: number
+  allowances: number
+  deductions: number
+  overtime: number
+  bonus: number
+  netSalary: number
+  payDate?: string
+  status: 'PENDING' | 'PROCESSED' | 'APPROVED' | 'PAID' | 'CANCELLED'
+}
+
+export default function EmployeeDashboard() {
+  const { user } = useAuth()
+  const [employeeProfile, setEmployeeProfile] = useState<EmployeeProfile | null>(null)
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
+  const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('profile')
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
+  const [isLeaveRequestOpen, setIsLeaveRequestOpen] = useState(false)
+  const [formData, setFormData] = useState({
+    phone: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelationship: '',
+    notes: ''
   })
-  
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [performance, setPerformance] = useState<PerformanceMetrics>({
-    bookingsHandled: 0,
-    averageHandlingTime: 0,
-    customerRating: 0,
-    conversionRate: 0,
-    revenueGenerated: 0,
-    tasksCompleted: 0
+  const [leaveFormData, setLeaveFormData] = useState({
+    leaveType: '',
+    startDate: '',
+    endDate: '',
+    reason: ''
   })
-  const [cars, setCars] = useState<Car[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
     if (user) {
-      // Check if user is staff or admin
-      if (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-        router.push('/dashboard')
-        return
-      }
-      
-      fetchDashboardData()
-    } else {
-      router.push('/login')
+      fetchEmployeeData()
     }
-  }, [user, router])
+  }, [user])
 
-  const fetchDashboardData = async () => {
+  const fetchEmployeeData = async () => {
     try {
-      setDataLoading(true)
-      
-      // Fetch employee stats
-      const statsResponse = await fetch('/api/employee/dashboard/stats')
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        setStats(statsData)
+      const [profileRes, leavesRes, payrollRes] = await Promise.all([
+        fetch('/api/employee/profile'),
+        fetch('/api/employee/leave-requests'),
+        fetch('/api/employee/payroll')
+      ])
+
+      if (profileRes.ok) {
+        const profileData = await profileRes.json()
+        setEmployeeProfile(profileData)
+        setFormData({
+          phone: profileData.user.phone || '',
+          emergencyContactName: profileData.emergencyContact?.name || '',
+          emergencyContactPhone: profileData.emergencyContact?.phone || '',
+          emergencyContactRelationship: profileData.emergencyContact?.relationship || '',
+          notes: profileData.notes || ''
+        })
       }
 
-      // Fetch tasks
-      const tasksResponse = await fetch('/api/employee/dashboard/tasks')
-      if (tasksResponse.ok) {
-        const tasksData = await tasksResponse.json()
-        setTasks(tasksData)
+      if (leavesRes.ok) {
+        const leavesData = await leavesRes.json()
+        setLeaveRequests(leavesData)
       }
 
-      // Fetch appointments
-      const appointmentsResponse = await fetch('/api/employee/dashboard/appointments')
-      if (appointmentsResponse.ok) {
-        const appointmentsData = await appointmentsResponse.json()
-        setAppointments(appointmentsData)
-      }
-
-      // Fetch performance metrics
-      const performanceResponse = await fetch('/api/employee/dashboard/performance')
-      if (performanceResponse.ok) {
-        const performanceData = await performanceResponse.json()
-        setPerformance(performanceData)
-      }
-
-      // Fetch cars
-      const carsResponse = await fetch('/api/employee/cars')
-      if (carsResponse.ok) {
-        const carsData = await carsResponse.json()
-        setCars(carsData)
-      }
-
-      // Fetch orders
-      const ordersResponse = await fetch('/api/employee/orders')
-      if (ordersResponse.ok) {
-        const ordersData = await ordersResponse.json()
-        setOrders(ordersData)
-      }
-
-      // Fetch invoices
-      const invoicesResponse = await fetch('/api/employee/invoices')
-      if (invoicesResponse.ok) {
-        const invoicesData = await invoicesResponse.json()
-        setInvoices(invoicesData)
-      }
-
-      // Fetch users
-      const usersResponse = await fetch('/api/employee/users')
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json()
-        setUsers(usersData)
+      if (payrollRes.ok) {
+        const payrollData = await payrollRes.json()
+        setPayrollRecords(payrollData)
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load dashboard data',
-        variant: 'destructive'
-      })
+      console.error('Error fetching employee data:', error)
     } finally {
-      setDataLoading(false)
+      setLoading(false)
     }
   }
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { variant: 'outline', label: 'Low' },
-      medium: { variant: 'secondary', label: 'Medium' },
-      high: { variant: 'default', label: 'High' },
-      urgent: { variant: 'destructive', label: 'Urgent' }
-    } as const
-
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.low
-
-    return (
-      <Badge variant={config.variant as any}>
-        {config.label}
-      </Badge>
-    )
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+      case 'APPROVED':
+      case 'PAID':
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800'
+      case 'PENDING':
+      case 'PROCESSED':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'INACTIVE':
+      case 'REJECTED':
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800'
+      case 'ON_LEAVE':
+      case 'SUSPENDED':
+        return 'bg-blue-100 text-blue-800'
+      case 'TERMINATED':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { variant: 'secondary', icon: Clock },
-      in_progress: { variant: 'default', icon: Activity },
-      completed: { variant: 'outline', icon: CheckCircle },
-      cancelled: { variant: 'destructive', icon: XCircle }
-    } as const
-
-    const config = statusConfig[status as keyof typeof statusConfig] || { variant: 'secondary', icon: Clock }
-    const Icon = config.icon
-
-    return (
-      <Badge variant={config.variant as any} className="flex items-center gap-1">
-        <Icon className="w-3 h-3" />
-        {status.replace('_', ' ')}
-      </Badge>
-    )
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'نشط'
+      case 'INACTIVE': return 'غير نشط'
+      case 'ON_LEAVE': return 'في إجازة'
+      case 'TERMINATED': return 'منتهي الخدمة'
+      case 'SUSPENDED': return 'موقوف'
+      case 'PENDING': return 'قيد الانتظار'
+      case 'APPROVED': return 'موافق عليه'
+      case 'REJECTED': return 'مرفوض'
+      case 'CANCELLED': return 'ملغي'
+      case 'COMPLETED': return 'مكتمل'
+      case 'PROCESSED': return 'تمت معالجته'
+      case 'PAID': return 'مدفوع'
+      default: return status
+    }
   }
 
-  const getAppointmentStatusBadge = (status: string) => {
-    const statusConfig = {
-      PENDING: { variant: 'secondary', label: 'Pending' },
-      CONFIRMED: { variant: 'default', label: 'Confirmed' },
-      COMPLETED: { variant: 'outline', label: 'Completed' },
-      CANCELLED: { variant: 'destructive', label: 'Cancelled' },
-      NO_SHOW: { variant: 'destructive', label: 'No Show' }
-    } as const
-
-    const config = statusConfig[status as keyof typeof statusConfig] || { variant: 'secondary', label: status }
-
-    return (
-      <Badge variant={config.variant as any}>
-        {config.label}
-      </Badge>
-    )
+  const getLeaveTypeText = (type: string) => {
+    switch (type) {
+      case 'ANNUAL': return 'سنوية'
+      case 'SICK': return 'مرضية'
+      case 'MATERNITY': return 'ولادة'
+      case 'PATERNITY': return 'أبوة'
+      case 'UNPAID': return 'بدون راتب'
+      case 'EMERGENCY': return 'طارئة'
+      case 'STUDY': return 'دراسية'
+      default: return type
+    }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
+  const handleUpdateProfile = async () => {
     try {
-      const response = await fetch(`/api/employee/dashboard/tasks/${taskId}`, {
+      const response = await fetch('/api/employee/profile', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify(formData),
       })
 
       if (response.ok) {
-        setTasks(prev => 
-          prev.map(task => task.id === taskId ? { ...task, status: newStatus as any } : task)
-        )
-        toast({
-          title: 'Success',
-          description: 'Task status updated successfully'
-        })
-      } else {
-        throw new Error('Failed to update task status')
+        fetchEmployeeData()
+        setIsEditProfileOpen(false)
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update task status',
-        variant: 'destructive'
-      })
+      console.error('Error updating profile:', error)
     }
   }
 
-  if (!user) {
+  const handleLeaveRequest = async () => {
+    try {
+      const response = await fetch('/api/employee/leave-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(leaveFormData),
+      })
+
+      if (response.ok) {
+        fetchEmployeeData()
+        setIsLeaveRequestOpen(false)
+        setLeaveFormData({
+          leaveType: '',
+          startDate: '',
+          endDate: '',
+          reason: ''
+        })
+      }
+    } catch (error) {
+      console.error('Error creating leave request:', error)
+    }
+  }
+
+  if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     )
   }
 
-  if (user.role !== 'STAFF' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+  if (!employeeProfile) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You don't have permission to access this page</p>
-          <Button onClick={() => router.push('/dashboard')}>
-            Return to Dashboard
-          </Button>
+          <h3 className="text-lg font-semibold mb-2">بيانات الموظف غير متاحة</h3>
+          <p className="text-gray-600">لا يمكن العثور على بيانات الموظف</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Avatar className="w-12 h-12">
-            <AvatarImage src={user?.name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}` : undefined} />
-            <AvatarFallback>
-              {user?.name?.charAt(0).toUpperCase() || 'E'}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-3xl font-bold">Employee Dashboard</h1>
-            <p className="text-gray-600">Welcome back, {user?.name || 'Employee'}!</p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">لوحة تحكم الموظف</h1>
+          <p className="text-muted-foreground">مرحباً {employeeProfile.user.name}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.location.href = '/'}>
-            Back to Home
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            <Bell className="h-4 w-4 ml-2" />
+            الإشعارات
           </Button>
-          <Button variant="outline" onClick={() => logout()}>
-            Logout
+          <Button variant="outline" size="sm">
+            <Settings className="h-4 w-4 ml-2" />
+            الإعدادات
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Quick Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">مواعيد اليوم</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">الراتب الأساسي</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.todayBookings}</div>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat('ar-EG', {
+                style: 'currency',
+                currency: 'EGP'
+              }).format(employeeProfile.salary)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              الإجمالي: {stats.totalBookings}
+              شهرياً
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">السيارات المتاحة</CardTitle>
-            <Car className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">الحالة الوظيفية</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.availableCars}</div>
-            <p className="text-xs text-muted-foreground">
-              الإجمالي: {stats.totalCars}
+            <Badge className={getStatusColor(employeeProfile.status)}>
+              {getStatusText(employeeProfile.status)}
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-2">
+              منذ {format(new Date(employeeProfile.hireDate), 'dd/MM/yyyy', { locale: ar })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">الطلبات المعلقة</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">الإجازات المعلقة</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+            <div className="text-2xl font-bold">
+              {leaveRequests.filter(l => l.status === 'PENDING').length}
+            </div>
             <p className="text-xs text-muted-foreground">
-              الإجمالي: {stats.totalOrders}
+              تحتاج موافقة
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">الفواتير المدفوعة</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">الراتب الصافي</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.paidInvoices}</div>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat('ar-EG', {
+                style: 'currency',
+                currency: 'EGP'
+              }).format(payrollRecords[0]?.netSalary || employeeProfile.salary)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              الإجمالي: {stats.totalInvoices}
+              للشهر الحالي
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Additional Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">المستخدمين النشطين</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              الإجمالي: {stats.totalUsers}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">مكتمل</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completedBookings}</div>
-            <p className="text-xs text-muted-foreground">
-              تم إنجازه بنجاح
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">معلق</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingBookings}</div>
-            <p className="text-xs text-muted-foreground">
-              في انتظار الإجراء
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance Overview */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
-            Performance Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{performance.bookingsHandled}</div>
-              <p className="text-sm text-gray-600">Bookings Handled</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">{performance.customerRating}%</div>
-              <p className="text-sm text-gray-600">Customer Rating</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">EGP {performance.revenueGenerated.toLocaleString()}</div>
-              <p className="text-sm text-gray-600">Revenue Generated</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="appointments" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="appointments">المواعيد</TabsTrigger>
-          <TabsTrigger value="tasks">المهام</TabsTrigger>
-          <TabsTrigger value="cars">السيارات</TabsTrigger>
-          <TabsTrigger value="orders">الطلبات</TabsTrigger>
-          <TabsTrigger value="invoices">الفواتير</TabsTrigger>
-          <TabsTrigger value="users">المستخدمون</TabsTrigger>
-          <TabsTrigger value="performance">الأداء</TabsTrigger>
-          <TabsTrigger value="analytics">التحليلات</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="profile">الملف الشخصي</TabsTrigger>
+          <TabsTrigger value="leaves">الإجازات</TabsTrigger>
+          <TabsTrigger value="payroll">الرواتب</TabsTrigger>
+          <TabsTrigger value="documents">المستندات</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="appointments" className="space-y-4">
+        <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>مواعيد اليوم</CardTitle>
-              <CardDescription>
-                المواعيد المجدولة لليوم
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {appointments.length === 0 ? (
-                <div className="text-center py-8">
-                  <CalendarDays className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">No appointments scheduled for today</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>الملف الشخصي</CardTitle>
+                  <CardDescription>معلوماتك الشخصية والوظيفية</CardDescription>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {appointments.map((appointment) => (
-                    <div key={appointment.id} className="border rounded-lg p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="p-2 bg-blue-100 rounded-lg">
-                            <Car className="w-5 h-5 text-blue-600" />
-                          </div>
-                          
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-semibold text-lg">
-                                {appointment.type === 'test_drive' ? 'Test Drive' : 'Service Appointment'}
-                              </h3>
-                              {getAppointmentStatusBadge(appointment.status)}
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <p className="font-medium">Customer</p>
-                                <p className="text-gray-600">{appointment.customerName}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Phone className="w-3 h-3 text-gray-400" />
-                                  <span className="text-gray-600">{appointment.customerPhone}</span>
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Mail className="w-3 h-3 text-gray-400" />
-                                  <span className="text-gray-600">{appointment.customerEmail}</span>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <p className="font-medium">Time</p>
-                                <p className="text-gray-600">
-                                  {formatDate(appointment.date)} at {appointment.timeSlot}
-                                </p>
-                                {appointment.vehicle && (
-                                  <p className="text-gray-600 mt-1">
-                                    {appointment.vehicle.make} {appointment.vehicle.model} ({appointment.vehicle.year})
-                                  </p>
-                                )}
-                                {appointment.serviceType && (
-                                  <p className="text-gray-600 mt-1">
-                                    Service: {appointment.serviceType.name}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {appointment.notes && (
-                              <div className="mt-4">
-                                <p className="font-medium text-sm">Notes</p>
-                                <p className="text-gray-600 text-sm mt-1">{appointment.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col gap-2 ml-4">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => router.push(`/employee/appointments/${appointment.id}`)}
-                          >
-                            View Details
-                          </Button>
-                          
-                          {appointment.status === 'PENDING' && (
-                            <Button 
-                              variant="default" 
-                              size="sm"
-                              onClick={() => {
-                                // Handle confirmation
-                                toast({
-                                  title: 'Success',
-                                  description: 'Appointment confirmed successfully'
-                                })
-                              }}
-                            >
-                              Confirm
-                            </Button>
-                          )}
-                        </div>
+                <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Settings className="h-4 w-4 ml-2" />
+                      تعديل الملف
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>تعديل الملف الشخصي</DialogTitle>
+                      <DialogDescription>
+                        قم بتحديث بياناتك الشخصية
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">رقم الهاتف</Label>
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          placeholder="أدخل رقم الهاتف"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="emergencyContactName">اسم الطوارئ</Label>
+                        <Input
+                          id="emergencyContactName"
+                          value={formData.emergencyContactName}
+                          onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                          placeholder="اسم جهة الاتصال للطوارئ"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="emergencyContactPhone">هاتف الطوارئ</Label>
+                        <Input
+                          id="emergencyContactPhone"
+                          value={formData.emergencyContactPhone}
+                          onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
+                          placeholder="رقم هاتف الطوارئ"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="emergencyContactRelationship">صلة القرابة</Label>
+                        <Input
+                          id="emergencyContactRelationship"
+                          value={formData.emergencyContactRelationship}
+                          onChange={(e) => setFormData({ ...formData, emergencyContactRelationship: e.target.value })}
+                          placeholder="صلة القرابة"
+                        />
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <Label htmlFor="notes">ملاحظات</Label>
+                        <Textarea
+                          id="notes"
+                          value={formData.notes}
+                          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                          placeholder="أي ملاحظات إضافية"
+                          rows={3}
+                        />
                       </div>
                     </div>
-                  ))}
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsEditProfileOpen(false)}>
+                        إلغاء
+                      </Button>
+                      <Button onClick={handleUpdateProfile}>
+                        حفظ التغييرات
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-4 mb-6">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={employeeProfile.user.avatar} />
+                  <AvatarFallback className="text-lg">
+                    {employeeProfile.user.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-xl font-semibold">{employeeProfile.user.name}</h3>
+                  <p className="text-muted-foreground">{employeeProfile.position}</p>
+                  <Badge variant="outline" className="mt-1">{employeeProfile.department}</Badge>
                 </div>
-              )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">الرقم الوظيفي</p>
+                      <p className="text-sm text-muted-foreground">{employeeProfile.employeeNumber}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">البريد الإلكتروني</p>
+                      <p className="text-sm text-muted-foreground">{employeeProfile.user.email}</p>
+                    </div>
+                  </div>
+                  {employeeProfile.user.phone && (
+                    <div className="flex items-center space-x-3">
+                      <Phone className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">رقم الهاتف</p>
+                        <p className="text-sm text-muted-foreground">{employeeProfile.user.phone}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <Building className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">الفرع</p>
+                      <p className="text-sm text-muted-foreground">{employeeProfile.branch?.name || 'الرئيسي'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">تاريخ التعيين</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(employeeProfile.hireDate), 'dd/MM/yyyy', { locale: ar })}
+                      </p>
+                    </div>
+                  </div>
+                  {employeeProfile.emergencyContact && (
+                    <div className="flex items-center space-x-3">
+                      <Phone className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">اتصال الطوارئ</p>
+                        <p className="text-sm text-muted-foreground">
+                          {employeeProfile.emergencyContact.name} - {employeeProfile.emergencyContact.phone}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="tasks" className="space-y-4">
-          <TaskManagement />
-        </TabsContent>
-
-        <TabsContent value="cars" className="space-y-4">
-          <CarManagement />
-        </TabsContent>
-
-        <TabsContent value="orders" className="space-y-4">
-          <OrderManagement />
-        </TabsContent>
-
-        <TabsContent value="invoices" className="space-y-4">
-          <InvoiceManagement />
-        </TabsContent>
-
-        <TabsContent value="users" className="space-y-4">
-          <UserManagement />
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>مقاييس الأداء</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span>الطلبات المجهزة</span>
-                  <span className="font-semibold">{performance.bookingsHandled}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>متوسط وقت المعالجة</span>
-                  <span className="font-semibold">{performance.averageHandlingTime} دقيقة</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>تقييم العملاء</span>
-                  <span className="font-semibold">{performance.customerRating}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>معدل التحويل</span>
-                  <span className="font-semibold">{performance.conversionRate}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>الإيرادات المولدة</span>
-                  <span className="font-semibold">جنيه {performance.revenueGenerated.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>المهام المكتملة</span>
-                  <span className="font-semibold">{performance.tasksCompleted}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>إجراءات سريعة</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full justify-start" onClick={() => router.push('/employee/bookings')}>
-                  <Car className="w-4 h-4 mr-2" />
-                  إدارة الحجوزات
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/employee/tasks')}>
-                  <ClipboardList className="w-4 h-4 mr-2" />
-                  عرض جميع المهام
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/employee/calendar')}>
-                  <CalendarDays className="w-4 h-4 mr-2" />
-                  عرض التقويم
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/employee/customers')}>
-                  <Users className="w-4 h-4 mr-2" />
-                  إدارة العملاء
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
+        <TabsContent value="leaves" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>تحليلات الأداء</CardTitle>
-              <CardDescription>
-                تحليل مفصل للأداء والرؤى
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>طلبات الإجازات</CardTitle>
+                  <CardDescription>إدارة طلبات الإجازات والموافقات</CardDescription>
+                </div>
+                <Dialog open={isLeaveRequestOpen} onOpenChange={setIsLeaveRequestOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Calendar className="h-4 w-4 ml-2" />
+                      طلب إجازة جديدة
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>طلب إجازة جديدة</DialogTitle>
+                      <DialogDescription>
+                        أدخل تفاصيل طلب الإجازة
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="leaveType">نوع الإجازة</Label>
+                        <select
+                          id="leaveType"
+                          value={leaveFormData.leaveType}
+                          onChange={(e) => setLeaveFormData({ ...leaveFormData, leaveType: e.target.value })}
+                          className="w-full p-2 border rounded-md"
+                        >
+                          <option value="">اختر نوع الإجازة</option>
+                          <option value="ANNUAL">إجازة سنوية</option>
+                          <option value="SICK">إجازة مرضية</option>
+                          <option value="MATERNITY">إجازة ولادة</option>
+                          <option value="PATERNITY">إجازة أبوة</option>
+                          <option value="UNPAID">إجازة بدون راتب</option>
+                          <option value="EMERGENCY">إجازة طارئة</option>
+                          <option value="STUDY">إجازة دراسية</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="startDate">تاريخ البدء</Label>
+                          <Input
+                            id="startDate"
+                            type="date"
+                            value={leaveFormData.startDate}
+                            onChange={(e) => setLeaveFormData({ ...leaveFormData, startDate: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">تاريخ الانتهاء</Label>
+                          <Input
+                            id="endDate"
+                            type="date"
+                            value={leaveFormData.endDate}
+                            onChange={(e) => setLeaveFormData({ ...leaveFormData, endDate: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reason">السبب</Label>
+                        <Textarea
+                          id="reason"
+                          value={leaveFormData.reason}
+                          onChange={(e) => setLeaveFormData({ ...leaveFormData, reason: e.target.value })}
+                          placeholder="أدخل سبب الإجازة"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsLeaveRequestOpen(false)}>
+                        إلغاء
+                      </Button>
+                      <Button onClick={handleLeaveRequest}>
+                        إرسال الطلب
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">عرض التحليلات والتقارير المفصلة</p>
-                <Button onClick={() => router.push('/employee/performance')}>
-                  عرض لوحة التحليلات الكاملة
-                </Button>
+              <div className="space-y-4">
+                {leaveRequests.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">لا توجد طلبات إجازات</p>
+                ) : (
+                  leaveRequests.map((leave) => (
+                    <div key={leave.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Calendar className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{getLeaveTypeText(leave.leaveType)}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {leave.totalDays} أيام • {format(new Date(leave.startDate), 'dd/MM/yyyy', { locale: ar })} - {format(new Date(leave.endDate), 'dd/MM/yyyy', { locale: ar })}
+                          </p>
+                          {leave.reason && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              السبب: {leave.reason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Badge className={getStatusColor(leave.status)}>
+                        {getStatusText(leave.status)}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payroll" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>سجلات الرواتب</CardTitle>
+              <CardDescription>عرض سجلات الرواتب والدفعات</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {payrollRecords.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">لا توجد سجلات رواتب</p>
+                ) : (
+                  payrollRecords.map((payroll) => (
+                    <div key={payroll.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <DollarSign className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium">الفترة: {payroll.period}</h4>
+                          <div className="flex space-x-4 text-sm text-muted-foreground mt-1">
+                            <span>أساسي: {new Intl.NumberFormat('ar-EG', {
+                              style: 'currency',
+                              currency: 'EGP'
+                            }).format(payroll.basicSalary)}</span>
+                            <span>بدلات: {new Intl.NumberFormat('ar-EG', {
+                              style: 'currency',
+                              currency: 'EGP'
+                            }).format(payroll.allowances)}</span>
+                            <span>خصومات: {new Intl.NumberFormat('ar-EG', {
+                              style: 'currency',
+                              currency: 'EGP'
+                            }).format(payroll.deductions)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-medium">
+                          {new Intl.NumberFormat('ar-EG', {
+                            style: 'currency',
+                            currency: 'EGP'
+                          }).format(payroll.netSalary)}
+                        </p>
+                        <Badge className={getStatusColor(payroll.status)}>
+                          {getStatusText(payroll.status)}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>المستندات</CardTitle>
+              <CardDescription>المستندات والشهادات الرسمية</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">المستندات</h3>
+                <p className="text-gray-600 mb-4">
+                  سيتم إضافة المستندات والشهادات قريباً
+                </p>
               </div>
             </CardContent>
           </Card>
