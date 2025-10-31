@@ -219,10 +219,27 @@ function DashboardContent() {
 
   const recentBookings = dashboardData?.recentBookings || []
   const recentVehicles = dashboardData?.recentVehicles || []
-  const systemHealth = dashboardData?.systemHealth || {}
-  const quickActions = dashboardData?.quickActions || {}
+  const systemHealth = dashboardData?.systemHealth || {
+    activeUsers: 0,
+    systemStatus: 'healthy',
+    lastBackup: null,
+    databaseSize: 0
+  }
+  const quickActions = dashboardData?.quickActions || {
+    pendingNotifications: 0,
+    pendingBookings: 0,
+    pendingMaintenance: 0,
+    overduePayments: 0,
+    lowStockVehicles: 0,
+    totalEmployees: 0,
+    newPersonnelThisMonth: 0
+  }
 
   const getStatusBadge = (status: string) => {
+    if (!status) {
+      return <Badge variant="secondary">غير محدد</Badge>
+    }
+    
     const statusConfig = {
       pending: { variant: 'secondary' as const, label: 'قيد الانتظار' },
       confirmed: { variant: 'default' as const, label: 'مؤكد' },
@@ -245,6 +262,9 @@ function DashboardContent() {
   }
 
   const formatPrice = (price: number) => {
+    if (typeof price !== 'number' || isNaN(price)) {
+      return '0 ج.م'
+    }
     return new Intl.NumberFormat('ar-EG', {
       style: 'currency',
       currency: 'EGP',
@@ -253,16 +273,25 @@ function DashboardContent() {
   }
 
   const formatNumber = (num: number) => {
+    if (typeof num !== 'number' || isNaN(num)) {
+      return '0'
+    }
     return new Intl.NumberFormat('ar-EG').format(num)
   }
 
   const formatDate = (date: Date | string) => {
-    const d = new Date(date)
-    return d.toLocaleDateString('ar-EG', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+    if (!date) return 'غير محدد'
+    try {
+      const d = new Date(date)
+      if (isNaN(d.getTime())) return 'غير محدد'
+      return d.toLocaleDateString('ar-EG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch {
+      return 'غير محدد'
+    }
   }
 
   const menuItems = [
@@ -479,7 +508,15 @@ function DashboardContent() {
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
               <span className="text-sm font-medium hidden md:block">المدير</span>
-              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => {
+                  try {
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/logout'
+                    }
+                  } catch (error) {
+                    console.error('Logout error:', error)
+                  }
+                }}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -504,7 +541,7 @@ function DashboardContent() {
                         key={item.id}
                         onClick={() => {
                           setActiveTab(item.id)
-                          if (window.innerWidth < 1024) {
+                          if (typeof window !== 'undefined' && window.innerWidth < 1024) {
                             setSidebarOpen(false)
                           }
                         }}
@@ -573,7 +610,13 @@ function DashboardContent() {
                       <Button 
                         size="sm" 
                         className="mt-2 bg-red-600 hover:bg-red-700"
-                        onClick={() => router.push('/admin/finance/payments?status=overdue')}
+                        onClick={() => {
+                          try {
+                            router.push('/admin/finance/payments?status=overdue')
+                          } catch (error) {
+                            console.error('Navigation error:', error)
+                          }
+                        }}
                       >
                         معاينة
                       </Button>
@@ -593,7 +636,13 @@ function DashboardContent() {
                       <Button 
                         size="sm" 
                         className="mt-2 bg-yellow-600 hover:bg-yellow-700"
-                        onClick={() => router.push('/admin/bookings?status=pending')}
+                        onClick={() => {
+                          try {
+                            router.push('/admin/bookings?status=pending')
+                          } catch (error) {
+                            console.error('Navigation error:', error)
+                          }
+                        }}
                       >
                         معاينة
                       </Button>
@@ -613,7 +662,13 @@ function DashboardContent() {
                       <Button 
                         size="sm" 
                         className="mt-2 bg-green-600 hover:bg-green-700"
-                        onClick={() => router.push('/admin/vehicles?status=available')}
+                        onClick={() => {
+                          try {
+                            router.push('/admin/vehicles?status=available')
+                          } catch (error) {
+                            console.error('Navigation error:', error)
+                          }
+                        }}
                       >
                         معاينة
                       </Button>
@@ -628,7 +683,15 @@ function DashboardContent() {
                       <h2 className="text-2xl font-bold text-gray-900">الإجراءات السريعة</h2>
                       <p className="text-gray-600">الوصول السريع لأهم الوظائف اليومية</p>
                     </div>
-                    <Button variant="outline" onClick={() => window.location.reload()}>
+                    <Button variant="outline" onClick={() => {
+                      try {
+                        if (typeof window !== 'undefined') {
+                          window.location.reload()
+                        }
+                      } catch (error) {
+                        console.error('Reload error:', error)
+                      }
+                    }}>
                       <RefreshCw className="h-4 w-4 mr-2" />
                       تحديث
                     </Button>
@@ -641,12 +704,20 @@ function DashboardContent() {
                         <Card 
                           key={index} 
                           className="group cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-blue-200"
-                          onClick={action.action}
+                          onClick={() => {
+                            try {
+                              if (action && typeof action.action === 'function') {
+                                action.action()
+                              }
+                            } catch (error) {
+                              console.error('Error executing action:', error)
+                            }
+                          }}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-3">
-                              <div className={`w-12 h-12 ${action.color} rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform`}>
-                                <Icon className="h-6 w-6" />
+                              <div className={`w-12 h-12 ${action.color || 'bg-gray-500'} rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform`}>
+                                {Icon && <Icon className="h-6 w-6" />}
                               </div>
                               {action.badge && (
                                 <Badge variant="destructive" className="h-6 w-6 p-0 flex items-center justify-center text-xs">
@@ -655,10 +726,10 @@ function DashboardContent() {
                               )}
                             </div>
                             <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-                              {action.title}
+                              {action.title || 'إجراء'}
                             </h3>
                             <p className="text-sm text-gray-600">
-                              {action.description}
+                              {action.description || 'وصف غير متوفر'}
                             </p>
                           </CardContent>
                         </Card>
@@ -694,7 +765,7 @@ function DashboardContent() {
                     <CardContent>
                       <div className="text-2xl font-bold">{formatNumber(stats.totalCustomers)}</div>
                       <p className="text-xs text-muted-foreground">
-                        {formatNumber(systemHealth.activeUsers || 0)} نشطون
+                        {formatNumber(systemHealth?.activeUsers || 0)} نشطون
                       </p>
                       <div className="mt-2 flex items-center text-xs text-green-600">
                         <TrendingUp className="h-3 w-3 mr-1" />
@@ -762,7 +833,13 @@ function DashboardContent() {
                             <CardDescription>إدارة بيانات العملاء والتفاعلات</CardDescription>
                           </div>
                         </div>
-                        <Button onClick={() => router.push('/admin/customers')}>
+                        <Button onClick={() => {
+                          try {
+                            router.push('/admin/customers')
+                          } catch (error) {
+                            console.error('Navigation error:', error)
+                          }
+                        }}>
                           <Users className="mr-2 h-4 w-4" />
                           إدارة
                         </Button>
@@ -775,7 +852,7 @@ function DashboardContent() {
                           <p className="text-sm text-gray-600">إجمالي العملاء</p>
                         </div>
                         <div className="text-center p-4 bg-green-50 rounded-lg">
-                          <div className="text-2xl font-bold text-green-600">{formatNumber(systemHealth.activeUsers || 0)}</div>
+                          <div className="text-2xl font-bold text-green-600">{formatNumber(systemHealth?.activeUsers || 0)}</div>
                           <p className="text-sm text-gray-600">عملاء نشطون</p>
                         </div>
                       </div>
@@ -795,7 +872,13 @@ function DashboardContent() {
                             <CardDescription>إدارة بيانات الموظفين والرواتب</CardDescription>
                           </div>
                         </div>
-                        <Button onClick={() => router.push('/admin/employees')}>
+                        <Button onClick={() => {
+                          try {
+                            router.push('/admin/employees')
+                          } catch (error) {
+                            console.error('Navigation error:', error)
+                          }
+                        }}>
                           <UserCheck className="mr-2 h-4 w-4" />
                           إدارة
                         </Button>
@@ -804,11 +887,11 @@ function DashboardContent() {
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="text-center p-4 bg-purple-50 rounded-lg">
-                          <div className="text-2xl font-bold text-purple-600">{formatNumber(quickActions.totalEmployees || 0)}</div>
+                          <div className="text-2xl font-bold text-purple-600">{formatNumber(quickActions?.totalEmployees || 0)}</div>
                           <p className="text-sm text-gray-600">إجمالي الموظفين</p>
                         </div>
                         <div className="text-center p-4 bg-orange-50 rounded-lg">
-                          <div className="text-2xl font-bold text-orange-600">{formatNumber(quickActions.newPersonnelThisMonth || 0)}</div>
+                          <div className="text-2xl font-bold text-orange-600">{formatNumber(quickActions?.newPersonnelThisMonth || 0)}</div>
                           <p className="text-sm text-gray-600">جدد هذا الشهر</p>
                         </div>
                       </div>
