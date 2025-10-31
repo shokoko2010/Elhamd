@@ -119,7 +119,8 @@ export const PERMISSIONS = {
   GENERATE_REPORTS: 'generate_reports',
   VIEW_ANALYTICS: 'view_analytics',
   EXPORT_DATA: 'export_data',
-  MANAGE_DASHBOARDS: 'manage_dashboards'
+  MANAGE_DASHBOARDS: 'manage_dashboards',
+  VIEW_DASHBOARD: 'view_dashboard'
 } as const
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
@@ -225,7 +226,8 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     PERMISSIONS.GENERATE_REPORTS,
     PERMISSIONS.VIEW_ANALYTICS,
     PERMISSIONS.EXPORT_DATA,
-    PERMISSIONS.MANAGE_DASHBOARDS
+    PERMISSIONS.MANAGE_DASHBOARDS,
+    PERMISSIONS.VIEW_DASHBOARD
   ],
   [UserRole.BRANCH_MANAGER]: [
     // User Management (limited to branch)
@@ -295,7 +297,8 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     // Reporting
     PERMISSIONS.GENERATE_REPORTS,
     PERMISSIONS.VIEW_ANALYTICS,
-    PERMISSIONS.EXPORT_DATA
+    PERMISSIONS.EXPORT_DATA,
+    PERMISSIONS.VIEW_DASHBOARD
   ],
   [UserRole.ACCOUNTANT]: [
     // User Management (very limited)
@@ -356,7 +359,8 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     PERMISSIONS.GENERATE_REPORTS,
     PERMISSIONS.VIEW_ANALYTICS,
     PERMISSIONS.EXPORT_DATA,
-    PERMISSIONS.MANAGE_DASHBOARDS
+    PERMISSIONS.MANAGE_DASHBOARDS,
+    PERMISSIONS.VIEW_DASHBOARD
   ],
   [UserRole.STAFF]: [
     // User Management (very limited)
@@ -398,7 +402,8 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     
     // Reporting (view only)
     PERMISSIONS.GENERATE_REPORTS,
-    PERMISSIONS.VIEW_ANALYTICS
+    PERMISSIONS.VIEW_ANALYTICS,
+    PERMISSIONS.VIEW_DASHBOARD
   ],
   [UserRole.CUSTOMER]: [
     // Very limited permissions for customers
@@ -774,7 +779,8 @@ export class PermissionService {
       [PERMISSIONS.GENERATE_REPORTS]: 'Generate system reports',
       [PERMISSIONS.VIEW_ANALYTICS]: 'View analytics and dashboards',
       [PERMISSIONS.EXPORT_DATA]: 'Export system data',
-      [PERMISSIONS.MANAGE_DASHBOARDS]: 'Manage dashboard configurations'
+      [PERMISSIONS.MANAGE_DASHBOARDS]: 'Manage dashboard configurations',
+      [PERMISSIONS.VIEW_DASHBOARD]: 'View main admin dashboard'
     }
 
     return descriptions[permission] || `${permission.replace(/_/g, ' ')}`

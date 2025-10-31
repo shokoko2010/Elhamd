@@ -225,14 +225,15 @@ function DashboardContent() {
     lastBackup: null,
     databaseSize: 0
   }
-  const quickActions = dashboardData?.quickActions || {
+  const quickActions = {
     pendingNotifications: 0,
     pendingBookings: 0,
     pendingMaintenance: 0,
     overduePayments: 0,
     lowStockVehicles: 0,
     totalEmployees: 0,
-    newPersonnelThisMonth: 0
+    newPersonnelThisMonth: 0,
+    ...dashboardData?.quickActions
   }
 
   const getStatusBadge = (status: string) => {
@@ -405,7 +406,7 @@ function DashboardContent() {
       icon: Calendar,
       action: () => router.push('/admin/bookings?action=create&type=test-drive'),
       color: 'bg-green-500 hover:bg-green-600',
-      badge: quickActions.pendingBookings || null
+      badge: (quickActions?.pendingBookings || 0) > 0 ? quickActions.pendingBookings : null
     },
     {
       title: 'إضافة عميل جديد',
@@ -429,7 +430,7 @@ function DashboardContent() {
       icon: Wrench,
       action: () => router.push('/admin/maintenance?action=schedule'),
       color: 'bg-red-500 hover:bg-red-600',
-      badge: quickActions.pendingMaintenance || null
+      badge: (quickActions?.pendingMaintenance || 0) > 0 ? quickActions.pendingMaintenance : null
     },
     {
       title: 'طلب قطع غيار',
@@ -453,7 +454,7 @@ function DashboardContent() {
       icon: Bell,
       action: () => router.push('/admin/notifications'),
       color: 'bg-pink-500 hover:bg-pink-600',
-      badge: quickActions.pendingNotifications || null
+      badge: (quickActions?.pendingNotifications || 0) > 0 ? quickActions.pendingNotifications : null
     }
   ]
 
@@ -499,7 +500,7 @@ function DashboardContent() {
             <Button variant="outline" size="sm">
               <Bell className="h-4 w-4 mr-2" />
               الإشعارات
-              {quickActions.pendingNotifications > 0 && (
+              {(quickActions?.pendingNotifications || 0) > 0 && (
                 <Badge variant="destructive" className="mr-2 h-5 w-5 p-0 flex items-center justify-center">
                   {quickActions.pendingNotifications}
                 </Badge>
@@ -528,42 +529,46 @@ function DashboardContent() {
         {/* Sidebar */}
         <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed lg:static lg:translate-x-0 z-30 w-64 h-full bg-white shadow-lg transition-transform duration-300 ease-in-out flex flex-col`}>
           <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
-            {menuItems.map((section) => (
-              <div key={section.title}>
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                  {section.title}
-                </h3>
-                <div className="space-y-1">
-                  {section.items.map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          setActiveTab(item.id)
-                          if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                            setSidebarOpen(false)
-                          }
-                        }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          activeTab === item.id
-                            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                      >
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                        {item.id === 'notifications' && quickActions.pendingNotifications > 0 && (
-                          <Badge variant="destructive" className="mr-auto h-5 w-5 p-0 flex items-center justify-center text-xs flex-shrink-0">
-                            {quickActions.pendingNotifications}
-                          </Badge>
-                        )}
-                      </button>
-                    )
-                  })}
+            {menuItems && menuItems.map((section) => {
+              if (!section || !section.items) return null
+              return (
+                <div key={section.title}>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    {section.title}
+                  </h3>
+                  <div className="space-y-1">
+                    {section.items.map((item) => {
+                      if (!item) return null
+                      const Icon = item.icon
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id)
+                            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                              setSidebarOpen(false)
+                            }
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            activeTab === item.id
+                              ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                          {item.id === 'notifications' && (quickActions?.pendingNotifications || 0) > 0 && (
+                            <Badge variant="destructive" className="mr-auto h-5 w-5 p-0 flex items-center justify-center text-xs flex-shrink-0">
+                              {quickActions.pendingNotifications}
+                            </Badge>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </nav>
           
           {/* Sidebar Footer */}
@@ -605,7 +610,7 @@ function DashboardContent() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-red-600">{formatNumber(quickActions.overduePayments || 0)}</div>
+                      <div className="text-2xl font-bold text-red-600">{formatNumber(quickActions?.overduePayments || 0)}</div>
                       <p className="text-sm text-red-700">مدفوعات متأخرة تحتاج إلى متابعة</p>
                       <Button 
                         size="sm" 
@@ -631,7 +636,7 @@ function DashboardContent() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-yellow-600">{formatNumber(quickActions.pendingBookings || 0)}</div>
+                      <div className="text-2xl font-bold text-yellow-600">{formatNumber(quickActions?.pendingBookings || 0)}</div>
                       <p className="text-sm text-yellow-700">حجوزات تحتاج إلى مراجعة</p>
                       <Button 
                         size="sm" 
@@ -657,7 +662,7 @@ function DashboardContent() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-green-600">{formatNumber(quickActions.lowStockVehicles || 0)}</div>
+                      <div className="text-2xl font-bold text-green-600">{formatNumber(quickActions?.lowStockVehicles || 0)}</div>
                       <p className="text-sm text-green-700">مركبات متاحة للبيع</p>
                       <Button 
                         size="sm" 
@@ -698,7 +703,8 @@ function DashboardContent() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {quickActionItems.map((action, index) => {
+                    {quickActionItems && quickActionItems.map((action, index) => {
+                      if (!action) return null
                       const Icon = action.icon
                       return (
                         <Card 
@@ -734,7 +740,7 @@ function DashboardContent() {
                           </CardContent>
                         </Card>
                       )
-                    })}
+                    }).filter(Boolean)}
                   </div>
                 </div>
 
@@ -957,8 +963,10 @@ function DashboardContent() {
                 'employees', 'attendance', 'payroll', 'leaves', 'performance', 'expenses', 'revenue', 'budget', 'tax', 'banking',
                 'legal', 'insurance', 'documents', 'users', 'roles', 'settings', 'backup', 'logs', 'messages', 'support', 'feedback', 'contact',
                 'filter', 'export', 'import', 'print', 'inventory', 'hr', 'accounting', 'contracts', 'maintenance', 'permissions', 'search', 'notifications', 'analytics'
-              ].map((tab) => (
-                <TabsContent key={tab} value={tab} className="space-y-6">
+              ].map((tab) => {
+                if (!tab) return null
+                return (
+                  <TabsContent key={tab} value={tab} className="space-y-6">
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">
@@ -1164,7 +1172,8 @@ function DashboardContent() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-              ))}
+                )
+              })}
             </Tabs>
           )}
         </main>
