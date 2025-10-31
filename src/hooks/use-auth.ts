@@ -32,28 +32,34 @@ export function useAuth() {
       return
     }
 
-    if (status === 'authenticated' && session?.user) {
-      setUser({
-        id: session.user.id,
-        email: session.user.email!,
-        name: session.user.name,
-        role: session.user.role as UserRole,
-        phone: session.user.phone,
-        branchId: session.user.branchId,
-        permissions: session.user.permissions as Permission[] || [],
-        isActive: true, // Assuming active if session exists
-        emailVerified: true, // Assuming verified if session exists
-        lastLoginAt: session.user.lastLoginAt ? new Date(session.user.lastLoginAt) : null,
-        createdAt: new Date(), // Default values
-        updatedAt: new Date()
-      })
-      setError(null)
-    } else if (status === 'unauthenticated') {
+    try {
+      if (status === 'authenticated' && session?.user) {
+        setUser({
+          id: session.user.id || '',
+          email: session.user.email || '',
+          name: session.user.name || null,
+          role: session.user.role as UserRole || UserRole.CUSTOMER,
+          phone: session.user.phone || null,
+          branchId: session.user.branchId || null,
+          permissions: (session.user.permissions as Permission[]) || [],
+          isActive: true, // Assuming active if session exists
+          emailVerified: true, // Assuming verified if session exists
+          lastLoginAt: session.user.lastLoginAt ? new Date(session.user.lastLoginAt) : null,
+          createdAt: new Date(), // Default values
+          updatedAt: new Date()
+        })
+        setError(null)
+      } else if (status === 'unauthenticated') {
+        setUser(null)
+        setError(null)
+      } else if (status === 'error') {
+        setUser(null)
+        setError('Session error occurred')
+      }
+    } catch (error) {
+      console.error('Error processing session:', error)
       setUser(null)
-      setError(null)
-    } else if (status === 'error') {
-      setUser(null)
-      setError('Session error occurred')
+      setError('Session processing error')
     }
     
     setLoading(false)
@@ -69,39 +75,50 @@ export function useAuth() {
       setLoading(false)
       
       // Call our custom logout API to ensure all cookies are cleared
-      const response = await fetch('/api/auth/signout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      if (response.ok) {
-        console.log('Logout API call successful')
-        const data = await response.json()
-        console.log('Logout response:', data)
-      } else {
-        console.error('Logout API call failed:', response.status)
+      try {
+        const response = await fetch('/api/auth/signout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (response.ok) {
+          console.log('Logout API call successful')
+          const data = await response.json()
+          console.log('Logout response:', data)
+        } else {
+          console.error('Logout API call failed:', response.status)
+        }
+      } catch (apiError) {
+        console.error('Logout API error:', apiError)
       }
       
       // Then sign out from NextAuth
-      await signOut({ 
-        redirect: false // We'll handle redirect manually
-      })
-      
-      console.log('NextAuth signOut completed')
+      try {
+        await signOut({ 
+          redirect: false // We'll handle redirect manually
+        })
+        console.log('NextAuth signOut completed')
+      } catch (signOutError) {
+        console.error('NextAuth signOut error:', signOutError)
+      }
       
       // Clear any remaining local storage
       try {
-        localStorage.clear()
-        sessionStorage.clear()
-      } catch (error) {
-        console.log('Storage clear error:', error)
+        if (typeof window !== 'undefined') {
+          localStorage.clear()
+          sessionStorage.clear()
+        }
+      } catch (storageError) {
+        console.log('Storage clear error:', storageError)
       }
       
       // Force redirect to login
-      window.location.href = '/login'
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
       
     } catch (error) {
       console.error('Logout error:', error)
@@ -121,7 +138,9 @@ export function useAuth() {
       }
       
       // Force redirect even if everything fails
-      window.location.href = '/login'
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
     }
   }
 
@@ -176,15 +195,24 @@ export function useAuth() {
   }
 
   const hasPermission = (permission: Permission): boolean => {
-    return user?.permissions.includes(permission) || false
+    if (!user || !user.permissions || !Array.isArray(user.permissions)) {
+      return false
+    }
+    return user.permissions.includes(permission)
   }
 
   const hasAnyPermission = (permissions: Permission[]): boolean => {
-    return user ? permissions.some(permission => user.permissions.includes(permission)) : false
+    if (!user || !user.permissions || !Array.isArray(user.permissions) || !Array.isArray(permissions)) {
+      return false
+    }
+    return permissions.some(permission => user.permissions.includes(permission))
   }
 
   const hasAllPermissions = (permissions: Permission[]): boolean => {
-    return user ? permissions.every(permission => user.permissions.includes(permission)) : false
+    if (!user || !user.permissions || !Array.isArray(user.permissions) || !Array.isArray(permissions)) {
+      return false
+    }
+    return permissions.every(permission => user.permissions.includes(permission))
   }
 
   const isAdmin = (): boolean => {

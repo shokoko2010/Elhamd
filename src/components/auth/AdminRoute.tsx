@@ -50,7 +50,7 @@ export function AdminRoute({
         return
       }
     }
-  }, [loading, authenticated, user, hasAnyRole, hasAnyPermission])
+  }, [loading, authenticated, user, hasAnyRole, hasAnyPermission, requiredRoles, requiredPermissions, redirectTo, router])
 
   // Reset ref when dependencies change that might require re-authentication
   useEffect(() => {
