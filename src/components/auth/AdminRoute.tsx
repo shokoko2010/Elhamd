@@ -70,10 +70,26 @@ export function AdminRoute({
     )
   }
 
-  if (!authenticated || !user || !hasAnyRole(requiredRoles) || 
-      (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any))) {
-    return null // Will redirect in useEffect
+  // Don't render anything if authentication checks are still loading or failed
+  if (loading || !authenticated || !user) {
+    return null
   }
 
-  return <>{children}</>
+  // Check role permissions
+  if (!hasAnyRole(requiredRoles)) {
+    return null
+  }
+
+  // Check specific permissions if required
+  if (requiredPermissions.length > 0 && !hasAnyPermission(requiredPermissions as any)) {
+    return null
+  }
+
+  // Safely render children with error boundary
+  try {
+    return <>{children}</>
+  } catch (error) {
+    console.error('AdminRoute rendering error:', error)
+    return null
+  }
 }
