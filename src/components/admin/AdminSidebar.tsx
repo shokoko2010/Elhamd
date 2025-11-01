@@ -76,7 +76,6 @@ import {
   EyeOff,
   Copy,
   Share2,
-  Link,
   Paperclip,
   Image,
   Video,
