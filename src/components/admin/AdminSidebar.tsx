@@ -36,7 +36,94 @@ import {
   MessageSquare,
   Layout,
   Type,
-  Palette
+  Palette,
+  UserCheck,
+  Search,
+  Download,
+  Upload,
+  Filter,
+  RefreshCw,
+  Plus,
+  Edit,
+  Trash2,
+  Printer,
+  Phone,
+  HelpCircle,
+  Database,
+  Truck,
+  Tool,
+  Lock,
+  FileCheck,
+  Award,
+  Target,
+  Zap,
+  Server,
+  Monitor,
+  Smartphone,
+  Globe,
+  Cpu,
+  HardDrive,
+  Wifi,
+  Battery,
+  Volume2,
+  Sun,
+  Moon,
+  User,
+  UserPlus,
+  UserMinus,
+  Key,
+  Eye,
+  EyeOff,
+  Copy,
+  Share2,
+  Link,
+  Paperclip,
+  Image,
+  Video,
+  Music,
+  Camera,
+  Mic,
+  Headphones,
+  Save,
+  Undo,
+  Redo,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Minimize,
+  RotateCw,
+  RotateCcw,
+  Move,
+  Scissors,
+  Clipboard,
+  Inbox,
+  Mail,
+  MapPin,
+  Euro,
+  PoundSterling,
+  Yen,
+  Thermometer,
+  Droplet,
+  Wind,
+  Cloud,
+  CloudRain,
+  CloudSnow,
+  AlertTriangle,
+  XCircle,
+  Info,
+  AtSign,
+  Hash,
+  Activity,
+  Pulse,
+  MoreVertical,
+  MoreHorizontal,
+  PlusCircle,
+  MinusCircle,
+  CheckSquare,
+  Square,
+  Radio,
+  Checkbox,
+  Star
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -46,8 +133,281 @@ import { useRouter } from 'next/navigation'
 const sidebarItems = [
   {
     title: 'لوحة التحكم',
-    href: '/admin/dashboard',
+    href: '/admin',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'المبيعات والعملاء',
+    icon: Users,
+    children: [
+      {
+        title: 'المركبات',
+        href: '/admin/vehicles',
+        icon: Car,
+      },
+      {
+        title: 'الحجوزات',
+        href: '/admin/bookings',
+        icon: Calendar,
+      },
+      {
+        title: 'الأفراد',
+        href: '/admin/personnel',
+        icon: Users,
+      },
+      {
+        title: 'العملاء',
+        href: '/admin/customers',
+        icon: UserPlus,
+      },
+      {
+        title: 'المبيعات',
+        href: '/admin/sales',
+        icon: DollarSign,
+      },
+      {
+        title: 'عروض الأسعار',
+        href: '/admin/quotations',
+        icon: FileCheck,
+      },
+      {
+        title: 'الفواتير',
+        href: '/admin/invoices',
+        icon: CreditCard,
+      },
+    ]
+  },
+  {
+    title: 'المخزون والعمليات',
+    icon: Package,
+    children: [
+      {
+        title: 'المخزون',
+        href: '/admin/inventory',
+        icon: Package,
+      },
+      {
+        title: 'الصيانة',
+        href: '/admin/maintenance',
+        icon: Wrench,
+      },
+      {
+        title: 'الخدمات',
+        href: '/admin/service',
+        icon: Tool,
+      },
+      {
+        title: 'قطع الغيار',
+        href: '/admin/parts',
+        icon: Settings,
+      },
+      {
+        title: 'الموردون',
+        href: '/admin/suppliers',
+        icon: Truck,
+      },
+      {
+        title: 'المستودع',
+        href: '/admin/warehouse',
+        icon: Building,
+      },
+    ]
+  },
+  {
+    title: 'الموارد البشرية',
+    icon: UserCheck,
+    children: [
+      {
+        title: 'الموارد البشرية',
+        href: '/admin/hr',
+        icon: Building,
+      },
+      {
+        title: 'الموظفون',
+        href: '/admin/employees',
+        icon: UserCheck,
+      },
+      {
+        title: 'الحضور والانصراف',
+        href: '/admin/attendance',
+        icon: Calendar,
+      },
+      {
+        title: 'الرواتب',
+        href: '/admin/payroll',
+        icon: Calculator,
+      },
+      {
+        title: 'الإجازات',
+        href: '/admin/leaves',
+        icon: Calendar,
+      },
+      {
+        title: 'تقييم الأداء',
+        href: '/admin/performance',
+        icon: Award,
+      },
+    ]
+  },
+  {
+    title: 'المالية والمحاسبة',
+    icon: Calculator,
+    children: [
+      {
+        title: 'المحاسبة',
+        href: '/admin/accounting',
+        icon: Calculator,
+      },
+      {
+        title: 'المصروفات',
+        href: '/admin/expenses',
+        icon: CreditCard,
+      },
+      {
+        title: 'الإيرادات',
+        href: '/admin/revenue',
+        icon: TrendingUp,
+      },
+      {
+        title: 'الميزانية',
+        href: '/admin/budget',
+        icon: Target,
+      },
+      {
+        title: 'الضرائب',
+        href: '/admin/tax',
+        icon: FileText,
+      },
+      {
+        title: 'الحسابات البنكية',
+        href: '/admin/banking',
+        icon: Building,
+      },
+    ]
+  },
+  {
+    title: 'العقود والقانون',
+    icon: Shield,
+    children: [
+      {
+        title: 'العقود',
+        href: '/admin/contracts',
+        icon: FileText,
+      },
+      {
+        title: 'الشؤون القانونية',
+        href: '/admin/legal',
+        icon: Shield,
+      },
+      {
+        title: 'التأمين',
+        href: '/admin/insurance',
+        icon: Shield,
+      },
+      {
+        title: 'الوثائق',
+        href: '/admin/documents',
+        icon: Archive,
+      },
+    ]
+  },
+  {
+    title: 'النظام والإعدادات',
+    icon: Settings,
+    children: [
+      {
+        title: 'الصلاحيات',
+        href: '/admin/permissions',
+        icon: Lock,
+      },
+      {
+        title: 'المستخدمون',
+        href: '/admin/users',
+        icon: Users,
+      },
+      {
+        title: 'الأدوار',
+        href: '/admin/roles',
+        icon: UserCheck,
+      },
+      {
+        title: 'الإعدادات',
+        href: '/admin/settings',
+        icon: Settings,
+      },
+      {
+        title: 'النسخ الاحتياطي',
+        href: '/admin/backup',
+        icon: Database,
+      },
+      {
+        title: 'السجلات',
+        href: '/admin/logs',
+        icon: FileText,
+      },
+    ]
+  },
+  {
+    title: 'التواصل والدعم',
+    icon: MessageSquare,
+    children: [
+      {
+        title: 'الإشعارات',
+        href: '/admin/notifications',
+        icon: Bell,
+      },
+      {
+        title: 'الرسائل',
+        href: '/admin/messages',
+        icon: MessageSquare,
+      },
+      {
+        title: 'الدعم الفني',
+        href: '/admin/support',
+        icon: HelpCircle,
+      },
+      {
+        title: 'ملاحظات',
+        href: '/admin/feedback',
+        icon: MessageSquare,
+      },
+      {
+        title: 'اتصل بنا',
+        href: '/admin/contact',
+        icon: Phone,
+      },
+    ]
+  },
+  {
+    title: 'الأدوات والبحث',
+    icon: Search,
+    children: [
+      {
+        title: 'بحث',
+        href: '/admin/search',
+        icon: Search,
+      },
+      {
+        title: 'تصفية',
+        href: '/admin/filter',
+        icon: Filter,
+      },
+      {
+        title: 'تصدير',
+        href: '/admin/export',
+        icon: Download,
+      },
+      {
+        title: 'استيراد',
+        href: '/admin/import',
+        icon: Upload,
+      },
+      {
+        title: 'طباعة',
+        href: '/admin/print',
+        icon: Printer,
+      },
+    ]
   },
   {
     title: 'إدارة الموقع',
@@ -143,22 +503,6 @@ const sidebarItems = [
     ]
   },
   {
-    title: 'إدارة العملاء',
-    icon: Users,
-    children: [
-      {
-        title: 'العملاء',
-        href: '/admin/customers',
-        icon: Users,
-      },
-      {
-        title: 'إدارة علاقات العملاء',
-        href: '/admin/crm',
-        icon: TrendingUp,
-      },
-    ]
-  },
-  {
     title: 'الإدارة المالية',
     icon: DollarSign,
     children: [
@@ -212,22 +556,6 @@ const sidebarItems = [
     ]
   },
   {
-    title: 'المخزون والموارد',
-    icon: Package,
-    children: [
-      {
-        title: 'المخزون',
-        href: '/admin/inventory',
-        icon: Package,
-      },
-      {
-        title: 'الأرشيف',
-        href: '/admin/archive',
-        icon: Archive,
-      },
-    ]
-  },
-  {
     title: 'نظام التأمين',
     icon: Shield,
     children: [
@@ -237,16 +565,6 @@ const sidebarItems = [
         icon: Shield,
       },
     ]
-  },
-  {
-    title: 'الإشعارات',
-    href: '/admin/notifications',
-    icon: Bell,
-  },
-  {
-    title: 'الإعدادات',
-    href: '/admin/settings',
-    icon: Settings,
   },
 ]
 
