@@ -44,18 +44,20 @@ interface Vehicle {
   createdAt: string
   updatedAt: string
   images: { id: string; imageUrl: string; isPrimary: boolean; order: number }[]
+  specifications: { id: string; key: string; label: string; value: string; category: string }[]
   pricing?: {
     basePrice: number
     discountPrice?: number
     discountPercentage?: number
+    taxes: number
+    fees: number
     totalPrice: number
     currency: string
     hasDiscount: boolean
   }
-  specifications: { id: string; key: string; label: string; value: string; category: string }[]
-  _count: {
-    testDriveBookings: number
-    serviceBookings: number
+  _count?: {
+    testDriveBookings?: number
+    serviceBookings?: number
   }
 }
 
@@ -155,23 +157,41 @@ export default function AdminVehiclesPage() {
       if (!response.ok) throw new Error('فشل في جلب المركبات')
       
       const data = await response.json()
-      setVehicles(data.vehicles || [])
+      
+      // Ensure vehicles is an array and has proper structure
+      const vehiclesData = Array.isArray(data.vehicles) ? data.vehicles.map(vehicle => ({
+        ...vehicle,
+        images: Array.isArray(vehicle.images) ? vehicle.images : [],
+        specifications: Array.isArray(vehicle.specifications) ? vehicle.specifications : [],
+        _count: vehicle._count || { testDriveBookings: 0, serviceBookings: 0 }
+      })) : []
+      
+      setVehicles(vehiclesData)
       setTotalPages(data.pagination?.totalPages || 1)
       
       // Calculate stats
       const vehicleStats: VehicleStats = {
-        total: data.vehicles?.length || 0,
-        available: data.vehicles?.filter((v: Vehicle) => v.status === 'AVAILABLE').length || 0,
-        sold: data.vehicles?.filter((v: Vehicle) => v.status === 'SOLD').length || 0,
-        reserved: data.vehicles?.filter((v: Vehicle) => v.status === 'RESERVED').length || 0,
-        maintenance: data.vehicles?.filter((v: Vehicle) => v.status === 'MAINTENANCE').length || 0,
-        totalValue: data.vehicles?.reduce((sum: number, v: Vehicle) => sum + (v.pricing?.totalPrice || v.price), 0) || 0
+        total: vehiclesData.length,
+        available: vehiclesData.filter((v: Vehicle) => v.status === 'AVAILABLE').length,
+        sold: vehiclesData.filter((v: Vehicle) => v.status === 'SOLD').length,
+        reserved: vehiclesData.filter((v: Vehicle) => v.status === 'RESERVED').length,
+        maintenance: vehiclesData.filter((v: Vehicle) => v.status === 'MAINTENANCE').length,
+        totalValue: vehiclesData.reduce((sum: number, v: Vehicle) => sum + (v.pricing?.totalPrice || v.price), 0)
       }
       setStats(vehicleStats)
       
     } catch (error) {
       console.error('Error fetching vehicles:', error)
-      toast.error('فشل في جلب المركبات')
+      toast.error(error instanceof Error ? error.message : 'فشل في جلب المركبات')
+      setVehicles([])
+      setStats({
+        total: 0,
+        available: 0,
+        sold: 0,
+        reserved: 0,
+        maintenance: 0,
+        totalValue: 0
+      })
     } finally {
       setLoading(false)
     }
@@ -547,7 +567,7 @@ export default function AdminVehiclesPage() {
                     <div className="w-20 h-16 bg-gray-200 rounded-lg overflow-hidden">
                       {vehicle.images && vehicle.images.length > 0 ? (
                         <img 
-                          src={vehicle.images.find(img => img.isPrimary)?.imageUrl || vehicle.images[0].imageUrl} 
+                          src={vehicle.images.find(img => img.isPrimary)?.imageUrl || vehicle.images[0]?.imageUrl} 
                           alt={`${vehicle.make} ${vehicle.model}`}
                           className="w-full h-full object-cover"
                           onError={(e) => {
@@ -577,10 +597,10 @@ export default function AdminVehiclesPage() {
                         {vehicle.featured && (
                           <Badge variant="secondary">مميز</Badge>
                         )}
-                        {vehicle._count.testDriveBookings > 0 && (
+                        {vehicle._count?.testDriveBookings > 0 && (
                           <Badge variant="outline">{vehicle._count.testDriveBookings} قيادة تجريبية</Badge>
                         )}
-                        {vehicle._count.serviceBookings > 0 && (
+                        {vehicle._count?.serviceBookings > 0 && (
                           <Badge variant="outline">{vehicle._count.serviceBookings} حجز صيانة</Badge>
                         )}
                       </div>

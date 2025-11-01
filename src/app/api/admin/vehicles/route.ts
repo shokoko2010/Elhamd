@@ -93,11 +93,11 @@ export async function GET(request: NextRequest) {
             orderBy: { category: 'asc' }
           },
           pricing: true,
-          testDriveBookings: {
-            select: { id: true }
-          },
-          serviceBookings: {
-            select: { id: true }
+          _count: {
+            select: {
+              testDriveBookings: true,
+              serviceBookings: true
+            }
           }
         },
         orderBy: [
