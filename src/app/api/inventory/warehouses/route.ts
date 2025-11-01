@@ -1,7 +1,3 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
@@ -11,39 +7,72 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getApiUser(request)
     
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER)) {
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get warehouses with current stock count
-    const warehouses = await db.warehouse.findMany({
-      include: {
-        inventoryItems: {
-          select: {
-            id: true,
-            quantity: true
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const search = searchParams.get('search') || ''
+
+    const offset = (page - 1) * limit
+
+    // Build where clause
+    let whereClause: any = {}
+    
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { location: { contains: search, mode: 'insensitive' } }
+      ]
+    }
+
+    // Get warehouses
+    const [warehouses, total] = await Promise.all([
+      db.warehouse.findMany({
+        where: whereClause,
+        include: {
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
+          _count: {
+            select: {
+              inventoryItems: true
+            }
           }
-        }
-      },
-      orderBy: { name: 'asc' }
-    })
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit
+      }),
+      db.warehouse.count({ where: whereClause })
+    ])
 
     // Transform warehouses data
-    const transformedWarehouses = warehouses.map(warehouse => {
-      const currentStock = warehouse.inventoryItems.reduce((sum, item) => sum + item.quantity, 0)
-      return {
-        id: warehouse.id,
-        name: warehouse.name,
-        location: warehouse.location,
-        capacity: warehouse.capacity,
-        currentStock,
-        manager: warehouse.manager,
-        contact: warehouse.contact,
-        status: warehouse.status
+    const transformedWarehouses = warehouses.map(warehouse => ({
+      id: warehouse.id,
+      name: warehouse.name,
+      location: warehouse.location,
+      capacity: warehouse.capacity,
+      currentItems: warehouse._count.inventoryItems,
+      isActive: warehouse.status === 'active',
+      branch: warehouse.branch
+    }))
+
+    return NextResponse.json({
+      warehouses: transformedWarehouses,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
       }
     })
-
-    return NextResponse.json(transformedWarehouses)
 
   } catch (error) {
     console.error('Error fetching warehouses:', error)
@@ -63,7 +92,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, location, capacity, manager, contact } = body
+    const {
+      name,
+      location,
+      capacity,
+      manager,
+      contact,
+      branchId
+    } = body
 
     // Validate required fields
     if (!name || !location || !capacity || !manager) {
@@ -81,20 +117,36 @@ export async function POST(request: NextRequest) {
         capacity,
         manager,
         contact,
+        branchId,
         status: 'active'
+      },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        },
+        _count: {
+          select: {
+            inventoryItems: true
+          }
+        }
       }
     })
 
-    return NextResponse.json({
+    const transformedWarehouse = {
       id: warehouse.id,
       name: warehouse.name,
       location: warehouse.location,
       capacity: warehouse.capacity,
-      currentStock: 0,
-      manager: warehouse.manager,
-      contact: warehouse.contact,
-      status: warehouse.status
-    })
+      currentItems: warehouse._count.inventoryItems,
+      isActive: warehouse.status === 'active',
+      branch: warehouse.branch
+    }
+
+    return NextResponse.json(transformedWarehouse, { status: 201 })
 
   } catch (error) {
     console.error('Error creating warehouse:', error)
