@@ -58,23 +58,23 @@ const defaultSettings: SiteSettings = {
   secondaryColor: '#10B981',
   accentColor: '#F59E0B',
   fontFamily: 'Inter',
-  siteTitle: 'Al-Hamd Cars',
-  siteDescription: 'Premium Car Dealership in Egypt',
-  contactEmail: 'info@elhamdimport.com',
-  contactPhone: '+20 123 456 7890',
-  contactAddress: 'Cairo, Egypt',
+  siteTitle: 'شركة الحمد لاستيراد السيارات',
+  siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+  contactEmail: 'info@elhamdimport.online',
+  contactPhone: '+20 2 12345678',
+  contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
   socialLinks: {
-    facebook: 'https://facebook.com/alhamdcars',
-    twitter: 'https://twitter.com/alhamdcars',
-    instagram: 'https://instagram.com/alhamdcars',
-    linkedin: 'https://linkedin.com/company/alhamdcars'
+    facebook: 'https://facebook.com/elhamdimport',
+    twitter: 'https://twitter.com/elhamdimport',
+    instagram: 'https://instagram.com/elhamdimport',
+    linkedin: 'https://linkedin.com/company/elhamdimport'
   },
   seoSettings: {
-    metaTitle: 'Al-Hamd Cars - Premium Car Dealership in Egypt',
-    metaDescription: 'Discover premium cars at Al-Hamd Cars. Best prices, excellent service, and wide selection of vehicles.',
-    keywords: 'cars, dealership, egypt, premium vehicles, car sales',
+    metaTitle: 'شركة الحمد للسيارات - الوكيل الحصري لتاتا موتورز',
+    metaDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
+    keywords: 'سيارات تاتا، وكيل تاتا، سيارات تجارية، شاحنات، بيك أب، مصر',
     ogImage: '/og-image.jpg',
-    twitterHandle: '@alhamdcars'
+    twitterHandle: '@elhamdimport'
   },
   headerSettings: {
     showLogo: true,
@@ -115,9 +115,12 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
         const data = await response.json()
         setSettings(data)
         applySettingsToDOM(data)
+      } else {
+        console.warn('Failed to load site settings, using defaults')
       }
     } catch (error) {
       console.error('Error loading site settings:', error)
+      // Keep default settings on error
     } finally {
       setLoading(false)
     }

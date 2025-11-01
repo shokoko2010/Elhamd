@@ -63,9 +63,9 @@ export const authOptions = {
     maxAge: 24 * 60 * 60, // 24 hours
     updateAge: 60 * 60, // 1 hour
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key-for-development',
   // Use the correct URL configuration
-  url: process.env.NEXTAUTH_URL,
+  url: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   trustHost: true,
   debug: process.env.NODE_ENV === 'development',
   callbacks: {

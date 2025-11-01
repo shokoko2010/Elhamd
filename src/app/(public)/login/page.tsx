@@ -35,23 +35,33 @@ export default function LoginPage() {
         console.log('Login successful')
         
         // Get user role to determine redirect
-        const response = await fetch('/api/auth/session')
-        const session = await response.json()
-        const userRole = session?.user?.role
-        
-        // Redirect based on role
-        if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
-          console.log('Redirecting to admin dashboard...')
-          router.push('/admin')
-        } else if (userRole === UserRole.STAFF || userRole === UserRole.BRANCH_MANAGER) {
-          console.log('Redirecting to employee dashboard...')
-          router.push('/employee/dashboard')
-        } else if (userRole === UserRole.CUSTOMER) {
-          console.log('Redirecting to customer dashboard...')
-          router.push('/customer')
-        } else {
-          console.log('Redirecting to general dashboard...')
-          router.push('/dashboard')
+        try {
+          const response = await fetch('/api/auth/session')
+          if (response.ok) {
+            const session = await response.json()
+            const userRole = session?.user?.role
+            
+            // Redirect based on role
+            if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
+              console.log('Redirecting to admin dashboard...')
+              router.push('/admin')
+            } else if (userRole === UserRole.STAFF || userRole === UserRole.BRANCH_MANAGER) {
+              console.log('Redirecting to employee dashboard...')
+              router.push('/employee/dashboard')
+            } else if (userRole === UserRole.CUSTOMER) {
+              console.log('Redirecting to customer dashboard...')
+              router.push('/customer')
+            } else {
+              console.log('Redirecting to general dashboard...')
+              router.push('/dashboard')
+            }
+          } else {
+            console.log('Failed to get session after login')
+            setError('فشل في الحصول على معلومات الجلسة')
+          }
+        } catch (sessionError) {
+          console.error('Error getting session after login:', sessionError)
+          setError('فشل في التحقق من الجلسة')
         }
       } else {
         setError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
@@ -90,9 +100,10 @@ export default function LoginPage() {
             <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
               <p className="font-medium mb-1">معلومات تسجيل الدخول:</p>
               <ul className="text-xs space-y-1">
-                <li>• المشرفون: admin@elhamd.com</li>
-                <li>• الموظفون: بريد العمل الخاص</li>
-                <li>• العملاء: البريد المسجل</li>
+                <li>• مدير النظام: admin@elhamdimport.online / admin123</li>
+                <li>• مدير الفرع: manager@elhamdimport.online / manager123</li>
+                <li>• مدير المبيعات: sales.manager@elhamdimport.online / salesmanager123</li>
+                <li>• مدير الخدمة: service.manager@elhamdimport.online / servicemanager123</li>
               </ul>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">

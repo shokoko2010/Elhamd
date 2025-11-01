@@ -14,6 +14,13 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Set CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    }
+
     if (!settings) {
       // Return default settings if none exist
       const defaultSettings = {
@@ -24,23 +31,23 @@ export async function GET(request: NextRequest) {
         secondaryColor: '#10B981',
         accentColor: '#F59E0B',
         fontFamily: 'Inter',
-        siteTitle: 'Al-Hamd Cars',
-        siteDescription: 'Premium Car Dealership in Egypt',
-        contactEmail: 'info@elhamdimport.com',
-        contactPhone: '+20 123 456 7890',
-        contactAddress: 'Cairo, Egypt',
+        siteTitle: 'شركة الحمد لاستيراد السيارات',
+        siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+        contactEmail: 'info@elhamdimport.online',
+        contactPhone: '+20 2 12345678',
+        contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
         socialLinks: {
-          facebook: 'https://facebook.com/alhamdcars',
-          twitter: 'https://twitter.com/alhamdcars',
-          instagram: 'https://instagram.com/alhamdcars',
-          linkedin: 'https://linkedin.com/company/alhamdcars'
+          facebook: 'https://facebook.com/elhamdimport',
+          twitter: 'https://twitter.com/elhamdimport',
+          instagram: 'https://instagram.com/elhamdimport',
+          linkedin: 'https://linkedin.com/company/elhamdimport'
         },
         seoSettings: {
-          metaTitle: 'Al-Hamd Cars - Premium Car Dealership in Egypt',
-          metaDescription: 'Discover premium cars at Al-Hamd Cars. Best prices, excellent service, and wide selection of vehicles.',
-          keywords: 'cars, dealership, egypt, premium vehicles, car sales',
+          metaTitle: 'شركة الحمد للسيارات - الوكيل الحصري لتاتا موتورز',
+          metaDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
+          keywords: 'سيارات تاتا، وكيل تاتا، سيارات تجارية، شاحنات، بيك أب، مصر',
           ogImage: '/og-image.jpg',
-          twitterHandle: '@alhamdcars'
+          twitterHandle: '@elhamdimport'
         },
         performanceSettings: {
           cachingEnabled: true,
@@ -73,7 +80,7 @@ export async function GET(request: NextRequest) {
           columns: 4
         }
       }
-      return NextResponse.json(defaultSettings)
+      return NextResponse.json(defaultSettings, { headers })
     }
 
     // Ensure all JSON fields have default values
@@ -86,12 +93,30 @@ export async function GET(request: NextRequest) {
       footerSettings: settings.footerSettings || {}
     }
 
-    return NextResponse.json(processedSettings)
+    return NextResponse.json(processedSettings, { headers })
   } catch (error) {
     console.error('Error fetching public site settings:', error)
     return NextResponse.json(
       { error: 'Failed to fetch site settings' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        }
+      }
     )
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    },
+  })
 }
