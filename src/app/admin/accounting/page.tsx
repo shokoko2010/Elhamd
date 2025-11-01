@@ -44,7 +44,7 @@ interface JournalEntry {
     id: string
     name: string
   }
-  items: JournalEntryItem[]
+  items?: JournalEntryItem[]
 }
 
 interface JournalEntryItem {
@@ -67,6 +67,7 @@ export default function AccountingPage() {
 
   const fetchAccountingData = async () => {
     try {
+      setLoading(true)
       const [accountsRes, entriesRes] = await Promise.all([
         fetch('/api/accounting/accounts'),
         fetch('/api/accounting/journal-entries')
@@ -74,15 +75,23 @@ export default function AccountingPage() {
 
       if (accountsRes.ok) {
         const accountsData = await accountsRes.json()
-        setAccounts(accountsData)
+        setAccounts(Array.isArray(accountsData) ? accountsData : [])
+      } else {
+        console.error('Failed to fetch accounts:', accountsRes.status)
+        setAccounts([])
       }
 
       if (entriesRes.ok) {
         const entriesData = await entriesRes.json()
-        setJournalEntries(entriesData)
+        setJournalEntries(Array.isArray(entriesData) ? entriesData : [])
+      } else {
+        console.error('Failed to fetch journal entries:', entriesRes.status)
+        setJournalEntries([])
       }
     } catch (error) {
       console.error('Error fetching accounting data:', error)
+      setAccounts([])
+      setJournalEntries([])
     } finally {
       setLoading(false)
     }
@@ -310,6 +319,11 @@ export default function AccountingPage() {
                       </div>
                     </div>
                   ))}
+                  {journalEntries.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      لا توجد قيود محاسبية حالياً
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -323,6 +337,7 @@ export default function AccountingPage() {
                 <div className="space-y-3">
                   {['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'].map((type) => {
                     const typeAccounts = accounts.filter(a => a.type === type && a.isActive)
+                    const totalActiveAccounts = accounts.filter(a => a.isActive).length
                     return (
                       <div key={type} className="flex items-center justify-between">
                         <span className="text-sm font-medium">
@@ -333,12 +348,17 @@ export default function AccountingPage() {
                             {typeAccounts.length} حساب
                           </Badge>
                           <span className="text-sm text-muted-foreground">
-                            {Math.round((typeAccounts.length / accounts.filter(a => a.isActive).length) * 100)}%
+                            {totalActiveAccounts > 0 ? Math.round((typeAccounts.length / totalActiveAccounts) * 100) : 0}%
                           </span>
                         </div>
                       </div>
                     )
                   })}
+                  {accounts.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      لا توجد حسابات حالياً
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -391,6 +411,11 @@ export default function AccountingPage() {
                     </div>
                   </div>
                 ))}
+                {accounts.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    لا توجد حسابات حالياً
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -460,29 +485,42 @@ export default function AccountingPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {entry.items.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>{item.account.code} - {item.account.name}</TableCell>
-                              <TableCell>{item.description || '-'}</TableCell>
-                              <TableCell className="text-right">
-                                {item.debit > 0 ? new Intl.NumberFormat('ar-EG', {
-                                  style: 'currency',
-                                  currency: 'EGP'
-                                }).format(item.debit) : '-'}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {item.credit > 0 ? new Intl.NumberFormat('ar-EG', {
-                                  style: 'currency',
-                                  currency: 'EGP'
-                                }).format(item.credit) : '-'}
+                          {entry.items && entry.items.length > 0 ? (
+                            entry.items.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell>{item.account.code} - {item.account.name}</TableCell>
+                                <TableCell>{item.description || '-'}</TableCell>
+                                <TableCell className="text-right">
+                                  {item.debit > 0 ? new Intl.NumberFormat('ar-EG', {
+                                    style: 'currency',
+                                    currency: 'EGP'
+                                  }).format(item.debit) : '-'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {item.credit > 0 ? new Intl.NumberFormat('ar-EG', {
+                                    style: 'currency',
+                                    currency: 'EGP'
+                                  }).format(item.credit) : '-'}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                لا توجد بنود لهذا القيد
                               </TableCell>
                             </TableRow>
-                          ))}
+                          )}
                         </TableBody>
                       </Table>
                     </div>
                   </div>
                 ))}
+                {journalEntries.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    لا توجد قيود محاسبية حالياً
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
