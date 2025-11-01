@@ -128,9 +128,9 @@ export default function AdminVehiclesPage() {
     stockNumber: '',
     vin: '',
     description: '',
-    category: '',
-    fuelType: '',
-    transmission: '',
+    category: 'SEDAN', // Default value instead of empty string
+    fuelType: 'PETROL', // Default value instead of empty string
+    transmission: 'MANUAL', // Default value instead of empty string
     mileage: 0,
     color: '',
     status: 'AVAILABLE',
@@ -145,8 +145,8 @@ export default function AdminVehiclesPage() {
         page: currentPage.toString(),
         limit: '10',
         search,
-        category,
-        status,
+        category: category === 'all' ? '' : category,
+        status: status === 'all' ? '' : status,
         sortBy,
         sortOrder
       })
@@ -180,6 +180,20 @@ export default function AdminVehiclesPage() {
   // Create vehicle
   const handleCreateVehicle = async () => {
     try {
+      // Validate required fields
+      if (!formData.model.trim()) {
+        toast.error('الموديل مطلوب')
+        return
+      }
+      if (!formData.stockNumber.trim()) {
+        toast.error('رقم المخزون مطلوب')
+        return
+      }
+      if (formData.price <= 0) {
+        toast.error('السعر يجب أن يكون أكبر من صفر')
+        return
+      }
+
       const response = await fetch('/api/admin/vehicles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -206,6 +220,20 @@ export default function AdminVehiclesPage() {
     if (!selectedVehicle) return
     
     try {
+      // Validate required fields
+      if (!formData.model.trim()) {
+        toast.error('الموديل مطلوب')
+        return
+      }
+      if (!formData.stockNumber.trim()) {
+        toast.error('رقم المخزون مطلوب')
+        return
+      }
+      if (formData.price <= 0) {
+        toast.error('السعر يجب أن يكون أكبر من صفر')
+        return
+      }
+
       const response = await fetch(`/api/admin/vehicles/${selectedVehicle.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -262,9 +290,9 @@ export default function AdminVehiclesPage() {
       stockNumber: '',
       vin: '',
       description: '',
-      category: '',
-      fuelType: '',
-      transmission: '',
+      category: 'SEDAN', // Default value instead of empty string
+      fuelType: 'PETROL', // Default value instead of empty string
+      transmission: 'MANUAL', // Default value instead of empty string
       mileage: 0,
       color: '',
       status: 'AVAILABLE',
@@ -276,20 +304,20 @@ export default function AdminVehiclesPage() {
   const openEditDialog = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle)
     setFormData({
-      make: vehicle.make,
-      model: vehicle.model,
-      year: vehicle.year,
-      price: vehicle.price,
-      stockNumber: vehicle.stockNumber,
+      make: vehicle.make || 'Tata Motors',
+      model: vehicle.model || '',
+      year: vehicle.year || new Date().getFullYear(),
+      price: vehicle.price || 0,
+      stockNumber: vehicle.stockNumber || '',
       vin: vehicle.vin || '',
       description: vehicle.description || '',
-      category: vehicle.category,
-      fuelType: vehicle.fuelType,
-      transmission: vehicle.transmission,
+      category: vehicle.category || 'SEDAN',
+      fuelType: vehicle.fuelType || 'PETROL',
+      transmission: vehicle.transmission || 'MANUAL',
       mileage: vehicle.mileage || 0,
       color: vehicle.color || '',
-      status: vehicle.status,
-      featured: vehicle.featured
+      status: vehicle.status || 'AVAILABLE',
+      featured: vehicle.featured || false
     })
     setIsEditDialogOpen(true)
   }
@@ -422,12 +450,12 @@ export default function AdminVehiclesPage() {
                 />
               </div>
             </div>
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={category || 'all'} onValueChange={setCategory}>
               <SelectTrigger className="w-full lg:w-48">
                 <SelectValue placeholder="جميع الفئات" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع الفئات</SelectItem>
+                <SelectItem value="all">جميع الفئات</SelectItem>
                 {VEHICLE_CATEGORIES.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
@@ -435,12 +463,12 @@ export default function AdminVehiclesPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status || 'all'} onValueChange={setStatus}>
               <SelectTrigger className="w-full lg:w-48">
                 <SelectValue placeholder="جميع الحالات" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع الحالات</SelectItem>
+                <SelectItem value="all">جميع الحالات</SelectItem>
                 {VEHICLE_STATUSES.map((stat) => (
                   <SelectItem key={stat.value} value={stat.value}>
                     {stat.label}
