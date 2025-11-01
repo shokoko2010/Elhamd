@@ -205,7 +205,7 @@ function DashboardContent() {
       items: [
         { id: 'hr', label: 'الموارد البشرية', icon: Building },
         { id: 'employees', label: 'الموظفون', icon: UserCheck },
-        { id: 'attendance', label: 'الحضور والانصراف', icon: Clock },
+        { id: 'attendance', label: 'الحضور والانصراف', icon: Calendar },
         { id: 'payroll', label: 'الرواتب', icon: Calculator },
         { id: 'leaves', label: 'الإجازات', icon: Calendar },
         { id: 'performance', label: 'تقييم الأداء', icon: Award },
