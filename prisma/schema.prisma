@@ -57,6 +57,7 @@ model User {
   crmInteractions        CRMInteraction[]
   feedback               CustomerFeedback[]
   customerProfile        CustomerProfile?
+  employee               Employee?
   invoices               Invoice[]
   knowledgeBaseArticles  KnowledgeBaseArticle[] @relation("ArticleAuthor")
   reviewedArticles       KnowledgeBaseArticle[] @relation("ArticleReviewer")
@@ -64,9 +65,13 @@ model User {
   leadActivities         LeadActivity[]         @relation("LeadActivityUser")
   createdLeads           Lead[]                 @relation("LeadAssigner")
   leads                  Lead[]                 @relation("LeadAssignee")
+  leaveApprovals         LeaveRequest[]         @relation("LeaveApprover")
   approvedCampaigns      MarketingCampaign[]    @relation("CampaignApprover")
   marketingCampaigns     MarketingCampaign[]    @relation("CampaignCreator")
+  approvedPayrollRecords PayrollRecord[]        @relation("PayrollApprover")
+  payrollRecords         PayrollRecord[]        @relation("PayrollCreator")
   performanceMetrics     PerformanceMetric[]
+  performanceReviews     PerformanceReview[]    @relation("PerformanceReviewer")
   approvedPurchaseOrders PurchaseOrder[]        @relation("PurchaseOrderApprover")
   purchaseOrders         PurchaseOrder[]        @relation("PurchaseOrderCreator")
   quotations             Quotation[]            @relation("QuotationCreator")
@@ -88,11 +93,6 @@ model User {
   ticketTimeline         TicketTimeline[]
   transactions           Transaction[]
   permissions            UserPermission[]
-  employee               Employee?
-  payrollRecords         PayrollRecord[]       @relation("PayrollCreator")
-  approvedPayrollRecords PayrollRecord[]       @relation("PayrollApprover")
-  leaveApprovals         LeaveRequest[]        @relation("LeaveApprover")
-  performanceReviews     PerformanceReview[]   @relation("PerformanceReviewer")
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   roleTemplate           RoleTemplate?          @relation(fields: [roleTemplateId], references: [id])
 
@@ -125,6 +125,7 @@ model Branch {
   manager                User?                   @relation("BranchManager", fields: [managerId], references: [id])
   complaints             Complaint[]
   customerServiceMetrics CustomerServiceMetric[]
+  employees              Employee[]
   inventory              InventoryItem[]
   invoices               Invoice[]
   leads                  Lead[]
@@ -136,7 +137,6 @@ model Branch {
   users                  User[]
   vehicles               Vehicle[]
   warehouses             Warehouse[]
-  employees              Employee[]
 
   @@index([code])
   @@index([isActive])
@@ -2010,14 +2010,12 @@ model JournalEntryItem {
 }
 
 model Department {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String     @id @default(cuid())
+  name        String     @unique
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   employees   Employee[]
   positions   Position[]
 
@@ -2025,53 +2023,49 @@ model Department {
 }
 
 model Position {
-  id          String      @id @default(cuid())
-  title       String
+  id           String     @id @default(cuid())
+  title        String
   departmentId String
-  level       String      @default("JUNIOR")
-  description String?
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  // Relations
-  department  Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  employees   Employee[]
+  level        String     @default("JUNIOR")
+  description  String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  employees    Employee[]
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
   @@unique([title, departmentId])
   @@map("positions")
 }
 
 model Employee {
-  id                String         @id @default(cuid())
-  employeeNumber    String         @unique
-  userId            String         @unique
-  departmentId      String?
-  positionId        String?
-  hireDate          DateTime
-  salary            Float
-  bankAccount       String?
-  taxNumber         String?
-  insuranceNumber   String?
-  status            EmployeeStatus @default(ACTIVE)
-  managerId         String?
-  branchId          String?
-  emergencyContact  Json?
-  notes             String?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  // Relations
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department        Department?    @relation(fields: [departmentId], references: [id])
-  position          Position?      @relation(fields: [positionId], references: [id])
-  branch            Branch?        @relation(fields: [branchId], references: [id])
-  manager           Employee?      @relation("EmployeeManager", fields: [managerId], references: [id])
-  managedEmployees  Employee[]     @relation("EmployeeManager")
-  leaveRequests     LeaveRequest[]
-  payrollRecords    PayrollRecord[]
+  id                 String              @id @default(cuid())
+  employeeNumber     String              @unique
+  userId             String              @unique
+  departmentId       String?
+  positionId         String?
+  hireDate           DateTime
+  salary             Float
+  bankAccount        String?
+  taxNumber          String?
+  insuranceNumber    String?
+  status             EmployeeStatus      @default(ACTIVE)
+  managerId          String?
+  branchId           String?
+  emergencyContact   Json?
+  notes              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  branch             Branch?             @relation(fields: [branchId], references: [id])
+  department         Department?         @relation(fields: [departmentId], references: [id])
+  manager            Employee?           @relation("EmployeeManager", fields: [managerId], references: [id])
+  managedEmployees   Employee[]          @relation("EmployeeManager")
+  position           Position?           @relation(fields: [positionId], references: [id])
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveRequests      LeaveRequest[]
+  payrollRecords     PayrollRecord[]
   performanceReviews PerformanceReview[]
-  trainingRecords   TrainingRecord[]
+  trainingRecords    TrainingRecord[]
 
   @@index([employeeNumber])
   @@index([departmentId])
@@ -2096,11 +2090,9 @@ model PayrollRecord {
   approvedBy  String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-
-  // Relations
-  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  creator     User          @relation("PayrollCreator", fields: [createdBy], references: [id])
   approver    User?         @relation("PayrollApprover", fields: [approvedBy], references: [id])
+  creator     User          @relation("PayrollCreator", fields: [createdBy], references: [id])
+  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId, period])
   @@map("payroll_records")
@@ -2120,10 +2112,8 @@ model LeaveRequest {
   rejectedReason String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
-
-  // Relations
-  employee       Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   approver       User?       @relation("LeaveApprover", fields: [approvedBy], references: [id])
+  employee       Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
   @@index([startDate])
@@ -2143,8 +2133,6 @@ model PerformanceReview {
   status              String            @default("DRAFT")
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
-
-  // Relations
   employee            Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   reviewer            User              @relation("PerformanceReviewer", fields: [reviewerId], references: [id])
 
@@ -2166,8 +2154,6 @@ model TrainingRecord {
   feedback     String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-
-  // Relations
   employee     Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])

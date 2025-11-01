@@ -13,37 +13,6 @@ export async function GET(request: NextRequest) {
     }
 
     const journalEntries = await db.journalEntry.findMany({
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        items: {
-          include: {
-            account: {
-              select: {
-                id: true,
-                code: true,
-                name: true
-              }
-            }
-          }
-        }
-      },
       orderBy: {
         date: 'desc'
       }
@@ -98,46 +67,7 @@ export async function POST(request: NextRequest) {
         totalDebit,
         totalCredit,
         createdBy: user.id,
-        branchId,
-        items: {
-          create: items.map((item: any) => ({
-            accountId: item.accountId,
-            description: item.description,
-            debit: item.debit || 0,
-            credit: item.credit || 0
-          }))
-        }
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        items: {
-          include: {
-            account: {
-              select: {
-                id: true,
-                code: true,
-                name: true
-              }
-            }
-          }
-        }
+        branchId
       }
     })
 

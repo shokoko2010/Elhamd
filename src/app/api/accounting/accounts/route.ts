@@ -13,21 +13,6 @@ export async function GET(request: NextRequest) {
     }
 
     const accounts = await db.chartOfAccount.findMany({
-      include: {
-        parent: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        children: {
-          select: {
-            id: true,
-            name: true,
-            code: true
-          }
-        }
-      },
       orderBy: {
         code: 'asc'
       }
@@ -63,21 +48,6 @@ export async function POST(request: NextRequest) {
         type,
         parentId,
         normalBalance
-      },
-      include: {
-        parent: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        children: {
-          select: {
-            id: true,
-            name: true,
-            code: true
-          }
-        }
       }
     })
 
