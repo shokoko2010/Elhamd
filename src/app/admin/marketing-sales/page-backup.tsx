@@ -476,68 +476,60 @@ export default function MarketingSalesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeads.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                        لا يوجد عملاء محتملون
+                  {filteredLeads.map((lead) => (
+                    <TableRow key={lead.id}>
+                      <TableCell className="font-medium">{lead.leadNumber}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {lead.firstName} {lead.lastName}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{lead.company || '-'}</TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          {lead.email && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {lead.email}
+                            </div>
+                          )}
+                          {lead.phone && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Phone className="h-3 w-3" />
+                              {lead.phone}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{lead.source}</TableCell>
+                      <TableCell>
+                        <Badge className={leadStatusColors[lead.status as keyof typeof leadStatusColors]}>
+                          {lead.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={priorityColors[lead.priority as keyof typeof priorityColors]}>
+                          {lead.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {lead.estimatedValue ? `${lead.estimatedValue.toLocaleString('ar-EG')} ج.م` : '-'}
+                      </TableCell>
+                      <TableCell>{lead.assignedTo?.name || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredLeads.map((lead) => (
-                      <TableRow key={lead.id}>
-                        <TableCell className="font-medium">{lead.leadNumber || '-'}</TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {lead.firstName} {lead.lastName || ''}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{lead.company || '-'}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {lead.email && (
-                              <div className="flex items-center gap-1 text-sm">
-                                <Mail className="h-3 w-3" />
-                                {lead.email}
-                              </div>
-                            )}
-                            {lead.phone && (
-                              <div className="flex items-center gap-1 text-sm">
-                                <Phone className="h-3 w-3" />
-                                {lead.phone}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{lead.source || '-'}</TableCell>
-                        <TableCell>
-                          <Badge className={leadStatusColors[lead.status as keyof typeof leadStatusColors] || 'bg-gray-100 text-gray-800'}>
-                            {lead.status || 'UNKNOWN'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={priorityColors[lead.priority as keyof typeof priorityColors] || 'bg-gray-100 text-gray-800'}>
-                            {lead.priority || 'MEDIUM'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {lead.estimatedValue ? `${lead.estimatedValue.toLocaleString('ar-EG')} ج.م` : '-'}
-                        </TableCell>
-                        <TableCell>{lead.assignedTo?.name || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -566,59 +558,59 @@ export default function MarketingSalesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTargets.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                        لا توجد أهداف مبيعات
+                  {filteredTargets.map((target) => (
+                    <TableRow key={target.id}>
+                      <TableCell className="font-medium">{target.name}</TableCell>
+                      <TableCell>{target.type}</TableCell>
+                      <TableCell>
+                        {target.type === 'REVENUE' 
+                          ? `${target.targetValue.toLocaleString('ar-EG')} ج.م`
+                          : target.targetValue
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full" 
+                              style={{ width: `${Math.min(target.progress, 100)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">
+                            {(target.progress || 0).toFixed(1)}%
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            target.status === 'COMPLETED' 
+                              ? 'default'
+                              : target.status === 'ACTIVE'
+                              ? 'secondary'
+                              : 'outline'
+                          }
+                        >
+                          {target.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{target.period}</TableCell>
+                      <TableCell>{target.assignedTo.name}</TableCell>
+                      <TableCell>
+                        {format(new Date(target.endDate), 'dd/MM/yyyy', { locale: ar })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm">
+                            <BarChart3 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredTargets.map((target) => (
-                      <TableRow key={target.id}>
-                        <TableCell className="font-medium">{target.name || '-'}</TableCell>
-                        <TableCell>{target.type || '-'}</TableCell>
-                        <TableCell>
-                          {target.type === 'REVENUE' 
-                            ? `${target.targetValue.toLocaleString('ar-EG')} ج.م`
-                            : target.targetValue
-                          }
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
-                                style={{ width: `${Math.min(target.progress || 0, 100)}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-sm text-gray-600">
-                              {Math.round(target.progress || 0)}%
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusColors[target.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}>
-                            {target.status || 'UNKNOWN'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{target.period || '-'}</TableCell>
-                        <TableCell>{target.assignedTo?.name || '-'}</TableCell>
-                        <TableCell>
-                          {target.endDate ? format(new Date(target.endDate), 'dd/MM/yyyy', { locale: ar }) : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
