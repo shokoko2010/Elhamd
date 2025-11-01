@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
     const dateRange = searchParams.get('dateRange') || 'month'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
+    const stats = searchParams.get('stats') === 'true'
+    const sortBy = searchParams.get('sortBy') || 'createdAt'
+    const order = searchParams.get('order') || 'desc'
 
     // Build date filter
     const now = new Date()
@@ -67,6 +70,101 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // If stats requested, return aggregated data
+    if (stats) {
+      const currentPeriodStart = new Date()
+      currentPeriodStart.setMonth(currentPeriodStart.getMonth() - 1)
+      
+      const previousPeriodStart = new Date(currentPeriodStart)
+      previousPeriodStart.setMonth(previousPeriodStart.getMonth() - 1)
+
+      const [
+        currentTotal,
+        previousTotal,
+        currentByStatus,
+        totalValue,
+        previousValue
+      ] = await Promise.all([
+        // Current period total
+        db.quotation.count({
+          where: {
+            createdAt: { gte: currentPeriodStart },
+            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+              customer: { branchId: user.branchId }
+            })
+          }
+        }),
+        // Previous period total
+        db.quotation.count({
+          where: {
+            createdAt: { 
+              gte: previousPeriodStart,
+              lt: currentPeriodStart
+            },
+            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+              customer: { branchId: user.branchId }
+            })
+          }
+        }),
+        // Current period by status
+        db.quotation.groupBy({
+          by: ['status'],
+          where: {
+            createdAt: { gte: currentPeriodStart },
+            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+              customer: { branchId: user.branchId }
+            })
+          },
+          _count: true
+        }),
+        // Current period total value
+        db.quotation.aggregate({
+          where: {
+            createdAt: { gte: currentPeriodStart },
+            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+              customer: { branchId: user.branchId }
+            })
+          },
+          _sum: { totalAmount: true }
+        }),
+        // Previous period total value
+        db.quotation.aggregate({
+          where: {
+            createdAt: { 
+              gte: previousPeriodStart,
+              lt: currentPeriodStart
+            },
+            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+              customer: { branchId: user.branchId }
+            })
+          },
+          _sum: { totalAmount: true }
+        })
+      ])
+
+      const statusCounts = currentByStatus.reduce((acc, item) => {
+        acc[item.status] = item._count
+        return acc
+      }, {} as Record<string, number>)
+
+      const monthlyGrowth = {
+        total: previousTotal > 0 ? ((currentTotal - previousTotal) / previousTotal) * 100 : 0,
+        value: previousValue._sum.totalAmount ? 
+          ((totalValue._sum.totalAmount || 0) - previousValue._sum.totalAmount) / previousValue._sum.totalAmount * 100 : 0
+      }
+
+      return NextResponse.json({
+        total: currentTotal,
+        draft: statusCounts.DRAFT || 0,
+        sent: statusCounts.SENT || 0,
+        accepted: statusCounts.ACCEPTED || 0,
+        converted: statusCounts.CONVERTED || 0,
+        expired: statusCounts.EXPIRED || 0,
+        totalValue: totalValue._sum.totalAmount || 0,
+        monthlyGrowth
+      })
+    }
+
     const [quotations, total] = await Promise.all([
       db.quotation.findMany({
         where,
@@ -88,7 +186,7 @@ export async function GET(request: NextRequest) {
           }
         },
         orderBy: {
-          createdAt: 'desc'
+          [sortBy]: order
         },
         skip: (page - 1) * limit,
         take: limit

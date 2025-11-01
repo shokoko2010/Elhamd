@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') || ''
     const status = searchParams.get('status') || ''
     const warehouse = searchParams.get('warehouse') || ''
+    const stats = searchParams.get('stats') === 'true'
+    const lowStock = searchParams.get('lowStock') === 'true'
 
     const offset = (page - 1) * limit
 
@@ -46,6 +48,100 @@ export async function GET(request: NextRequest) {
     
     if (warehouse && warehouse !== 'all') {
       whereClause.warehouse = warehouse
+    }
+
+    // Handle low stock filter
+    if (lowStock) {
+      whereClause.quantity = {
+        lte: db.inventoryItem.fields.minStockLevel
+      }
+    }
+
+    // Handle stats request
+    if (stats) {
+      const currentMonthStart = new Date()
+      currentMonthStart.setDate(1)
+      currentMonthStart.setHours(0, 0, 0, 0)
+      
+      const previousMonthStart = new Date(currentMonthStart)
+      previousMonthStart.setMonth(previousMonthStart.getMonth() - 1)
+
+      const [
+        totalItems,
+        totalValue,
+        lowStockItems,
+        activeSuppliers,
+        currentMonthItems,
+        previousMonthItems,
+        currentMonthValue,
+        previousMonthValue
+      ] = await Promise.all([
+        // Total items
+        db.inventoryItem.count(),
+        // Total value
+        db.inventoryItem.aggregate({
+          _sum: { unitPrice: true }
+        }),
+        // Low stock items
+        db.inventoryItem.count({
+          where: {
+            quantity: {
+              lte: db.inventoryItem.fields.minStockLevel
+            }
+          }
+        }),
+        // Active suppliers (unique)
+        db.inventoryItem.groupBy({
+          by: ['supplier'],
+          _count: true
+        }),
+        // Current month items
+        db.inventoryItem.count({
+          where: {
+            createdAt: { gte: currentMonthStart }
+          }
+        }),
+        // Previous month items
+        db.inventoryItem.count({
+          where: {
+            createdAt: {
+              gte: previousMonthStart,
+              lt: currentMonthStart
+            }
+          }
+        }),
+        // Current month value
+        db.inventoryItem.aggregate({
+          where: {
+            createdAt: { gte: currentMonthStart }
+          },
+          _sum: { unitPrice: true }
+        }),
+        // Previous month value
+        db.inventoryItem.aggregate({
+          where: {
+            createdAt: {
+              gte: previousMonthStart,
+              lt: currentMonthStart
+            }
+          },
+          _sum: { unitPrice: true }
+        })
+      ])
+
+      const monthlyGrowth = {
+        items: previousMonthItems > 0 ? ((currentMonthItems - previousMonthItems) / previousMonthItems) * 100 : 0,
+        value: previousMonthValue._sum.unitPrice ? 
+          ((currentMonthValue._sum.unitPrice || 0) - previousMonthValue._sum.unitPrice) / previousMonthValue._sum.unitPrice * 100 : 0
+      }
+
+      return NextResponse.json({
+        totalItems,
+        totalValue: totalValue._sum.unitPrice || 0,
+        lowStockItems,
+        activeSuppliers: activeSuppliers.length,
+        monthlyGrowth
+      })
     }
 
     // Get inventory items
