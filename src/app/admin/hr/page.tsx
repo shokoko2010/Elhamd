@@ -37,6 +37,7 @@ interface LeaveRequest {
 }
 
 interface DepartmentStats {
+  id: string
   department: string
   employees: number
   percentage: number
@@ -100,6 +101,7 @@ export default function HRPage() {
         })
         
         const deptStats = Array.from(deptMap.entries()).map(([dept, count]) => ({
+          id: `dept-${dept}-${count}`,
           department: dept,
           employees: count,
           percentage: Math.round((count / employees.length) * 100)
@@ -381,8 +383,8 @@ export default function HRPage() {
         <CardContent>
           <div className="space-y-4">
             {departmentStats.length > 0 ? (
-              departmentStats.map((dept, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+              departmentStats.map((dept) => (
+                <div key={dept.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">{dept.department}</p>
                     <p className="text-sm text-muted-foreground">{dept.employees} موظف</p>
