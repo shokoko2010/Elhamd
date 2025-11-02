@@ -70,7 +70,6 @@ model User {
   marketingCampaigns     MarketingCampaign[]    @relation("CampaignCreator")
   approvedPayrollRecords PayrollRecord[]        @relation("PayrollApprover")
   payrollRecords         PayrollRecord[]        @relation("PayrollCreator")
-  performanceMetrics     PerformanceMetric[]
   performanceReviews     PerformanceReview[]    @relation("PerformanceReviewer")
   approvedPurchaseOrders PurchaseOrder[]        @relation("PurchaseOrderApprover")
   purchaseOrders         PurchaseOrder[]        @relation("PurchaseOrderCreator")
@@ -529,10 +528,28 @@ model PerformanceMetric {
   notes                String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-  employee             User              @relation(fields: [employeeId], references: [id])
+  employee             Employee         @relation(fields: [employeeId], references: [id])
 
   @@unique([employeeId, period])
   @@map("performance_metrics")
+}
+
+model AttendanceRecord {
+  id          String            @id @default(cuid())
+  employeeId  String
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  status      AttendanceStatus  @default(PRESENT)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  employee    Employee          @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([status])
+  @@map("attendance_records")
 }
 
 model PageSEO {
@@ -2064,6 +2081,8 @@ model Employee {
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   leaveRequests      LeaveRequest[]
   payrollRecords     PayrollRecord[]
+  performanceMetrics PerformanceMetric[]
+  attendanceRecords  AttendanceRecord[]
   performanceReviews PerformanceReview[]
   trainingRecords    TrainingRecord[]
 
@@ -3368,6 +3387,15 @@ enum EmployeeStatus {
   ON_LEAVE
   TERMINATED
   SUSPENDED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  ON_LEAVE
+  SICK_LEAVE
+  VACATION
 }
 
 enum PayrollStatus {

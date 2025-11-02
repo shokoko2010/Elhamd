@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { AttendanceStatus } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,73 +18,105 @@ export async function GET(request: NextRequest) {
       where.employeeId = employeeId
     }
 
-    // For now, generate attendance records based on employees
-    // In a real implementation, this would query a dedicated attendance table
-    const employees = await db.employee.findMany({
-      where: employeeId ? { userId: employeeId } : {},
+    const attendanceRecords = await db.attendanceRecord.findMany({
+      where,
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        department: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        position: {
-          select: {
-            id: true,
-            title: true
+        employee: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+              }
+            },
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            position: {
+              select: {
+                id: true,
+                title: true
+              }
+            }
           }
         }
+      },
+      orderBy: {
+        date: 'desc'
       }
     })
 
-    // Generate attendance records
-    const attendanceRecords = employees.map((emp) => {
-      const random = Math.random()
-      let status: 'PRESENT' | 'LATE' | 'ABSENT' | 'ON_LEAVE'
-      let checkIn: string | undefined
-      let checkOut: string | undefined
-      
-      if (random < 0.85) {
-        status = 'PRESENT'
-        checkIn = '07:' + String(Math.floor(Math.random() * 30) + 30).padStart(2, '0')
-        checkOut = '16:' + String(Math.floor(Math.random() * 30)).padStart(2, '0')
-      } else if (random < 0.92) {
-        status = 'LATE'
-        checkIn = '08:' + String(Math.floor(Math.random() * 30) + 1).padStart(2, '0')
-        checkOut = '16:' + String(Math.floor(Math.random() * 30)).padStart(2, '0')
-      } else if (random < 0.96) {
-        status = 'ON_LEAVE'
-      } else {
-        status = 'ABSENT'
-      }
-      
-      return {
-        id: emp.id,
+    // If no records found for the date, create default records for all employees
+    if (attendanceRecords.length === 0 && date) {
+      const employees = await db.employee.findMany({
+        where: employeeId ? { id: employeeId } : {},
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          department: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          position: {
+            select: {
+              id: true,
+              title: true
+            }
+          }
+        }
+      })
+
+      const defaultRecords = employees.map((emp) => ({
+        id: `default_${emp.id}`,
         employeeId: emp.id,
         employee: {
           user: {
             name: emp.user.name
           },
-          department: emp.department?.name || 'غير محدد'
+          department: emp.department?.name || 'غير محدد',
+          position: emp.position?.title || 'غير محدد'
         },
-        checkIn,
-        checkOut,
-        date: date || new Date().toISOString().split('T')[0],
-        status,
-        notes: status === 'LATE' ? 'تأخير بسبب الازدحام' : undefined
-      }
-    })
+        checkIn: undefined,
+        checkOut: undefined,
+        date: date,
+        status: 'ABSENT' as AttendanceStatus,
+        notes: 'لم يتم تسجيل الحضور'
+      }))
 
-    return NextResponse.json(attendanceRecords)
+      return NextResponse.json(defaultRecords)
+    }
+
+    const formattedRecords = attendanceRecords.map((record) => ({
+      id: record.id,
+      employeeId: record.employeeId,
+      employee: {
+        user: {
+          name: record.employee.user.name
+        },
+        department: record.employee.department?.name || 'غير محدد',
+        position: record.employee.position?.title || 'غير محدد'
+      },
+      checkIn: record.checkIn ? record.checkIn.toTimeString().slice(0, 5) : undefined,
+      checkOut: record.checkOut ? record.checkOut.toTimeString().slice(0, 5) : undefined,
+      date: record.date.toISOString().split('T')[0],
+      status: record.status,
+      notes: record.notes
+    }))
+
+    return NextResponse.json(formattedRecords)
   } catch (error) {
     console.error('Error fetching attendance records:', error)
     return NextResponse.json(
@@ -134,24 +167,67 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create attendance record (this would be saved to a database table in a real implementation)
-    const attendanceRecord = {
-      id: `att_${Date.now()}`,
-      employeeId,
+    // Create or update attendance record
+    const attendanceRecord = await db.attendanceRecord.upsert({
+      where: {
+        employeeId_date: {
+          employeeId,
+          date: new Date(date)
+        }
+      },
+      update: {
+        checkIn: checkIn ? new Date(`${date}T${checkIn}`) : undefined,
+        checkOut: checkOut ? new Date(`${date}T${checkOut}`) : undefined,
+        status: status as AttendanceStatus,
+        notes
+      },
+      create: {
+        employeeId,
+        date: new Date(date),
+        checkIn: checkIn ? new Date(`${date}T${checkIn}`) : undefined,
+        checkOut: checkOut ? new Date(`${date}T${checkOut}`) : undefined,
+        status: status as AttendanceStatus,
+        notes
+      },
+      include: {
+        employee: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+              }
+            },
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    const formattedRecord = {
+      id: attendanceRecord.id,
+      employeeId: attendanceRecord.employeeId,
       employee: {
         user: {
-          name: employee.user.name
+          name: attendanceRecord.employee.user.name
         },
-        department: employee.department?.name || 'غير محدد'
+        department: attendanceRecord.employee.department?.name || 'غير محدد'
       },
-      checkIn,
-      checkOut,
-      date,
-      status,
-      notes
+      checkIn: attendanceRecord.checkIn ? attendanceRecord.checkIn.toTimeString().slice(0, 5) : undefined,
+      checkOut: attendanceRecord.checkOut ? attendanceRecord.checkOut.toTimeString().slice(0, 5) : undefined,
+      date: attendanceRecord.date.toISOString().split('T')[0],
+      status: attendanceRecord.status,
+      notes: attendanceRecord.notes
     }
 
-    return NextResponse.json(attendanceRecord, { status: 201 })
+    return NextResponse.json(formattedRecord, { status: 201 })
   } catch (error) {
     console.error('Error creating attendance record:', error)
     return NextResponse.json(
