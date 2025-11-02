@@ -162,13 +162,15 @@ export default function InventoryPage() {
     return 'bg-green-500'
   }
 
-  const getGrowthIcon = (growth: number) => {
+  const getGrowthIcon = (growth: number | undefined) => {
+    if (!growth) return <div className="h-4 w-4" />
     if (growth > 0) return <ArrowUpRight className="h-4 w-4 text-green-600" />
     if (growth < 0) return <ArrowDownRight className="h-4 w-4 text-red-600" />
     return <div className="h-4 w-4" />
   }
 
-  const getGrowthColor = (growth: number) => {
+  const getGrowthColor = (growth: number | undefined) => {
+    if (!growth) return 'text-muted-foreground'
     if (growth > 0) return 'text-green-600'
     if (growth < 0) return 'text-red-600'
     return 'text-muted-foreground'
@@ -217,9 +219,115 @@ export default function InventoryPage() {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-6">
             <p className="text-red-600">{error}</p>
+            <p className="text-sm text-red-500 mt-2">
+              إذا كانت هذه هي المرة الأولى التي تستخدم فيها النظام، جرب زر "تهيئة البيانات" لإضافة بيانات افتراضية.
+            </p>
           </CardContent>
         </Card>
       </div>
+    )
+  }
+
+  // Check if data is empty
+  if (!loading && (!stats || stats.totalItems === 0)) {
+    return (
+      <AdminRoute>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">إدارة المخزون</h1>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={async () => {
+                  try {
+                    // Initialize warehouses and suppliers first
+                    const initResponse = await fetch('/api/inventory/initialize', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' }
+                    })
+                    
+                    if (initResponse.ok) {
+                      // Then seed inventory items
+                      const seedResponse = await fetch('/api/inventory/seed-items', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                      })
+                      
+                      if (seedResponse.ok) {
+                        alert('تم تهيئة بيانات المخزون بنجاح')
+                        loadInventoryData()
+                      } else {
+                        const error = await seedResponse.json()
+                        alert('خطأ في تهيئة أصناف المخزون: ' + (error.error || 'خطأ غير معروف'))
+                      }
+                    } else {
+                      const error = await initResponse.json()
+                      alert('خطأ في تهيئة المستودعات والموردين: ' + (error.error || 'خطأ غير معروف'))
+                    }
+                  } catch (error) {
+                    alert('حدث خطأ أثناء تهيئة البيانات')
+                  }
+                }}
+              >
+                <Plus className="ml-2 h-4 w-4" />
+                تهيئة البيانات
+              </Button>
+              <Button variant="outline" onClick={loadInventoryData}>
+                <RefreshCw className="ml-2 h-4 w-4" />
+                تحديث
+              </Button>
+            </div>
+          </div>
+          
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-8 text-center">
+              <Package className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-blue-900 mb-2">
+                مرحباً بك في نظام إدارة المخزون
+              </h2>
+              <p className="text-blue-700 mb-6 max-w-md mx-auto">
+                لا توجد بيانات مخزون حالياً. اضغط على زر "تهيئة البيانات" لإضافة بيانات افتراضية وبدء استخدام النظام.
+              </p>
+              <Button 
+                onClick={async () => {
+                  try {
+                    // Initialize warehouses and suppliers first
+                    const initResponse = await fetch('/api/inventory/initialize', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' }
+                    })
+                    
+                    if (initResponse.ok) {
+                      // Then seed inventory items
+                      const seedResponse = await fetch('/api/inventory/seed-items', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                      })
+                      
+                      if (seedResponse.ok) {
+                        alert('تم تهيئة بيانات المخزون بنجاح')
+                        loadInventoryData()
+                      } else {
+                        const error = await seedResponse.json()
+                        alert('خطأ في تهيئة أصناف المخزون: ' + (error.error || 'خطأ غير معروف'))
+                      }
+                    } else {
+                      const error = await initResponse.json()
+                      alert('خطأ في تهيئة المستودعات والموردين: ' + (error.error || 'خطأ غير معروف'))
+                    }
+                  } catch (error) {
+                    alert('حدث خطأ أثناء تهيئة البيانات')
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="ml-2 h-4 w-4" />
+                تهيئة بيانات المخزون
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminRoute>
     )
   }
 
@@ -235,6 +343,42 @@ export default function InventoryPage() {
                 طلبات الشراء
               </Button>
             </Link>
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                try {
+                  // Initialize warehouses and suppliers first
+                  const initResponse = await fetch('/api/inventory/initialize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                  })
+                  
+                  if (initResponse.ok) {
+                    // Then seed inventory items
+                    const seedResponse = await fetch('/api/inventory/seed-items', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' }
+                    })
+                    
+                    if (seedResponse.ok) {
+                      alert('تم تهيئة بيانات المخزون بنجاح')
+                      loadInventoryData()
+                    } else {
+                      const error = await seedResponse.json()
+                      alert('خطأ في تهيئة أصناف المخزون: ' + (error.error || 'خطأ غير معروف'))
+                    }
+                  } else {
+                    const error = await initResponse.json()
+                    alert('خطأ في تهيئة المستودعات والموردين: ' + (error.error || 'خطأ غير معروف'))
+                  }
+                } catch (error) {
+                  alert('حدث خطأ أثناء تهيئة البيانات')
+                }
+              }}
+            >
+              <Plus className="ml-2 h-4 w-4" />
+              تهيئة البيانات
+            </Button>
             <Button variant="outline" onClick={loadInventoryData}>
               <RefreshCw className="ml-2 h-4 w-4" />
               تحديث
@@ -251,9 +395,9 @@ export default function InventoryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalItems || 0}</div>
-              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(stats?.monthlyGrowth.items || 0)}`}>
-                {getGrowthIcon(stats?.monthlyGrowth.items || 0)}
-                {stats ? Math.abs(stats.monthlyGrowth.items) : 0}% من الشهر الماضي
+              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(stats?.monthlyGrowth?.items)}`}>
+                {getGrowthIcon(stats?.monthlyGrowth?.items)}
+                {stats?.monthlyGrowth?.items ? Math.abs(stats.monthlyGrowth.items) : 0}% من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -265,9 +409,9 @@ export default function InventoryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats ? formatCurrency(stats.totalValue) : formatCurrency(0)}</div>
-              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(stats?.monthlyGrowth.value || 0)}`}>
-                {getGrowthIcon(stats?.monthlyGrowth.value || 0)}
-                {stats ? Math.abs(stats.monthlyGrowth.value) : 0}% من الشهر الماضي
+              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(stats?.monthlyGrowth?.value)}`}>
+                {getGrowthIcon(stats?.monthlyGrowth?.value)}
+                {stats?.monthlyGrowth?.value ? Math.abs(stats.monthlyGrowth.value) : 0}% من الشهر الماضي
               </p>
             </CardContent>
           </Card>
