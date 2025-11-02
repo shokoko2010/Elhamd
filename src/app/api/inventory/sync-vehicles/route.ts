@@ -36,6 +36,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Get existing vehicle IDs in inventory
+    const existingVehicleItems = await db.inventoryItem.findMany({
+      where: {
+        category: 'VEHICLES'
+      },
+      select: {
+        partNumber: true
+      }
+    })
+    
+    const existingVehicleIds = existingVehicleItems
+      .filter(item => item.partNumber.startsWith('VEH-'))
+      .map(item => item.partNumber.replace('VEH-', ''))
+
     let syncedCount = 0
     let skippedCount = 0
     let errorCount = 0
@@ -43,19 +57,12 @@ export async function POST(request: NextRequest) {
     for (const vehicle of vehicles) {
       try {
         // Check if vehicle already exists in inventory
-        const existingItem = await db.inventoryItem.findFirst({
-          where: {
-            OR: [
-              { partNumber: `VEH-${vehicle.id}` },
-              { name: `${vehicle.make} ${vehicle.model}` }
-            ]
-          }
-        })
-
-        if (existingItem) {
+        if (existingVehicleIds.includes(vehicle.id)) {
           // Update existing item
-          await db.inventoryItem.update({
-            where: { id: existingItem.id },
+          await db.inventoryItem.updateMany({
+            where: {
+              partNumber: `VEH-${vehicle.id}`
+            },
             data: {
               quantity: 1,
               unitPrice: vehicle.price,

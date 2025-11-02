@@ -82,6 +82,7 @@ export async function getApiUser(request: Request): Promise<ApiUser | null> {
   try {
     // First try Bearer token authentication
     const authHeader = request.headers.get('authorization')
+    
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7)
       const decoded = verifyApiToken(token)

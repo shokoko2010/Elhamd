@@ -1,7 +1,3 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
@@ -25,9 +21,7 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    const where: any = {
-      isActive: true,
-    }
+    const where: any = {}
 
     if (search) {
       where.OR = [
@@ -37,11 +31,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (status !== 'all') {
-      where.priority = status as MaintenanceStatus
+      where.status = status
     }
 
     if (type !== 'all') {
-      where.type = type as MaintenanceType
+      where.type = type
     }
 
     if (vehicleId) {
@@ -51,30 +45,6 @@ export async function GET(request: NextRequest) {
     const [schedules, total] = await Promise.all([
       db.maintenanceSchedule.findMany({
         where,
-        include: {
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true,
-              stockNumber: true,
-            },
-          },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          _count: {
-            select: {
-              records: true,
-              reminders: true,
-            },
-          },
-        },
         orderBy: [
           { priority: 'asc' },
           { nextService: 'asc' },
@@ -85,8 +55,41 @@ export async function GET(request: NextRequest) {
       db.maintenanceSchedule.count({ where }),
     ])
 
+    // Get vehicle information for each schedule
+    const schedulesWithVehicles = await Promise.all(
+      schedules.map(async (schedule) => {
+        const vehicle = await db.vehicle.findUnique({
+          where: { id: schedule.vehicleId },
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true,
+            stockNumber: true,
+          },
+        })
+
+        const recordsCount = await db.maintenanceRecord.count({
+          where: { scheduleId: schedule.id }
+        })
+
+        const remindersCount = await db.maintenanceReminder.count({
+          where: { scheduleId: schedule.id }
+        })
+
+        return {
+          ...schedule,
+          vehicle,
+          _count: {
+            records: recordsCount,
+            reminders: remindersCount,
+          },
+        }
+      })
+    )
+
     return NextResponse.json({
-      schedules,
+      schedules: schedulesWithVehicles,
       pagination: {
         page,
         limit,
@@ -94,6 +97,7 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit),
       },
     })
+
   } catch (error) {
     console.error('Error fetching maintenance schedules:', error)
     return NextResponse.json(
@@ -107,7 +111,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getApiUser(request)
     
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -158,8 +162,8 @@ export async function POST(request: NextRequest) {
         estimatedCost,
         priority: priority || 'PENDING',
         isActive: true,
-        createdBy: user.id,
         nextService,
+        createdBy: user.id,
       },
       include: {
         vehicle: {
@@ -169,13 +173,6 @@ export async function POST(request: NextRequest) {
             model: true,
             year: true,
             stockNumber: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
           },
         },
       },

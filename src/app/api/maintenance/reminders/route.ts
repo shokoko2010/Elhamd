@@ -40,31 +40,6 @@ export async function GET(request: NextRequest) {
     const [reminders, total] = await Promise.all([
       db.maintenanceReminder.findMany({
         where,
-        include: {
-          schedule: {
-            select: {
-              id: true,
-              title: true,
-              type: true,
-            },
-          },
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true,
-              stockNumber: true,
-            },
-          },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
         orderBy: [
           { status: 'asc' },
           { reminderDate: 'asc' },
@@ -75,8 +50,39 @@ export async function GET(request: NextRequest) {
       db.maintenanceReminder.count({ where }),
     ])
 
+    // Get related information for each reminder
+    const remindersWithDetails = await Promise.all(
+      reminders.map(async (reminder) => {
+        const schedule = await db.maintenanceSchedule.findUnique({
+          where: { id: reminder.scheduleId },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+          },
+        })
+
+        const vehicle = await db.vehicle.findUnique({
+          where: { id: reminder.vehicleId },
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true,
+            stockNumber: true,
+          },
+        })
+
+        return {
+          ...reminder,
+          schedule,
+          vehicle,
+        }
+      })
+    )
+
     return NextResponse.json({
-      reminders,
+      reminders: remindersWithDetails,
       pagination: {
         page,
         limit,
@@ -84,6 +90,7 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit),
       },
     })
+
   } catch (error) {
     console.error('Error fetching maintenance reminders:', error)
     return NextResponse.json(
@@ -97,7 +104,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getApiUser(request)
     
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -169,13 +176,6 @@ export async function POST(request: NextRequest) {
             model: true,
             year: true,
             stockNumber: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
           },
         },
       },

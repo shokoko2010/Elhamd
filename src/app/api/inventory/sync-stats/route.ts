@@ -26,17 +26,27 @@ export async function GET(request: NextRequest) {
     })
 
     // Get vehicles that can be synced (available but not in inventory)
+    // We'll use a different approach - check if inventory items with vehicle part numbers exist
+    const vehiclePartNumbers = await db.inventoryItem.findMany({
+      where: {
+        category: 'VEHICLES'
+      },
+      select: {
+        partNumber: true
+      }
+    })
+    
+    const vehicleIdsInInventory = vehiclePartNumbers
+      .filter(item => item.partNumber.startsWith('VEH-'))
+      .map(item => item.partNumber.replace('VEH-', ''))
+    
     const vehiclesToSync = await db.vehicle.count({
       where: {
         status: 'AVAILABLE',
         NOT: {
-          OR: [
-            {
-              inventoryItems: {
-                some: {}
-              }
-            }
-          ]
+          id: {
+            in: vehicleIdsInInventory
+          }
         }
       }
     })

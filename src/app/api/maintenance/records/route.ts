@@ -1,7 +1,3 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
@@ -36,11 +32,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (status !== 'all') {
-      where.status = status as MaintenanceStatus
+      where.status = status
     }
 
     if (type !== 'all') {
-      where.type = type as MaintenanceType
+      where.type = type
     }
 
     if (vehicleId) {
@@ -50,31 +46,6 @@ export async function GET(request: NextRequest) {
     const [records, total] = await Promise.all([
       db.maintenanceRecord.findMany({
         where,
-        include: {
-          vehicle: {
-            select: {
-              id: true,
-              make: true,
-              model: true,
-              year: true,
-              stockNumber: true,
-            },
-          },
-          schedule: {
-            select: {
-              id: true,
-              title: true,
-              type: true,
-            },
-          },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
         orderBy: [
           { status: 'asc' },
           { startDate: 'desc' },
@@ -85,8 +56,42 @@ export async function GET(request: NextRequest) {
       db.maintenanceRecord.count({ where }),
     ])
 
+    // Get related information for each record
+    const recordsWithDetails = await Promise.all(
+      records.map(async (record) => {
+        const vehicle = await db.vehicle.findUnique({
+          where: { id: record.vehicleId },
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true,
+            stockNumber: true,
+          },
+        })
+
+        let schedule = null
+        if (record.scheduleId) {
+          schedule = await db.maintenanceSchedule.findUnique({
+            where: { id: record.scheduleId },
+            select: {
+              id: true,
+              title: true,
+              type: true,
+            },
+          })
+        }
+
+        return {
+          ...record,
+          vehicle,
+          schedule,
+        }
+      })
+    )
+
     return NextResponse.json({
-      records,
+      records: recordsWithDetails,
       pagination: {
         page,
         limit,
@@ -94,6 +99,7 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit),
       },
     })
+
   } catch (error) {
     console.error('Error fetching maintenance records:', error)
     return NextResponse.json(
@@ -196,13 +202,6 @@ export async function POST(request: NextRequest) {
             id: true,
             title: true,
             type: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
           },
         },
       },
