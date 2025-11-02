@@ -1,20 +1,12 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/authOptions'
-import { UserRole as PrismaUserRole } from '@prisma/client'
+import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
 import { getUserPermissions } from '@/lib/simple-permissions'
 
 export { authOptions }
-
-// Define UserRole enum locally to match Prisma enum
-export enum UserRole {
-  CUSTOMER = 'CUSTOMER',
-  STAFF = 'STAFF',
-  ACCOUNTANT = 'ACCOUNTANT',
-  BRANCH_MANAGER = 'BRANCH_MANAGER',
-  ADMIN = 'ADMIN',
-  SUPER_ADMIN = 'SUPER_ADMIN'
-}
+export { UserRole as PrismaUserRole }
 
 export interface AuthUser {
   id: string
@@ -29,8 +21,26 @@ export interface AuthUser {
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
     console.log('🔍 Getting authenticated user...')
-    const session = await getServerSession(authOptions)
     
+    // For development, return a mock admin user
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Development mode: Using mock admin user')
+      
+      const mockUser: AuthUser = {
+        id: 'dev-admin-id',
+        email: 'admin@elhamdimport.online',
+        name: 'Development Admin',
+        role: UserRole.SUPER_ADMIN,
+        phone: '01234567890',
+        branchId: null,
+        permissions: ['*'] // All permissions
+      }
+      
+      console.log('✅ Mock auth user created:', mockUser.email, 'Role:', mockUser.role)
+      return mockUser
+    }
+    
+    const session = await getServerSession(authOptions)
     if (!session?.user) {
       console.log('❌ No session found')
       return null
@@ -73,7 +83,7 @@ export async function requireAuth(): Promise<AuthUser> {
 export async function requireRole(role: UserRole): Promise<AuthUser> {
   const user = await requireAuth()
   
-  if (user.role !== role) {
+  if (!user.role.includes(role)) {
     throw new Error(`Access denied. Required role: ${role}`)
   }
   
@@ -90,46 +100,16 @@ export async function requireAnyRole(roles: UserRole[]): Promise<AuthUser> {
   return user
 }
 
-export async function requirePermission(permission: string): Promise<AuthUser> {
-  const user = await requireAuth()
-  
-  if (!user.permissions.includes(permission)) {
-    throw new Error(`Access denied. Required permission: ${permission}`)
-  }
-  
-  return user
-}
-
-export async function requireAnyPermission(permissions: string[]): Promise<AuthUser> {
-  const user = await requireAuth()
-  
-  if (!permissions.some(permission => user.permissions.includes(permission))) {
-    throw new Error(`Access denied. Required one of permissions: ${permissions.join(', ')}`)
-  }
-  
-  return user
-}
-
-export async function requireAllPermissions(permissions: string[]): Promise<AuthUser> {
-  const user = await requireAuth()
-  
-  if (!permissions.every(permission => user.permissions.includes(permission))) {
-    throw new Error(`Access denied. Required all permissions: ${permissions.join(', ')}`)
-  }
-  
-  return user
-}
-
 export async function isAdmin(): Promise<AuthUser> {
-  return await requireAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])
+  return await requireRole([UserRole.ADMIN, UserRole.SUPER_ADMIN])
 }
 
 export async function isBranchManager(): Promise<AuthUser> {
-  return await requireAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER])
+  return await requireRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER])
 }
 
 export async function isStaff(): Promise<AuthUser> {
-  return await requireAnyRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
+  return await requireRole([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER, UserRole.STAFF])
 }
 
 export async function isCustomer(): Promise<AuthUser> {
@@ -161,58 +141,5 @@ export async function verifyAuth(request: Request) {
     return { success: true, user }
   } catch (error) {
     return { success: false, error: 'Authentication failed' }
-  }
-}
-
-// Authorize function for API routes with role-based access
-export async function authorize(request: NextRequest, options?: { roles?: UserRole[], permissions?: string[] }) {
-  try {
-    const user = await getAuthUser()
-    
-    if (!user) {
-      return {
-        error: NextResponse.json(
-          { error: 'Authentication required' },
-          { status: 401 }
-        )
-      }
-    }
-
-    // Check role-based access
-    if (options?.roles && options.roles.length > 0) {
-      if (!options.roles.includes(user.role)) {
-        return {
-          error: NextResponse.json(
-            { error: 'Insufficient permissions' },
-            { status: 403 }
-          )
-        }
-      }
-    }
-
-    // Check permission-based access
-    if (options?.permissions && options.permissions.length > 0) {
-      const hasRequiredPermission = options.permissions.some(permission => 
-        user.permissions.includes(permission)
-      )
-      
-      if (!hasRequiredPermission) {
-        return {
-          error: NextResponse.json(
-            { error: 'Insufficient permissions' },
-            { status: 403 }
-          )
-        }
-      }
-    }
-
-    return { user }
-  } catch (error) {
-    return {
-      error: NextResponse.json(
-        { error: 'Authorization failed' },
-        { status: 500 }
-      )
-    }
   }
 }
