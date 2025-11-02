@@ -119,12 +119,15 @@ export async function POST(request: NextRequest) {
           email: emp.email,
           phone: emp.phone,
           password: hashedPassword,
-          role: 'EMPLOYEE',
+          role: 'STAFF',
           isActive: true
         }
       })
 
       // Create employee
+      const employeeCount = await db.employee.count()
+      const employeeNumber = `EMP${String(employeeCount + createdEmployees.length + 1).padStart(4, '0')}`
+      
       const employee = await db.employee.upsert({
         where: { userId: user.id },
         update: {
@@ -132,15 +135,16 @@ export async function POST(request: NextRequest) {
           positionId: positions[emp.positionIndex].id,
           salary: emp.salary,
           hireDate: new Date(),
-          isActive: true
+          status: 'ACTIVE'
         },
         create: {
           userId: user.id,
+          employeeNumber,
           departmentId: departments[emp.departmentIndex].id,
           positionId: positions[emp.positionIndex].id,
           salary: emp.salary,
           hireDate: new Date(),
-          isActive: true
+          status: 'ACTIVE'
         }
       })
 

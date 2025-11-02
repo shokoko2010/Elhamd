@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, Calendar, DollarSign, TrendingUp, UserPlus, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface HRStats {
   totalEmployees: number
@@ -174,6 +175,28 @@ export default function HRPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">الموارد البشرية</h1>
         <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/init-data', {
+                  method: 'POST'
+                })
+                const result = await response.json()
+                if (response.ok) {
+                  toast.success(result.message || 'تم تهيئة البيانات بنجاح')
+                  fetchHRData()
+                } else {
+                  toast.error(result.error || 'فشل في تهيئة البيانات')
+                }
+              } catch (error) {
+                toast.error('حدث خطأ أثناء تهيئة البيانات')
+              }
+            }}
+          >
+            <Users className="ml-2 h-4 w-4" />
+            تهيئة البيانات
+          </Button>
           <Link href="/admin/employees">
             <Button variant="outline">
               <Eye className="ml-2 h-4 w-4" />

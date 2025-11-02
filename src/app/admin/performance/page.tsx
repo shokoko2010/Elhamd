@@ -114,31 +114,16 @@ export default function PerformancePage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        employeeId: 'default_employee_id', // This should be replaced with actual employee selection
-        period: selectedPeriod === 'current' ? new Date().toISOString().slice(0, 7) : new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7),
-        metrics: {
-          bookingsHandled: Math.floor(Math.random() * 50) + 10,
-          averageHandlingTime: Math.random() * 30 + 15,
-          customerRating: 3 + Math.random() * 2,
-          conversionRate: Math.random() * 40 + 10,
-          revenueGenerated: Math.random() * 50000 + 10000,
-          tasksCompleted: Math.floor(Math.random() * 30) + 20,
-          customerSatisfaction: 80 + Math.random() * 20,
-          responseTime: Math.random() * 60 + 5,
-          followUpRate: Math.random() * 30 + 60,
-          upsellSuccess: Math.random() * 25 + 5,
-          notes: 'تقييم أداء تلقائي'
-        }
-      })
+      }
     })
 
+    const result = await response.json()
+
     if (response.ok) {
-      toast.success('تم إنشاء تقييم أداء جديد')
+      toast.success(result.message || 'تم إنشاء تقييم أداء جديد')
       fetchPerformanceData()
     } else {
-      toast.error('فشل في إنشاء تقييم أداء')
+      toast.error(result.error || 'فشل في إنشاء تقييم أداء')
     }
   } catch (error) {
       console.error('Error creating performance evaluation:', error)

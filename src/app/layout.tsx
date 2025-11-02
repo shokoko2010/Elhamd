@@ -63,7 +63,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { structuredData } = HomepageSEO();
+  const homepageSEO = HomepageSEO();
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || ''
   
   return (
@@ -72,7 +72,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: structuredData
+            __html: homepageSEO.structuredData
           }}
         />
         {/* Service Worker Registration */}
