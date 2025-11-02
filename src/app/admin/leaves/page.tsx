@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
-import { Link from 'next/link'
+import { Link } from 'next/link'
 import { toast } from 'sonner'
 
 interface LeaveRequest {
