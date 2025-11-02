@@ -46,6 +46,7 @@ interface Vehicle {
 export default function AdminModelsPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -58,74 +59,17 @@ export default function AdminModelsPage() {
   const loadVehicles = async () => {
     setLoading(true)
     try {
-      // Mock data - replace with actual API call
-      const mockVehicles: Vehicle[] = [
-        {
-          id: '1',
-          make: 'تاتا',
-          model: 'نيكسون',
-          year: 2024,
-          price: 850000,
-          stockNumber: 'TN2024001',
-          vin: 'MATADUMMY123456',
-          description: 'سيارة SUV عائلية متطورة بأحدث التقنيات',
-          category: 'SUV',
-          fuelType: 'PETROL',
-          transmission: 'AUTOMATIC',
-          mileage: 0,
-          color: 'أبيض',
-          status: 'AVAILABLE',
-          featured: true,
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-01'
-        },
-        {
-          id: '2',
-          make: 'تاتا',
-          model: 'بانش',
-          year: 2024,
-          price: 650000,
-          stockNumber: 'TP2024001',
-          vin: 'MATADUMMY123457',
-          description: 'سيارة مدمجة مثالية للمدينة',
-          category: 'SUV',
-          fuelType: 'PETROL',
-          transmission: 'MANUAL',
-          mileage: 0,
-          color: 'أسود',
-          status: 'AVAILABLE',
-          featured: false,
-          createdAt: '2024-01-02',
-          updatedAt: '2024-01-02'
-        },
-        {
-          id: '3',
-          make: 'تاتا',
-          model: 'تياجو',
-          year: 2024,
-          price: 550000,
-          stockNumber: 'TT2024001',
-          vin: 'MATADUMMY123458',
-          description: 'سيارة هايتبك اقتصادية وموثوقة',
-          category: 'HATCHBACK',
-          fuelType: 'PETROL',
-          transmission: 'MANUAL',
-          mileage: 0,
-          color: 'أحمر',
-          status: 'AVAILABLE',
-          featured: true,
-          createdAt: '2024-01-03',
-          updatedAt: '2024-01-03'
-        }
-      ]
-      
-      // Simulate API delay
-      setTimeout(() => {
-        setVehicles(mockVehicles)
-        setLoading(false)
-      }, 1000)
+      const response = await fetch('/api/vehicles')
+      if (response.ok) {
+        const data = await response.json()
+        setVehicles(data.vehicles || [])
+      } else {
+        setError('فشل في تحميل المركبات')
+      }
     } catch (error) {
       console.error('Error loading vehicles:', error)
+      setError('فشل في تحميل المركبات')
+    } finally {
       setLoading(false)
     }
   }

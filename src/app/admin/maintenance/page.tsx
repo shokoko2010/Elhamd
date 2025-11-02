@@ -1,186 +1,224 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, Clock, Car, Wrench, AlertTriangle, CheckCircle, Plus, Search, Filter } from 'lucide-react'
-import { MaintenanceSchedule, MaintenanceRecord, MaintenancePart, MaintenanceReminder } from '@/types/maintenance'
-import { MaintenanceStatus, MaintenanceType, PartStatus, PartCategory } from '@/types/maintenance'
+import { Calendar, Clock, Car, Wrench, AlertTriangle, CheckCircle, Plus, Search, Filter, RefreshCw } from 'lucide-react'
+
+interface MaintenanceSchedule {
+  id: string
+  vehicleId: string
+  type: string
+  title: string
+  description?: string
+  interval: number
+  intervalKm?: number
+  lastService?: Date
+  nextService: Date
+  estimatedCost?: number
+  priority: string
+  isActive: boolean
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+  vehicle?: {
+    id: string
+    make: string
+    model: string
+    year: number
+    stockNumber: string
+  }
+  creator?: {
+    id: string
+    name: string
+    email: string
+  }
+}
+
+interface MaintenanceRecord {
+  id: string
+  vehicleId: string
+  scheduleId?: string
+  type: string
+  title: string
+  description: string
+  cost: number
+  technician?: string
+  startDate: Date
+  endDate?: Date
+  status: string
+  notes?: string
+  parts?: string
+  laborHours?: number
+  odometer?: number
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+interface MaintenancePart {
+  id: string
+  partNumber: string
+  name: string
+  category: string
+  description?: string
+  cost: number
+  price: number
+  quantity: number
+  minStock: number
+  maxStock: number
+  location: string
+  supplier: string
+  status: string
+  barcode?: string
+  imageUrl?: string
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+interface MaintenanceReminder {
+  id: string
+  scheduleId: string
+  vehicleId: string
+  title: string
+  message: string
+  reminderDate: Date
+  sentDate?: Date
+  status: string
+  type: string
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+}
 
 export default function MaintenancePage() {
   const [activeTab, setActiveTab] = useState('schedules')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   
-  // Mock data - replace with API calls
-  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([
-    {
-      id: '1',
-      vehicleId: '1',
-      type: MaintenanceType.ROUTINE,
-      title: 'صيانة دورية',
-      description: 'تغيير زيت المحرك والفلاتر',
-      interval: 90,
-      intervalKm: 5000,
-      lastService: new Date('2024-01-15'),
-      nextService: new Date('2024-04-15'),
-      estimatedCost: 500,
-      priority: MaintenanceStatus.PENDING,
-      isActive: true,
-      createdBy: '1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: '2',
-      vehicleId: '2',
-      type: MaintenanceType.INSPECTION,
-      title: 'فحص سنوي',
-      description: 'فحص شامل للمركبة',
-      interval: 365,
-      intervalKm: 20000,
-      lastService: new Date('2023-12-01'),
-      nextService: new Date('2024-12-01'),
-      estimatedCost: 1000,
-      priority: MaintenanceStatus.SCHEDULED,
-      isActive: true,
-      createdBy: '1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ])
+  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([])
+  const [records, setRecords] = useState<MaintenanceRecord[]>([])
+  const [parts, setParts] = useState<MaintenancePart[]>([])
+  const [reminders, setReminders] = useState<MaintenanceReminder[]>([])
 
-  const [records, setRecords] = useState<MaintenanceRecord[]>([
-    {
-      id: '1',
-      vehicleId: '1',
-      scheduleId: '1',
-      type: MaintenanceType.OIL_CHANGE,
-      title: 'تغيير زيت المحرك',
-      description: 'تغيير زيت المحرك والفلاتر',
-      cost: 450,
-      technician: 'أحمد محمد',
-      startDate: new Date('2024-01-15'),
-      endDate: new Date('2024-01-15'),
-      status: MaintenanceStatus.COMPLETED,
-      notes: 'تم تغيير الزيت والفلاتر بنجاح',
-      parts: JSON.stringify([{ name: 'زيت محرك', quantity: 1, cost: 200 }]),
-      laborHours: 2,
-      odometer: 25000,
-      createdBy: '1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ])
+  useEffect(() => {
+    loadMaintenanceData()
+  }, [])
 
-  const [parts, setParts] = useState<MaintenancePart[]>([
-    {
-      id: '1',
-      partNumber: 'OIL-001',
-      name: 'زيت محرك سينثتك 5W-30',
-      category: PartCategory.OIL,
-      description: 'زيت محرك عالي الجودة',
-      cost: 150,
-      price: 200,
-      quantity: 50,
-      minStock: 10,
-      maxStock: 100,
-      location: 'المستودع A',
-      supplier: 'شركة الزيوت العربية',
-      status: PartStatus.AVAILABLE,
-      barcode: '123456789',
-      imageUrl: '/images/oil.jpg',
-      createdBy: '1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ])
+  const loadMaintenanceData = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      // Load schedules
+      const schedulesResponse = await fetch('/api/maintenance/schedules')
+      if (schedulesResponse.ok) {
+        const schedulesData = await schedulesResponse.json()
+        setSchedules(schedulesData.schedules || [])
+      }
 
-  const [reminders, setReminders] = useState<MaintenanceReminder[]>([
-    {
-      id: '1',
-      scheduleId: '1',
-      vehicleId: '1',
-      title: 'تذكير بالصيانة الدورية',
-      message: 'حان موعد الصيانة الدورية للمركبة',
-      reminderDate: new Date('2024-04-10'),
-      sentDate: null,
-      status: MaintenanceStatus.PENDING,
-      type: 'EMAIL',
-      createdBy: '1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ])
+      // Load records
+      const recordsResponse = await fetch('/api/maintenance/records')
+      if (recordsResponse.ok) {
+        const recordsData = await recordsResponse.json()
+        setRecords(recordsData.records || [])
+      }
 
-  const getStatusColor = (status: MaintenanceStatus) => {
+      // Load parts (using inventory items with maintenance category)
+      const partsResponse = await fetch('/api/inventory/items?category=maintenance')
+      if (partsResponse.ok) {
+        const partsData = await partsResponse.json()
+        setParts(partsData.items || [])
+      }
+
+      // Load reminders
+      const remindersResponse = await fetch('/api/maintenance/reminders')
+      if (remindersResponse.ok) {
+        const remindersData = await remindersResponse.json()
+        setReminders(remindersData.reminders || [])
+      }
+    } catch (error) {
+      console.error('Error loading maintenance data:', error)
+      setError('فشل في تحميل بيانات الصيانة')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case MaintenanceStatus.COMPLETED:
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800'
-      case MaintenanceStatus.IN_PROGRESS:
+      case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800'
-      case MaintenanceStatus.PENDING:
+      case 'PENDING':
         return 'bg-yellow-100 text-yellow-800'
-      case MaintenanceStatus.OVERDUE:
+      case 'OVERDUE':
         return 'bg-red-100 text-red-800'
-      case MaintenanceStatus.CANCELLED:
+      case 'CANCELLED':
         return 'bg-gray-100 text-gray-800'
+      case 'SCHEDULED':
+        return 'bg-purple-100 text-purple-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const getStatusText = (status: MaintenanceStatus) => {
+  const getStatusText = (status: string) => {
     switch (status) {
-      case MaintenanceStatus.COMPLETED:
+      case 'COMPLETED':
         return 'مكتمل'
-      case MaintenanceStatus.IN_PROGRESS:
+      case 'IN_PROGRESS':
         return 'قيد التنفيذ'
-      case MaintenanceStatus.PENDING:
+      case 'PENDING':
         return 'معلق'
-      case MaintenanceStatus.SCHEDULED:
+      case 'SCHEDULED':
         return 'مجدول'
-      case MaintenanceStatus.OVERDUE:
+      case 'OVERDUE':
         return 'متأخر'
-      case MaintenanceStatus.CANCELLED:
+      case 'CANCELLED':
         return 'ملغي'
       default:
         return status
     }
   }
 
-  const getTypeText = (type: MaintenanceType) => {
+  const getTypeText = (type: string) => {
     switch (type) {
-      case MaintenanceType.ROUTINE:
+      case 'ROUTINE':
         return 'دوري'
-      case MaintenanceType.PREVENTIVE:
+      case 'PREVENTIVE':
         return 'وقائي'
-      case MaintenanceType.CORRECTIVE:
+      case 'CORRECTIVE':
         return 'تصحيحي'
-      case MaintenanceType.EMERGENCY:
+      case 'EMERGENCY':
         return 'طوارئ'
-      case MaintenanceType.INSPECTION:
+      case 'INSPECTION':
         return 'فحص'
-      case MaintenanceType.OIL_CHANGE:
+      case 'OIL_CHANGE':
         return 'تغيير زيت'
-      case MaintenanceType.TIRE_SERVICE:
+      case 'TIRE_SERVICE':
         return 'خدمة إطارات'
-      case MaintenanceType.BRAKE_SERVICE:
+      case 'BRAKE_SERVICE':
         return 'خدمة فرامل'
-      case MaintenanceType.BATTERY_SERVICE:
+      case 'BATTERY_SERVICE':
         return 'خدمة بطارية'
-      case MaintenanceType.AIR_CONDITIONING:
+      case 'AIR_CONDITIONING':
         return 'تكييف هواء'
-      case MaintenanceType.ENGINE_SERVICE:
+      case 'ENGINE_SERVICE':
         return 'خدمة محرك'
-      case MaintenanceType.TRANSMISSION_SERVICE:
+      case 'TRANSMISSION_SERVICE':
         return 'خدمة ناقل حركة'
-      case MaintenanceType.OTHER:
+      case 'OTHER':
         return 'أخرى'
       default:
         return type
@@ -218,18 +256,84 @@ export default function MaintenancePage() {
     return matchesSearch && matchesStatus
   })
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">نظام الصيانة الدورية</h1>
-          <p className="text-gray-600 mt-2">إدارة جداول الصيانة، السجلات، قطع الغيار والتذكيرات</p>
+  if (loading) {
+    return (
+      <AdminRoute>
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold">نظام الصيانة الدورية</h1>
+              <p className="text-gray-600 mt-2">إدارة جداول الصيانة، السجلات، قطع الغيار والتذكيرات</p>
+            </div>
+            <Button variant="outline" disabled>
+              <RefreshCw className="ml-2 h-4 w-4 animate-spin" />
+              جاري التحميل...
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
+                  <div className="h-4 w-4 bg-muted rounded animate-pulse"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 w-16 bg-muted rounded animate-pulse mb-2"></div>
+                  <div className="h-3 w-24 bg-muted rounded animate-pulse"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          إضافة جديد
-        </Button>
-      </div>
+      </AdminRoute>
+    )
+  }
+
+  if (error) {
+    return (
+      <AdminRoute>
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold">نظام الصيانة الدورية</h1>
+              <p className="text-gray-600 mt-2">إدارة جداول الصيانة، السجلات، قطع الغيار والتذكيرات</p>
+            </div>
+            <Button variant="outline" onClick={loadMaintenanceData}>
+              <RefreshCw className="ml-2 h-4 w-4" />
+              إعادة المحاولة
+            </Button>
+          </div>
+          
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6">
+              <p className="text-red-600">{error}</p>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminRoute>
+    )
+  }
+
+  return (
+    <AdminRoute>
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">نظام الصيانة الدورية</h1>
+            <p className="text-gray-600 mt-2">إدارة جداول الصيانة، السجلات، قطع الغيار والتذكيرات</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={loadMaintenanceData}>
+              <RefreshCw className="ml-2 h-4 w-4" />
+              تحديث
+            </Button>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              إضافة جديد
+            </Button>
+          </div>
+        </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -241,7 +345,7 @@ export default function MaintenancePage() {
           <CardContent>
             <div className="text-2xl font-bold">{schedules.length}</div>
             <p className="text-xs text-muted-foreground">
-              {schedules.filter(s => s.priority === MaintenanceStatus.PENDING).length} معلقة
+              {schedules.filter(s => s.priority === 'PENDING').length} معلقة
             </p>
           </CardContent>
         </Card>
@@ -254,7 +358,7 @@ export default function MaintenancePage() {
           <CardContent>
             <div className="text-2xl font-bold">{records.length}</div>
             <p className="text-xs text-muted-foreground">
-              {records.filter(r => r.status === MaintenanceStatus.IN_PROGRESS).length} قيد التنفيذ
+              {records.filter(r => r.status === 'IN_PROGRESS').length} قيد التنفيذ
             </p>
           </CardContent>
         </Card>
@@ -267,7 +371,7 @@ export default function MaintenancePage() {
           <CardContent>
             <div className="text-2xl font-bold">{parts.length}</div>
             <p className="text-xs text-muted-foreground">
-              {parts.filter(p => p.status === PartStatus.LOW_STOCK).length} مخزون منخفض
+              {parts.filter(p => p.status === 'LOW_STOCK').length} مخزون منخفض
             </p>
           </CardContent>
         </Card>
@@ -280,7 +384,7 @@ export default function MaintenancePage() {
           <CardContent>
             <div className="text-2xl font-bold">{reminders.length}</div>
             <p className="text-xs text-muted-foreground">
-              {reminders.filter(r => r.status === MaintenanceStatus.PENDING).length} في الانتظار
+              {reminders.filter(r => r.status === 'PENDING').length} في الانتظار
             </p>
           </CardContent>
         </Card>
@@ -310,12 +414,12 @@ export default function MaintenancePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value={MaintenanceStatus.PENDING}>معلق</SelectItem>
-                <SelectItem value={MaintenanceStatus.SCHEDULED}>مجدول</SelectItem>
-                <SelectItem value={MaintenanceStatus.IN_PROGRESS}>قيد التنفيذ</SelectItem>
-                <SelectItem value={MaintenanceStatus.COMPLETED}>مكتمل</SelectItem>
-                <SelectItem value={MaintenanceStatus.OVERDUE}>متأخر</SelectItem>
-                <SelectItem value={MaintenanceStatus.CANCELLED}>ملغي</SelectItem>
+                <SelectItem value="PENDING">معلق</SelectItem>
+                <SelectItem value="SCHEDULED">مجدول</SelectItem>
+                <SelectItem value="IN_PROGRESS">قيد التنفيذ</SelectItem>
+                <SelectItem value="COMPLETED">مكتمل</SelectItem>
+                <SelectItem value="OVERDUE">متأخر</SelectItem>
+                <SelectItem value="CANCELLED">ملغي</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -324,12 +428,12 @@ export default function MaintenancePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">جميع الأنواع</SelectItem>
-                <SelectItem value={MaintenanceType.ROUTINE}>دوري</SelectItem>
-                <SelectItem value={MaintenanceType.PREVENTIVE}>وقائي</SelectItem>
-                <SelectItem value={MaintenanceType.CORRECTIVE}>تصحيحي</SelectItem>
-                <SelectItem value={MaintenanceType.EMERGENCY}>طوارئ</SelectItem>
-                <SelectItem value={MaintenanceType.INSPECTION}>فحص</SelectItem>
-                <SelectItem value={MaintenanceType.OIL_CHANGE}>تغيير زيت</SelectItem>
+                <SelectItem value="ROUTINE">دوري</SelectItem>
+                <SelectItem value="PREVENTIVE">وقائي</SelectItem>
+                <SelectItem value="CORRECTIVE">تصحيحي</SelectItem>
+                <SelectItem value="EMERGENCY">طوارئ</SelectItem>
+                <SelectItem value="INSPECTION">فحص</SelectItem>
+                <SelectItem value="OIL_CHANGE">تغيير زيت</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -474,10 +578,10 @@ export default function MaintenancePage() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold">{part.name}</h3>
-                            <Badge className={part.status === PartStatus.LOW_STOCK ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
-                              {part.status === PartStatus.AVAILABLE ? 'متوفر' : 
-                               part.status === PartStatus.LOW_STOCK ? 'مخزون منخفض' :
-                               part.status === PartStatus.OUT_OF_STOCK ? 'غير متوفر' : part.status}
+                            <Badge className={part.status === 'LOW_STOCK' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
+                              {part.status === 'AVAILABLE' ? 'متوفر' : 
+                               part.status === 'LOW_STOCK' ? 'مخزون منخفض' :
+                               part.status === 'OUT_OF_STOCK' ? 'غير متوفر' : part.status}
                             </Badge>
                           </div>
                           <p className="text-gray-600">{part.description}</p>
@@ -556,6 +660,7 @@ export default function MaintenancePage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </AdminRoute>
   )
 }

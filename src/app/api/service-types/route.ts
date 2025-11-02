@@ -28,7 +28,18 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    return NextResponse.json({ serviceTypes })
+    // Transform to match frontend interface
+    const transformedServices = serviceTypes.map(service => ({
+      id: service.id,
+      name: service.name,
+      description: service.description || '',
+      duration: service.duration,
+      price: service.price || 0,
+      category: service.category,
+      isActive: service.isActive
+    }))
+
+    return NextResponse.json(transformedServices)
   } catch (error) {
     console.error('Error fetching service types:', error)
     return NextResponse.json(

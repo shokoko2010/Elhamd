@@ -3,13 +3,15 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-import { MaintenanceStatus, MaintenanceType } from '@/types/maintenance'
+import { getApiUser } from '@/lib/api-auth'
+import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const user = await getApiUser(request)
+    
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [schedules, total] = await Promise.all([
-      prisma.maintenanceSchedule.findMany({
+      db.maintenanceSchedule.findMany({
         where,
         include: {
           vehicle: {
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.maintenanceSchedule.count({ where }),
+      db.maintenanceSchedule.count({ where }),
     ])
 
     return NextResponse.json({
@@ -103,8 +105,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const user = await getApiUser(request)
+    
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -129,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if vehicle exists
-    const vehicle = await prisma.vehicle.findUnique({
+    const vehicle = await db.vehicle.findUnique({
       where: { id: vehicleId },
     })
 
@@ -144,16 +147,16 @@ export async function POST(request: NextRequest) {
     const nextService = new Date()
     nextService.setDate(nextService.getDate() + interval)
 
-    const schedule = await prisma.maintenanceSchedule.create({
+    const schedule = await db.maintenanceSchedule.create({
       data: {
         vehicleId,
-        type: type as MaintenanceType,
+        type,
         title,
         description,
         interval,
         intervalKm,
         estimatedCost,
-        priority: priority as MaintenanceStatus || MaintenanceStatus.PENDING,
+        priority: priority || 'PENDING',
         isActive: true,
         createdBy: user.id,
         nextService,

@@ -1,15 +1,13 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-import { MaintenanceStatus } from '@/types/maintenance'
+import { getApiUser } from '@/lib/api-auth'
+import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const user = await getApiUser(request)
+    
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -18,7 +16,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || 'all'
-    const vehicleId = searchParams.get('vehicleId')
+    const scheduleId = searchParams.get('scheduleId')
 
     const skip = (page - 1) * limit
 
@@ -32,15 +30,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (status !== 'all') {
-      where.status = status as MaintenanceStatus
+      where.status = status
     }
 
-    if (vehicleId) {
-      where.vehicleId = vehicleId
+    if (scheduleId) {
+      where.scheduleId = scheduleId
     }
 
     const [reminders, total] = await Promise.all([
-      prisma.maintenanceReminder.findMany({
+      db.maintenanceReminder.findMany({
         where,
         include: {
           schedule: {
@@ -74,7 +72,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.maintenanceReminder.count({ where }),
+      db.maintenanceReminder.count({ where }),
     ])
 
     return NextResponse.json({
@@ -97,8 +95,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const user = await getApiUser(request)
+    
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -113,7 +112,7 @@ export async function POST(request: NextRequest) {
     } = data
 
     // Validate required fields
-    if (!scheduleId || !vehicleId || !title || !message || !reminderDate) {
+    if (!scheduleId || !vehicleId || !title || !message || !reminderDate || !type) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -121,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if schedule exists
-    const schedule = await prisma.maintenanceSchedule.findUnique({
+    const schedule = await db.maintenanceSchedule.findUnique({
       where: { id: scheduleId },
     })
 
@@ -133,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if vehicle exists
-    const vehicle = await prisma.vehicle.findUnique({
+    const vehicle = await db.vehicle.findUnique({
       where: { id: vehicleId },
     })
 
@@ -144,15 +143,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const reminder = await prisma.maintenanceReminder.create({
+    const reminder = await db.maintenanceReminder.create({
       data: {
         scheduleId,
         vehicleId,
         title,
         message,
         reminderDate: new Date(reminderDate),
-        type: type || 'EMAIL',
-        status: MaintenanceStatus.PENDING,
+        type,
+        status: 'PENDING',
         createdBy: user.id,
       },
       include: {

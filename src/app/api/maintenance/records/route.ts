@@ -3,13 +3,15 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-import { MaintenanceStatus, MaintenanceType } from '@/types/maintenance'
+import { getApiUser } from '@/lib/api-auth'
+import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const user = await getApiUser(request)
+    
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [records, total] = await Promise.all([
-      prisma.maintenanceRecord.findMany({
+      db.maintenanceRecord.findMany({
         where,
         include: {
           vehicle: {
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.maintenanceRecord.count({ where }),
+      db.maintenanceRecord.count({ where }),
     ])
 
     return NextResponse.json({
@@ -103,8 +105,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
+    const user = await getApiUser(request)
+    
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -135,7 +138,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if vehicle exists
-    const vehicle = await prisma.vehicle.findUnique({
+    const vehicle = await db.vehicle.findUnique({
       where: { id: vehicleId },
     })
 
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     // If scheduleId is provided, check if it exists
     if (scheduleId) {
-      const schedule = await prisma.maintenanceSchedule.findUnique({
+      const schedule = await db.maintenanceSchedule.findUnique({
         where: { id: scheduleId },
       })
 
@@ -160,18 +163,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const record = await prisma.maintenanceRecord.create({
+    const record = await db.maintenanceRecord.create({
       data: {
         vehicleId,
         scheduleId,
-        type: type as MaintenanceType,
+        type,
         title,
         description,
         cost,
         technician,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
-        status: status as MaintenanceStatus || MaintenanceStatus.IN_PROGRESS,
+        status: status || 'IN_PROGRESS',
         notes,
         parts,
         laborHours,
@@ -206,12 +209,12 @@ export async function POST(request: NextRequest) {
     })
 
     // Update the maintenance schedule if this record is linked to one
-    if (scheduleId && status === MaintenanceStatus.COMPLETED) {
-      await prisma.maintenanceSchedule.update({
+    if (scheduleId && status === 'COMPLETED') {
+      await db.maintenanceSchedule.update({
         where: { id: scheduleId },
         data: {
           lastService: new Date(),
-          priority: MaintenanceStatus.COMPLETED,
+          priority: 'COMPLETED',
         },
       })
     }
