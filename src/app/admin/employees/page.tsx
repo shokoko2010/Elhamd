@@ -104,14 +104,14 @@ export default function EmployeesPage() {
   const fetchEmployeesData = async () => {
     try {
       const [employeesRes, departmentsRes, positionsRes] = await Promise.all([
-        fetch('/api/employees'),
+        fetch('/api/admin/employees'),
         fetch('/api/departments'),
         fetch('/api/positions')
       ])
 
       if (employeesRes.ok) {
         const employeesData = await employeesRes.json()
-        setEmployees(employeesData)
+        setEmployees(employeesData.employees)
       }
 
       if (departmentsRes.ok) {
@@ -177,7 +177,7 @@ export default function EmployeesPage() {
 
   const handleCreateEmployee = async () => {
     try {
-      const response = await fetch('/api/employees', {
+      const response = await fetch('/api/admin/employees', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,7 +211,7 @@ export default function EmployeesPage() {
     if (!selectedEmployee) return
 
     try {
-      const response = await fetch(`/api/employees/${selectedEmployee.id}`, {
+      const response = await fetch(`/api/admin/employees/${selectedEmployee.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -233,7 +233,7 @@ export default function EmployeesPage() {
     if (!confirm('هل أنت متأكد من حذف هذا الموظف؟')) return
 
     try {
-      const response = await fetch(`/api/employees/${employeeId}`, {
+      const response = await fetch(`/api/admin/employees/${employeeId}`, {
         method: 'DELETE',
       })
 
@@ -255,10 +255,10 @@ export default function EmployeesPage() {
       position: employee.position?.title || '',
       salary: employee.salary.toString(),
       branchId: employee.branch?.id || '',
-      emergencyContactName: employee.emergencyContact?.name || '',
-      emergencyContactPhone: employee.emergencyContact?.phone || '',
-      emergencyContactRelationship: employee.emergencyContact?.relationship || '',
-      notes: employee.notes || ''
+      emergencyContactName: '',
+      emergencyContactPhone: '',
+      emergencyContactRelationship: '',
+      notes: ''
     })
     setIsEditDialogOpen(true)
   }
