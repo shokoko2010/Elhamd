@@ -88,10 +88,14 @@ export default function LeavesPage() {
       const response = await fetch('/api/employees')
       if (response.ok) {
         const data = await response.json()
-        setEmployees(data)
+        // Ensure data is an array
+        setEmployees(Array.isArray(data) ? data : [])
+      } else {
+        setEmployees([])
       }
     } catch (error) {
       console.error('Error fetching employees:', error)
+      setEmployees([])
     }
   }
 
@@ -101,20 +105,22 @@ export default function LeavesPage() {
       const response = await fetch('/api/hr/leave-requests')
       if (response.ok) {
         const requests = await response.json()
-        setLeaveRequests(requests)
+        // Ensure requests is an array
+        const requestsArray = Array.isArray(requests) ? requests : []
+        setLeaveRequests(requestsArray)
         
         const today = format(new Date(), 'yyyy-MM-dd')
-        const pending = requests.filter((r: LeaveRequest) => r.status === 'PENDING').length
-        const approved = requests.filter((r: LeaveRequest) => r.status === 'APPROVED').length
-        const rejected = requests.filter((r: LeaveRequest) => r.status === 'REJECTED').length
-        const todayLeaves = requests.filter((r: LeaveRequest) => {
+        const pending = requestsArray.filter((r: LeaveRequest) => r.status === 'PENDING').length
+        const approved = requestsArray.filter((r: LeaveRequest) => r.status === 'APPROVED').length
+        const rejected = requestsArray.filter((r: LeaveRequest) => r.status === 'REJECTED').length
+        const todayLeaves = requestsArray.filter((r: LeaveRequest) => {
           const start = new Date(r.startDate)
           const end = new Date(r.endDate)
           const current = new Date(today)
           return current >= start && current <= end && r.status === 'APPROVED'
         }).length
         
-        const warnings = requests.filter((r: LeaveRequest) => {
+        const warnings = requestsArray.filter((r: LeaveRequest) => {
           // Calculate warnings based on leave balance or excessive leave usage
           // For now, this is a placeholder
           return r.status === 'APPROVED' && r.totalDays > 5
@@ -127,10 +133,29 @@ export default function LeavesPage() {
           todayLeaves,
           warnings
         })
+      } else {
+        // Set empty data on error
+        setLeaveRequests([])
+        setStats({
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          todayLeaves: 0,
+          warnings: 0
+        })
       }
     } catch (error) {
       console.error('Error fetching leave requests:', error)
       toast.error('فشل في تحميل بيانات الإجازات')
+      // Set empty data on error
+      setLeaveRequests([])
+      setStats({
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        todayLeaves: 0,
+        warnings: 0
+      })
     } finally {
       setLoading(false)
     }

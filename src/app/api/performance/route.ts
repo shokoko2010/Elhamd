@@ -1,6 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const period = searchParams.get('period') || new Date().toISOString().slice(0, 7)
+    
+    const performanceMetrics = await db.performanceMetric.findMany({
+      where: {
+        period: period
+      },
+      include: {
+        employee: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            },
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            position: {
+              select: {
+                id: true,
+                title: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        overallScore: 'desc'
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: performanceMetrics,
+      period: period,
+      count: performanceMetrics.length
+    })
+  } catch (error) {
+    console.error('Error fetching performance data:', error)
+    return NextResponse.json(
+      { error: 'حدث خطأ أثناء جلب بيانات تقييم الأداء' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const employees = await db.employee.findMany({

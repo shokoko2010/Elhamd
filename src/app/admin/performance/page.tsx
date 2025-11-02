@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
+import { toast } from 'sonner'
 
 interface PerformanceMetric {
   id: string
@@ -61,21 +62,24 @@ export default function PerformancePage() {
       const response = await fetch(`/api/performance?period=${selectedPeriod}`)
       if (!response.ok) return
       
-      const metrics = await response.json()
+      const result = await response.json()
+      const metrics = result.data || []
       setPerformanceMetrics(metrics)
       
       // Calculate stats
-      const averageScore = Math.round(metrics.reduce((sum, m) => sum + m.overallScore, 0) / metrics.length)
-      const topPerformers = metrics.filter(m => m.overallScore >= 90).length
-      const goalsAchieved = Math.round(metrics.filter(m => m.conversionRate >= 30).length / metrics.length * 100)
-      const inTraining = metrics.filter(m => m.overallScore < 70).length
-      
-      setStats({
-        averageScore,
-        topPerformers,
-        goalsAchieved,
-        inTraining
-      })
+      if (metrics.length > 0) {
+        const averageScore = Math.round(metrics.reduce((sum, m) => sum + m.overallScore, 0) / metrics.length)
+        const topPerformers = metrics.filter(m => m.overallScore >= 90).length
+        const goalsAchieved = Math.round(metrics.filter(m => m.conversionRate >= 30).length / metrics.length * 100)
+        const inTraining = metrics.filter(m => m.overallScore < 70).length
+        
+        setStats({
+          averageScore,
+          topPerformers,
+          goalsAchieved,
+          inTraining
+        })
+      }
     } catch (error) {
       console.error('Error fetching performance data:', error)
     } finally {
@@ -95,6 +99,13 @@ export default function PerformancePage() {
     if (score >= 80) return 'bg-blue-100 text-blue-800'
     if (score >= 70) return 'bg-yellow-100 text-yellow-800'
     return 'bg-red-100 text-red-800'
+  }
+
+  const getPerformanceLevel = (score: number) => {
+    if (score >= 90) return 'متميز'
+    if (score >= 80) return 'جيد جداً'
+    if (score >= 70) return 'جيد'
+    return 'يحتاج تحسين'
   }
 
   const handleCreateEvaluation = async () => {
@@ -163,7 +174,7 @@ export default function PerformancePage() {
             <Target className="ml-2 h-4 w-4" />
             تحديث
           </Button>
-          <Button>
+          <Button onClick={handleCreateEvaluation}>
             <Plus className="ml-2 h-4 w-4" />
             تقييم جديد
           </Button>
