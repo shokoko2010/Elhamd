@@ -51,7 +51,6 @@ import {
   HelpCircle,
   Database,
   Truck,
-  Tool,
   Lock,
   FileCheck,
   Award,
@@ -193,7 +192,7 @@ const sidebarItems = [
       {
         title: 'الخدمات',
         href: '/admin/service',
-        icon: Tool,
+        icon: Wrench,
       },
       {
         title: 'قطع الغيار',
