@@ -146,85 +146,101 @@ export default function MarketingSalesPage() {
     try {
       setLoading(true)
       
-      // Fetch campaigns with error handling
-      try {
-        const campaignsRes = await fetch('/api/marketing-sales/campaigns')
-        if (campaignsRes.ok) {
-          const campaignsData = await campaignsRes.json()
-          setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
-        } else {
-          console.warn('Campaigns API returned error:', campaignsRes.status)
-          setCampaigns([])
-        }
-      } catch (error) {
-        console.warn('Error fetching campaigns:', error)
-        setCampaigns([])
-      }
-
-      // Fetch leads with error handling
-      try {
-        const leadsRes = await fetch('/api/marketing-sales/leads')
-        if (leadsRes.ok) {
-          const leadsData = await leadsRes.json()
-          // Handle both array and object with leads property
-          const leadsArray = Array.isArray(leadsData) ? leadsData : (leadsData.leads || [])
-          setLeads(leadsArray)
-        } else {
-          console.warn('Leads API returned error:', leadsRes.status)
-          setLeads([])
-        }
-      } catch (error) {
-        console.warn('Error fetching leads:', error)
-        setLeads([])
-      }
-
-      // Fetch targets with error handling
-      try {
-        const targetsRes = await fetch('/api/marketing-sales/targets')
-        if (targetsRes.ok) {
-          const targetsData = await targetsRes.json()
-          setTargets(Array.isArray(targetsData) ? targetsData : [])
-        } else {
-          console.warn('Targets API returned error:', targetsRes.status)
-          setTargets([])
-        }
-      } catch (error) {
-        console.warn('Error fetching targets:', error)
-        setTargets([])
-      }
-
-      // Fetch stats with error handling
-      try {
-        const statsRes = await fetch('/api/marketing-sales/stats')
-        if (statsRes.ok) {
-          const statsData = await statsRes.json()
-          setStats(statsData)
-        } else {
-          console.warn('Stats API returned error:', statsRes.status)
-          setStats({
-            totalCampaigns: 0,
-            activeCampaigns: 0,
-            totalLeads: 0,
-            qualifiedLeads: 0,
-            conversionRate: 0,
-            totalTargets: 0,
-            achievedTargets: 0,
-            revenueGenerated: 0
+      // Create an array of all fetch promises to run them in parallel
+      const fetchPromises = [
+        // Fetch campaigns with error handling
+        fetch('/api/marketing-sales/campaigns')
+          .then(async (res) => {
+            if (res.ok) {
+              const data = await res.json()
+              return Array.isArray(data) ? data : []
+            } else {
+              console.warn('Campaigns API returned error:', res.status)
+              return []
+            }
           })
-        }
-      } catch (error) {
-        console.warn('Error fetching stats:', error)
-        setStats({
-          totalCampaigns: 0,
-          activeCampaigns: 0,
-          totalLeads: 0,
-          qualifiedLeads: 0,
-          conversionRate: 0,
-          totalTargets: 0,
-          achievedTargets: 0,
-          revenueGenerated: 0
-        })
-      }
+          .catch((error) => {
+            console.warn('Error fetching campaigns:', error)
+            return []
+          }),
+
+        // Fetch leads with error handling
+        fetch('/api/marketing-sales/leads')
+          .then(async (res) => {
+            if (res.ok) {
+              const data = await res.json()
+              // Handle both array and object with leads property
+              return Array.isArray(data) ? data : (data.leads || [])
+            } else {
+              console.warn('Leads API returned error:', res.status)
+              return []
+            }
+          })
+          .catch((error) => {
+            console.warn('Error fetching leads:', error)
+            return []
+          }),
+
+        // Fetch targets with error handling
+        fetch('/api/marketing-sales/targets')
+          .then(async (res) => {
+            if (res.ok) {
+              const data = await res.json()
+              return Array.isArray(data) ? data : []
+            } else {
+              console.warn('Targets API returned error:', res.status)
+              return []
+            }
+          })
+          .catch((error) => {
+            console.warn('Error fetching targets:', error)
+            return []
+          }),
+
+        // Fetch stats with error handling
+        fetch('/api/marketing-sales/stats')
+          .then(async (res) => {
+            if (res.ok) {
+              const data = await res.json()
+              return data
+            } else {
+              console.warn('Stats API returned error:', res.status)
+              return {
+                totalCampaigns: 0,
+                activeCampaigns: 0,
+                totalLeads: 0,
+                qualifiedLeads: 0,
+                conversionRate: 0,
+                totalTargets: 0,
+                achievedTargets: 0,
+                revenueGenerated: 0
+              }
+            }
+          })
+          .catch((error) => {
+            console.warn('Error fetching stats:', error)
+            return {
+              totalCampaigns: 0,
+              activeCampaigns: 0,
+              totalLeads: 0,
+              qualifiedLeads: 0,
+              conversionRate: 0,
+              totalTargets: 0,
+              achievedTargets: 0,
+              revenueGenerated: 0
+            }
+          })
+      ]
+
+      // Wait for all promises to complete
+      const [campaignsData, leadsData, targetsData, statsData] = await Promise.all(fetchPromises)
+
+      // Set the data
+      setCampaigns(campaignsData)
+      setLeads(leadsData)
+      setTargets(targetsData)
+      setStats(statsData)
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
       // Set default values on any error
@@ -271,6 +287,11 @@ export default function MarketingSalesPage() {
     return matchesSearch && matchesStatus
   })
 
+  // Additional safety check for empty data
+  const safeCampaigns = Array.isArray(filteredCampaigns) ? filteredCampaigns : []
+  const safeLeads = Array.isArray(filteredLeads) ? filteredLeads : []
+  const safeTargets = Array.isArray(filteredTargets) ? filteredTargets : []
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -307,9 +328,9 @@ export default function MarketingSalesPage() {
               <Megaphone className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalCampaigns}</div>
+              <div className="text-2xl font-bold">{(stats && typeof stats.totalCampaigns === 'number' ? stats.totalCampaigns : 0)}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.activeCampaigns} نشطة
+                {(stats && typeof stats.activeCampaigns === 'number' ? stats.activeCampaigns : 0)} نشطة
               </p>
             </CardContent>
           </Card>
@@ -320,9 +341,9 @@ export default function MarketingSalesPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalLeads}</div>
+              <div className="text-2xl font-bold">{(stats && typeof stats.totalLeads === 'number' ? stats.totalLeads : 0)}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.qualifiedLeads} مؤهلين
+                {(stats && typeof stats.qualifiedLeads === 'number' ? stats.qualifiedLeads : 0)} مؤهلين
               </p>
             </CardContent>
           </Card>
@@ -333,7 +354,7 @@ export default function MarketingSalesPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{(stats.conversionRate || 0).toFixed(1)}%</div>
+              <div className="text-2xl font-bold">{(stats && typeof stats.conversionRate === 'number' ? stats.conversionRate : 0).toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground">
                 متوسط التحويل
               </p>
@@ -347,13 +368,22 @@ export default function MarketingSalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats.revenueGenerated.toLocaleString('ar-EG')} ج.م
+                {(stats && typeof stats.revenueGenerated === 'number' ? stats.revenueGenerated : 0).toLocaleString('ar-EG')} ج.م
               </div>
               <p className="text-xs text-muted-foreground">
                 إجمالي الإيرادات
               </p>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {!stats && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <div className="text-yellow-800">
+            <h3 className="text-lg font-semibold mb-2">جاري تحميل البيانات...</h3>
+            <p className="text-sm">يرجى الانتظار بينما يتم تحميل إحصائيات المبيعات</p>
+          </div>
         </div>
       )}
 
@@ -410,14 +440,14 @@ export default function MarketingSalesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCampaigns.length === 0 ? (
+                  {safeCampaigns.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         لا توجد حملات تسويقية
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredCampaigns.map((campaign) => (
+                    safeCampaigns.map((campaign) => (
                       <TableRow key={campaign.id}>
                         <TableCell className="font-medium">{campaign.name || '-'}</TableCell>
                         <TableCell>{campaign.type || '-'}</TableCell>
@@ -476,14 +506,14 @@ export default function MarketingSalesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeads.length === 0 ? (
+                  {safeLeads.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         لا يوجد عملاء محتملون
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredLeads.map((lead) => (
+                    safeLeads.map((lead) => (
                       <TableRow key={lead.id}>
                         <TableCell className="font-medium">{lead.leadNumber || '-'}</TableCell>
                         <TableCell>
@@ -566,14 +596,14 @@ export default function MarketingSalesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTargets.length === 0 ? (
+                  {safeTargets.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                         لا توجد أهداف مبيعات
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTargets.map((target) => (
+                    safeTargets.map((target) => (
                       <TableRow key={target.id}>
                         <TableCell className="font-medium">{target.name || '-'}</TableCell>
                         <TableCell>{target.type || '-'}</TableCell>

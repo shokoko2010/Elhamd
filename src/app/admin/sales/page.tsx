@@ -96,35 +96,105 @@ export default function SalesPage() {
     
     try {
       // Load sales overview
-      const overviewResponse = await fetch('/api/marketing-sales/stats')
-      if (overviewResponse.ok) {
-        const overviewData = await overviewResponse.json()
-        setSalesData(overviewData)
+      try {
+        const overviewResponse = await fetch('/api/marketing-sales/stats')
+        if (overviewResponse.ok) {
+          const overviewData = await overviewResponse.json()
+          setSalesData(overviewData)
+        } else {
+          console.warn('Sales overview API returned error:', overviewResponse.status)
+          setSalesData({
+            totalSales: 0,
+            totalRevenue: 0,
+            newCustomers: 0,
+            conversionRate: 0,
+            monthlyGrowth: {
+              sales: 0,
+              revenue: 0,
+              customers: 0,
+              conversion: 0
+            }
+          })
+        }
+      } catch (error) {
+        console.warn('Error loading sales overview:', error)
+        setSalesData({
+          totalSales: 0,
+          totalRevenue: 0,
+          newCustomers: 0,
+          conversionRate: 0,
+          monthlyGrowth: {
+            sales: 0,
+            revenue: 0,
+            customers: 0,
+            conversion: 0
+          }
+        })
       }
 
       // Load recent sales (from invoices)
-      const invoicesResponse = await fetch('/api/finance/invoices?limit=10&sortBy=createdAt&order=desc')
-      if (invoicesResponse.ok) {
-        const invoicesData = await invoicesResponse.json()
-        setRecentSales(invoicesData.invoices || [])
+      try {
+        const invoicesResponse = await fetch('/api/finance/invoices?limit=10&sortBy=createdAt&order=desc')
+        if (invoicesResponse.ok) {
+          const invoicesData = await invoicesResponse.json()
+          setRecentSales(invoicesData.invoices || [])
+        } else {
+          console.warn('Invoices API returned error:', invoicesResponse.status)
+          setRecentSales([])
+        }
+      } catch (error) {
+        console.warn('Error loading recent sales:', error)
+        setRecentSales([])
       }
 
       // Load top performers (from marketing sales leads)
-      const performersResponse = await fetch('/api/marketing-sales/leads?stats=true')
-      if (performersResponse.ok) {
-        const performersData = await performersResponse.json()
-        setTopPerformers(performersData.topPerformers || [])
+      try {
+        const performersResponse = await fetch('/api/marketing-sales/leads?stats=true')
+        if (performersResponse.ok) {
+          const performersData = await performersResponse.json()
+          setTopPerformers(performersData.topPerformers || [])
+        } else {
+          console.warn('Top performers API returned error:', performersResponse.status)
+          setTopPerformers([])
+        }
+      } catch (error) {
+        console.warn('Error loading top performers:', error)
+        setTopPerformers([])
       }
 
       // Load sales targets
-      const targetsResponse = await fetch('/api/marketing-sales/targets')
-      if (targetsResponse.ok) {
-        const targetsData = await targetsResponse.json()
-        setSalesTargets(targetsData.targets || [])
+      try {
+        const targetsResponse = await fetch('/api/marketing-sales/targets')
+        if (targetsResponse.ok) {
+          const targetsData = await targetsResponse.json()
+          setSalesTargets(targetsData.targets || [])
+        } else {
+          console.warn('Sales targets API returned error:', targetsResponse.status)
+          setSalesTargets([])
+        }
+      } catch (error) {
+        console.warn('Error loading sales targets:', error)
+        setSalesTargets([])
       }
     } catch (error) {
       console.error('Error loading sales data:', error)
       setError('فشل في تحميل بيانات المبيعات')
+      // Set default values on error
+      setSalesData({
+        totalSales: 0,
+        totalRevenue: 0,
+        newCustomers: 0,
+        conversionRate: 0,
+        monthlyGrowth: {
+          sales: 0,
+          revenue: 0,
+          customers: 0,
+          conversion: 0
+        }
+      })
+      setRecentSales([])
+      setTopPerformers([])
+      setSalesTargets([])
     } finally {
       setLoading(false)
     }
@@ -257,11 +327,11 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {salesData ? formatCurrency(salesData.totalRevenue) : formatCurrency(0)}
+                {salesData?.totalRevenue ? formatCurrency(salesData.totalRevenue) : formatCurrency(0)}
               </div>
-              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth.revenue || 0)}`}>
-                {getGrowthIcon(salesData?.monthlyGrowth.revenue || 0)}
-                {salesData ? Math.abs(salesData.monthlyGrowth.revenue) : 0}% من الشهر الماضي
+              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.revenue || 0)}`}>
+                {getGrowthIcon(salesData?.monthlyGrowth?.revenue || 0)}
+                {salesData?.monthlyGrowth?.revenue ? Math.abs(salesData.monthlyGrowth.revenue) : 0}% من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -273,9 +343,9 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{salesData?.totalSales || 0}</div>
-              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth.sales || 0)}`}>
-                {getGrowthIcon(salesData?.monthlyGrowth.sales || 0)}
-                {salesData ? Math.abs(salesData.monthlyGrowth.sales) : 0}% من الشهر الماضي
+              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.sales || 0)}`}>
+                {getGrowthIcon(salesData?.monthlyGrowth?.sales || 0)}
+                {salesData?.monthlyGrowth?.sales ? Math.abs(salesData.monthlyGrowth.sales) : 0}% من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -287,9 +357,9 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{salesData?.newCustomers || 0}</div>
-              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth.customers || 0)}`}>
-                {getGrowthIcon(salesData?.monthlyGrowth.customers || 0)}
-                {salesData ? Math.abs(salesData.monthlyGrowth.customers) : 0}% من الشهر الماضي
+              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.customers || 0)}`}>
+                {getGrowthIcon(salesData?.monthlyGrowth?.customers || 0)}
+                {salesData?.monthlyGrowth?.customers ? Math.abs(salesData.monthlyGrowth.customers) : 0}% من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -301,9 +371,9 @@ export default function SalesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{salesData?.conversionRate || 0}%</div>
-              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth.conversion || 0)}`}>
-                {getGrowthIcon(salesData?.monthlyGrowth.conversion || 0)}
-                {salesData ? Math.abs(salesData.monthlyGrowth.conversion) : 0}% من الشهر الماضي
+              <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.conversion || 0)}`}>
+                {getGrowthIcon(salesData?.monthlyGrowth?.conversion || 0)}
+                {salesData?.monthlyGrowth?.conversion ? Math.abs(salesData.monthlyGrowth.conversion) : 0}% من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -336,16 +406,16 @@ export default function SalesPage() {
                   {recentSales.map((sale) => (
                     <div key={sale.id} className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{sale.customer.name}</p>
+                        <p className="font-medium">{sale.customer?.name || 'عميل غير معروف'}</p>
                         <p className="text-sm text-muted-foreground">
-                          {sale.vehicle.make} {sale.vehicle.model} {sale.vehicle.year}
+                          {sale.vehicle?.make || ''} {sale.vehicle?.model || ''} {sale.vehicle?.year || ''}
                         </p>
                       </div>
                       <div className="text-left">
-                        <p className="font-medium">{formatCurrency(sale.invoice.totalAmount)}</p>
+                        <p className="font-medium">{formatCurrency(sale.invoice?.totalAmount || 0)}</p>
                         <div className="flex items-center gap-2 justify-end">
-                          <p className="text-xs text-muted-foreground">{formatDate(sale.invoice.issueDate)}</p>
-                          {getStatusBadge(sale.invoice.status)}
+                          <p className="text-xs text-muted-foreground">{formatDate(sale.invoice?.issueDate || new Date())}</p>
+                          {getStatusBadge(sale.invoice?.status || 'PENDING')}
                         </div>
                       </div>
                     </div>
@@ -379,22 +449,22 @@ export default function SalesPage() {
               ) : (
                 <div className="space-y-4">
                   {topPerformers.map((performer, index) => (
-                    <div key={performer.employee.email} className="flex items-center justify-between">
+                    <div key={performer.employee?.email || index} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
                           {index + 1}
                         </div>
                         <div>
-                          <p className="font-medium">{performer.employee.name}</p>
+                          <p className="font-medium">{performer.employee?.name || 'مندوب غير معروف'}</p>
                           <p className="text-sm text-muted-foreground">
-                            {performer.salesCount} سيارات • {performer.conversionRate}% تحويل
+                            {performer.salesCount || 0} سيارات • {performer.conversionRate || 0}% تحويل
                           </p>
                         </div>
                       </div>
                       <div className="text-left">
-                        <p className="font-medium">{formatCurrency(performer.totalRevenue)}</p>
+                        <p className="font-medium">{formatCurrency(performer.totalRevenue || 0)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {Math.round(performer.targetAchievement)}% من الهدف
+                          {Math.round(performer.targetAchievement || 0)}% من الهدف
                         </p>
                       </div>
                     </div>
@@ -427,14 +497,14 @@ export default function SalesPage() {
             <CardContent>
               <div className="space-y-4">
                 {salesTargets.map((target) => {
-                  const achievement = (target.achieved / target.target) * 100
+                  const achievement = (target.achieved || 0) / (target.target || 1) * 100
                   return (
                     <div key={target.id} className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="font-medium">{target.employee.name}</p>
+                          <p className="font-medium">{target.employee?.name || 'موظف غير معروف'}</p>
                           <p className="text-sm text-muted-foreground">
-                            {target.achieved} / {target.target} {target.metric}
+                            {target.achieved || 0} / {target.target || 1} {target.metric || ''}
                           </p>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
@@ -442,7 +512,8 @@ export default function SalesPage() {
                             className={`h-2 rounded-full ${
                               achievement >= 100 ? 'bg-green-600' : 
                               achievement >= 75 ? 'bg-blue-600' : 
-                              achievement >= 50 ? 'bg-yellow-600' : 'bg-red-600'
+                              achievement >= 50 ? 'bg-yellow-600' : 
+                              'bg-red-600'
                             }`}
                             style={{ width: `${Math.min(achievement, 100)}%` }}
                           ></div>
@@ -450,7 +521,7 @@ export default function SalesPage() {
                       </div>
                       <div className="ml-4 text-left">
                         <p className="font-medium">{Math.round(achievement)}%</p>
-                        <p className="text-xs text-muted-foreground">{target.period}</p>
+                        <p className="text-xs text-muted-foreground">{target?.period || 'غير محدد'}</p>
                       </div>
                     </div>
                   )
