@@ -1,13 +1,191 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Calendar, Clock, CheckCircle, AlertCircle, Plus, Eye } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { format } from 'date-fns'
+import { ar } from 'date-fns/locale'
+import Link from 'next/link'
+
+interface LeaveRequest {
+  id: string
+  employee: {
+    user: {
+      name: string
+    }
+    department: string
+  }
+  leaveType: 'ANNUAL' | 'SICK' | 'EMERGENCY' | 'MATERNITY' | 'PATERNITY'
+  startDate: string
+  endDate: string
+  totalDays: number
+  reason?: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  approvedBy?: string
+  approvedAt?: string
+  rejectedReason?: string
+  createdAt: string
+}
+
+interface LeaveStats {
+  pending: number
+  approved: number
+  rejected: number
+  todayLeaves: number
+  warnings: number
+}
 
 export default function LeavesPage() {
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
+  const [stats, setStats] = useState<LeaveStats>({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    todayLeaves: 0,
+    warnings: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+
+  useEffect(() => {
+    fetchLeaveRequests()
+  }, [])
+
+  const fetchLeaveRequests = async () => {
+    try {
+      const response = await fetch('/api/hr/leave-requests')
+      if (response.ok) {
+        const requests = await response.json()
+        setLeaveRequests(requests)
+        
+        // Calculate stats
+        const today = format(new Date(), 'yyyy-MM-dd')
+        const pending = requests.filter((r: LeaveRequest) => r.status === 'PENDING').length
+        const approved = requests.filter((r: LeaveRequest) => r.status === 'APPROVED').length
+        const rejected = requests.filter((r: LeaveRequest) => r.status === 'REJECTED').length
+        const todayLeaves = requests.filter((r: LeaveRequest) => {
+          const start = new Date(r.startDate)
+          const end = new Date(r.endDate)
+          const current = new Date(today)
+          return current >= start && current <= end && r.status === 'APPROVED'
+        }).length
+        
+        // Mock warnings - in real implementation, this would check leave balances
+        const warnings = Math.floor(Math.random() * 3)
+        
+        setStats({
+          pending,
+          approved,
+          rejected,
+          todayLeaves,
+          warnings
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching leave requests:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getLeaveTypeText = (type: string) => {
+    const types: { [key: string]: string } = {
+      'ANNUAL': 'إجازة اعتيادية',
+      'SICK': 'إجازة مرضية',
+      'EMERGENCY': 'إجازة طارئة',
+      'MATERNITY': 'إجازة أمومة',
+      'PATERNITY': 'إجازة أبوة'
+    }
+    return types[type] || type
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800'
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'قيد الانتظار'
+      case 'APPROVED': return 'معتمد'
+      case 'REJECTED': return 'مرفوض'
+      default: return status
+    }
+  }
+
+  const filteredRequests = leaveRequests.filter(request => {
+    const matchesStatus = statusFilter === 'all' || request.status === statusFilter
+    const matchesType = typeFilter === 'all' || request.leaveType === typeFilter
+    return matchesStatus && matchesType
+  })
+
+  const handleApproveLeave = async (leaveId: string) => {
+    try {
+      const response = await fetch(`/api/hr/leave-requests/${leaveId}/approve`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        fetchLeaveRequests()
+      }
+    } catch (error) {
+      console.error('Error approving leave:', error)
+    }
+  }
+
+  const handleRejectLeave = async (leaveId: string, reason: string) => {
+    try {
+      const response = await fetch(`/api/hr/leave-requests/${leaveId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+      })
+      if (response.ok) {
+        fetchLeaveRequests()
+      }
+    } catch (error) {
+      console.error('Error rejecting leave:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">إدارة الإجازات</h1>
+        <div className="flex gap-2">
+          <Link href="/admin/employees">
+            <Button variant="outline">
+              <Eye className="ml-2 h-4 w-4" />
+              عرض رصيد الإجازات
+            </Button>
+          </Link>
+          <Button>
+            <Plus className="ml-2 h-4 w-4" />
+            طلب إجازة جديدة
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -17,7 +195,7 @@ export default function LeavesPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
+            <div className="text-2xl font-bold">{stats.pending}</div>
             <p className="text-xs text-muted-foreground">
               تنتظر الموافقة
             </p>
@@ -30,7 +208,7 @@ export default function LeavesPage() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{stats.approved}</div>
             <p className="text-xs text-muted-foreground">
               هذا الشهر
             </p>
@@ -43,7 +221,7 @@ export default function LeavesPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{stats.todayLeaves}</div>
             <p className="text-xs text-muted-foreground">
               حالياً في إجازة
             </p>
@@ -56,7 +234,7 @@ export default function LeavesPage() {
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2</div>
+            <div className="text-2xl font-bold">{stats.warnings}</div>
             <p className="text-xs text-muted-foreground">
               تجاوزوا الحد المسموح
             </p>
@@ -66,32 +244,204 @@ export default function LeavesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>طلبات الإجازات في الانتظار</CardTitle>
+          <CardTitle>طلبات الإجازات</CardTitle>
           <CardDescription>
-            الطلبات التي تحتاج لموافقتك
+            جميع طلبات الإجازات في النظام
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {[
-              { name: 'أحمد محمد', type: 'إجازة اعتيادية', period: '20-24 يناير', days: 5, reason: 'زيارة عائلية' },
-              { name: 'فاطمة علي', type: 'إجازة مرضية', period: '22-23 يناير', days: 2, reason: 'مواعيد طبية' },
-              { name: 'محمد خالد', type: 'إجازة طارئة', period: '25 يناير', days: 1, reason: 'ظروف عائلية' },
-            ].map((leave, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">{leave.name}</p>
-                  <p className="text-sm text-muted-foreground">{leave.type} - {leave.reason}</p>
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">{leave.period}</p>
-                  <p className="text-sm text-muted-foreground">{leave.days} أيام</p>
-                </div>
-              </div>
-            ))}
+          <div className="flex gap-4 mb-6">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الحالات</SelectItem>
+                <SelectItem value="PENDING">قيد الانتظار</SelectItem>
+                <SelectItem value="APPROVED">معتمد</SelectItem>
+                <SelectItem value="REJECTED">مرفوض</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="نوع الإجازة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الأنواع</SelectItem>
+                <SelectItem value="ANNUAL">إجازة اعتيادية</SelectItem>
+                <SelectItem value="SICK">إجازة مرضية</SelectItem>
+                <SelectItem value="EMERGENCY">إجازة طارئة</SelectItem>
+                <SelectItem value="MATERNITY">إجازة أمومة</SelectItem>
+                <SelectItem value="PATERNITY">إجازة أبوة</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>الموظف</TableHead>
+                  <TableHead>نوع الإجازة</TableHead>
+                  <TableHead>الفترة</TableTitle>
+                  <TableHead>المدة</TableHead>
+                  <TableHead>السبب</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{request.employee.user.name}</div>
+                        <div className="text-sm text-muted-foreground">{request.employee.department}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{getLeaveTypeText(request.leaveType)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{format(new Date(request.startDate), 'dd/MM/yyyy', { locale: ar })}</div>
+                        <div className="text-muted-foreground">إلى</div>
+                        <div>{format(new Date(request.endDate), 'dd/MM/yyyy', { locale: ar })}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium">{request.totalDays} يوم{request.totalDays > 1 ? 'أ' : ''}</span>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {request.reason || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(request.status)}>
+                        {getStatusText(request.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {request.status === 'PENDING' && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleApproveLeave(request.id)}
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const reason = prompt('سبب الرفض:')
+                              if (reason) {
+                                handleRejectLeave(request.id, reason)
+                              }
+                            }}
+                          >
+                            <AlertCircle className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {filteredRequests.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              لا توجد طلبات إجازات مطابقة للفلاتر المحددة
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>إحصائيات الإجازات</CardTitle>
+            <CardDescription>
+              نظرة عامة على توزيع الإجازات
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {['ANNUAL', 'SICK', 'EMERGENCY'].map((type) => {
+                const count = leaveRequests.filter(r => r.leaveType === type).length
+                const percentage = leaveRequests.length > 0 ? Math.round((count / leaveRequests.length) * 100) : 0
+                
+                return (
+                  <div key={type} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{getLeaveTypeText(type)}</Badge>
+                      <span className="text-sm text-muted-foreground">{count} طلب</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-gray-200 rounded-full">
+                        <div 
+                          className="h-2 bg-blue-500 rounded-full"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium w-12 text-left">{percentage}%</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>الإجازات القادمة</CardTitle>
+            <CardDescription>
+              الإجازات المعتمدة القادمة خلال 7 أيام
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {leaveRequests
+                .filter(r => r.status === 'APPROVED')
+                .filter(r => {
+                  const startDate = new Date(r.startDate)
+                  const today = new Date()
+                  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+                  return startDate >= today && startDate <= weekFromNow
+                })
+                .slice(0, 5)
+                .map((request) => (
+                  <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{request.employee.user.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {getLeaveTypeText(request.leaveType)} - {request.totalDays} أيام
+                      </p>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-medium">
+                        {format(new Date(request.startDate), 'dd/MM/yyyy', { locale: ar })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">بداية الإجازة</p>
+                    </div>
+                  </div>
+                ))}
+              
+              {leaveRequests.filter(r => r.status === 'APPROVED').filter(r => {
+                const startDate = new Date(r.startDate)
+                const today = new Date()
+                const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+                return startDate >= today && startDate <= weekFromNow
+              }).length === 0 && (
+                <p className="text-muted-foreground text-center py-4">لا توجد إجازات قادمة خلال 7 أيام</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
