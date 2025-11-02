@@ -179,6 +179,25 @@ export default function HRPage() {
             variant="outline"
             onClick={async () => {
               try {
+                const response = await fetch('/api/test-db')
+                const result = await response.json()
+                if (response.ok) {
+                  toast.success(`اتصال قاعدة البيانات ناجح: ${result.data.users} مستخدم، ${result.data.employees} موظف`)
+                } else {
+                  toast.error(`فشل الاتصال: ${result.error}`)
+                }
+              } catch (error) {
+                toast.error('حدث خطأ أثناء اختبار الاتصال')
+              }
+            }}
+          >
+            <Eye className="ml-2 h-4 w-4" />
+            اختبار الاتصال
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={async () => {
+              try {
                 const response = await fetch('/api/init-data', {
                   method: 'POST'
                 })

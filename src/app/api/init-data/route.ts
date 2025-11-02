@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
         create: { 
           name: 'المبيعات', 
           description: 'قسم المبيعات والتسويق',
-          isActive: true 
+          isActive: true
         }
       }),
       db.department.upsert({
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
         create: { 
           name: 'الموارد البشرية', 
           description: 'قسم الموارد البشرية',
-          isActive: true 
+          isActive: true
         }
       }),
       db.department.upsert({
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         create: { 
           name: 'المالية', 
           description: 'قسم المحاسبة والمالية',
-          isActive: true 
+          isActive: true
         }
       }),
       db.department.upsert({
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         create: { 
           name: 'خدمة العملاء', 
           description: 'قسم خدمة العملاء',
-          isActive: true 
+          isActive: true
         }
       })
     ])

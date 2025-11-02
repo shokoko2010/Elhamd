@@ -9,56 +9,140 @@ export async function POST(request: NextRequest) {
       db.department.upsert({
         where: { name: 'المبيعات' },
         update: {},
-        create: { name: 'المبيعات' }
+        create: { 
+          name: 'المبيعات', 
+          description: 'قسم المبيعات',
+          isActive: true
+        }
       }),
       db.department.upsert({
         where: { name: 'التسويق' },
         update: {},
-        create: { name: 'التسويق' }
+        create: { 
+          name: 'التسويق', 
+          description: 'قسم التسويق',
+          isActive: true
+        }
       }),
       db.department.upsert({
         where: { name: 'المالية' },
         update: {},
-        create: { name: 'المالية' }
+        create: { 
+          name: 'المالية', 
+          description: 'قسم المحاسبة والمالية',
+          isActive: true
+        }
       }),
       db.department.upsert({
         where: { name: 'الموارد البشرية' },
         update: {},
-        create: { name: 'الموارد البشرية' }
+        create: { 
+          name: 'الموارد البشرية', 
+          description: 'قسم الموارد البشرية',
+          isActive: true
+        }
       }),
       db.department.upsert({
         where: { name: 'خدمة العملاء' },
         update: {},
-        create: { name: 'خدمة العملاء' }
+        create: { 
+          name: 'خدمة العملاء', 
+          description: 'قسم خدمة العملاء',
+          isActive: true
+        }
       })
     ])
 
     // Create sample positions
     const positions = await Promise.all([
+      // المبيعات
       db.position.upsert({
-        where: { title: 'مدير مبيعات' },
+        where: { 
+          title: 'مدير مبيعات',
+          departmentId: departments[0].id 
+        },
         update: {},
-        create: { title: 'مدير مبيعات' }
+        create: { 
+          title: 'مدير مبيعات',
+          departmentId: departments[0].id,
+          level: 'SENIOR',
+          description: 'مدير قسم المبيعات',
+          isActive: true
+        }
       }),
       db.position.upsert({
-        where: { title: 'مندوب مبيعات' },
+        where: { 
+          title: 'مندوب مبيعات',
+          departmentId: departments[0].id 
+        },
         update: {},
-        create: { title: 'مندوب مبيعات' }
+        create: { 
+          title: 'مندوب مبيعات',
+          departmentId: departments[0].id,
+          level: 'MID',
+          description: 'مندوب مبيعات',
+          isActive: true
+        }
       }),
+      // التسويق
       db.position.upsert({
-        where: { title: 'محاسب' },
+        where: { 
+          title: 'مندوب مبيعات',
+          departmentId: departments[1].id 
+        },
         update: {},
-        create: { title: 'محاسب' }
+        create: { 
+          title: 'مندوب مبيعات',
+          departmentId: departments[1].id,
+          level: 'MID',
+          description: 'مندوب تسويق',
+          isActive: true
+        }
       }),
+      // المالية
       db.position.upsert({
-        where: { title: 'موظف موارد بشرية' },
+        where: { 
+          title: 'محاسب',
+          departmentId: departments[2].id 
+        },
         update: {},
-        create: { title: 'موظف موارد بشرية' }
+        create: { 
+          title: 'محاسب',
+          departmentId: departments[2].id,
+          level: 'MID',
+          description: 'محاسب',
+          isActive: true
+        }
       }),
+      // الموارد البشرية
       db.position.upsert({
-        where: { title: 'مدير خدمة عملاء' },
+        where: { 
+          title: 'موظف موارد بشرية',
+          departmentId: departments[3].id 
+        },
         update: {},
-        create: { title: 'مدير خدمة عملاء' }
+        create: { 
+          title: 'موظف موارد بشرية',
+          departmentId: departments[3].id,
+          level: 'MID',
+          description: 'موظف موارد بشرية',
+          isActive: true
+        }
+      }),
+      // خدمة العملاء
+      db.position.upsert({
+        where: { 
+          title: 'مدير خدمة عملاء',
+          departmentId: departments[4].id 
+        },
+        update: {},
+        create: { 
+          title: 'مدير خدمة عملاء',
+          departmentId: departments[4].id,
+          level: 'SENIOR',
+          description: 'مدير خدمة عملاء',
+          isActive: true
+        }
       })
     ])
 
