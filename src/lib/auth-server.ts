@@ -1,8 +1,8 @@
 import { getServerSession } from 'next-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { authOptions } from '@/lib/authOptions'
-import { PermissionService, PERMISSIONS } from './permissions'
 import { UserRole as PrismaUserRole } from '@prisma/client'
+import { getUserPermissions } from '@/lib/simple-permissions'
 
 export { authOptions }
 
@@ -28,53 +28,19 @@ export interface AuthUser {
 
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
+    console.log('🔍 Getting authenticated user...')
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
-      console.log('No session found in getAuthUser')
+      console.log('❌ No session found')
       return null
     }
 
-    let permissions: string[] = []
+    console.log('✅ Session found for user:', session.user.email)
     
-    // Try to get permissions, but don't fail if they don't exist yet
-    try {
-      permissions = await PermissionService.getUserPermissions(session.user.id)
-    } catch (error) {
-      console.warn('Failed to get permissions, using defaults:', error)
-      // If permissions fail, get default permissions based on role
-      const userRole = session.user.role
-      if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) {
-        permissions = Object.values(PERMISSIONS)
-      } else if (userRole === UserRole.ACCOUNTANT) {
-        permissions = [
-          PERMISSIONS.VIEW_INVOICES,
-          PERMISSIONS.CREATE_INVOICES,
-          PERMISSIONS.EDIT_INVOICES,
-          PERMISSIONS.DELETE_INVOICES,
-          PERMISSIONS.VIEW_QUOTATIONS,
-          PERMISSIONS.CREATE_QUOTATIONS,
-          PERMISSIONS.EDIT_QUOTATIONS,
-          PERMISSIONS.DELETE_QUOTATIONS,
-          PERMISSIONS.VIEW_PAYMENTS,
-          PERMISSIONS.CREATE_PAYMENTS,
-          PERMISSIONS.EDIT_PAYMENTS,
-          PERMISSIONS.VIEW_FINANCIAL_REPORTS
-        ]
-      } else if (userRole === UserRole.BRANCH_MANAGER) {
-        permissions = [
-          PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
-          PERMISSIONS.VIEW_VEHICLES,
-          PERMISSIONS.EDIT_VEHICLES,
-          PERMISSIONS.CREATE_VEHICLES
-        ]
-      } else if (userRole === UserRole.STAFF) {
-        permissions = [
-          PERMISSIONS.VIEW_VEHICLES,
-          PERMISSIONS.EDIT_VEHICLES
-        ]
-      }
-    }
+    // Get user permissions
+    const permissions = await getUserPermissions(session.user.id)
+    console.log('🔑 User permissions:', permissions.length)
 
     const authUser: AuthUser = {
       id: session.user.id,
@@ -86,9 +52,10 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       permissions
     }
 
+    console.log('✅ Auth user created:', authUser.email, 'Role:', authUser.role)
     return authUser
   } catch (error) {
-    console.error('Error in getAuthUser:', error)
+    console.error('❌ Error in getAuthUser:', error)
     return null
   }
 }

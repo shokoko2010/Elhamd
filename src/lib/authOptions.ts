@@ -16,7 +16,7 @@ export const authOptions = {
 
         const { db } = await import('@/lib/db')
         const bcrypt = await import('bcryptjs')
-        const { PermissionService } = await import('@/lib/permissions')
+        const { getUserPermissions } = await import('@/lib/simple-permissions')
 
         const user = await db.user.findUnique({
           where: {
@@ -38,7 +38,7 @@ export const authOptions = {
         }
 
         // Get user permissions
-        const permissions = await PermissionService.getUserPermissions(user.id)
+        const permissions = await getUserPermissions(user.id)
 
         // Update last login
         await db.user.update({

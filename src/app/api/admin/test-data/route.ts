@@ -4,7 +4,14 @@ import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 Starting test data creation...')
+    console.log('Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET'
+    })
+
     // Create sample departments
+    console.log('📁 Creating departments...')
     const departments = await Promise.all([
       db.department.upsert({
         where: { name: 'المبيعات' },
@@ -53,7 +60,10 @@ export async function POST(request: NextRequest) {
       })
     ])
 
+    console.log(`✅ Departments created: ${departments.length}`)
+
     // Create sample positions
+    console.log('💼 Creating positions...')
     const positions = await Promise.all([
       // المبيعات
       db.position.upsert({
@@ -146,7 +156,10 @@ export async function POST(request: NextRequest) {
       })
     ])
 
+    console.log(`✅ Positions created: ${positions.length}`)
+
     // Create sample users and employees
+    console.log('👥 Creating sample employees...')
     const sampleEmployees = [
       {
         name: 'أحمد محمد',
@@ -190,60 +203,72 @@ export async function POST(request: NextRequest) {
       }
     ]
 
-    const createdEmployees = []
+  const createdEmployees = []
 
     for (const emp of sampleEmployees) {
-      // Create user
-      const hashedPassword = await bcrypt.hash('password123', 10)
-      const user = await db.user.upsert({
-        where: { email: emp.email },
-        update: {},
-        create: {
-          name: emp.name,
-          email: emp.email,
-          phone: emp.phone,
-          password: hashedPassword,
-          role: 'STAFF',
-          isActive: true
-        }
-      })
+      try {
+        console.log(`👤 Creating employee: ${emp.name}`)
+        
+        // Create user
+        const hashedPassword = await bcrypt.hash('password123', 10)
+        const user = await db.user.upsert({
+          where: { email: emp.email },
+          update: {},
+          create: {
+            name: emp.name,
+            email: emp.email,
+            phone: emp.phone,
+            password: hashedPassword,
+            role: 'STAFF',
+            isActive: true
+          }
+        })
 
-      // Create employee
-      const employeeCount = await db.employee.count()
-      const employeeNumber = `EMP${String(employeeCount + createdEmployees.length + 1).padStart(4, '0')}`
-      
-      const employee = await db.employee.upsert({
-        where: { userId: user.id },
-        update: {
-          departmentId: departments[emp.departmentIndex].id,
-          positionId: positions[emp.positionIndex].id,
-          salary: emp.salary,
-          hireDate: new Date(),
-          status: 'ACTIVE'
-        },
-        create: {
-          userId: user.id,
-          employeeNumber,
-          departmentId: departments[emp.departmentIndex].id,
-          positionId: positions[emp.positionIndex].id,
-          salary: emp.salary,
-          hireDate: new Date(),
-          status: 'ACTIVE'
-        }
-      })
+        // Create employee
+        const employeeCount = await db.employee.count()
+        const employeeNumber = `EMP${String(employeeCount + createdEmployees.length + 1).padStart(4, '0')}`
+        
+        const employee = await db.employee.upsert({
+          where: { userId: user.id },
+          update: {
+            departmentId: departments[emp.departmentIndex].id,
+            positionId: positions[emp.positionIndex].id,
+            salary: emp.salary,
+            hireDate: new Date(),
+            status: 'ACTIVE'
+          },
+          create: {
+            userId: user.id,
+            employeeNumber,
+            departmentId: departments[emp.departmentIndex].id,
+            positionId: positions[emp.positionIndex].id,
+            salary: emp.salary,
+            hireDate: new Date(),
+            status: 'ACTIVE'
+          }
+        })
 
-      createdEmployees.push(employee)
+        createdEmployees.push(employee)
+        console.log(`✅ Created employee: ${emp.name}`)
+      } catch (error) {
+        console.error(`❌ Error creating employee ${emp.name}:`, error)
+      }
     }
 
+    console.log('🎉 Test data creation completed!')
     return NextResponse.json({
       success: true,
       message: 'تم إنشاء بيانات تجريبية للموظفين بنجاح',
       employees: createdEmployees.length
     })
   } catch (error) {
-    console.error('Error creating sample data:', error)
+    console.error('❌ Error creating sample data:', error)
+    console.error('Stack trace:', error.stack)
     return NextResponse.json(
-      { error: 'حدث خطأ أثناء إنشاء البيانات التجريبية' },
+      { 
+        error: 'حدث خطأ أثناء إنشاء البيانات التجريبية',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

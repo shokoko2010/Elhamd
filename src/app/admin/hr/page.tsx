@@ -179,6 +179,27 @@ export default function HRPage() {
             variant="outline"
             onClick={async () => {
               try {
+                const response = await fetch('/api/debug-simple', {
+                  method: 'POST'
+                })
+                const result = await response.json()
+                if (response.ok) {
+                  toast.success(`Debug API working: ${result.message}`)
+                } else {
+                  toast.error(`Debug API failed: ${result.error}`)
+                }
+              } catch (error) {
+                toast.error('Debug API error')
+              }
+            }}
+          >
+            <Eye className="ml-2 h-4 w-4" />
+            Debug API
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={async () => {
+              try {
                 const response = await fetch('/api/test-db')
                 const result = await response.json()
                 if (response.ok) {

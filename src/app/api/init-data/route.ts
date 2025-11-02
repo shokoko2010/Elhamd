@@ -4,9 +4,14 @@ import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Starting data initialization...')
+    console.log('🚀 Starting data initialization...')
+    console.log('Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET'
+    })
 
     // 1. Create departments if they don't exist
+    console.log('📁 Creating departments...')
     const departments = await Promise.all([
       db.department.upsert({
         where: { name: 'المبيعات' },
@@ -46,9 +51,10 @@ export async function POST(request: NextRequest) {
       })
     ])
 
-    console.log('Departments created:', departments.length)
+    console.log(`✅ Departments created: ${departments.length}`)
 
     // 2. Create positions if they don't exist
+    console.log('💼 Creating positions...')
     const positions = await Promise.all([
       // المبيعات
       db.position.upsert({
@@ -126,9 +132,10 @@ export async function POST(request: NextRequest) {
       })
     ])
 
-    console.log('Positions created:', positions.length)
+    console.log(`✅ Positions created: ${positions.length}`)
 
     // 3. Create sample employees
+    console.log('👥 Creating sample employees...')
     const sampleEmployees = [
       {
         name: 'أحمد محمد',
@@ -178,6 +185,8 @@ export async function POST(request: NextRequest) {
       const emp = sampleEmployees[i]
       
       try {
+        console.log(`👤 Creating employee ${i + 1}/${sampleEmployees.length}: ${emp.name}`)
+        
         // Create user
         const hashedPassword = await bcrypt.hash('password123', 10)
         const user = await db.user.upsert({
@@ -219,14 +228,15 @@ export async function POST(request: NextRequest) {
         })
 
         createdEmployees.push(employee)
-        console.log(`Created employee: ${emp.name}`)
+        console.log(`✅ Created employee: ${emp.name}`)
       } catch (error) {
-        console.error(`Error creating employee ${emp.name}:`, error)
+        console.error(`❌ Error creating employee ${emp.name}:`, error)
       }
     }
 
     // 4. Create sample leave requests
     if (createdEmployees.length > 0) {
+      console.log('📅 Creating sample leave requests...')
       const currentPeriod = new Date().toISOString().slice(0, 7)
       
       for (let i = 0; i < Math.min(3, createdEmployees.length); i++) {
@@ -247,12 +257,14 @@ export async function POST(request: NextRequest) {
               status: 'PENDING'
             }
           })
+          console.log(`✅ Created leave request for employee ${i + 1}`)
         } catch (error) {
-          console.error('Error creating leave request:', error)
+          console.error('❌ Error creating leave request:', error)
         }
       }
     }
 
+    console.log('🎉 Data initialization completed successfully!')
     return NextResponse.json({
       success: true,
       message: 'تم تهيئة البيانات الأولية بنجاح',
@@ -261,9 +273,13 @@ export async function POST(request: NextRequest) {
       employees: createdEmployees.length
     })
   } catch (error) {
-    console.error('Error initializing data:', error)
+    console.error('❌ Error initializing data:', error)
+    console.error('Stack trace:', error.stack)
     return NextResponse.json(
-      { error: 'حدث خطأ أثناء تهيئة البيانات' },
+      { 
+        error: 'حدث خطأ أثناء تهيئة البيانات',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
