@@ -87,7 +87,6 @@ function CustomersContent() {
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -113,15 +112,15 @@ function CustomersContent() {
 
   useEffect(() => {
     filterCustomers()
-  }, [customers, searchTerm, roleFilter, statusFilter])
+  }, [customers, searchTerm, statusFilter])
 
   const loadCustomers = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/admin/users')
+      const response = await fetch('/api/admin/customers')
       if (response.ok) {
         const data = await response.json()
-        setCustomers(data.users)
+        setCustomers(data.customers)
       }
     } catch (error) {
       console.error('Error loading customers:', error)
@@ -148,12 +147,11 @@ function CustomersContent() {
                            customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            customer.phone.includes(searchTerm)
       
-      const matchesRole = roleFilter === 'all' || customer.role === roleFilter
       const matchesStatus = statusFilter === 'all' || 
                            (statusFilter === 'active' && customer.isActive) ||
                            (statusFilter === 'inactive' && !customer.isActive)
 
-      return matchesSearch && matchesRole && matchesStatus
+      return matchesSearch && matchesStatus
     })
 
     setFilteredCustomers(filtered)
@@ -212,7 +210,7 @@ function CustomersContent() {
     setLoading(true)
     
     try {
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/api/admin/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -240,7 +238,7 @@ function CustomersContent() {
     setLoading(true)
     
     try {
-      const response = await fetch(`/api/admin/users/${editingCustomer.id}`, {
+      const response = await fetch(`/api/admin/customers/${editingCustomer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -268,7 +266,7 @@ function CustomersContent() {
     setLoading(true)
     
     try {
-      const response = await fetch(`/api/admin/users/${editingCustomer.id}`, {
+      const response = await fetch(`/api/admin/customers/${editingCustomer.id}`, {
         method: 'DELETE'
       })
 
@@ -294,7 +292,7 @@ function CustomersContent() {
     setLoading(true)
     
     try {
-      const response = await fetch(`/api/admin/users/${editingCustomer.id}`, {
+      const response = await fetch(`/api/admin/customers/${editingCustomer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissions: formData.permissions })
@@ -470,7 +468,7 @@ function CustomersContent() {
       {/* Filters */}
       <Card className="mb-6">
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -480,20 +478,6 @@ function CustomersContent() {
                 className="pr-10"
               />
             </div>
-            
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="الدور" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأدوار</SelectItem>
-                <SelectItem value="CUSTOMER">عميل</SelectItem>
-                <SelectItem value="STAFF">موظف</SelectItem>
-                <SelectItem value="ADMIN">مشرف</SelectItem>
-                <SelectItem value="BRANCH_MANAGER">مدير فرع</SelectItem>
-                <SelectItem value="SUPER_ADMIN">سوبر مشرف</SelectItem>
-              </SelectContent>
-            </Select>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>

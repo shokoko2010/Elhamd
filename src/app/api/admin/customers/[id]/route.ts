@@ -1,0 +1,125 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { getAuthUser } from '@/lib/auth-server'
+import { UserRole } from '@prisma/client'
+import { PERMISSIONS } from '@/lib/permissions'
+
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params
+    
+    // Check authentication and authorization
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.permissions.includes(PERMISSIONS.EDIT_USERS)
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
+    
+    const body = await request.json()
+    const { name, email, phone, isActive, permissions } = body
+
+    // Check if customer exists
+    const existingCustomer = await db.user.findUnique({
+      where: { id }
+    })
+
+    if (!existingCustomer) {
+      return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 })
+    }
+
+    // Check if email is being changed and if it's already taken
+    if (email !== existingCustomer.email) {
+      const emailTaken = await db.user.findUnique({
+        where: { email }
+      })
+      
+      if (emailTaken) {
+        return NextResponse.json({ error: 'البريد الإلكتروني مستخدم بالفعل' }, { status: 400 })
+      }
+    }
+
+    // Update customer
+    const updatedCustomer = await db.user.update({
+      where: { id },
+      data: {
+        name,
+        email,
+        phone,
+        isActive: isActive !== undefined ? isActive : existingCustomer.isActive
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    })
+
+    return NextResponse.json({ customer: updatedCustomer })
+  } catch (error) {
+    console.error('Error updating customer:', error)
+    return NextResponse.json(
+      { error: 'فشل في تحديث العميل' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params
+    
+    // Check authentication and authorization
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+    
+    // Check if user has required role or permissions
+    const hasAccess = user.role === UserRole.ADMIN || 
+                      user.role === UserRole.SUPER_ADMIN ||
+                      user.permissions.includes(PERMISSIONS.DELETE_USERS)
+    
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    }
+
+    // Check if customer exists
+    const existingCustomer = await db.user.findUnique({
+      where: { id }
+    })
+
+    if (!existingCustomer) {
+      return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 })
+    }
+
+    // Delete customer
+    await db.user.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ message: 'تم حذف العميل بنجاح' })
+  } catch (error) {
+    console.error('Error deleting customer:', error)
+    return NextResponse.json(
+      { error: 'فشل في حذف العميل' },
+      { status: 500 }
+    )
+  }
+}

@@ -1,7 +1,3 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
@@ -24,23 +20,18 @@ export async function GET(request: NextRequest) {
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
+    
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
-    const role = searchParams.get('role') || ''
     const isActive = searchParams.get('isActive')
 
     const skip = (page - 1) * limit
 
-    // Build where clause
-    const where: any = {}
-    
-    // For customers page, only show customers by default
-    if (!role || role === 'all') {
-      where.role = UserRole.CUSTOMER
-    } else if (role !== 'all') {
-      where.role = role as UserRole
+    // Build where clause - only show customers
+    const where: any = {
+      role: UserRole.CUSTOMER
     }
     
     if (search) {
@@ -55,7 +46,7 @@ export async function GET(request: NextRequest) {
       where.isActive = isActive === 'true'
     }
 
-    const [users, total] = await Promise.all([
+    const [customers, total] = await Promise.all([
       db.user.findMany({
         where,
         select: {
@@ -89,14 +80,14 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate additional fields for the frontend
-    const usersWithStats = users.map(user => ({
-      ...user,
-      totalBookings: (user._count.testDriveBookings || 0) + (user._count.serviceBookings || 0),
+    const customersWithStats = customers.map(customer => ({
+      ...customer,
+      totalBookings: (customer._count.testDriveBookings || 0) + (customer._count.serviceBookings || 0),
       totalSpent: 0 // Calculate from bookings/invoices when implemented
     }))
 
     return NextResponse.json({
-      users: usersWithStats,
+      customers: customersWithStats,
       pagination: {
         total,
         page,
@@ -105,9 +96,9 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching users:', error)
+    console.error('Error fetching customers:', error)
     return NextResponse.json(
-      { error: 'فشل في جلب المستخدمين' },
+      { error: 'فشل في جلب العملاء' },
       { status: 500 }
     )
   }
@@ -129,28 +120,30 @@ export async function POST(request: NextRequest) {
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
+    
     const body = await request.json()
-    const { email, name, role, phone, permissions } = body
+    const { email, name, phone, address, licenseNumber } = body
 
-    // Check if user already exists
-    const existingUser = await db.user.findUnique({
+    // Check if customer already exists
+    const existingCustomer = await db.user.findUnique({
       where: { email }
     })
 
-    if (existingUser) {
+    if (existingCustomer) {
       return NextResponse.json(
-        { error: 'المستخدم موجود بالفعل' },
+        { error: 'العميل موجود بالفعل' },
         { status: 400 }
       )
     }
 
-    // Create user
-    const newUser = await db.user.create({
+    // Create customer
+    const newCustomer = await db.user.create({
       data: {
         email,
         name,
-        role: role || UserRole.CUSTOMER,
-        phone
+        role: UserRole.CUSTOMER,
+        phone,
+        isActive: true
       },
       select: {
         id: true,
@@ -163,21 +156,11 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Add permissions if provided
-    if (permissions && permissions.length > 0) {
-      await db.userPermission.createMany({
-        data: permissions.map((permissionId: string) => ({
-          userId: newUser.id,
-          permissionId
-        }))
-      })
-    }
-
-    return NextResponse.json({ user: newUser }, { status: 201 })
+    return NextResponse.json({ customer: newCustomer }, { status: 201 })
   } catch (error) {
-    console.error('Error creating user:', error)
+    console.error('Error creating customer:', error)
     return NextResponse.json(
-      { error: 'فشل في إنشاء المستخدم' },
+      { error: 'فشل في إنشاء العميل' },
       { status: 500 }
     )
   }
