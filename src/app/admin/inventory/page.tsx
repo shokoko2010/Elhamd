@@ -14,7 +14,9 @@ import {
   Plus,
   Eye,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Car,
+  Sync
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -84,6 +86,7 @@ export default function InventoryPage() {
   const [recentMovements, setRecentMovements] = useState<StockMovement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     loadInventoryData()
@@ -126,6 +129,45 @@ export default function InventoryPage() {
       setError('فشل في تحميل بيانات المخزون')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const syncVehiclesToInventory = async () => {
+    setSyncing(true)
+    try {
+      // Get sync stats first
+      const statsResponse = await fetch('/api/inventory/sync-stats')
+      const stats = statsResponse.ok ? await statsResponse.json() : null
+      
+      if (stats && stats.vehiclesToSync === 0) {
+        alert('لا توجد سيارات جديدة للمزامنة')
+        return
+      }
+
+      const response = await fetch('/api/inventory/sync-vehicles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        let message = `✅ ${result.message}\n\n📊 الإحصائيات:\n• السيارات المزامنة: ${result.syncedCount}\n• السيارات المحدثة: ${result.skippedCount}\n• الإجمالي: ${result.totalVehicles}`
+        
+        if (result.errorCount > 0) {
+          message += `\n⚠️ تحذير: حدثت ${result.errorCount} أخطاء أثناء المزامنة`
+        }
+        
+        alert(message)
+        loadInventoryData()
+      } else {
+        const error = await response.json()
+        alert('❌ خطأ في مزامنة السيارات: ' + (error.error || 'خطأ غير معروف'))
+      }
+    } catch (error) {
+      console.error('Error syncing vehicles:', error)
+      alert('❌ حدث خطأ أثناء مزامنة السيارات')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -286,44 +328,64 @@ export default function InventoryPage() {
                 مرحباً بك في نظام إدارة المخزون
               </h2>
               <p className="text-blue-700 mb-6 max-w-md mx-auto">
-                لا توجد بيانات مخزون حالياً. اضغط على زر "تهيئة البيانات" لإضافة بيانات افتراضية وبدء استخدام النظام.
+                لا توجد بيانات مخزون حالياً. يمكنك تهيئة البيانات الافتراضية أو مزامنة السيارات الموجودة في النظام.
               </p>
-              <Button 
-                onClick={async () => {
-                  try {
-                    // Initialize warehouses and suppliers first
-                    const initResponse = await fetch('/api/inventory/initialize', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' }
-                    })
-                    
-                    if (initResponse.ok) {
-                      // Then seed inventory items
-                      const seedResponse = await fetch('/api/inventory/seed-items', {
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  onClick={syncVehiclesToInventory}
+                  disabled={syncing}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {syncing ? (
+                    <>
+                      <RefreshCw className="ml-2 h-4 w-4 animate-spin" />
+                      جاري المزامنة...
+                    </>
+                  ) : (
+                    <>
+                      <Car className="ml-2 h-4 w-4" />
+                      مزامنة السيارات
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    try {
+                      // Initialize warehouses and suppliers first
+                      const initResponse = await fetch('/api/inventory/initialize', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
                       })
                       
-                      if (seedResponse.ok) {
-                        alert('تم تهيئة بيانات المخزون بنجاح')
-                        loadInventoryData()
+                      if (initResponse.ok) {
+                        // Then seed inventory items
+                        const seedResponse = await fetch('/api/inventory/seed-items', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        })
+                        
+                        if (seedResponse.ok) {
+                          alert('تم تهيئة بيانات المخزون بنجاح')
+                          loadInventoryData()
+                        } else {
+                          const error = await seedResponse.json()
+                          alert('خطأ في تهيئة أصناف المخزون: ' + (error.error || 'خطأ غير معروف'))
+                        }
                       } else {
-                        const error = await seedResponse.json()
-                        alert('خطأ في تهيئة أصناف المخزون: ' + (error.error || 'خطأ غير معروف'))
+                        const error = await initResponse.json()
+                        alert('خطأ في تهيئة المستودعات والموردين: ' + (error.error || 'خطأ غير معروف'))
                       }
-                    } else {
-                      const error = await initResponse.json()
-                      alert('خطأ في تهيئة المستودعات والموردين: ' + (error.error || 'خطأ غير معروف'))
+                    } catch (error) {
+                      alert('حدث خطأ أثناء تهيئة البيانات')
                     }
-                  } catch (error) {
-                    alert('حدث خطأ أثناء تهيئة البيانات')
-                  }
-                }}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="ml-2 h-4 w-4" />
-                تهيئة بيانات المخزون
-              </Button>
+                  }}
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                >
+                  <Plus className="ml-2 h-4 w-4" />
+                  تهيئة بيانات افتراضية
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -343,6 +405,24 @@ export default function InventoryPage() {
                 طلبات الشراء
               </Button>
             </Link>
+            <Button 
+              variant="outline" 
+              onClick={syncVehiclesToInventory}
+              disabled={syncing}
+              className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+            >
+              {syncing ? (
+                <>
+                  <RefreshCw className="ml-2 h-4 w-4 animate-spin" />
+                  جاري المزامنة...
+                </>
+              ) : (
+                <>
+                  <Car className="ml-2 h-4 w-4" />
+                  مزامنة السيارات
+                </>
+              )}
+            </Button>
             <Button 
               variant="outline" 
               onClick={async () => {

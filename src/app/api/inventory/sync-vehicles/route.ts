@@ -1,86 +1,116 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
+import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { authorize, UserRole } from '@/lib/auth-server'
-
-const authHandler = async (request: NextRequest) => {
-  try {
-    return await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] })
-  } catch (error) {
-    return null
-  }
-}
+import { UserRole } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await authHandler(request)
-    if (auth.error) {
-      return auth.error
+    const user = await getApiUser(request)
+    
+    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch all vehicles from the database
+    // Get all vehicles from the database
     const vehicles = await db.vehicle.findMany({
+      where: {
+        status: 'AVAILABLE'
+      },
       include: {
-        branch: true
+        images: {
+          where: {
+            isPrimary: true
+          },
+          take: 1
+        }
       }
     })
 
-    let syncedCount = 0
-    let skippedCount = 0
-
-    // Process each vehicle
-    for (const vehicle of vehicles) {
-      // Check if vehicle already exists in inventory
-      const existingInventoryItem = await db.inventoryItem.findFirst({
-        where: {
-          partNumber: `VEH-${vehicle.stockNumber}`
-        }
+    if (vehicles.length === 0) {
+      return NextResponse.json({
+        success: true,
+        syncedCount: 0,
+        skippedCount: 0,
+        totalVehicles: 0,
+        message: 'لا توجد سيارات متاحة للمزامنة'
       })
-
-      if (existingInventoryItem) {
-        skippedCount++
-        continue
-      }
-
-      // Create inventory item for vehicle
-      await db.inventoryItem.create({
-        data: {
-          partNumber: `VEH-${vehicle.stockNumber}`,
-          name: `${vehicle.make} ${vehicle.model} ${vehicle.year}`,
-          description: vehicle.description || `${vehicle.make} ${vehicle.model} - ${vehicle.year}`,
-          category: 'vehicles',
-          quantity: 1,
-          minStockLevel: 0,
-          maxStockLevel: 1,
-          unitPrice: vehicle.price,
-          supplier: 'Showroom',
-          location: vehicle.branch ? vehicle.branch.name : 'Main Showroom',
-          warehouse: vehicle.branch ? `Branch - ${vehicle.branch.name}` : 'Main Showroom',
-          branchId: vehicle.branchId,
-          status: vehicle.status === 'AVAILABLE' ? 'IN_STOCK' : 'OUT_OF_STOCK',
-          lastRestockDate: new Date(),
-          leadTime: 0,
-          notes: `Vehicle: ${vehicle.make} ${vehicle.model} ${vehicle.year} - Stock#: ${vehicle.stockNumber} - VIN: ${vehicle.vin || 'N/A'}`
-        }
-      })
-
-      syncedCount++
     }
 
+    let syncedCount = 0
+    let skippedCount = 0
+    let errorCount = 0
+
+    for (const vehicle of vehicles) {
+      try {
+        // Check if vehicle already exists in inventory
+        const existingItem = await db.inventoryItem.findFirst({
+          where: {
+            OR: [
+              { partNumber: `VEH-${vehicle.id}` },
+              { name: `${vehicle.make} ${vehicle.model}` }
+            ]
+          }
+        })
+
+        if (existingItem) {
+          // Update existing item
+          await db.inventoryItem.update({
+            where: { id: existingItem.id },
+            data: {
+              quantity: 1,
+              unitPrice: vehicle.price,
+              status: 'IN_STOCK',
+              lastRestockDate: new Date(),
+              updatedAt: new Date()
+            }
+          })
+          skippedCount++
+        } else {
+          // Create new inventory item for vehicle
+          await db.inventoryItem.create({
+            data: {
+              partNumber: `VEH-${vehicle.id}`,
+              name: `${vehicle.make} ${vehicle.model}`,
+              description: `${vehicle.year} - ${vehicle.description || 'سيارة متاحة للبيع'}`,
+              category: 'VEHICLES',
+              quantity: 1,
+              minStockLevel: 0,
+              maxStockLevel: 1,
+              unitPrice: vehicle.price,
+              supplier: 'المعرض الرئيسي',
+              location: 'المعرض',
+              warehouse: 'المعرض الرئيسي',
+              status: 'IN_STOCK',
+              lastRestockDate: new Date(),
+              notes: `رقم المخزون: ${vehicle.stockNumber} | VIN: ${vehicle.vin || 'N/A'} | اللون: ${vehicle.color || 'N/A'}`
+            }
+          })
+          syncedCount++
+        }
+      } catch (error) {
+        console.error(`Error syncing vehicle ${vehicle.id}:`, error)
+        errorCount++
+        continue
+      }
+    }
+
+    const successMessage = errorCount > 0 
+      ? `تمت مزامنة ${syncedCount} سيارة جديدة، وتحديث ${skippedCount} سيارة موجودة (${errorCount} أخطاء)`
+      : `تمت مزامنة ${syncedCount} سيارة جديدة، وتحديث ${skippedCount} سيارة موجودة`
+
     return NextResponse.json({
-      message: 'Vehicles synced successfully',
+      success: true,
       syncedCount,
       skippedCount,
-      totalVehicles: vehicles.length
+      errorCount,
+      totalVehicles: vehicles.length,
+      message: successMessage
     })
 
   } catch (error) {
     console.error('Error syncing vehicles to inventory:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to sync vehicles to inventory: ' + (error instanceof Error ? error.message : 'Unknown error') },
       { status: 500 }
     )
   }
