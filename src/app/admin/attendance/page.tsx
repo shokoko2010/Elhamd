@@ -50,54 +50,16 @@ export default function AttendancePage() {
 
   const fetchAttendanceData = async () => {
     try {
-      // Fetch employees data first
-      const employeesRes = await fetch('/api/employees')
-      if (!employeesRes.ok) return
+      // Fetch attendance records from API
+      const attendanceRes = await fetch(`/api/attendance?date=${selectedDate}`)
+      if (!attendanceRes.ok) return
       
-      const employees = await employeesRes.json()
+      const records = await attendanceRes.json()
       
-      // Create mock attendance records based on employees
-      // In a real implementation, this would come from an attendance API
-      const todayRecords = employees.map((emp: any) => {
-        const random = Math.random()
-        let status: 'PRESENT' | 'LATE' | 'ABSENT' | 'ON_LEAVE'
-        let checkIn: string | undefined
-        let checkOut: string | undefined
-        
-        if (random < 0.85) {
-          status = 'PRESENT'
-          checkIn = '07:' + String(Math.floor(Math.random() * 30) + 30).padStart(2, '0')
-          checkOut = '16:' + String(Math.floor(Math.random() * 30)).padStart(2, '0')
-        } else if (random < 0.92) {
-          status = 'LATE'
-          checkIn = '08:' + String(Math.floor(Math.random() * 30) + 1).padStart(2, '0')
-          checkOut = '16:' + String(Math.floor(Math.random() * 30)).padStart(2, '0')
-        } else if (random < 0.96) {
-          status = 'ON_LEAVE'
-        } else {
-          status = 'ABSENT'
-        }
-        
-        return {
-          id: emp.id,
-          employee: {
-            user: {
-              name: emp.user.name
-            },
-            department: emp.department
-          },
-          checkIn,
-          checkOut,
-          date: selectedDate,
-          status,
-          notes: status === 'LATE' ? 'تأخير بسبب الازدحام' : undefined
-        }
-      })
-      
-      setAttendanceRecords(todayRecords)
+      setAttendanceRecords(records)
       
       // Calculate stats
-      const newStats = todayRecords.reduce((acc, record) => {
+      const newStats = records.reduce((acc, record) => {
         acc.total++
         switch (record.status) {
           case 'PRESENT':

@@ -74,7 +74,11 @@ export default function LeavesPage() {
           return current >= start && current <= end && r.status === 'APPROVED'
         }).length
         
-        const warnings = Math.floor(Math.random() * 3)
+        const warnings = requests.filter((r: LeaveRequest) => {
+          // Calculate warnings based on leave balance or excessive leave usage
+          // For now, this is a placeholder
+          return r.status === 'APPROVED' && r.totalDays > 5
+        }).length
         
         setStats({
           pending,
@@ -263,7 +267,7 @@ export default function LeavesPage() {
                     <TableCell>
                       <div>
                         <div className="font-medium">{request.employee.user.name}</div>
-                        <div className="text-sm text-muted-foreground">{request.employee.department}</div>
+                        <div className="text-sm text-muted-foreground">{request.employee.department?.name || 'غير محدد'}</div>
                       </div>
                     </TableCell>
                     <TableCell>

@@ -28,6 +28,18 @@ export async function GET(request: NextRequest) {
                 name: true,
                 email: true
               }
+            },
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            position: {
+              select: {
+                id: true,
+                title: true
+              }
             }
           }
         },
@@ -96,6 +108,18 @@ export async function POST(request: NextRequest) {
                 id: true,
                 name: true,
                 email: true
+              }
+            },
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            position: {
+              select: {
+                id: true,
+                title: true
               }
             }
           }

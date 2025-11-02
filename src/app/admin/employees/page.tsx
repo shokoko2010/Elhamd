@@ -162,7 +162,7 @@ export default function EmployeesPage() {
     const matchesSearch = employee.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          employee.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesDepartment = selectedDepartment === 'all' || employee.department === selectedDepartment
+    const matchesDepartment = selectedDepartment === 'all' || employee.department?.name === selectedDepartment
     const matchesStatus = selectedStatus === 'all' || employee.status === selectedStatus
     
     return matchesSearch && matchesDepartment && matchesStatus
@@ -251,8 +251,8 @@ export default function EmployeesPage() {
       name: employee.user.name,
       email: employee.user.email,
       phone: employee.user.phone || '',
-      department: employee.department,
-      position: employee.position,
+      department: employee.department?.name || '',
+      position: employee.position?.title || '',
       salary: employee.salary.toString(),
       branchId: employee.branch?.id || '',
       emergencyContactName: employee.emergencyContact?.name || '',
@@ -558,9 +558,9 @@ export default function EmployeesPage() {
                   </TableCell>
                   <TableCell className="font-mono">{employee.employeeNumber}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{employee.department}</Badge>
+                    <Badge variant="outline">{employee.department?.name || 'غير محدد'}</Badge>
                   </TableCell>
-                  <TableCell>{employee.position}</TableCell>
+                  <TableCell>{employee.position?.title || 'غير محدد'}</TableCell>
                   <TableCell>
                     {new Intl.NumberFormat('ar-EG', {
                       style: 'currency',

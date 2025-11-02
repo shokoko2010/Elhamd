@@ -58,68 +58,17 @@ export default function PerformancePage() {
 
   const fetchPerformanceData = async () => {
     try {
-      // Fetch employees first
-      const employeesRes = await fetch('/api/employees')
-      if (!employeesRes.ok) return
+      const response = await fetch(`/api/performance?period=${selectedPeriod}`)
+      if (!response.ok) return
       
-      const employees = await employeesRes.json()
-      
-      // Create mock performance metrics based on employees
-      // In a real implementation, this would come from a performance API
-      const metrics = employees.map((emp: any) => {
-        const baseScore = 70 + Math.random() * 25 // 70-95 base score
-        const bookingsHandled = Math.floor(Math.random() * 50) + 10
-        const avgHandlingTime = Math.random() * 30 + 15 // 15-45 minutes
-        const customerRating = 3 + Math.random() * 2 // 3-5 stars
-        const conversionRate = Math.random() * 40 + 10 // 10-50%
-        const revenue = Math.random() * 50000 + 10000 // 10k-60k
-        const tasks = Math.floor(Math.random() * 30) + 20
-        const satisfaction = 80 + Math.random() * 20 // 80-100%
-        const responseTime = Math.random() * 60 + 5 // 5-65 minutes
-        const followUp = Math.random() * 30 + 60 // 60-90%
-        const upsell = Math.random() * 25 + 5 // 5-30%
-        
-        // Calculate overall score
-        const overallScore = Math.round(
-          (baseScore * 0.3) + 
-          (customerRating / 5 * 100 * 0.2) + 
-          (conversionRate * 0.2) + 
-          (satisfaction * 0.15) + 
-          (followUp * 0.15)
-        )
-        
-        return {
-          id: emp.id,
-          employee: {
-            user: {
-              name: emp.user.name
-            },
-            department: emp.department,
-            position: emp.position
-          },
-          period: selectedPeriod === 'current' ? format(new Date(), 'yyyy-MM') : format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM'),
-          bookingsHandled,
-          averageHandlingTime: Math.round(avgHandlingTime),
-          customerRating: Math.round(customerRating * 10) / 10,
-          conversionRate: Math.round(conversionRate),
-          revenueGenerated: Math.round(revenue),
-          tasksCompleted: tasks,
-          customerSatisfaction: Math.round(satisfaction),
-          responseTime: Math.round(responseTime),
-          followUpRate: Math.round(followUp),
-          upsellSuccess: Math.round(upsell),
-          overallScore,
-          notes: overallScore >= 90 ? 'أداء استثنائي' : overallScore >= 80 ? 'أداء ممتاز' : overallScore >= 70 ? 'أداء جيد' : 'يحتاج تحسين'
-        }
-      })
-      
+      const metrics = await response.json()
       setPerformanceMetrics(metrics)
       
       // Calculate stats
       const averageScore = Math.round(metrics.reduce((sum, m) => sum + m.overallScore, 0) / metrics.length)
       const topPerformers = metrics.filter(m => m.overallScore >= 90).length
       const goalsAchieved = Math.round(metrics.filter(m => m.conversionRate >= 30).length / metrics.length * 100)
-      const inTraining = Math.floor(metrics.length * 0.15) // Mock: 15% in training
+      const inTraining = metrics.filter(m => m.overallScore < 70).length
       
       setStats({
         averageScore,

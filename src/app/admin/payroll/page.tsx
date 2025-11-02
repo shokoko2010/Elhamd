@@ -254,11 +254,11 @@ export default function PayrollPage() {
                     <TableCell>
                       <div>
                         <div className="font-medium">{record.employee.user.name}</div>
-                        <div className="text-sm text-muted-foreground">{record.employee.position}</div>
+                        <div className="text-sm text-muted-foreground">{record.employee.position?.title || 'غير محدد'}</div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{record.employee.department}</Badge>
+                      <Badge variant="outline">{record.employee.department?.name || 'غير محدد'}</Badge>
                     </TableCell>
                     <TableCell>{formatCurrency(record.basicSalary)}</TableCell>
                     <TableCell>{formatCurrency(record.allowances + record.overtime + record.bonus)}</TableCell>

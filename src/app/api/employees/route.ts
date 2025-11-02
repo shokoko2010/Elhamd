@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
     const where: any = {}
 
     if (department && department !== 'all') {
-      where.department = department
+      // Search by department name through relation
+      where.department = {
+        name: department
+      }
     }
 
     if (status && status !== 'all') {
@@ -53,6 +56,18 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true
+          }
+        },
+        department: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        position: {
+          select: {
+            id: true,
+            title: true
           }
         }
       },
@@ -92,6 +107,40 @@ export async function POST(request: NextRequest) {
     const employeeCount = await db.employee.count()
     const employeeNumber = `EMP${String(employeeCount + 1).padStart(4, '0')}`
 
+    // Find or create department and position
+    let department = await db.department.findFirst({
+      where: { name: validatedData.department }
+    })
+    
+    if (!department) {
+      department = await db.department.create({
+        data: {
+          name: validatedData.department,
+          description: `قسم ${validatedData.department}`,
+          isActive: true
+        }
+      })
+    }
+
+    let position = await db.position.findFirst({
+      where: { 
+        title: validatedData.position,
+        departmentId: department.id 
+      }
+    })
+    
+    if (!position) {
+      position = await db.position.create({
+        data: {
+          title: validatedData.position,
+          departmentId: department.id,
+          level: 'JUNIOR',
+          description: `منصب ${validatedData.position}`,
+          isActive: true
+        }
+      })
+    }
+
     // Create user first
     const user = await db.user.create({
       data: {
@@ -108,8 +157,8 @@ export async function POST(request: NextRequest) {
       data: {
         employeeNumber,
         userId: user.id,
-        department: validatedData.department,
-        position: validatedData.position,
+        departmentId: department.id,
+        positionId: position.id,
         salary: validatedData.salary,
         hireDate: new Date(),
         status: EmployeeStatus.ACTIVE,
@@ -134,6 +183,18 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true
+          }
+        },
+        department: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        position: {
+          select: {
+            id: true,
+            title: true
           }
         }
       }
