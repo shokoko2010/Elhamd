@@ -236,3 +236,29 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'معرف السجل مطلوب' },
+        { status: 400 }
+      )
+    }
+
+    await db.attendanceRecord.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting attendance record:', error)
+    return NextResponse.json(
+      { error: 'حدث خطأ أثناء حذف سجل الحضور والانصراف' },
+      { status: 500 }
+    )
+  }
+}

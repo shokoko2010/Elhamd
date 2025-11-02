@@ -3,16 +3,22 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Calendar, Clock, CheckCircle, AlertCircle, Plus, Eye } from 'lucide-react'
+import { Calendar, Clock, CheckCircle, AlertCircle, Plus, Eye, Edit, Save, X } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
-import Link from 'next/link'
+import { Link from 'next/link'
+import { toast } from 'sonner'
 
 interface LeaveRequest {
   id: string
+  employeeId: string
   employee: {
     user: {
       name: string
@@ -31,6 +37,16 @@ interface LeaveRequest {
   createdAt: string
 }
 
+interface Employee {
+  id: string
+  user: {
+    name: string
+  }
+  department: {
+    name: string
+  }
+}
+
 interface LeaveStats {
   pending: number
   approved: number
@@ -41,6 +57,7 @@ interface LeaveStats {
 
 export default function LeavesPage() {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [stats, setStats] = useState<LeaveStats>({
     pending: 0,
     approved: 0,
@@ -51,13 +68,36 @@ export default function LeavesPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null)
+  const [formData, setFormData] = useState({
+    employeeId: '',
+    leaveType: 'ANNUAL' as 'ANNUAL' | 'SICK' | 'EMERGENCY' | 'MATERNITY' | 'PATERNITY',
+    startDate: '',
+    endDate: '',
+    reason: ''
+  })
 
   useEffect(() => {
     fetchLeaveRequests()
+    fetchEmployees()
   }, [])
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/employees')
+      if (response.ok) {
+        const data = await response.json()
+        setEmployees(data)
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error)
+    }
+  }
 
   const fetchLeaveRequests = async () => {
     try {
+      setLoading(true)
       const response = await fetch('/api/hr/leave-requests')
       if (response.ok) {
         const requests = await response.json()
@@ -90,8 +130,95 @@ export default function LeavesPage() {
       }
     } catch (error) {
       console.error('Error fetching leave requests:', error)
+      toast.error('فشل في تحميل بيانات الإجازات')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    try {
+      const response = await fetch('/api/hr/leave-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        toast.success('تم تقديم طلب الإجازة بنجاح')
+        setIsDialogOpen(false)
+        setEditingRequest(null)
+        setFormData({
+          employeeId: '',
+          leaveType: 'ANNUAL',
+          startDate: '',
+          endDate: '',
+          reason: ''
+        })
+        fetchLeaveRequests()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'فشل في تقديم طلب الإجازة')
+      }
+    } catch (error) {
+      console.error('Error submitting leave request:', error)
+      toast.error('حدث خطأ أثناء تقديم طلب الإجازة')
+    }
+  }
+
+  const handleEdit = (request: LeaveRequest) => {
+    setEditingRequest(request)
+    setFormData({
+      employeeId: request.employeeId,
+      leaveType: request.leaveType,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      reason: request.reason || ''
+    })
+    setIsDialogOpen(true)
+  }
+
+  const handleApprove = async (requestId: string) => {
+    try {
+      const response = await fetch(`/api/hr/leave-requests/${requestId}/approve`, {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        toast.success('تم اعتماد طلب الإجازة')
+        fetchLeaveRequests()
+      } else {
+        toast.error('فشل في اعتماد طلب الإجازة')
+      }
+    } catch (error) {
+      console.error('Error approving leave request:', error)
+      toast.error('حدث خطأ أثناء اعتماد طلب الإجازة')
+    }
+  }
+
+  const handleReject = async (requestId: string, reason: string) => {
+    try {
+      const response = await fetch(`/api/hr/leave-requests/${requestId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason })
+      })
+
+      if (response.ok) {
+        toast.success('تم رفض طلب الإجازة')
+        fetchLeaveRequests()
+      } else {
+        toast.error('فشل في رفض طلب الإجازة')
+      }
+    } catch (error) {
+      console.error('Error rejecting leave request:', error)
+      toast.error('حدث خطأ أثناء رفض طلب الإجازة')
     }
   }
 
@@ -153,10 +280,121 @@ export default function LeavesPage() {
               عرض رصيد الإجازات
             </Button>
           </Link>
-          <Button>
-            <Plus className="ml-2 h-4 w-4" />
-            طلب إجازة جديدة
-          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                setEditingRequest(null)
+                setFormData({
+                  employeeId: '',
+                  leaveType: 'ANNUAL',
+                  startDate: '',
+                  endDate: '',
+                  reason: ''
+                })
+              }}>
+                <Plus className="ml-2 h-4 w-4" />
+                طلب إجازة جديدة
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingRequest ? 'تعديل طلب الإجازة' : 'طلب إجازة جديدة'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingRequest ? 'قم بتعديل بيانات طلب الإجازة' : 'قم بإدخال بيانات طلب الإجازة الجديدة'}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="employee" className="text-right">
+                    الموظف
+                  </Label>
+                  <Select
+                    value={formData.employeeId}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, employeeId: value }))}
+                    disabled={!!editingRequest}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="اختر الموظف" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.user.name} - {employee.department.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="leaveType" className="text-right">
+                    نوع الإجازة
+                  </Label>
+                  <Select
+                    value={formData.leaveType}
+                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, leaveType: value }))}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ANNUAL">إجازة اعتيادية</SelectItem>
+                      <SelectItem value="SICK">إجازة مرضية</SelectItem>
+                      <SelectItem value="EMERGENCY">إجازة طارئة</SelectItem>
+                      <SelectItem value="MATERNITY">إجازة أمومة</SelectItem>
+                      <SelectItem value="PATERNITY">إجازة أبوة</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="startDate" className="text-right">
+                    تاريخ البدء
+                  </Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="endDate" className="text-right">
+                    تاريخ النهاية
+                  </Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="reason" className="text-right">
+                    السبب
+                  </Label>
+                  <Textarea
+                    id="reason"
+                    value={formData.reason}
+                    onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
+                    className="col-span-3"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    إلغاء
+                  </Button>
+                  <Button type="submit">
+                    <Save className="ml-2 h-4 w-4" />
+                    {editingRequest ? 'تحديث' : 'حفظ'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -259,6 +497,7 @@ export default function LeavesPage() {
                   <TableHead>المدة</TableHead>
                   <TableHead>السبب</TableHead>
                   <TableHead>الحالة</TableHead>
+                  <TableHead>إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -290,6 +529,41 @@ export default function LeavesPage() {
                       <Badge className={getStatusColor(request.status)}>
                         {getStatusText(request.status)}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {request.status === 'PENDING' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleApprove(request.id)}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReject(request.id, 'سبب إداري')}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {request.status === 'APPROVED' && (
+                          <Badge variant="outline" className="text-green-600">
+                            <CheckCircle className="h-4 w-4 ml-1" />
+                            معتمد
+                          </Badge>
+                        )}
+                        {request.status === 'REJECTED' && (
+                          <Badge variant="outline" className="text-red-600">
+                            <X className="h-4 w-4 ml-1" />
+                            مرفوض
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

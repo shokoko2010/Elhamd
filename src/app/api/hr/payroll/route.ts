@@ -5,6 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser()
@@ -142,6 +143,59 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(payrollRecord)
   } catch (error) {
     console.error('Error creating payroll record:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+    const body = await request.json()
+    const { status } = body
+
+    const payrollRecord = await db.payrollRecord.update({
+      where: { id },
+      data: {
+        status,
+        approvedBy: status === 'APPROVED' ? user.id : undefined,
+        approvedAt: status === 'APPROVED' ? new Date() : undefined,
+        payDate: status === 'PAID' ? new Date() : undefined
+      },
+      include: {
+        employee: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            },
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            position: {
+              select: {
+                id: true,
+                title: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    return NextResponse.json(payrollRecord)
+  } catch (error) {
+    console.error('Error updating payroll record:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

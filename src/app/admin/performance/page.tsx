@@ -97,11 +97,42 @@ export default function PerformancePage() {
     return 'bg-red-100 text-red-800'
   }
 
-  const getPerformanceLevel = (score: number) => {
-    if (score >= 90) return 'متميز'
-    if (score >= 80) return 'جيد جداً'
-    if (score >= 70) return 'جيد'
-    return 'يحتاج تحسين'
+  const handleCreateEvaluation = async () => {
+  try {
+    const response = await fetch('/api/performance', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        employeeId: 'default_employee_id', // This should be replaced with actual employee selection
+        period: selectedPeriod === 'current' ? new Date().toISOString().slice(0, 7) : new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7),
+        metrics: {
+          bookingsHandled: Math.floor(Math.random() * 50) + 10,
+          averageHandlingTime: Math.random() * 30 + 15,
+          customerRating: 3 + Math.random() * 2,
+          conversionRate: Math.random() * 40 + 10,
+          revenueGenerated: Math.random() * 50000 + 10000,
+          tasksCompleted: Math.floor(Math.random() * 30) + 20,
+          customerSatisfaction: 80 + Math.random() * 20,
+          responseTime: Math.random() * 60 + 5,
+          followUpRate: Math.random() * 30 + 60,
+          upsellSuccess: Math.random() * 25 + 5,
+          notes: 'تقييم أداء تلقائي'
+        }
+      })
+    })
+
+    if (response.ok) {
+      toast.success('تم إنشاء تقييم أداء جديد')
+      fetchPerformanceData()
+    } else {
+      toast.error('فشل في إنشاء تقييم أداء')
+    }
+  } catch (error) {
+      console.error('Error creating performance evaluation:', error)
+      toast.error('حدث خطأ أثناء إنشاء تقييم الأداء')
+    }
   }
 
   const sortedMetrics = [...performanceMetrics].sort((a, b) => b.overallScore - a.overallScore)
