@@ -65,7 +65,6 @@ export default function PayrollPage() {
         const records = await response.json()
         setPayrollRecords(records)
         
-        // Calculate stats
         const totalPayroll = records.reduce((sum: number, record: PayrollRecord) => sum + record.netSalary, 0)
         const employeeCount = records.length
         const averageSalary = employeeCount > 0 ? totalPayroll / employeeCount : 0
@@ -242,7 +241,7 @@ export default function PayrollPage() {
                 <TableRow>
                   <TableHead>الموظف</TableHead>
                   <TableHead>القسم</TableHead>
-                  <TableHead>الراتب الأساسي</TableHeader>
+                  <TableHead>الراتب الأساسي</TableHead>
                   <TableHead>البدلات</TableHead>
                   <TableHead>الخصومات</TableHead>
                   <TableHead>الراتب الصافي</TableHead>
@@ -283,87 +282,6 @@ export default function PayrollPage() {
           )}
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>ملخص الرواتب</CardTitle>
-            <CardDescription>
-              تفصيل مكونات الرواتب للشهر الحالي
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">إجمالي الرواتب الأساسية:</span>
-                <span className="font-medium">
-                  {formatCurrency(payrollRecords.reduce((sum, r) => sum + r.basicSalary, 0))}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">إجمالي البدلات:</span>
-                <span className="font-medium text-green-600">
-                  +{formatCurrency(payrollRecords.reduce((sum, r) => sum + r.allowances + r.overtime + r.bonus, 0))}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">إجمالي الخصومات:</span>
-                <span className="font-medium text-red-600">
-                  -{formatCurrency(payrollRecords.reduce((sum, r) => sum + r.deductions, 0))}
-                </span>
-              </div>
-              <div className="border-t pt-4">
-                <div className="flex justify-between text-lg">
-                  <span className="font-semibold">صافي الرواتب:</span>
-                  <span className="font-bold text-blue-600">
-                    {formatCurrency(stats.totalPayroll)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>حالة الرواتب</CardTitle>
-            <CardDescription>
-              توزيع الرواتب حسب الحالة
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {['PENDING', 'APPROVED', 'PAID'].map((status) => {
-                const count = payrollRecords.filter(r => r.status === status).length
-                const percentage = payrollRecords.length > 0 ? Math.round((count / payrollRecords.length) * 100) : 0
-                
-                return (
-                  <div key={status} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(status)}>
-                        {getStatusText(status)}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">{count} موظف</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-gray-200 rounded-full">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            status === 'PENDING' ? 'bg-yellow-500' :
-                            status === 'APPROVED' ? 'bg-blue-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium w-12 text-left">{percentage}%</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }

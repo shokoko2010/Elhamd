@@ -63,7 +63,6 @@ export default function LeavesPage() {
         const requests = await response.json()
         setLeaveRequests(requests)
         
-        // Calculate stats
         const today = format(new Date(), 'yyyy-MM-dd')
         const pending = requests.filter((r: LeaveRequest) => r.status === 'PENDING').length
         const approved = requests.filter((r: LeaveRequest) => r.status === 'APPROVED').length
@@ -75,7 +74,6 @@ export default function LeavesPage() {
           return current >= start && current <= end && r.status === 'APPROVED'
         }).length
         
-        // Mock warnings - in real implementation, this would check leave balances
         const warnings = Math.floor(Math.random() * 3)
         
         setStats({
@@ -131,36 +129,6 @@ export default function LeavesPage() {
     const matchesType = typeFilter === 'all' || request.leaveType === typeFilter
     return matchesStatus && matchesType
   })
-
-  const handleApproveLeave = async (leaveId: string) => {
-    try {
-      const response = await fetch(`/api/hr/leave-requests/${leaveId}/approve`, {
-        method: 'POST'
-      })
-      if (response.ok) {
-        fetchLeaveRequests()
-      }
-    } catch (error) {
-      console.error('Error approving leave:', error)
-    }
-  }
-
-  const handleRejectLeave = async (leaveId: string, reason: string) => {
-    try {
-      const response = await fetch(`/api/hr/leave-requests/${leaveId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reason })
-      })
-      if (response.ok) {
-        fetchLeaveRequests()
-      }
-    } catch (error) {
-      console.error('Error rejecting leave:', error)
-    }
-  }
 
   if (loading) {
     return (
@@ -283,11 +251,10 @@ export default function LeavesPage() {
                 <TableRow>
                   <TableHead>الموظف</TableHead>
                   <TableHead>نوع الإجازة</TableHead>
-                  <TableHead>الفترة</TableTitle>
+                  <TableHead>الفترة</TableHead>
                   <TableHead>المدة</TableHead>
                   <TableHead>السبب</TableHead>
                   <TableHead>الحالة</TableHead>
-                  <TableHead>الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,7 +277,7 @@ export default function LeavesPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium">{request.totalDays} يوم{request.totalDays > 1 ? 'أ' : ''}</span>
+                      <span className="font-medium">{request.totalDays} يوم</span>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
                       {request.reason || '-'}
@@ -319,31 +286,6 @@ export default function LeavesPage() {
                       <Badge className={getStatusColor(request.status)}>
                         {getStatusText(request.status)}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {request.status === 'PENDING' && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleApproveLeave(request.id)}
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const reason = prompt('سبب الرفض:')
-                              if (reason) {
-                                handleRejectLeave(request.id, reason)
-                              }
-                            }}
-                          >
-                            <AlertCircle className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -358,90 +300,6 @@ export default function LeavesPage() {
           )}
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>إحصائيات الإجازات</CardTitle>
-            <CardDescription>
-              نظرة عامة على توزيع الإجازات
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {['ANNUAL', 'SICK', 'EMERGENCY'].map((type) => {
-                const count = leaveRequests.filter(r => r.leaveType === type).length
-                const percentage = leaveRequests.length > 0 ? Math.round((count / leaveRequests.length) * 100) : 0
-                
-                return (
-                  <div key={type} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{getLeaveTypeText(type)}</Badge>
-                      <span className="text-sm text-muted-foreground">{count} طلب</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-gray-200 rounded-full">
-                        <div 
-                          className="h-2 bg-blue-500 rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium w-12 text-left">{percentage}%</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>الإجازات القادمة</CardTitle>
-            <CardDescription>
-              الإجازات المعتمدة القادمة خلال 7 أيام
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {leaveRequests
-                .filter(r => r.status === 'APPROVED')
-                .filter(r => {
-                  const startDate = new Date(r.startDate)
-                  const today = new Date()
-                  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-                  return startDate >= today && startDate <= weekFromNow
-                })
-                .slice(0, 5)
-                .map((request) => (
-                  <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{request.employee.user.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {getLeaveTypeText(request.leaveType)} - {request.totalDays} أيام
-                      </p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">
-                        {format(new Date(request.startDate), 'dd/MM/yyyy', { locale: ar })}
-                      </p>
-                      <p className="text-xs text-muted-foreground">بداية الإجازة</p>
-                    </div>
-                  </div>
-                ))}
-              
-              {leaveRequests.filter(r => r.status === 'APPROVED').filter(r => {
-                const startDate = new Date(r.startDate)
-                const today = new Date()
-                const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-                return startDate >= today && startDate <= weekFromNow
-              }).length === 0 && (
-                <p className="text-muted-foreground text-center py-4">لا توجد إجازات قادمة خلال 7 أيام</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }
