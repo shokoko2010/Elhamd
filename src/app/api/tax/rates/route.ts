@@ -1,25 +1,34 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { PrismaClient } from '@prisma/client'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/authOptions'
+
+const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
-    const activeOnly = searchParams.get('activeOnly') === 'true'
+    const type = searchParams.get('type')
+    const isActive = searchParams.get('isActive')
 
-    const where = activeOnly ? { isActive: true } : {}
+    const where: any = {}
+    if (type) where.type = type
+    if (isActive !== null) where.isActive = isActive === 'true'
 
-    const taxRates = await db.taxRate.findMany({
+    const taxRates = await prisma.taxRate.findMany({
       where,
-      orderBy: {
-        rate: 'asc'
-      }
+      orderBy: [
+        { effectiveDate: 'desc' },
+        { name: 'asc' }
+      ]
     })
 
-    return NextResponse.json({ rates: taxRates })
+    return NextResponse.json(taxRates)
   } catch (error) {
     console.error('Error fetching tax rates:', error)
     return NextResponse.json(
@@ -31,31 +40,45 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    
     const {
       name,
-      type,
       rate,
+      type,
       description,
-      isActive = true
+      isActive = true,
+      effectiveDate
     } = body
 
     // Validate required fields
-    if (!name || !type || rate === undefined) {
+    if (!name || rate === undefined || !type || !effectiveDate) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: name, rate, type, effectiveDate' },
         { status: 400 }
       )
     }
 
-    const taxRate = await db.taxRate.create({
+    // Validate rate
+    if (rate < 0 || rate > 100) {
+      return NextResponse.json(
+        { error: 'Rate must be between 0 and 100' },
+        { status: 400 }
+      )
+    }
+
+    const taxRate = await prisma.taxRate.create({
       data: {
         name,
-        type,
         rate,
+        type,
         description,
-        isActive
+        isActive,
+        effectiveDate: new Date(effectiveDate)
       }
     })
 

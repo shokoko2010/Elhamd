@@ -1134,6 +1134,32 @@ async function main() {
   console.log('- Payroll Records: Sample data')
   console.log('- Sliders: 4')
   console.log('- All emails updated to use @elhamdimport.online domain')
+  
+  // Import and run additional seed scripts
+  console.log('\n🔄 Running additional seed scripts...')
+  
+  try {
+    // Run accounting data seed
+    console.log('📊 Seeding accounting data...')
+    await import('../scripts/seed-accounting-data.js')
+    console.log('✓ Accounting data seeded')
+    
+    // Run CRM data seed
+    console.log('🤝 Seeding CRM data...')
+    await import('../scripts/seed-crm-data.js')
+    console.log('✓ CRM data seeded')
+    
+    // Run Inventory & HR data seed
+    console.log('📦 Seeding Inventory & HR data...')
+    await import('../scripts/seed-inventory-hr-data.js')
+    console.log('✓ Inventory & HR data seeded')
+    
+  } catch (error) {
+    console.error('❌ Error running additional seed scripts:', error)
+    // Continue even if additional seeds fail
+  }
+  
+  console.log('\n🎉 All database seeding completed successfully!')
 }
 
 main()

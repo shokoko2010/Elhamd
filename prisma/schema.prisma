@@ -1987,6 +1987,7 @@ model ChartOfAccount {
   normalBalance BalanceType
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  items         JournalEntryItem[]
 
   @@index([code])
   @@map("chart_of_accounts")
@@ -2007,6 +2008,7 @@ model JournalEntry {
   branchId    String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  items       JournalEntryItem[]
 
   @@index([date])
   @@map("journal_entries")
@@ -2020,6 +2022,8 @@ model JournalEntryItem {
   debit       Float    @default(0)
   credit      Float    @default(0)
   createdAt   DateTime @default(now())
+  entry       JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account     ChartOfAccount @relation(fields: [accountId], references: [id])
 
   @@index([entryId])
   @@index([accountId])
