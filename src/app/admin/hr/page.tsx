@@ -66,71 +66,88 @@ export default function HRPage() {
       if (employeesRes.ok) {
         const employees = await employeesRes.json()
         
-        // Calculate stats
-        const activeEmployees = employees.filter((e: any) => e.status === 'ACTIVE').length
-        const totalPayroll = employees.reduce((sum: number, e: any) => sum + e.salary, 0)
-        const activeRate = employees.length > 0 ? Math.round((activeEmployees / employees.length) * 100) : 0
-        
-        setStats({
-          totalEmployees: employees.length,
-          pendingLeaves: 0, // Will be updated below
-          totalPayroll,
-          activeRate
-        })
+        // Ensure employees is an array
+        if (Array.isArray(employees)) {
+          // Calculate stats
+          const activeEmployees = employees.filter((e: any) => e.status === 'ACTIVE').length
+          const totalPayroll = employees.reduce((sum: number, e: any) => sum + (e.salary || 0), 0)
+          const activeRate = employees.length > 0 ? Math.round((activeEmployees / employees.length) * 100) : 0
+          
+          setStats({
+            totalEmployees: employees.length,
+            pendingLeaves: 0, // Will be updated below
+            totalPayroll,
+            activeRate
+          })
 
-        // Get new employees (last 30 days)
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        const newEmps = employees
-          .filter((e: any) => new Date(e.hireDate) >= thirtyDaysAgo)
-          .slice(0, 4)
-          .map((e: any) => ({
-            id: e.id,
-            name: e.user.name,
-            position: e.position,
-            department: e.department,
-            hireDate: new Date(e.hireDate).toISOString().split('T')[0]
+          // Get new employees (last 30 days)
+          const thirtyDaysAgo = new Date()
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+          const newEmps = employees
+            .filter((e: any) => e.hireDate && new Date(e.hireDate) >= thirtyDaysAgo)
+            .slice(0, 4)
+            .map((e: any) => ({
+              id: e.id || `emp-${Math.random()}`,
+              name: e.user?.name || 'غير معروف',
+              position: e.position?.title || 'غير محدد',
+              department: e.department?.name || 'غير محدد',
+              hireDate: e.hireDate ? new Date(e.hireDate).toISOString().split('T')[0] : 'غير محدد'
+            }))
+          setNewEmployees(newEmps)
+
+          // Calculate department stats
+          const deptMap = new Map<string, number>()
+          employees.forEach((e: any) => {
+            const dept = e.department?.name || 'غير محدد'
+            deptMap.set(dept, (deptMap.get(dept) || 0) + 1)
+          })
+          
+          const deptStats = Array.from(deptMap.entries()).map(([dept, count]) => ({
+            id: `dept-${dept}-${count}`,
+            department: dept,
+            employees: count,
+            percentage: employees.length > 0 ? Math.round((count / employees.length) * 100) : 0
           }))
-        setNewEmployees(newEmps)
-
-        // Calculate department stats
-        const deptMap = new Map<string, number>()
-        employees.forEach((e: any) => {
-          const dept = e.department || 'غير محدد'
-          deptMap.set(dept, (deptMap.get(dept) || 0) + 1)
-        })
-        
-        const deptStats = Array.from(deptMap.entries()).map(([dept, count]) => ({
-          id: `dept-${dept}-${count}`,
-          department: dept,
-          employees: count,
-          percentage: Math.round((count / employees.length) * 100)
-        }))
-        setDepartmentStats(deptStats)
+          setDepartmentStats(deptStats)
+        }
       }
 
       // Fetch leave requests
       const leavesRes = await fetch('/api/hr/leave-requests')
       if (leavesRes.ok) {
         const leaves = await leavesRes.json()
-        const pendingLeaves = leaves.filter((l: any) => l.status === 'PENDING').length
         
-        setStats(prev => ({ ...prev, pendingLeaves }))
-        
-        // Get recent leave requests
-        const recentLeaves = leaves.slice(0, 4).map((l: any) => ({
-          id: l.id,
-          employee: l.employee,
-          leaveType: l.leaveType,
-          startDate: new Date(l.startDate).toISOString().split('T')[0],
-          endDate: new Date(l.endDate).toISOString().split('T')[0],
-          totalDays: l.totalDays,
-          status: l.status
-        }))
-        setLeaveRequests(recentLeaves)
+        // Ensure leaves is an array
+        if (Array.isArray(leaves)) {
+          const pendingLeaves = leaves.filter((l: any) => l.status === 'PENDING').length
+          
+          setStats(prev => ({ ...prev, pendingLeaves }))
+          
+          // Get recent leave requests
+          const recentLeaves = leaves.slice(0, 4).map((l: any) => ({
+            id: l.id || `leave-${Math.random()}`,
+            employee: l.employee || { user: { name: 'غير معروف' } },
+            leaveType: l.leaveType || 'غير محدد',
+            startDate: l.startDate ? new Date(l.startDate).toISOString().split('T')[0] : 'غير محدد',
+            endDate: l.endDate ? new Date(l.endDate).toISOString().split('T')[0] : 'غير محدد',
+            totalDays: l.totalDays || 0,
+            status: l.status || 'PENDING'
+          }))
+          setLeaveRequests(recentLeaves)
+        }
       }
     } catch (error) {
       console.error('Error fetching HR data:', error)
+      // Set empty data on error to prevent crashes
+      setNewEmployees([])
+      setLeaveRequests([])
+      setDepartmentStats([])
+      setStats({
+        totalEmployees: 0,
+        pendingLeaves: 0,
+        totalPayroll: 0,
+        activeRate: 0
+      })
     } finally {
       setLoading(false)
     }
@@ -320,13 +337,13 @@ export default function HRPage() {
             <div className="space-y-4">
               {newEmployees.length > 0 ? (
                 newEmployees.map((employee) => (
-                  <div key={employee.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={String(employee.id)} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">{employee.name}</p>
-                      <p className="text-sm text-muted-foreground">{employee.position} - {employee.department}</p>
+                      <p className="font-medium">{employee.name || 'غير معروف'}</p>
+                      <p className="text-sm text-muted-foreground">{employee.position || 'غير محدد'} - {employee.department || 'غير محدد'}</p>
                     </div>
                     <div className="text-left">
-                      <p className="text-sm text-muted-foreground">{employee.hireDate}</p>
+                      <p className="text-sm text-muted-foreground">{employee.hireDate || 'غير محدد'}</p>
                     </div>
                   </div>
                 ))
@@ -348,9 +365,9 @@ export default function HRPage() {
             <div className="space-y-4">
               {leaveRequests.length > 0 ? (
                 leaveRequests.map((leave) => (
-                  <div key={leave.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={String(leave.id)} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">{leave.employee.user.name}</p>
+                      <p className="font-medium">{leave.employee?.user?.name || 'غير معروف'}</p>
                       <p className="text-sm text-muted-foreground">{getLeaveTypeText(leave.leaveType)} - {leave.startDate} إلى {leave.endDate}</p>
                     </div>
                     <div className="text-left">
@@ -384,17 +401,17 @@ export default function HRPage() {
           <div className="space-y-4">
             {departmentStats.length > 0 ? (
               departmentStats.map((dept) => (
-                <div key={dept.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={String(dept.id)} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <p className="font-medium">{dept.department}</p>
-                    <p className="text-sm text-muted-foreground">{dept.employees} موظف</p>
+                    <p className="font-medium">{dept.department || 'غير محدد'}</p>
+                    <p className="text-sm text-muted-foreground">{dept.employees || 0} موظف</p>
                   </div>
                   <div className="text-left">
-                    <p className="font-medium">{dept.percentage}%</p>
+                    <p className="font-medium">{dept.percentage || 0}%</p>
                     <div className="w-24 h-2 bg-gray-200 rounded-full">
                       <div 
                         className="h-2 bg-blue-500 rounded-full"
-                        style={{ width: `${dept.percentage}%` }}
+                        style={{ width: `${Math.max(0, Math.min(100, dept.percentage || 0))}%` }}
                       />
                     </div>
                   </div>
