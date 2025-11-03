@@ -624,11 +624,13 @@ model Transaction {
   status      TransactionStatus @default(PENDING)
   reference   String?
   description String?
+  payrollBatchId String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   customer User    @relation(fields: [customerId], references: [id])
   branch   Branch? @relation(fields: [branchId], references: [id])
+  payrollBatch PayrollBatch? @relation("PayrollBatchTransactions", fields: [payrollBatchId], references: [id])
 
   @@map("transactions")
 }
@@ -1004,14 +1006,42 @@ model JournalEntry {
   creatorId   String
   approverId  String?
   branchId    String?
+  payrollBatchId String?
+  transactionId  String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
   creator  User   @relation("JournalEntryCreator", fields: [creatorId], references: [id])
   approver User?  @relation("JournalEntryApprover", fields: [approverId], references: [id])
   branch   Branch? @relation(fields: [branchId], references: [id])
+  payrollBatch PayrollBatch? @relation(fields: [payrollBatchId], references: [id])
+  transaction  Transaction?  @relation(fields: [transactionId], references: [id])
 
   @@map("journal_entries")
+}
+
+model PayrollBatch {
+  id              String              @id @default(cuid())
+  period          String
+  status          PayrollBatchStatus  @default(PENDING)
+  totalGross      Float               @default(0)
+  totalDeductions Float               @default(0)
+  totalNet        Float               @default(0)
+  totalPaid       Float               @default(0)
+  processedAt     DateTime?
+  approvedAt      DateTime?
+  postedAt        DateTime?
+  paidAt          DateTime?
+  createdBy       String
+  approvedBy      String?
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  payrollRecords  PayrollRecord[]
+  journalEntries  JournalEntry[]
+  transactions    Transaction[]      @relation("PayrollBatchTransactions")
+
+  @@map("payroll_batches")
 }
 
 model Employee {
@@ -1028,25 +1058,51 @@ model Employee {
 
   user   User    @relation("EmployeeRecord", fields: [userId], references: [id])
   branch Branch? @relation(fields: [branchId], references: [id])
+  payrollAccount EmployeePayrollAccount?
 
   @@map("employees")
+}
+
+model EmployeePayrollAccount {
+  id                 String   @id @default(cuid())
+  employeeId         String   @unique
+  expenseAccountId   String
+  payableAccountId   String
+  cashAccountId      String?
+  deductionAccountId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  employee           Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_payroll_accounts")
 }
 
 model PayrollRecord {
   id          String        @id @default(cuid())
   employeeId  String
-  period      String        // "monthly", "bi-weekly"
-  amount      Float
+  period      String
+  basicSalary Float
+  allowances  Float         @default(0)
+  deductions  Float         @default(0)
+  overtime    Float         @default(0)
+  bonus       Float         @default(0)
+  netSalary   Float
+  payDate     DateTime?
   status      PayrollStatus @default(PENDING)
-  creatorId   String
-  approverId  String?
+  createdBy   String
+  approvedBy  String?
+  approvedAt  DateTime?
+  batchId     String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   employee Employee @relation(fields: [employeeId], references: [id])
-  creator  User     @relation("PayrollCreator", fields: [creatorId], references: [id])
-  approver User?    @relation("PayrollApprover", fields: [approverId], references: [id])
+  creator  User     @relation("PayrollCreator", fields: [createdBy], references: [id])
+  approver User?    @relation("PayrollApprover", fields: [approvedBy], references: [id])
+  batch    PayrollBatch? @relation(fields: [batchId], references: [id])
 
+  @@index([employeeId, period])
+  @@index([batchId])
   @@map("payroll_records")
 }
 
@@ -1695,6 +1751,13 @@ enum PayrollStatus {
   PENDING
   APPROVED
   PROCESSED
+  PAID
+}
+
+enum PayrollBatchStatus {
+  PENDING
+  APPROVED
+  POSTED
   PAID
 }
 
