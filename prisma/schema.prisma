@@ -337,7 +337,7 @@ model UserPermission {
 
 model Payment {
   id              String           @id @default(cuid())
-  bookingId       String
+  bookingId       String?
   bookingType     BookingType
   amount          Float
   currency        String           @default("EGP")
@@ -348,10 +348,12 @@ model Payment {
   notes           String?
   branchId        String?
   metadata        Json?
+  payrollRecordId String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   invoicePayments InvoicePayment[]
-  serviceBooking  ServiceBooking   @relation(fields: [bookingId], references: [id])
+  serviceBooking  ServiceBooking?  @relation(fields: [bookingId], references: [id])
+  payrollRecord   PayrollRecord?   @relation(fields: [payrollRecordId], references: [id])
   branch          Branch?          @relation(fields: [branchId], references: [id])
 
   @@map("payments")
@@ -528,23 +530,23 @@ model PerformanceMetric {
   notes                String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-  employee             Employee         @relation(fields: [employeeId], references: [id])
+  employee             Employee          @relation(fields: [employeeId], references: [id])
 
   @@unique([employeeId, period])
   @@map("performance_metrics")
 }
 
 model AttendanceRecord {
-  id          String            @id @default(cuid())
-  employeeId  String
-  date        DateTime
-  checkIn     DateTime?
-  checkOut    DateTime?
-  status      AttendanceStatus  @default(PRESENT)
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  employee    Employee          @relation(fields: [employeeId], references: [id])
+  id         String           @id @default(cuid())
+  employeeId String
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     AttendanceStatus @default(PRESENT)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  employee   Employee         @relation(fields: [employeeId], references: [id])
 
   @@unique([employeeId, date])
   @@index([date])
@@ -1130,18 +1132,20 @@ model InvoiceItem {
 }
 
 model InvoicePayment {
-  id            String        @id @default(cuid())
-  invoiceId     String
-  paymentId     String
-  amount        Float
-  paymentDate   DateTime
-  paymentMethod PaymentMethod
-  transactionId String?
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  payment       Payment       @relation(fields: [paymentId], references: [id])
+  id              String         @id @default(cuid())
+  invoiceId       String
+  paymentId       String
+  amount          Float
+  paymentDate     DateTime
+  paymentMethod   PaymentMethod
+  transactionId   String?
+  notes           String?
+  payrollRecordId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment         Payment        @relation(fields: [paymentId], references: [id])
+  payrollRecord   PayrollRecord? @relation(fields: [payrollRecordId], references: [id])
 
   @@unique([invoiceId, paymentId])
   @@map("invoice_payments")
@@ -2094,24 +2098,26 @@ model Employee {
 }
 
 model PayrollRecord {
-  id          String        @id @default(cuid())
-  employeeId  String
-  period      String
-  basicSalary Float
-  allowances  Float         @default(0)
-  deductions  Float         @default(0)
-  overtime    Float         @default(0)
-  bonus       Float         @default(0)
-  netSalary   Float
-  payDate     DateTime?
-  status      PayrollStatus @default(PENDING)
-  createdBy   String
-  approvedBy  String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  approver    User?         @relation("PayrollApprover", fields: [approvedBy], references: [id])
-  creator     User          @relation("PayrollCreator", fields: [createdBy], references: [id])
-  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  employeeId      String
+  period          String
+  basicSalary     Float
+  allowances      Float            @default(0)
+  deductions      Float            @default(0)
+  overtime        Float            @default(0)
+  bonus           Float            @default(0)
+  netSalary       Float
+  payDate         DateTime?
+  status          PayrollStatus    @default(PENDING)
+  createdBy       String
+  approvedBy      String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  approver        User?            @relation("PayrollApprover", fields: [approvedBy], references: [id])
+  creator         User             @relation("PayrollCreator", fields: [createdBy], references: [id])
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payments        Payment[]
+  invoicePayments InvoicePayment[]
 
   @@index([employeeId, period])
   @@map("payroll_records")

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
-import { PaymentStatus, PaymentMethod, UserRole } from '@prisma/client'
+import { PaymentMethod, UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
+import { FinanceManager } from '@/lib/finance-utilities'
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +34,8 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const search = searchParams.get('search')
+    const type = searchParams.get('type')
+    const payrollPeriod = searchParams.get('payrollPeriod')
 
     const skip = (page - 1) * limit
 
@@ -46,7 +49,16 @@ export async function GET(request: NextRequest) {
     if (paymentMethod) {
       where.paymentMethod = paymentMethod
     }
-    
+
+    if (type === 'PAYROLL') {
+      where.payrollRecordId = { not: null }
+      if (payrollPeriod) {
+        where.payrollRecord = {
+          period: payrollPeriod
+        }
+      }
+    }
+
     if (customerId) {
       where.serviceBooking = {
         customerId: customerId
@@ -85,6 +97,28 @@ export async function GET(request: NextRequest) {
                   name: true,
                   email: true,
                   phone: true
+                }
+              }
+            }
+          },
+          payrollRecord: {
+            include: {
+              employee: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true
+                    }
+                  },
+                  branch: {
+                    select: {
+                      id: true,
+                      name: true,
+                      code: true
+                    }
+                  }
                 }
               }
             }
@@ -134,22 +168,25 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
-    
+
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
+    const hasAccess = user.role === UserRole.ADMIN ||
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.BRANCH_MANAGER ||
                       user.role === UserRole.ACCOUNTANT ||
                       user.permissions.includes(PERMISSIONS.CREATE_PAYMENTS)
-    
+
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const body = await request.json()
-    
+
     const {
+      type,
       bookingId,
+      invoiceId,
+      payrollRecordId,
       amount,
       paymentMethod,
       notes,
@@ -157,16 +194,99 @@ export async function POST(request: NextRequest) {
       branchId
     } = body
 
-    // Validate required fields
-    if (!bookingId || !amount || !paymentMethod) {
+    const paymentType = (type || (invoiceId ? 'INVOICE' : 'SERVICE')).toUpperCase()
+    const allowedTypes = ['SERVICE', 'INVOICE', 'PAYROLL']
+
+    if (!allowedTypes.includes(paymentType)) {
       return NextResponse.json(
-        { error: 'Missing required fields: bookingId, amount, paymentMethod' },
+        { error: `Invalid payment type. Allowed types: ${allowedTypes.join(', ')}` },
         { status: 400 }
       )
     }
 
-    // Validate amount is a positive number
-    const parsedAmount = parseFloat(amount)
+    const requiresPayrollPermissions = paymentType === 'PAYROLL'
+    if (requiresPayrollPermissions) {
+      const hasPayrollPermissions =
+        user.permissions.includes(PERMISSIONS.PROCESS_OFFLINE_PAYMENTS) &&
+        user.permissions.includes(PERMISSIONS.MANAGE_PAYMENTS)
+
+      if (!hasPayrollPermissions && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+        return NextResponse.json({ error: 'غير مصرح لك - صلاحيات الرواتب غير كافية' }, { status: 403 })
+      }
+    }
+
+    // Validate required fields
+    if (paymentType === 'SERVICE' && !bookingId) {
+      return NextResponse.json(
+        { error: 'Missing required field: bookingId' },
+        { status: 400 }
+      )
+    }
+
+    if (paymentType === 'INVOICE' && !invoiceId) {
+      return NextResponse.json(
+        { error: 'Missing required field: invoiceId' },
+        { status: 400 }
+      )
+    }
+
+    if (paymentType === 'PAYROLL' && !payrollRecordId) {
+      return NextResponse.json(
+        { error: 'Missing required field: payrollRecordId' },
+        { status: 400 }
+      )
+    }
+
+    let payrollRecord: any = null
+
+    if (paymentType === 'PAYROLL') {
+      payrollRecord = await db.payrollRecord.findUnique({
+        where: { id: payrollRecordId },
+        include: {
+          employee: {
+            include: {
+              branch: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true
+                }
+              }
+            }
+          }
+        }
+      })
+
+      if (!payrollRecord) {
+        return NextResponse.json(
+          { error: 'سجل الرواتب غير موجود' },
+          { status: 404 }
+        )
+      }
+    }
+
+    if (!paymentMethod) {
+      return NextResponse.json(
+        { error: 'Missing required field: paymentMethod' },
+        { status: 400 }
+      )
+    }
+
+    let resolvedAmount: number | string | undefined = amount
+
+    if (paymentType === 'PAYROLL' && (resolvedAmount === undefined || resolvedAmount === null || resolvedAmount === '')) {
+      resolvedAmount = payrollRecord?.netSalary
+    }
+
+    if (resolvedAmount === undefined || resolvedAmount === null || resolvedAmount === '') {
+      return NextResponse.json(
+        { error: 'Missing required field: amount' },
+        { status: 400 }
+      )
+    }
+
+    const parsedAmount = typeof resolvedAmount === 'string' ? parseFloat(resolvedAmount) : resolvedAmount
+
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return NextResponse.json(
         { error: 'Payment amount must be a positive number' },
@@ -186,24 +306,36 @@ export async function POST(request: NextRequest) {
     // Generate transaction ID if not provided
     const finalTransactionId = transactionId || `PAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
+    const branchForPayment = branchId || user.branchId || payrollRecord?.employee?.branch?.id
+
     // Create payment
-    const payment = await db.payment.create({
-      data: {
-        bookingId,
-        bookingType: 'SERVICE',
-        amount: parsedAmount,
-        currency: 'EGP',
-        status: PaymentStatus.COMPLETED,
-        paymentMethod: paymentMethod as PaymentMethod,
-        transactionId: finalTransactionId,
-        notes,
-        branchId: branchId || user.branchId,
-        metadata: {
-          createdBy: user.id,
-          createdAt: new Date().toISOString(),
-          source: 'MANUAL_ENTRY'
-        }
-      },
+    const payment = await FinanceManager.createPayment({
+      type: paymentType as 'INVOICE' | 'SERVICE' | 'PAYROLL',
+      bookingId,
+      invoiceId,
+      payrollRecordId,
+      amount: parsedAmount,
+      paymentMethod,
+      notes,
+      transactionId: finalTransactionId,
+      userId: user.id,
+      branchId: branchForPayment,
+      metadata: {
+        source: 'MANUAL_ENTRY',
+        ...(paymentType === 'PAYROLL' && payrollRecord
+          ? {
+              payrollRecord: {
+                id: payrollRecord.id,
+                period: payrollRecord.period,
+                employeeId: payrollRecord.employeeId
+              }
+            }
+          : {})
+      }
+    })
+
+    const createdPayment = await db.payment.findUnique({
+      where: { id: payment.id },
       include: {
         serviceBooking: {
           include: {
@@ -213,6 +345,28 @@ export async function POST(request: NextRequest) {
                 name: true,
                 email: true,
                 phone: true
+              }
+            }
+          }
+        },
+        payrollRecord: {
+          include: {
+            employee: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true
+                  }
+                },
+                branch: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true
+                  }
+                }
               }
             }
           }
@@ -238,12 +392,17 @@ export async function POST(request: NextRequest) {
           amount: parsedAmount,
           paymentMethod,
           transactionId: finalTransactionId,
-          bookingId
+          bookingId,
+          payrollRecordId,
+          payrollPeriod: payrollRecord?.period,
+          type: paymentType
         }
       }
     })
 
-    return NextResponse.json(payment, { status: 201 })
+    const responsePayload = createdPayment ?? payment
+
+    return NextResponse.json(responsePayload, { status: 201 })
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to create payment' },
