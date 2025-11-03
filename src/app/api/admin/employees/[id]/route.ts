@@ -28,11 +28,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     
     const body = await request.json()
-    const { name, email, phone, isActive, role } = body
+    const { name, email, phone, isActive, role, department, position, salary, branchId, emergencyContactName, emergencyContactPhone, emergencyContactRelationship, notes } = body
 
     // Check if employee exists
     const existingEmployee = await db.user.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        employee: true
+      }
     })
 
     if (!existingEmployee) {
@@ -50,8 +53,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Update employee
-    const updatedEmployee = await db.user.update({
+    // Update user
+    const updatedUser = await db.user.update({
       where: { id },
       data: {
         name,
@@ -59,20 +62,81 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         phone,
         isActive: isActive !== undefined ? isActive : existingEmployee.isActive,
         role: role || existingEmployee.role
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        phone: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true
       }
     })
 
-    return NextResponse.json({ employee: updatedEmployee })
+    // Update employee record if it exists
+    if (existingEmployee.employee) {
+      const employeeUpdateData: any = {}
+      
+      if (salary !== undefined) employeeUpdateData.salary = parseFloat(salary)
+      if (branchId !== undefined) employeeUpdateData.branchId = branchId || null
+      if (notes !== undefined) employeeUpdateData.notes = notes
+      
+      if (emergencyContactName !== undefined || emergencyContactPhone !== undefined || emergencyContactRelationship !== undefined) {
+        employeeUpdateData.emergencyContact = {
+          name: emergencyContactName || existingEmployee.employee.emergencyContact?.name || '',
+          phone: emergencyContactPhone || existingEmployee.employee.emergencyContact?.phone || '',
+          relationship: emergencyContactRelationship || existingEmployee.employee.emergencyContact?.relationship || ''
+        }
+      }
+
+      // Handle department and position updates
+      if (department !== undefined || position !== undefined) {
+        let deptRecord = null
+        let positionRecord = null
+
+        if (department) {
+          deptRecord = await db.department.findFirst({
+            where: { name: department }
+          })
+          
+          if (!deptRecord) {
+            deptRecord = await db.department.create({
+              data: {
+                name: department,
+                description: `قسم ${department}`,
+                isActive: true
+              }
+            })
+          }
+
+          employeeUpdateData.departmentId = deptRecord.id
+        }
+
+        if (position && deptRecord) {
+          positionRecord = await db.position.findFirst({
+            where: { 
+              title: position,
+              departmentId: deptRecord.id 
+            }
+          })
+          
+          if (!positionRecord) {
+            positionRecord = await db.position.create({
+              data: {
+                title: position,
+                departmentId: deptRecord.id,
+                level: 'JUNIOR',
+                description: `منصب ${position}`,
+                isActive: true
+              }
+            })
+          }
+
+          employeeUpdateData.positionId = positionRecord.id
+        }
+      }
+
+      if (Object.keys(employeeUpdateData).length > 0) {
+        await db.employee.update({
+          where: { userId: id },
+          data: employeeUpdateData
+        })
+      }
+    }
+
+    return NextResponse.json({ employee: updatedUser })
   } catch (error) {
     console.error('Error updating employee:', error)
     return NextResponse.json(

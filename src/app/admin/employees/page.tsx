@@ -223,9 +223,15 @@ export default function EmployeesPage() {
         fetchEmployeesData()
         setIsEditDialogOpen(false)
         setSelectedEmployee(null)
+        // Show success message
+        alert('تم تحديث بيانات الموظف بنجاح')
+      } else {
+        const errorData = await response.json()
+        alert(`فشل في تحديث الموظف: ${errorData.error || 'خطأ غير معروف'}`)
       }
     } catch (error) {
       console.error('Error updating employee:', error)
+      alert('حدث خطأ أثناء تحديث الموظف')
     }
   }
 

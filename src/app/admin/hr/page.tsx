@@ -62,9 +62,10 @@ export default function HRPage() {
   const fetchHRData = async () => {
     try {
       // Fetch employees data
-      const employeesRes = await fetch('/api/employees')
+      const employeesRes = await fetch('/api/admin/employees')
       if (employeesRes.ok) {
-        const employees = await employeesRes.json()
+        const employeesData = await employeesRes.json()
+        const employees = employeesData.employees || []
         
         // Ensure employees is an array
         if (Array.isArray(employees)) {
