@@ -70,10 +70,12 @@ interface PayrollRecord {
   id: string
   period: string
   basicSalary: number
+  grossSalary: number
   allowances: number
   deductions: number
   overtime: number
   bonus: number
+  taxes: number
   netSalary: number
   payDate?: string
   status: 'PENDING' | 'PROCESSED' | 'APPROVED' | 'PAID' | 'CANCELLED'
@@ -658,10 +660,14 @@ export default function EmployeeDashboard() {
                               style: 'currency',
                               currency: 'EGP'
                             }).format(payroll.basicSalary)}</span>
-                            <span>بدلات: {new Intl.NumberFormat('ar-EG', {
+                            <span>إجمالي: {new Intl.NumberFormat('ar-EG', {
                               style: 'currency',
                               currency: 'EGP'
-                            }).format(payroll.allowances)}</span>
+                            }).format(payroll.grossSalary)}</span>
+                            <span>ضرائب: {new Intl.NumberFormat('ar-EG', {
+                              style: 'currency',
+                              currency: 'EGP'
+                            }).format(payroll.taxes)}</span>
                             <span>خصومات: {new Intl.NumberFormat('ar-EG', {
                               style: 'currency',
                               currency: 'EGP'

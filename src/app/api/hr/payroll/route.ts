@@ -1,10 +1,40 @@
-interface RouteParams {
-  params: Promise<{ id: string }>
-}
-
 import { NextRequest, NextResponse } from 'next/server'
+import { PayrollBatchFrequency } from '@prisma/client'
+
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
+import { payrollProcessor } from '@/lib/payroll-processor'
+
+const batchInclude = {
+  records: {
+    include: {
+      employee: {
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          department: { select: { id: true, name: true } },
+          position: { select: { id: true, title: true } }
+        }
+      },
+      adjustments: true
+    }
+  },
+  creator: { select: { id: true, name: true } },
+  approver: { select: { id: true, name: true } }
+} as const
+
+const recordInclude = {
+  employee: {
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      department: { select: { id: true, name: true } },
+      position: { select: { id: true, title: true } }
+    }
+  },
+  creator: { select: { id: true, name: true } },
+  approver: { select: { id: true, name: true } },
+  batch: { select: { id: true, period: true, status: true } },
+  adjustments: true
+} as const
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,52 +44,23 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const period = searchParams.get('period') || new Date().toISOString().slice(0, 7) // YYYY-MM
+    const period = searchParams.get('period') || new Date().toISOString().slice(0, 7)
+    const view = searchParams.get('view') || 'records'
+
+    if (view === 'batch') {
+      const batches = await db.payrollBatch.findMany({
+        where: { period },
+        include: batchInclude,
+        orderBy: { createdAt: 'desc' }
+      })
+
+      return NextResponse.json(batches)
+    }
 
     const payrollRecords = await db.payrollRecord.findMany({
-      where: {
-        period
-      },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            department: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            position: {
-              select: {
-                id: true,
-                title: true
-              }
-            }
-          }
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      where: { period },
+      include: recordInclude,
+      orderBy: { createdAt: 'desc' }
     })
 
     return NextResponse.json(payrollRecords)
@@ -78,124 +79,54 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      employeeId,
       period,
-      basicSalary,
-      allowances,
-      deductions,
-      overtime,
-      bonus
+      startDate,
+      endDate,
+      frequency,
+      employeeIds,
+      includePerformanceBonus,
+      forceRecalculate,
+      scheduleNext,
+      metadata
     } = body
 
-    const netSalary = basicSalary + allowances + overtime + bonus - deductions
-
-    const payrollRecord = await db.payrollRecord.create({
-      data: {
-        employeeId,
-        period,
-        basicSalary: parseFloat(basicSalary),
-        allowances: parseFloat(allowances) || 0,
-        deductions: parseFloat(deductions) || 0,
-        overtime: parseFloat(overtime) || 0,
-        bonus: parseFloat(bonus) || 0,
-        netSalary,
-        createdBy: user.id
-      },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            department: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            position: {
-              select: {
-                id: true,
-                title: true
-              }
-            }
-          }
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
-    })
-
-    return NextResponse.json(payrollRecord)
-  } catch (error) {
-    console.error('Error creating payroll record:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
-  }
-}
-
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  try {
-    const user = await getAuthUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!period || !startDate || !endDate) {
+      return NextResponse.json({ error: 'period, startDate and endDate are required' }, { status: 400 })
     }
 
-    const { id } = await params
-    const body = await request.json()
-    const { status } = body
+    const parsedStart = new Date(startDate)
+    const parsedEnd = new Date(endDate)
 
-    const payrollRecord = await db.payrollRecord.update({
-      where: { id },
-      data: {
-        status,
-        approvedBy: status === 'APPROVED' ? user.id : undefined,
-        approvedAt: status === 'APPROVED' ? new Date() : undefined,
-        payDate: status === 'PAID' ? new Date() : undefined
-      },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            department: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            position: {
-              select: {
-                id: true,
-                title: true
-              }
-            }
-          }
-        }
+    if (Number.isNaN(parsedStart.getTime()) || Number.isNaN(parsedEnd.getTime())) {
+      return NextResponse.json({ error: 'Invalid date range supplied' }, { status: 400 })
+    }
+
+    let batchFrequency: PayrollBatchFrequency = PayrollBatchFrequency.MONTHLY
+    if (typeof frequency === 'string') {
+      const normalizedFrequency = frequency.toUpperCase()
+      if (Object.values(PayrollBatchFrequency).includes(normalizedFrequency as PayrollBatchFrequency)) {
+        batchFrequency = normalizedFrequency as PayrollBatchFrequency
       }
+    }
+
+    const batch = await payrollProcessor.processPayrollBatch({
+      period,
+      startDate: parsedStart,
+      endDate: parsedEnd,
+      frequency: batchFrequency,
+      employeeIds: Array.isArray(employeeIds) ? employeeIds : undefined,
+      includePerformanceBonus: typeof includePerformanceBonus === 'boolean' ? includePerformanceBonus : true,
+      forceRecalculate: typeof forceRecalculate === 'boolean' ? forceRecalculate : false,
+      scheduleNext: typeof scheduleNext === 'boolean' ? scheduleNext : false,
+      createdBy: user.id,
+      metadata: metadata && typeof metadata === 'object' ? metadata : undefined
     })
 
-    return NextResponse.json(payrollRecord)
+    return NextResponse.json(batch, { status: 201 })
   } catch (error) {
-    console.error('Error updating payroll record:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error('Error creating payroll batch:', error)
+    const message = error instanceof Error ? error.message : 'Internal Server Error'
+    const status = message.includes('exists') ? 409 : 500
+    return NextResponse.json({ error: message }, { status })
   }
 }
