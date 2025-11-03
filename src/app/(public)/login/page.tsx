@@ -97,15 +97,6 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-              <p className="font-medium mb-1">معلومات تسجيل الدخول:</p>
-              <ul className="text-xs space-y-1">
-                <li>• مدير النظام: admin@elhamdimport.online / admin123</li>
-                <li>• مدير الفرع: manager@elhamdimport.online / manager123</li>
-                <li>• مدير المبيعات: sales.manager@elhamdimport.online / salesmanager123</li>
-                <li>• مدير الخدمة: service.manager@elhamdimport.online / servicemanager123</li>
-              </ul>
-            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">

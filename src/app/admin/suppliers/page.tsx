@@ -42,11 +42,21 @@ export default function SuppliersPage() {
 
   const loadSuppliers = async () => {
     try {
-      // Since we don't have a suppliers API yet, we'll show a placeholder
-      setLoading(false)
+      setLoading(true)
+      setError(null)
+      const response = await fetch('/api/inventory/suppliers')
+      if (response.ok) {
+        const data = await response.json()
+        setSuppliers(Array.isArray(data) ? data : [])
+      } else {
+        setError('فشل في تحميل الموردين')
+        setSuppliers([])
+      }
     } catch (error) {
       console.error('Error loading suppliers:', error)
       setError('فشل في تحميل الموردين')
+      setSuppliers([])
+    } finally {
       setLoading(false)
     }
   }
@@ -122,26 +132,81 @@ export default function SuppliersPage() {
               <RefreshCw className="ml-2 h-4 w-4" />
               تحديث
             </Button>
-          </div>
-        </div>
-
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-8 text-center">
-            <Truck className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold text-blue-900 mb-2">
-              إدارة الموردين
-            </h2>
-            <p className="text-blue-700 mb-6">
-              يمكن إدارة الموردين من خلال قسم المخزون الرئيسي
-            </p>
             <Link href="/admin/inventory">
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button variant="outline">
                 <Package className="ml-2 h-4 w-4" />
                 الذهاب إلى المخزون
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        {suppliers.length === 0 ? (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-8 text-center">
+              <Truck className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-blue-900 mb-2">
+                لا يوجد موردون
+              </h2>
+              <p className="text-blue-700 mb-6">
+                لا توجد موردون في النظام حالياً. يمكن إضافة موردين من خلال قسم المخزون.
+              </p>
+              <Link href="/admin/inventory">
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Package className="ml-2 h-4 w-4" />
+                  الذهاب إلى المخزون
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {suppliers.map((supplier) => (
+              <Card key={supplier.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{supplier.name}</CardTitle>
+                    <Badge variant={supplier.status === 'active' ? 'default' : 'secondary'}>
+                      {supplier.status === 'active' ? 'نشط' : 'غير نشط'}
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    {supplier.contact}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <span>{supplier.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span>{supplier.phone}</span>
+                  </div>
+                  {supplier.address && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <span>{supplier.address}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-1">
+                      {getRatingStars(supplier.rating)}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {supplier.leadTime} يوم
+                    </div>
+                  </div>
+                  {supplier.minOrderAmount > 0 && (
+                    <div className="text-sm text-gray-600">
+                      الحد الأدنى للطلب: {supplier.minOrderAmount.toLocaleString()} ريال
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </AdminRoute>
   )

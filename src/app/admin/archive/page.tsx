@@ -65,86 +65,12 @@ function ArchiveContent() {
   const loadArchiveData = async () => {
     setLoading(true)
     try {
-      // Mock data - will be replaced with API calls
-      const mockArchiveItems: ArchiveItem[] = [
-        {
-          id: '1',
-          title: 'سيارة تاتا نانو قديمة',
-          type: 'vehicle',
-          content: 'سيارة تاتا نانو موديل 2015 - تم أرشفتها بسبب توقف الإنتاج',
-          status: 'archived',
-          archivedAt: '2024-01-15T10:00:00Z',
-          archivedBy: 'admin',
-          originalId: 'vehicle-001',
-          metadata: {
-            category: 'سيارات قديمة',
-            author: 'محمد أحمد'
-          }
-        },
-        {
-          id: '2',
-          title: 'صفحة العروض الخاصة 2023',
-          type: 'page',
-          content: 'صفحة العروض الخاصة لعام 2023 - تم أرشفتها بعد انتهاء الفترة',
-          status: 'archived',
-          archivedAt: '2024-01-10T15:30:00Z',
-          archivedBy: 'admin',
-          originalId: 'page-offers-2023',
-          metadata: {
-            author: 'أحمد محمد',
-            category: 'صفحات ترويجية'
-          }
-        },
-        {
-          id: '3',
-          title: 'حجز خدمة ملغى',
-          type: 'booking',
-          content: 'حجز خدمة للعميل إبراهيم علي - تم إلغاؤه وأرشفته',
-          status: 'archived',
-          archivedAt: '2024-01-08T09:15:00Z',
-          archivedBy: 'employee-1',
-          originalId: 'booking-123',
-          metadata: {
-            category: 'حجوزات ملغاة',
-            author: 'إبراهيم علي'
-          }
-        },
-        {
-          id: '4',
-          title: 'صورة معرض قديمة',
-          type: 'media',
-          content: 'صورة معرض السيارات القديم - تم استبدالها بصور جديدة',
-          status: 'archived',
-          archivedAt: '2024-01-05T14:20:00Z',
-          archivedBy: 'admin',
-          originalId: 'media-gallery-001',
-          metadata: {
-            size: '2.5MB',
-            format: 'JPEG',
-            category: 'صور المعرض'
-          }
-        },
-        {
-          id: '5',
-          title: 'تقرير مبيعات ديسمبر 2023',
-          type: 'document',
-          content: 'تقرير مبيعات شهر ديسمبر 2023 - تم أرشفته بعد انتهاء الشهر',
-          status: 'archived',
-          archivedAt: '2024-01-01T00:00:00Z',
-          archivedBy: 'admin',
-          originalId: 'report-dec-2023',
-          metadata: {
-            size: '1.8MB',
-            format: 'PDF',
-            category: 'تقارير مبيعات',
-            author: 'محمد أحمد'
-          }
-        }
-      ]
-
-      setArchiveItems(mockArchiveItems)
+      // Archive API not available yet - set empty array
+      // TODO: Implement archive API endpoint
+      setArchiveItems([])
     } catch (error) {
       console.error('Error loading archive data:', error)
+      setArchiveItems([])
     } finally {
       setLoading(false)
     }
