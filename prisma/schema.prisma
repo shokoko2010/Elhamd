@@ -2103,7 +2103,7 @@ model PayrollRecord {
   batchId     String?
   period      String
   basicSalary Float
-  grossSalary Float
+  grossSalary Float         @default(0)
   allowances  Float         @default(0)
   deductions  Float         @default(0)
   overtime    Float         @default(0)
