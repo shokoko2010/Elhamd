@@ -1,15 +1,15 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import { 
-  LayoutDashboard, 
-  Car, 
-  Calendar, 
-  Wrench, 
-  Users, 
+import {
+  type LucideIcon,
+  LayoutDashboard,
+  Car,
+  Calendar,
+  Wrench,
+  Users,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -20,115 +20,53 @@ import {
   X,
   ImageIcon,
   FileText,
+  FileCheck,
   TrendingUp,
   DollarSign,
   BarChart3,
-  Send,
   Bell,
   Package,
   CreditCard,
   Calculator,
   Home,
   Building,
-  Archive,
-  Shield,
-  ShoppingCart,
   MessageSquare,
-  Layout,
-  Type,
-  Palette,
   UserCheck,
+  UserPlus,
   Search,
   Download,
   Upload,
-  Filter,
-  RefreshCw,
-  Plus,
-  Edit,
-  Trash2,
   Printer,
   Phone,
   HelpCircle,
   Database,
-  Truck,
   Lock,
-  FileCheck,
-  Award,
   Target,
-  Zap,
-  Server,
-  Monitor,
-  Smartphone,
-  Globe,
-  Cpu,
-  HardDrive,
-  Wifi,
-  Battery,
-  Volume2,
-  Sun,
-  Moon,
-  User,
-  UserPlus,
-  UserMinus,
-  Key,
-  Eye,
-  EyeOff,
-  Copy,
-  Share2,
-  Paperclip,
-  Image,
-  Video,
-  Music,
-  Camera,
-  Mic,
-  Headphones,
-  Save,
-  Undo,
-  Redo,
-  ZoomIn,
-  ZoomOut,
-  Maximize,
-  Minimize,
-  RotateCw,
-  RotateCcw,
-  Move,
-  Scissors,
-  Clipboard,
-  Inbox,
-  Mail,
-  MapPin,
-  Euro,
-  PoundSterling,
-  Yen,
-  Thermometer,
-  Droplet,
-  Wind,
-  Cloud,
-  CloudRain,
-  CloudSnow,
-  AlertTriangle,
-  XCircle,
-  Info,
-  AtSign,
-  Hash,
-  Activity,
-  Pulse,
-  MoreVertical,
-  MoreHorizontal,
-  PlusCircle,
-  MinusCircle,
-  CheckSquare,
-  Square,
-  Radio,
-  Checkbox,
-  Star
+  Archive,
+  Truck,
+  Shield,
+  Filter,
+  Layout,
+  Type,
+  Palette,
+  ShoppingCart,
+  Send,
+  Award,
 } from 'lucide-react'
+
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/hooks/use-auth'
-import { useRouter } from 'next/navigation'
 
-const sidebarItems = [
+type SidebarItem = {
+  title: string
+  icon: LucideIcon
+  href?: string
+  children?: SidebarItem[]
+}
+
+const sidebarItems: SidebarItem[] = [
   {
     title: 'لوحة التحكم',
     href: '/admin',
@@ -173,7 +111,7 @@ const sidebarItems = [
         href: '/admin/invoices',
         icon: CreditCard,
       },
-    ]
+    ],
   },
   {
     title: 'المخزون والعمليات',
@@ -209,7 +147,7 @@ const sidebarItems = [
         href: '/admin/warehouse',
         icon: Building,
       },
-    ]
+    ],
   },
   {
     title: 'الموارد البشرية',
@@ -245,7 +183,7 @@ const sidebarItems = [
         href: '/admin/performance',
         icon: Award,
       },
-    ]
+    ],
   },
   {
     title: 'المالية والمحاسبة',
@@ -281,7 +219,7 @@ const sidebarItems = [
         href: '/admin/banking',
         icon: Building,
       },
-    ]
+    ],
   },
   {
     title: 'العقود والقانون',
@@ -307,7 +245,7 @@ const sidebarItems = [
         href: '/admin/documents',
         icon: Archive,
       },
-    ]
+    ],
   },
   {
     title: 'النظام والإعدادات',
@@ -343,7 +281,7 @@ const sidebarItems = [
         href: '/admin/logs',
         icon: FileText,
       },
-    ]
+    ],
   },
   {
     title: 'التواصل والدعم',
@@ -374,7 +312,7 @@ const sidebarItems = [
         href: '/admin/contact',
         icon: Phone,
       },
-    ]
+    ],
   },
   {
     title: 'الأدوات والبحث',
@@ -405,7 +343,7 @@ const sidebarItems = [
         href: '/admin/print',
         icon: Printer,
       },
-    ]
+    ],
   },
   {
     title: 'إدارة الموقع',
@@ -461,7 +399,7 @@ const sidebarItems = [
         href: '/admin/page-seo',
         icon: Palette,
       },
-    ]
+    ],
   },
   {
     title: 'إدارة المركبات',
@@ -477,7 +415,7 @@ const sidebarItems = [
         href: '/admin/vehicles',
         icon: Car,
       },
-    ]
+    ],
   },
   {
     title: 'الحجوزات والمواعيد',
@@ -498,7 +436,7 @@ const sidebarItems = [
         href: '/admin/bookings',
         icon: Wrench,
       },
-    ]
+    ],
   },
   {
     title: 'الإدارة المالية',
@@ -524,7 +462,7 @@ const sidebarItems = [
         href: '/admin/tax',
         icon: Calculator,
       },
-    ]
+    ],
   },
   {
     title: 'التجارة الإلكترونية',
@@ -535,7 +473,7 @@ const sidebarItems = [
         href: '/admin/commerce',
         icon: ShoppingCart,
       },
-    ]
+    ],
   },
   {
     title: 'التقارير والتحليلات',
@@ -551,7 +489,7 @@ const sidebarItems = [
         href: '/admin/marketing',
         icon: Send,
       },
-    ]
+    ],
   },
   {
     title: 'نظام التأمين',
@@ -562,48 +500,46 @@ const sidebarItems = [
         href: '/admin/insurance',
         icon: Shield,
       },
-    ]
+    ],
   },
 ]
 
 export function AdminSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [expandedItems, setExpandedItems] = useState<string[]>(['المخزون والعمليات'])
+  const [expandedItems, setExpandedItems] = useState<string[]>([
+    'المبيعات والعملاء',
+    'المالية والمحاسبة',
+  ])
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const router = useRouter()
 
   const handleSignOut = async () => {
     await logout()
   }
 
   const toggleExpanded = (title: string) => {
-    setExpandedItems(prev => 
-      prev.includes(title) 
+    setExpandedItems(prev =>
+      prev.includes(title)
         ? prev.filter(item => item !== title)
         : [...prev, title]
     )
   }
 
-  const isActive = (href: string) => pathname === href
-  const isParentActive = (children: any[]) => {
-    if (!Array.isArray(children)) return false
-    return children.some(child => child && child.href && isActive(child.href))
+  const isActive = (href?: string) => (href ? pathname === href : false)
+
+  const isParentActive = (children?: SidebarItem[]) => {
+    if (!children?.length) return false
+    return children.some(child => child.href && isActive(child.href))
   }
 
-  const renderMenuItem = (item: any) => {
-    // Ensure item is valid
-    if (!item || !item.title) return null
-    
-    const hasChildren = item.children && Array.isArray(item.children) && item.children.length > 0
+  const renderMenuItem = (item: SidebarItem) => {
+    const hasChildren = Boolean(item.children && item.children.length > 0)
     const isExpanded = expandedItems.includes(item.title)
     const active = hasChildren ? isParentActive(item.children) : isActive(item.href)
+    const IconComponent = item.icon ?? Package
 
-    // Ensure icon is valid
-    const IconComponent = item.icon || Package
-
-    if (hasChildren) {
+    if (hasChildren && item.children) {
       return (
         <div key={item.title} className="space-y-1">
           <Button
@@ -612,16 +548,18 @@ export function AdminSidebar() {
             onClick={() => toggleExpanded(item.title)}
             className={cn(
               'w-full justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              active 
-                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
+              active
+                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             )}
           >
             <div className="flex items-center space-x-3">
-              <IconComponent className={cn(
-                'h-5 w-5',
-                active ? 'text-blue-700' : 'text-gray-400'
-              )} />
+              <IconComponent
+                className={cn(
+                  'h-5 w-5',
+                  active ? 'text-blue-700' : 'text-gray-400'
+                )}
+              />
               {!isCollapsed && <span>{item.title}</span>}
             </div>
             {!isCollapsed && (
@@ -632,11 +570,14 @@ export function AdminSidebar() {
               )
             )}
           </Button>
-          
-          {(!isCollapsed && isExpanded) && (
+
+          {!isCollapsed && isExpanded && (
             <div className="mr-4 space-y-1">
-              {item.children.map((child: any) => {
-                const ChildIconComponent = child.icon || Package
+              {item.children.map(child => {
+                const ChildIconComponent = child.icon ?? Package
+
+                if (!child.href) return null
+
                 return (
                   <Link
                     key={child.href}
@@ -649,10 +590,12 @@ export function AdminSidebar() {
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     )}
                   >
-                    <ChildIconComponent className={cn(
-                      'h-4 w-4',
-                      isActive(child.href) ? 'text-blue-700' : 'text-gray-400'
-                    )} />
+                    <ChildIconComponent
+                      className={cn(
+                        'h-4 w-4',
+                        isActive(child.href) ? 'text-blue-700' : 'text-gray-400'
+                      )}
+                    />
                     <span>{child.title}</span>
                   </Link>
                 )
@@ -661,6 +604,10 @@ export function AdminSidebar() {
           )}
         </div>
       )
+    }
+
+    if (!item.href) {
+      return null
     }
 
     return (
@@ -675,16 +622,14 @@ export function AdminSidebar() {
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
         )}
       >
-        <IconComponent className={cn(
-          'h-5 w-5',
-          active ? 'text-blue-700' : 'text-gray-400'
-        )} />
+        <IconComponent
+          className={cn('h-5 w-5', active ? 'text-blue-700' : 'text-gray-400')}
+        />
         {!isCollapsed && <span>{item.title}</span>}
       </Link>
     )
   }
 
-  // Mobile Sidebar Component
   const MobileSidebar = () => (
     <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
       <SheetTrigger asChild>
@@ -694,7 +639,6 @@ export function AdminSidebar() {
       </SheetTrigger>
       <SheetContent side="right" className="w-80 p-0">
         <div className="flex flex-col h-full bg-white">
-          {/* Mobile Header */}
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center space-x-2">
               <Car className="h-6 w-6 text-blue-600" />
@@ -709,12 +653,10 @@ export function AdminSidebar() {
             </Button>
           </div>
 
-          {/* Mobile Navigation */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {sidebarItems.map((item) => renderMenuItem(item))}
+            {sidebarItems.map(item => renderMenuItem(item))}
           </nav>
 
-          {/* Mobile User Section */}
           <div className="p-4 border-t">
             {user && (
               <div className="mb-3">
@@ -738,14 +680,14 @@ export function AdminSidebar() {
     </Sheet>
   )
 
-  // Desktop Sidebar Component
   const DesktopSidebar = () => (
-    <div className={cn(
-      'hidden md:flex bg-white border-r border-gray-200 transition-all duration-300',
-      isCollapsed ? 'w-16' : 'w-64'
-    )}>
+    <div
+      className={cn(
+        'hidden md:flex bg-white border-r border-gray-200 transition-all duration-300',
+        isCollapsed ? 'w-16' : 'w-64'
+      )}
+    >
       <div className="flex flex-col h-full">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
@@ -758,16 +700,18 @@ export function AdminSidebar() {
             size="sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
-            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </Button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {sidebarItems.map((item) => renderMenuItem(item))}
+          {sidebarItems.map(item => renderMenuItem(item))}
         </nav>
 
-        {/* User Section */}
         <div className="p-4 border-t">
           {!isCollapsed && user && (
             <div className="mb-3">
@@ -780,10 +724,7 @@ export function AdminSidebar() {
             variant="ghost"
             size="sm"
             onClick={handleSignOut}
-            className={cn(
-              'w-full justify-start',
-              isCollapsed && 'px-2'
-            )}
+            className={cn('w-full justify-start', isCollapsed && 'px-2')}
           >
             <LogOut className="h-4 w-4" />
             {!isCollapsed && <span className="ml-2">تسجيل الخروج</span>}

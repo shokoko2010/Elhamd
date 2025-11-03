@@ -7,7 +7,7 @@ import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, A
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { format } from 'date-fns'
+import { endOfMonth, format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { toast } from 'sonner'
 
@@ -17,18 +17,28 @@ interface PayrollRecord {
     user: {
       name: string
     }
-    department: string
-    position: string
+    department?: {
+      name?: string
+    } | null
+    position?: {
+      title?: string
+    } | null
   }
+  batch?: {
+    id: string
+    status: string
+  } | null
   period: string
   basicSalary: number
+  grossSalary: number
   allowances: number
   deductions: number
   overtime: number
   bonus: number
+  taxes: number
   netSalary: number
   payDate?: string
-  status: 'PENDING' | 'APPROVED' | 'PAID'
+  status: 'PENDING' | 'PROCESSED' | 'APPROVED' | 'PAID' | 'CANCELLED'
   creator: {
     name: string
   }
@@ -71,7 +81,9 @@ export default function PayrollPage() {
         const totalPayroll = records.reduce((sum: number, record: PayrollRecord) => sum + record.netSalary, 0)
         const employeeCount = records.length
         const averageSalary = employeeCount > 0 ? totalPayroll / employeeCount : 0
-        const pendingCount = records.filter((r: PayrollRecord) => r.status === 'PENDING').length
+        const pendingCount = records.filter(
+          (r: PayrollRecord) => r.status === 'PENDING' || r.status === 'PROCESSED'
+        ).length
         
         setStats({
           totalPayroll,
@@ -88,98 +100,105 @@ export default function PayrollPage() {
     }
   }
 
-  const generatePayroll = async () => {
+  const generatePayroll = async (force: boolean = false) => {
     try {
       setIsGenerating(true)
-      
-      // Fetch all employees
-      const employeesResponse = await fetch('/api/employees')
-      if (!employeesResponse.ok) {
-        throw new Error('فشل في جلب بيانات الموظفين')
-      }
-      
-      const employees = await employeesResponse.json()
-      
-      // Generate payroll records for each employee
-      const payrollPromises = employees.map(async (employee: any) => {
-        const basicSalary = employee.salary || 0
-        const allowances = basicSalary * 0.2 // 20% allowances
-        const deductions = basicSalary * 0.1 // 10% deductions
-        const overtime = Math.random() > 0.5 ? basicSalary * 0.05 : 0 // Random overtime
-        const bonus = Math.random() > 0.7 ? basicSalary * 0.1 : 0 // Random bonus
-        const netSalary = basicSalary + allowances + overtime + bonus - deductions
-        
-        return fetch('/api/hr/payroll', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            employeeId: employee.id,
-            period: selectedPeriod,
-            basicSalary,
-            allowances,
-            deductions,
-            overtime,
-            bonus
-          })
+
+      const [year, month] = selectedPeriod.split('-').map(Number)
+      const periodStart = new Date(year, (month || 1) - 1, 1)
+      const periodEnd = endOfMonth(periodStart)
+
+      const response = await fetch('/api/hr/payroll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          period: selectedPeriod,
+          startDate: periodStart.toISOString(),
+          endDate: periodEnd.toISOString(),
+          frequency: 'MONTHLY',
+          includePerformanceBonus: true,
+          forceRecalculate: force,
+          scheduleNext: true
         })
       })
-      
-      const results = await Promise.allSettled(payrollPromises)
-      const successful = results.filter(r => r.status === 'fulfilled').length
-      const failed = results.filter(r => r.status === 'rejected').length
-      
-      if (successful > 0) {
-        toast.success(`تم إنشاء ${successful} سجل راتب بنجاح`)
-        if (failed > 0) {
-          toast.warning(`فشل في إنشاء ${failed} سجل راتب`)
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        const message = payload.error || 'فشل في إنشاء دفعة الرواتب'
+        if (!force && message.toLowerCase().includes('exists')) {
+          const confirmRecalculate = window.confirm('تم إنشاء كشف رواتب سابق لهذه الفترة. هل ترغب في إعادة الحساب؟')
+          if (confirmRecalculate) {
+            return generatePayroll(true)
+          }
         }
-        fetchPayrollData()
-      } else {
-        toast.error('فشل في إنشاء سجلات الرواتب')
+        throw new Error(message)
       }
+
+      toast.success('تم إنشاء دفعة الرواتب بنجاح')
+      fetchPayrollData()
     } catch (error) {
       console.error('Error generating payroll:', error)
-      toast.error('حدث خطأ أثناء إنشاء كشف الرواتب')
+      toast.error(error instanceof Error ? error.message : 'حدث خطأ أثناء إنشاء كشف الرواتب')
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const approvePayroll = async (recordId: string) => {
+  const approvePayroll = async (record: PayrollRecord) => {
+    if (!record.batch?.id) {
+      toast.error('لا توجد دفعة مرتبطة بهذا السجل')
+      return
+    }
+
     try {
-      const response = await fetch(`/api/hr/payroll/${recordId}/approve`, {
-        method: 'POST'
+      const response = await fetch(`/api/hr/payroll/${record.batch.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'APPROVED' })
       })
-      
+
       if (response.ok) {
-        toast.success('تم اعتماد سجل الراتب')
+        toast.success('تم اعتماد دفعة الرواتب')
         fetchPayrollData()
       } else {
-        toast.error('فشل في اعتماد سجل الراتب')
+        const payload = await response.json().catch(() => ({}))
+        toast.error(payload.error || 'فشل في اعتماد دفعة الرواتب')
       }
     } catch (error) {
       console.error('Error approving payroll:', error)
-      toast.error('حدث خطأ أثناء اعتماد سجل الراتب')
+      toast.error('حدث خطأ أثناء اعتماد دفعة الرواتب')
     }
   }
 
-  const markAsPaid = async (recordId: string) => {
+  const markAsPaid = async (record: PayrollRecord) => {
+    if (!record.batch?.id) {
+      toast.error('لا توجد دفعة مرتبطة بهذا السجل')
+      return
+    }
+
     try {
-      const response = await fetch(`/api/hr/payroll/${recordId}/pay`, {
-        method: 'POST'
+      const response = await fetch(`/api/hr/payroll/${record.batch.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'PAID' })
       })
-      
+
       if (response.ok) {
-        toast.success('تم تحديد سجل الراتب كمدفوع')
+        toast.success('تم تشغيل الدفعة ودفع الرواتب')
         fetchPayrollData()
       } else {
-        toast.error('فشل في تحديد سجل الراتب كمدفوع')
+        const payload = await response.json().catch(() => ({}))
+        toast.error(payload.error || 'فشل في تشغيل دفعة الرواتب')
       }
     } catch (error) {
       console.error('Error marking payroll as paid:', error)
-      toast.error('حدث خطأ أثناء تحديد سجل الراتب كمدفوع')
+      toast.error('حدث خطأ أثناء تشغيل دفعة الرواتب')
     }
   }
 
@@ -195,10 +214,14 @@ export default function PayrollPage() {
     switch (status) {
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800'
-      case 'APPROVED':
+      case 'PROCESSED':
         return 'bg-blue-100 text-blue-800'
+      case 'APPROVED':
+        return 'bg-indigo-100 text-indigo-800'
       case 'PAID':
         return 'bg-green-100 text-green-800'
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -207,8 +230,10 @@ export default function PayrollPage() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'PENDING': return 'قيد الانتظار'
+      case 'PROCESSED': return 'قيد المعالجة'
       case 'APPROVED': return 'معتمد'
       case 'PAID': return 'مدفوع'
+      case 'CANCELLED': return 'ملغي'
       default: return status
     }
   }
@@ -406,7 +431,9 @@ export default function PayrollPage() {
                   <TableHead>الموظف</TableHead>
                   <TableHead>القسم</TableHead>
                   <TableHead>الراتب الأساسي</TableHead>
-                  <TableHead>البدلات</TableHead>
+                  <TableHead>الحوافز</TableHead>
+                  <TableHead>الراتب الإجمالي</TableHead>
+                  <TableHead>الضرائب</TableHead>
                   <TableHead>الخصومات</TableHead>
                   <TableHead>الراتب الصافي</TableHead>
                   <TableHead>الحالة</TableHead>
@@ -427,6 +454,8 @@ export default function PayrollPage() {
                     </TableCell>
                     <TableCell>{formatCurrency(record.basicSalary)}</TableCell>
                     <TableCell>{formatCurrency(record.allowances + record.overtime + record.bonus)}</TableCell>
+                    <TableCell>{formatCurrency(record.grossSalary)}</TableCell>
+                    <TableCell>{formatCurrency(record.taxes)}</TableCell>
                     <TableCell>{formatCurrency(record.deductions)}</TableCell>
                     <TableCell className="font-medium">{formatCurrency(record.netSalary)}</TableCell>
                     <TableCell>
@@ -436,11 +465,11 @@ export default function PayrollPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        {record.status === 'PENDING' && (
+                        {(record.status === 'PENDING' || record.status === 'PROCESSED') && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => approvePayroll(record.id)}
+                            onClick={() => approvePayroll(record)}
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
@@ -449,7 +478,7 @@ export default function PayrollPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => markAsPaid(record.id)}
+                            onClick={() => markAsPaid(record)}
                           >
                             <DollarSign className="h-4 w-4" />
                           </Button>

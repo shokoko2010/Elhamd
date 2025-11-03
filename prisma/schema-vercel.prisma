@@ -95,6 +95,9 @@ model User {
   approvedJournalEntries JournalEntry[]      @relation("JournalEntryApprover")
   createdPayrollRecords  PayrollRecord[]     @relation("PayrollCreator")
   approvedPayrollRecords PayrollRecord[]     @relation("PayrollApprover")
+  createdPayrollBatches  PayrollBatch[]      @relation("PayrollBatchCreator")
+  approvedPayrollBatches PayrollBatch[]      @relation("PayrollBatchApprover")
+  payrollAdjustments     PayrollAdjustment[] @relation("PayrollAdjustmentCreator")
   performanceReviews     PerformanceReview[] @relation("PerformanceReviewer")
 
   // Human Resources System Relations
@@ -1028,6 +1031,7 @@ model Employee {
 
   user   User    @relation("EmployeeRecord", fields: [userId], references: [id])
   branch Branch? @relation(fields: [branchId], references: [id])
+  payrollAdjustments PayrollAdjustment[]
 
   @@map("employees")
 }
@@ -1035,19 +1039,87 @@ model Employee {
 model PayrollRecord {
   id          String        @id @default(cuid())
   employeeId  String
-  period      String        // "monthly", "bi-weekly"
-  amount      Float
+  batchId     String?
+  period      String
+  basicSalary Float
+  grossSalary Float         @default(0)
+  allowances  Float         @default(0)
+  deductions  Float         @default(0)
+  overtime    Float         @default(0)
+  bonus       Float         @default(0)
+  taxes       Float         @default(0)
+  netSalary   Float
+  payDate     DateTime?
   status      PayrollStatus @default(PENDING)
   creatorId   String
   approverId  String?
+  approvedAt  DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  calculation Json?
 
-  employee Employee @relation(fields: [employeeId], references: [id])
-  creator  User     @relation("PayrollCreator", fields: [creatorId], references: [id])
-  approver User?    @relation("PayrollApprover", fields: [approverId], references: [id])
+  employee  Employee       @relation(fields: [employeeId], references: [id])
+  creator   User           @relation("PayrollCreator", fields: [creatorId], references: [id])
+  approver  User?          @relation("PayrollApprover", fields: [approverId], references: [id])
+  batch     PayrollBatch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  adjustments PayrollAdjustment[]
 
+  @@index([employeeId, period])
+  @@index([batchId])
   @@map("payroll_records")
+}
+
+model PayrollBatch {
+  id              String                  @id @default(cuid())
+  period          String
+  startDate       DateTime
+  endDate         DateTime
+  frequency       PayrollBatchFrequency @default(MONTHLY)
+  status          PayrollStatus         @default(PENDING)
+  processedAt     DateTime?
+  approvedAt      DateTime?
+  paidAt          DateTime?
+  nextRunAt       DateTime?
+  totalGross      Float                 @default(0)
+  totalNet        Float                 @default(0)
+  totalTax        Float                 @default(0)
+  totalDeductions Float                 @default(0)
+  createdBy       String
+  approvedBy      String?
+  metadata        Json?
+  calculation     Json?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  records         PayrollRecord[]
+  creator         User                  @relation("PayrollBatchCreator", fields: [createdBy], references: [id])
+  approver        User?                 @relation("PayrollBatchApprover", fields: [approvedBy], references: [id])
+
+  @@index([period])
+  @@index([status])
+  @@map("payroll_batches")
+}
+
+model PayrollAdjustment {
+  id              String                  @id @default(cuid())
+  payrollRecordId String?
+  employeeId      String
+  type            PayrollAdjustmentType
+  amount          Float
+  reason          String?
+  effectiveDate   DateTime?
+  expiresAt       DateTime?
+  isRecurring     Boolean                @default(false)
+  createdBy       String
+  metadata        Json?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  payrollRecord   PayrollRecord?         @relation(fields: [payrollRecordId], references: [id], onDelete: SetNull)
+  employee        Employee               @relation(fields: [employeeId], references: [id])
+  creator         User                   @relation("PayrollAdjustmentCreator", fields: [createdBy], references: [id])
+
+  @@index([employeeId])
+  @@index([payrollRecordId])
+  @@map("payroll_adjustments")
 }
 
 model LeaveRequest {
@@ -1691,11 +1763,29 @@ enum JournalEntryStatus {
   POSTED
 }
 
+enum PayrollBatchFrequency {
+  MONTHLY
+  BIWEEKLY
+  WEEKLY
+  CUSTOM
+}
+
+enum PayrollAdjustmentType {
+  BONUS
+  ALLOWANCE
+  DEDUCTION
+  PENALTY
+  TAX
+  REIMBURSEMENT
+  OTHER
+}
+
 enum PayrollStatus {
   PENDING
-  APPROVED
   PROCESSED
+  APPROVED
   PAID
+  CANCELLED
 }
 
 enum LeaveType {
