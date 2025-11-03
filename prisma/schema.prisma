@@ -1987,6 +1987,8 @@ model ChartOfAccount {
   normalBalance BalanceType
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  payrollExpenseEmployees   Employee[] @relation("PayrollExpenseAccount")
+  payrollLiabilityEmployees Employee[] @relation("PayrollLiabilityAccount")
 
   @@index([code])
   @@map("chart_of_accounts")
@@ -2071,6 +2073,8 @@ model Employee {
   branchId           String?
   emergencyContact   Json?
   notes              String?
+  payrollExpenseAccountId   String?
+  payrollLiabilityAccountId String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   branch             Branch?             @relation(fields: [branchId], references: [id])
@@ -2079,6 +2083,8 @@ model Employee {
   managedEmployees   Employee[]          @relation("EmployeeManager")
   position           Position?           @relation(fields: [positionId], references: [id])
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payrollExpenseAccount     ChartOfAccount?    @relation("PayrollExpenseAccount", fields: [payrollExpenseAccountId], references: [id])
+  payrollLiabilityAccount   ChartOfAccount?    @relation("PayrollLiabilityAccount", fields: [payrollLiabilityAccountId], references: [id])
   leaveRequests      LeaveRequest[]
   payrollRecords     PayrollRecord[]
   performanceMetrics PerformanceMetric[]

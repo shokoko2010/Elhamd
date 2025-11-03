@@ -10,23 +10,30 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { 
-  User, 
-  Calendar, 
-  DollarSign, 
-  Award, 
-  Phone, 
-  Mail, 
-  MapPin, 
+import {
+  User,
+  Calendar,
+  DollarSign,
+  Award,
+  Phone,
+  Mail,
   Building,
-  Clock,
   FileText,
   Settings,
-  Bell
+  Bell,
+  CreditCard,
+  Receipt,
+  Wallet
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { useAuth } from '@/hooks/use-auth'
+
+interface EmployeeFinancialAccount {
+  id: string
+  code: string
+  name: string
+}
 
 interface EmployeeProfile {
   id: string
@@ -53,6 +60,11 @@ interface EmployeeProfile {
     relationship: string
   }
   notes?: string
+  bankAccount?: string
+  taxNumber?: string
+  insuranceNumber?: string
+  payrollExpenseAccount?: EmployeeFinancialAccount | null
+  payrollLiabilityAccount?: EmployeeFinancialAccount | null
 }
 
 interface LeaveRequest {
@@ -93,7 +105,10 @@ export default function EmployeeDashboard() {
     emergencyContactName: '',
     emergencyContactPhone: '',
     emergencyContactRelationship: '',
-    notes: ''
+    notes: '',
+    bankAccount: '',
+    taxNumber: '',
+    insuranceNumber: ''
   })
   const [leaveFormData, setLeaveFormData] = useState({
     leaveType: '',
@@ -110,32 +125,23 @@ export default function EmployeeDashboard() {
 
   const fetchEmployeeData = async () => {
     try {
-      const [profileRes, leavesRes, payrollRes] = await Promise.all([
-        fetch('/api/employee/profile'),
-        fetch('/api/employee/leave-requests'),
-        fetch('/api/employee/payroll')
-      ])
+      const response = await fetch('/api/employees/me')
 
-      if (profileRes.ok) {
-        const profileData = await profileRes.json()
-        setEmployeeProfile(profileData)
+      if (response.ok) {
+        const dashboardData = await response.json()
+        setEmployeeProfile(dashboardData)
+        setLeaveRequests(dashboardData.leaveRequests || [])
+        setPayrollRecords(dashboardData.payrollRecords || [])
         setFormData({
-          phone: profileData.user.phone || '',
-          emergencyContactName: profileData.emergencyContact?.name || '',
-          emergencyContactPhone: profileData.emergencyContact?.phone || '',
-          emergencyContactRelationship: profileData.emergencyContact?.relationship || '',
-          notes: profileData.notes || ''
+          phone: dashboardData.user.phone || '',
+          emergencyContactName: dashboardData.emergencyContact?.name || '',
+          emergencyContactPhone: dashboardData.emergencyContact?.phone || '',
+          emergencyContactRelationship: dashboardData.emergencyContact?.relationship || '',
+          notes: dashboardData.notes || '',
+          bankAccount: dashboardData.bankAccount || '',
+          taxNumber: dashboardData.taxNumber || '',
+          insuranceNumber: dashboardData.insuranceNumber || ''
         })
-      }
-
-      if (leavesRes.ok) {
-        const leavesData = await leavesRes.json()
-        setLeaveRequests(leavesData)
-      }
-
-      if (payrollRes.ok) {
-        const payrollData = await payrollRes.json()
-        setPayrollRecords(payrollData)
       }
     } catch (error) {
       console.error('Error fetching employee data:', error)
@@ -201,7 +207,7 @@ export default function EmployeeDashboard() {
 
   const handleUpdateProfile = async () => {
     try {
-      const response = await fetch('/api/employee/profile', {
+      const response = await fetch('/api/employees/me', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +216,20 @@ export default function EmployeeDashboard() {
       })
 
       if (response.ok) {
-        fetchEmployeeData()
+        const updated = await response.json()
+        setEmployeeProfile(updated)
+        setLeaveRequests(updated.leaveRequests || [])
+        setPayrollRecords(updated.payrollRecords || [])
+        setFormData({
+          phone: updated.user.phone || '',
+          emergencyContactName: updated.emergencyContact?.name || '',
+          emergencyContactPhone: updated.emergencyContact?.phone || '',
+          emergencyContactRelationship: updated.emergencyContact?.relationship || '',
+          notes: updated.notes || '',
+          bankAccount: updated.bankAccount || '',
+          taxNumber: updated.taxNumber || '',
+          insuranceNumber: updated.insuranceNumber || ''
+        })
         setIsEditProfileOpen(false)
       }
     } catch (error) {
@@ -364,7 +383,7 @@ export default function EmployeeDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>الملف الشخصي</CardTitle>
-                  <CardDescription>معلوماتك الشخصية والوظيفية</CardDescription>
+                  <CardDescription>معلوماتك الشخصية والمالية</CardDescription>
                 </div>
                 <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
                   <DialogTrigger asChild>
@@ -415,6 +434,33 @@ export default function EmployeeDashboard() {
                           value={formData.emergencyContactRelationship}
                           onChange={(e) => setFormData({ ...formData, emergencyContactRelationship: e.target.value })}
                           placeholder="صلة القرابة"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bankAccount">حساب البنك</Label>
+                        <Input
+                          id="bankAccount"
+                          value={formData.bankAccount}
+                          onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
+                          placeholder="رقم حساب البنك"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="taxNumber">الرقم الضريبي</Label>
+                        <Input
+                          id="taxNumber"
+                          value={formData.taxNumber}
+                          onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })}
+                          placeholder="أدخل الرقم الضريبي"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="insuranceNumber">رقم التأمين</Label>
+                        <Input
+                          id="insuranceNumber"
+                          value={formData.insuranceNumber}
+                          onChange={(e) => setFormData({ ...formData, insuranceNumber: e.target.value })}
+                          placeholder="رقم التأمين الاجتماعي"
                         />
                       </div>
                       <div className="space-y-2 col-span-2">
@@ -481,7 +527,7 @@ export default function EmployeeDashboard() {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <Building className="h-5 w-5 text-muted-foreground" />
@@ -510,6 +556,48 @@ export default function EmployeeDashboard() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <CreditCard className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">حساب البنك</p>
+                      <p className="text-sm text-muted-foreground">{employeeProfile.bankAccount || 'غير متوفر'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Receipt className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">الرقم الضريبي</p>
+                      <p className="text-sm text-muted-foreground">{employeeProfile.taxNumber || 'غير متوفر'}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <Wallet className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">رقم التأمين</p>
+                      <p className="text-sm text-muted-foreground">{employeeProfile.insuranceNumber || 'غير متوفر'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <DollarSign className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">حسابات الرواتب</p>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p>
+                          مصروفات: {employeeProfile.payrollExpenseAccount ? `${employeeProfile.payrollExpenseAccount.code} - ${employeeProfile.payrollExpenseAccount.name}` : 'لم يتم التعيين'}
+                        </p>
+                        <p>
+                          مستحقات: {employeeProfile.payrollLiabilityAccount ? `${employeeProfile.payrollLiabilityAccount.code} - ${employeeProfile.payrollLiabilityAccount.name}` : 'لم يتم التعيين'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
