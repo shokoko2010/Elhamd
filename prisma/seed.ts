@@ -1122,18 +1122,6 @@ async function main() {
 
   console.log('✅ Comprehensive database seeding completed successfully!')
   console.log('📊 Summary:')
-  console.log(`- Vehicles: ${vehiclesData.length}`)
-  console.log('- Users: 8')
-  console.log('- Employees: Created for staff users')
-  console.log('- Departments: 6')
-  console.log('- Positions: 14')
-  console.log('- Role Templates: 8')
-  console.log('- Permissions: 32')
-  console.log('- Service Types: 5')
-  console.log('- Leave Requests: Sample data')
-  console.log('- Payroll Records: Sample data')
-  console.log('- Sliders: 4')
-  console.log('- All emails updated to use @elhamdimport.online domain')
   
   // Import and run additional seed scripts
   console.log('\n🔄 Running additional seed scripts...')
