@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { resolveAuthUser } from '@/lib/resolve-auth-user'
 import { db } from '@/lib/db'
 
 type JournalEntryItemInput = {
@@ -10,7 +10,7 @@ type JournalEntryItemInput = {
 }
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    const user = await resolveAuthUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    const user = await resolveAuthUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

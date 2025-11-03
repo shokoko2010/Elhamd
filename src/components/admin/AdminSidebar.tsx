@@ -20,6 +20,7 @@ import {
   X,
   ImageIcon,
   FileText,
+  FileCheck,
   TrendingUp,
   DollarSign,
   BarChart3,
@@ -31,6 +32,7 @@ import {
   Building,
   MessageSquare,
   UserCheck,
+  UserPlus,
   Search,
   Download,
   Upload,
@@ -40,7 +42,16 @@ import {
   Database,
   Lock,
   Target,
-  Percent,
+  Archive,
+  Truck,
+  Shield,
+  Filter,
+  Layout,
+  Type,
+  Palette,
+  ShoppingCart,
+  Send,
+  Award,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -76,14 +87,24 @@ const sidebarItems: SidebarItem[] = [
         icon: Calendar,
       },
       {
+        title: 'الأفراد',
+        href: '/admin/personnel',
+        icon: Users,
+      },
+      {
         title: 'العملاء',
         href: '/admin/customers',
-        icon: Users,
+        icon: UserPlus,
+      },
+      {
+        title: 'المبيعات',
+        href: '/admin/sales',
+        icon: DollarSign,
       },
       {
         title: 'عروض الأسعار',
         href: '/admin/quotations',
-        icon: FileText,
+        icon: FileCheck,
       },
       {
         title: 'الفواتير',
@@ -93,7 +114,7 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
-    title: 'العمليات',
+    title: 'المخزون والعمليات',
     icon: Package,
     children: [
       {
@@ -107,9 +128,19 @@ const sidebarItems: SidebarItem[] = [
         icon: Wrench,
       },
       {
+        title: 'الخدمات',
+        href: '/admin/service',
+        icon: Wrench,
+      },
+      {
+        title: 'قطع الغيار',
+        href: '/admin/parts',
+        icon: Settings,
+      },
+      {
         title: 'الموردون',
         href: '/admin/suppliers',
-        icon: Building,
+        icon: Truck,
       },
       {
         title: 'المستودع',
@@ -123,14 +154,14 @@ const sidebarItems: SidebarItem[] = [
     icon: UserCheck,
     children: [
       {
-        title: 'نظرة عامة',
+        title: 'الموارد البشرية',
         href: '/admin/hr',
-        icon: UserCheck,
+        icon: Building,
       },
       {
         title: 'الموظفون',
         href: '/admin/employees',
-        icon: Users,
+        icon: UserCheck,
       },
       {
         title: 'الحضور والانصراف',
@@ -150,19 +181,14 @@ const sidebarItems: SidebarItem[] = [
       {
         title: 'تقييم الأداء',
         href: '/admin/performance',
-        icon: Target,
+        icon: Award,
       },
     ],
   },
   {
     title: 'المالية والمحاسبة',
-    icon: DollarSign,
+    icon: Calculator,
     children: [
-      {
-        title: 'الإدارة المالية',
-        href: '/admin/finance',
-        icon: DollarSign,
-      },
       {
         title: 'المحاسبة',
         href: '/admin/accounting',
@@ -186,79 +212,38 @@ const sidebarItems: SidebarItem[] = [
       {
         title: 'الضرائب',
         href: '/admin/tax',
-        icon: Percent,
-      },
-    ],
-  },
-  {
-    title: 'إدارة الموقع',
-    icon: Home,
-    children: [
-      {
-        title: 'الصفحة الرئيسية',
-        href: '/admin/homepage',
-        icon: Home,
-      },
-      {
-        title: 'الفروع',
-        href: '/admin/branches',
-        icon: Building,
-      },
-      {
-        title: 'إعدادات الموقع',
-        href: '/admin/site-settings',
-        icon: Settings,
-      },
-      {
-        title: 'المحتوى',
-        href: '/admin/content',
         icon: FileText,
       },
       {
-        title: 'الوسائط',
-        href: '/admin/media',
-        icon: ImageIcon,
-      },
-      {
-        title: 'النوافذ المنبثقة',
-        href: '/admin/popup-configs',
-        icon: MessageSquare,
-      },
-      {
-        title: 'تحسين محركات البحث',
-        href: '/admin/page-seo',
-        icon: Search,
+        title: 'الحسابات البنكية',
+        href: '/admin/banking',
+        icon: Building,
       },
     ],
   },
   {
-    title: 'التواصل والدعم',
-    icon: MessageSquare,
+    title: 'العقود والقانون',
+    icon: Shield,
     children: [
       {
-        title: 'الإشعارات',
-        href: '/admin/notifications',
-        icon: Bell,
+        title: 'العقود',
+        href: '/admin/contracts',
+        icon: FileText,
       },
       {
-        title: 'المحادثات',
-        href: '/admin/messages',
-        icon: MessageSquare,
+        title: 'الشؤون القانونية',
+        href: '/admin/legal',
+        icon: Shield,
       },
       {
-        title: 'الدعم الفني',
-        href: '/admin/support',
-        icon: HelpCircle,
+        title: 'التأمين',
+        href: '/admin/insurance',
+        icon: Shield,
       },
       {
-        title: 'اتصل بنا',
-        href: '/admin/contact',
-        icon: Phone,
-      },
-      {
-        title: 'ملاحظات العملاء',
-        href: '/admin/feedback',
-        icon: MessageSquare,
+        title: 'الوثائق',
+        href: '/admin/documents',
+        icon: Archive,
       },
     ],
   },
@@ -282,25 +267,217 @@ const sidebarItems: SidebarItem[] = [
         icon: UserCheck,
       },
       {
+        title: 'الإعدادات',
+        href: '/admin/settings',
+        icon: Settings,
+      },
+      {
         title: 'النسخ الاحتياطي',
         href: '/admin/backup',
         icon: Database,
       },
       {
-        title: 'سجلات النظام',
+        title: 'السجلات',
         href: '/admin/logs',
         icon: FileText,
-      },
-      {
-        title: 'إعدادات عامة',
-        href: '/admin/settings',
-        icon: Settings,
       },
     ],
   },
   {
-    title: 'الأدوات والتقارير',
+    title: 'التواصل والدعم',
+    icon: MessageSquare,
+    children: [
+      {
+        title: 'الإشعارات',
+        href: '/admin/notifications',
+        icon: Bell,
+      },
+      {
+        title: 'الرسائل',
+        href: '/admin/messages',
+        icon: MessageSquare,
+      },
+      {
+        title: 'الدعم الفني',
+        href: '/admin/support',
+        icon: HelpCircle,
+      },
+      {
+        title: 'ملاحظات',
+        href: '/admin/feedback',
+        icon: MessageSquare,
+      },
+      {
+        title: 'اتصل بنا',
+        href: '/admin/contact',
+        icon: Phone,
+      },
+    ],
+  },
+  {
+    title: 'الأدوات والبحث',
     icon: Search,
+    children: [
+      {
+        title: 'بحث',
+        href: '/admin/search',
+        icon: Search,
+      },
+      {
+        title: 'تصفية',
+        href: '/admin/filter',
+        icon: Filter,
+      },
+      {
+        title: 'تصدير',
+        href: '/admin/export',
+        icon: Download,
+      },
+      {
+        title: 'استيراد',
+        href: '/admin/import',
+        icon: Upload,
+      },
+      {
+        title: 'طباعة',
+        href: '/admin/print',
+        icon: Printer,
+      },
+    ],
+  },
+  {
+    title: 'إدارة الموقع',
+    icon: Building,
+    children: [
+      {
+        title: 'الصفحة الرئيسية',
+        href: '/admin/homepage',
+        icon: Home,
+      },
+      {
+        title: 'الفروع',
+        href: '/admin/branches',
+        icon: Building,
+      },
+      {
+        title: 'إعدادات الموقع',
+        href: '/admin/site-settings',
+        icon: Settings,
+      },
+      {
+        title: 'الهيدر',
+        href: '/admin/header',
+        icon: Layout,
+      },
+      {
+        title: 'الفوتر',
+        href: '/admin/footer',
+        icon: Type,
+      },
+      {
+        title: 'الوسائط',
+        href: '/admin/media',
+        icon: ImageIcon,
+      },
+      {
+        title: 'المحتوى',
+        href: '/admin/content',
+        icon: FileText,
+      },
+      {
+        title: 'إدارة المحتوى',
+        href: '/admin/content-management',
+        icon: Layout,
+      },
+      {
+        title: 'النوافذ المنبثقة',
+        href: '/admin/popup-configs',
+        icon: MessageSquare,
+      },
+      {
+        title: 'SEO',
+        href: '/admin/page-seo',
+        icon: Palette,
+      },
+    ],
+  },
+  {
+    title: 'إدارة المركبات',
+    icon: Car,
+    children: [
+      {
+        title: 'موديلات السيارات',
+        href: '/admin/models',
+        icon: Car,
+      },
+      {
+        title: 'المركبات',
+        href: '/admin/vehicles',
+        icon: Car,
+      },
+    ],
+  },
+  {
+    title: 'الحجوزات والمواعيد',
+    icon: Calendar,
+    children: [
+      {
+        title: 'المواعيد',
+        href: '/admin/appointments',
+        icon: Calendar,
+      },
+      {
+        title: 'التقويم',
+        href: '/admin/calendar',
+        icon: Calendar,
+      },
+      {
+        title: 'حجوزات الخدمة',
+        href: '/admin/bookings',
+        icon: Wrench,
+      },
+    ],
+  },
+  {
+    title: 'الإدارة المالية',
+    icon: DollarSign,
+    children: [
+      {
+        title: 'النظرة العامة',
+        href: '/admin/finance',
+        icon: DollarSign,
+      },
+      {
+        title: 'الفواتير',
+        href: '/admin/invoices/dashboard',
+        icon: FileText,
+      },
+      {
+        title: 'المدفوعات',
+        href: '/admin/payments',
+        icon: CreditCard,
+      },
+      {
+        title: 'الضرائب',
+        href: '/admin/tax',
+        icon: Calculator,
+      },
+    ],
+  },
+  {
+    title: 'التجارة الإلكترونية',
+    icon: ShoppingCart,
+    children: [
+      {
+        title: 'إدارة المتجر',
+        href: '/admin/commerce',
+        icon: ShoppingCart,
+      },
+    ],
+  },
+  {
+    title: 'التقارير والتحليلات',
+    icon: BarChart3,
     children: [
       {
         title: 'التقارير',
@@ -308,19 +485,20 @@ const sidebarItems: SidebarItem[] = [
         icon: BarChart3,
       },
       {
-        title: 'تصدير البيانات',
-        href: '/admin/export',
-        icon: Download,
+        title: 'التسويق',
+        href: '/admin/marketing',
+        icon: Send,
       },
+    ],
+  },
+  {
+    title: 'نظام التأمين',
+    icon: Shield,
+    children: [
       {
-        title: 'استيراد البيانات',
-        href: '/admin/import',
-        icon: Upload,
-      },
-      {
-        title: 'الطباعة',
-        href: '/admin/print',
-        icon: Printer,
+        title: 'إدارة التأمين',
+        href: '/admin/insurance',
+        icon: Shield,
       },
     ],
   },

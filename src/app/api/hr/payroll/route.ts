@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PayrollBatchFrequency } from '@prisma/client'
 
-import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { payrollProcessor } from '@/lib/payroll-processor'
+import { resolveAuthUser } from '@/lib/resolve-auth-user'
 
 const batchInclude = {
   records: {
@@ -38,7 +38,7 @@ const recordInclude = {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    const user = await resolveAuthUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    const user = await resolveAuthUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PayrollStatus } from '@prisma/client'
 
-import { getAuthUser } from '@/lib/auth-server'
 import { payrollProcessor } from '@/lib/payroll-processor'
+import { resolveAuthUser } from '@/lib/resolve-auth-user'
 
 interface RouteParams {
   params: { id: string }
@@ -10,7 +10,7 @@ interface RouteParams {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const user = await getAuthUser()
+    const user = await resolveAuthUser(request)
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
