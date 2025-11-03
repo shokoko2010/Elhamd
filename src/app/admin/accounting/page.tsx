@@ -142,36 +142,42 @@ export default function AccountingPage() {
     }
   }
 
-  // Calculate financial summary
-  const financialSummary = {
-    totalAssets: accounts
-      .filter(a => a.type === 'ASSET' && a.isActive)
-      .reduce((sum, account) => {
-        // This would normally be calculated from actual balances
-        return sum + 0 // Placeholder
-      }, 0),
-    
-    totalLiabilities: accounts
-      .filter(a => a.type === 'LIABILITY' && a.isActive)
-      .reduce((sum, account) => {
-        return sum + 0 // Placeholder
-      }, 0),
-    
-    totalRevenue: accounts
-      .filter(a => a.type === 'REVENUE' && a.isActive)
-      .reduce((sum, account) => {
-        return sum + 0 // Placeholder
-      }, 0),
-    
-    totalExpenses: accounts
-      .filter(a => a.type === 'EXPENSE' && a.isActive)
-      .reduce((sum, account) => {
-        return sum + 0 // Placeholder
-      }, 0),
+  const [financialSummary, setFinancialSummary] = useState({
+    totalAssets: 0,
+    totalLiabilities: 0,
+    totalEquity: 0,
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netIncome: 0
+  })
+
+  useEffect(() => {
+    fetchBalances()
+  }, [])
+
+  const fetchBalances = async () => {
+    try {
+      const response = await fetch('/api/accounting/balances')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.summary) {
+          setFinancialSummary({
+            totalAssets: data.summary.totalAssets || 0,
+            totalLiabilities: data.summary.totalLiabilities || 0,
+            totalEquity: data.summary.equity || 0,
+            totalRevenue: data.summary.totalRevenue || 0,
+            totalExpenses: data.summary.totalExpenses || 0,
+            netIncome: data.summary.netIncome || 0
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching balances:', error)
+    }
   }
 
-  const netIncome = financialSummary.totalRevenue - financialSummary.totalExpenses
-  const equity = financialSummary.totalAssets - financialSummary.totalLiabilities
+  const netIncome = financialSummary.netIncome
+  const equity = financialSummary.totalEquity
 
   if (loading) {
     return (
