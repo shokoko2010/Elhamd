@@ -4,7 +4,10 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth-server'
+import { PayrollStatus } from '@prisma/client'
+
 import { db } from '@/lib/db'
+import { PayrollProcessor } from '@/lib/payroll-processor'
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,6 +47,7 @@ export async function GET(request: NextRequest) {
             }
           }
         },
+        batch: true,
         creator: {
           select: {
             id: true,
@@ -87,58 +91,33 @@ export async function POST(request: NextRequest) {
       bonus
     } = body
 
-    const netSalary = basicSalary + allowances + overtime + bonus - deductions
+    const parsedBasicSalary = Number.parseFloat(basicSalary)
 
-    const payrollRecord = await db.payrollRecord.create({
-      data: {
+    if (!Number.isFinite(parsedBasicSalary)) {
+      return NextResponse.json({ error: 'Invalid salary values provided' }, { status: 400 })
+    }
+    const parsedAllowances = Number.isFinite(Number.parseFloat(allowances)) ? Number.parseFloat(allowances) : 0
+    const parsedDeductions = Number.isFinite(Number.parseFloat(deductions)) ? Number.parseFloat(deductions) : 0
+    const parsedOvertime = Number.isFinite(Number.parseFloat(overtime)) ? Number.parseFloat(overtime) : 0
+    const parsedBonus = Number.isFinite(Number.parseFloat(bonus)) ? Number.parseFloat(bonus) : 0
+
+    const netSalary = parsedBasicSalary + parsedAllowances + parsedOvertime + parsedBonus - parsedDeductions
+
+    const processor = new PayrollProcessor()
+
+    const payrollRecord = await processor.createPayrollRecord(
+      {
         employeeId,
         period,
-        basicSalary: parseFloat(basicSalary),
-        allowances: parseFloat(allowances) || 0,
-        deductions: parseFloat(deductions) || 0,
-        overtime: parseFloat(overtime) || 0,
-        bonus: parseFloat(bonus) || 0,
-        netSalary,
-        createdBy: user.id
+        basicSalary: parsedBasicSalary,
+        allowances: parsedAllowances,
+        deductions: parsedDeductions,
+        overtime: parsedOvertime,
+        bonus: parsedBonus,
+        netSalary
       },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            department: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            position: {
-              select: {
-                id: true,
-                title: true
-              }
-            }
-          }
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
-    })
+      user.id
+    )
 
     return NextResponse.json(payrollRecord)
   } catch (error) {
@@ -158,40 +137,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const body = await request.json()
     const { status } = body
 
-    const payrollRecord = await db.payrollRecord.update({
-      where: { id },
-      data: {
-        status,
-        approvedBy: status === 'APPROVED' ? user.id : undefined,
-        approvedAt: status === 'APPROVED' ? new Date() : undefined,
-        payDate: status === 'PAID' ? new Date() : undefined
-      },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            department: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            position: {
-              select: {
-                id: true,
-                title: true
-              }
-            }
-          }
-        }
-      }
-    })
+    if (!Object.values(PayrollStatus).includes(status as PayrollStatus)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+
+    const processor = new PayrollProcessor()
+
+    const payrollRecord = await processor.updatePayrollRecordStatus(id, status as PayrollStatus, user.id)
 
     return NextResponse.json(payrollRecord)
   } catch (error) {

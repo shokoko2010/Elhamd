@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth-server'
-import { db } from '@/lib/db'
+import { PayrollProcessor } from '@/lib/payroll-processor'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,27 +16,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payroll record ID is required' }, { status: 400 })
     }
 
-    const payrollRecord = await db.payrollRecord.update({
-      where: { id },
-      data: {
-        status: 'APPROVED',
-        approvedBy: user.id,
-        approvedAt: new Date()
-      },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
-      }
-    })
+    const processor = new PayrollProcessor()
+
+    const payrollRecord = await processor.approvePayrollRecord(id, user.id)
 
     return NextResponse.json(payrollRecord)
   } catch (error) {

@@ -528,23 +528,23 @@ model PerformanceMetric {
   notes                String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-  employee             Employee         @relation(fields: [employeeId], references: [id])
+  employee             Employee          @relation(fields: [employeeId], references: [id])
 
   @@unique([employeeId, period])
   @@map("performance_metrics")
 }
 
 model AttendanceRecord {
-  id          String            @id @default(cuid())
-  employeeId  String
-  date        DateTime
-  checkIn     DateTime?
-  checkOut    DateTime?
-  status      AttendanceStatus  @default(PRESENT)
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  employee    Employee          @relation(fields: [employeeId], references: [id])
+  id         String           @id @default(cuid())
+  employeeId String
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     AttendanceStatus @default(PRESENT)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  employee   Employee         @relation(fields: [employeeId], references: [id])
 
   @@unique([employeeId, date])
   @@index([date])
@@ -1338,28 +1338,32 @@ model FinancialReport {
 }
 
 model Transaction {
-  id            String        @id @default(cuid())
-  referenceId   String        @unique
-  branchId      String?
-  type          String        @default("INCOME")
-  category      String
-  amount        Float
-  currency      String        @default("EGP")
-  description   String?
-  date          DateTime
-  paymentMethod PaymentMethod
-  reference     String?
-  customerId    String?
-  invoiceId     String?
-  metadata      Json?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  branch        Branch?       @relation(fields: [branchId], references: [id])
-  customer      User?         @relation(fields: [customerId], references: [id])
-  invoice       Invoice?      @relation(fields: [invoiceId], references: [id])
+  id             String         @id @default(cuid())
+  referenceId    String         @unique
+  branchId       String?
+  type           String         @default("INCOME")
+  category       String
+  amount         Float
+  currency       String         @default("EGP")
+  description    String?
+  date           DateTime
+  paymentMethod  PaymentMethod
+  reference      String?
+  customerId     String?
+  invoiceId      String?
+  payrollBatchId String?
+  metadata       Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  branch         Branch?        @relation(fields: [branchId], references: [id])
+  customer       User?          @relation(fields: [customerId], references: [id])
+  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
+  payrollBatch   PayrollBatch?  @relation("PayrollBatchTransactions", fields: [payrollBatchId], references: [id])
+  JournalEntry   JournalEntry[]
 
   @@index([type, date])
   @@index([category])
+  @@index([payrollBatchId])
   @@map("transactions")
 }
 
@@ -1978,38 +1982,91 @@ model MarketingMetric {
 }
 
 model ChartOfAccount {
-  id            String      @id @default(cuid())
-  code          String      @unique
-  name          String
-  type          AccountType
-  parentId      String?
-  isActive      Boolean     @default(true)
-  normalBalance BalanceType
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                       String                   @id @default(cuid())
+  code                     String                   @unique
+  name                     String
+  type                     AccountType
+  parentId                 String?
+  isActive                 Boolean                  @default(true)
+  normalBalance            BalanceType
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  payrollExpenseAccounts   EmployeePayrollAccount[] @relation("PayrollExpenseAccount")
+  payrollPayableAccounts   EmployeePayrollAccount[] @relation("PayrollPayableAccount")
+  payrollCashAccounts      EmployeePayrollAccount[] @relation("PayrollCashAccount")
+  payrollDeductionAccounts EmployeePayrollAccount[] @relation("PayrollDeductionAccount")
 
   @@index([code])
   @@map("chart_of_accounts")
 }
 
+model EmployeePayrollAccount {
+  id                 String          @id @default(cuid())
+  employeeId         String          @unique
+  expenseAccountId   String
+  payableAccountId   String
+  cashAccountId      String?
+  deductionAccountId String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  employee           Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  expenseAccount     ChartOfAccount  @relation("PayrollExpenseAccount", fields: [expenseAccountId], references: [id])
+  payableAccount     ChartOfAccount  @relation("PayrollPayableAccount", fields: [payableAccountId], references: [id])
+  cashAccount        ChartOfAccount? @relation("PayrollCashAccount", fields: [cashAccountId], references: [id])
+  deductionAccount   ChartOfAccount? @relation("PayrollDeductionAccount", fields: [deductionAccountId], references: [id])
+
+  @@map("employee_payroll_accounts")
+}
+
 model JournalEntry {
-  id          String      @id @default(cuid())
-  entryNumber String      @unique
-  date        DateTime
-  description String
-  reference   String?
-  totalDebit  Float
-  totalCredit Float
-  status      EntryStatus @default(DRAFT)
-  createdBy   String
-  approvedBy  String?
-  approvedAt  DateTime?
-  branchId    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  entryNumber    String      @unique
+  date           DateTime
+  description    String
+  reference      String?
+  payrollBatchId String?
+  transactionId  String?
+  totalDebit     Float
+  totalCredit    Float
+  status         EntryStatus @default(DRAFT)
+  createdBy      String
+  approvedBy     String?
+  approvedAt     DateTime?
+  branchId       String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  payrollBatch PayrollBatch? @relation(fields: [payrollBatchId], references: [id])
+  transaction  Transaction?  @relation(fields: [transactionId], references: [id])
 
   @@index([date])
+  @@index([payrollBatchId])
   @@map("journal_entries")
+}
+
+model PayrollBatch {
+  id              String             @id @default(cuid())
+  period          String
+  status          PayrollBatchStatus @default(PENDING)
+  totalGross      Float              @default(0)
+  totalDeductions Float              @default(0)
+  totalNet        Float              @default(0)
+  totalPaid       Float              @default(0)
+  processedAt     DateTime?
+  approvedAt      DateTime?
+  postedAt        DateTime?
+  paidAt          DateTime?
+  createdBy       String
+  approvedBy      String?
+  metadata        Json?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  payrollRecords  PayrollRecord[]
+  journalEntries  JournalEntry[]
+  transactions    Transaction[]      @relation("PayrollBatchTransactions")
+
+  @@index([period])
+  @@map("payroll_batches")
 }
 
 model JournalEntryItem {
@@ -2056,9 +2113,9 @@ model Position {
 }
 
 model Employee {
-  id                 String              @id @default(cuid())
-  employeeNumber     String              @unique
-  userId             String              @unique
+  id                 String                  @id @default(cuid())
+  employeeNumber     String                  @unique
+  userId             String                  @unique
   departmentId       String?
   positionId         String?
   hireDate           DateTime
@@ -2066,25 +2123,26 @@ model Employee {
   bankAccount        String?
   taxNumber          String?
   insuranceNumber    String?
-  status             EmployeeStatus      @default(ACTIVE)
+  status             EmployeeStatus          @default(ACTIVE)
   managerId          String?
   branchId           String?
   emergencyContact   Json?
   notes              String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  branch             Branch?             @relation(fields: [branchId], references: [id])
-  department         Department?         @relation(fields: [departmentId], references: [id])
-  manager            Employee?           @relation("EmployeeManager", fields: [managerId], references: [id])
-  managedEmployees   Employee[]          @relation("EmployeeManager")
-  position           Position?           @relation(fields: [positionId], references: [id])
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  branch             Branch?                 @relation(fields: [branchId], references: [id])
+  department         Department?             @relation(fields: [departmentId], references: [id])
+  manager            Employee?               @relation("EmployeeManager", fields: [managerId], references: [id])
+  managedEmployees   Employee[]              @relation("EmployeeManager")
+  position           Position?               @relation(fields: [positionId], references: [id])
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   leaveRequests      LeaveRequest[]
   payrollRecords     PayrollRecord[]
   performanceMetrics PerformanceMetric[]
   attendanceRecords  AttendanceRecord[]
   performanceReviews PerformanceReview[]
   trainingRecords    TrainingRecord[]
+  payrollAccount     EmployeePayrollAccount?
 
   @@index([employeeNumber])
   @@index([departmentId])
@@ -2107,13 +2165,17 @@ model PayrollRecord {
   status      PayrollStatus @default(PENDING)
   createdBy   String
   approvedBy  String?
+  approvedAt  DateTime?
+  batchId     String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   approver    User?         @relation("PayrollApprover", fields: [approvedBy], references: [id])
   creator     User          @relation("PayrollCreator", fields: [createdBy], references: [id])
   employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  batch       PayrollBatch? @relation(fields: [batchId], references: [id])
 
   @@index([employeeId, period])
+  @@index([batchId])
   @@map("payroll_records")
 }
 
@@ -3404,6 +3466,13 @@ enum PayrollStatus {
   APPROVED
   PAID
   CANCELLED
+}
+
+enum PayrollBatchStatus {
+  PENDING
+  APPROVED
+  POSTED
+  PAID
 }
 
 enum LeaveType {
