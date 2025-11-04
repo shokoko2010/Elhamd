@@ -186,11 +186,25 @@ export async function POST(request: NextRequest) {
     // Generate transaction ID if not provided
     const finalTransactionId = transactionId || `PAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
+    const serviceBooking = await db.serviceBooking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        customerId: true
+      }
+    })
+
+    if (!serviceBooking) {
+      return NextResponse.json({ error: 'Service booking not found' }, { status: 404 })
+    }
+
     // Create payment
     const payment = await db.payment.create({
       data: {
         bookingId,
         bookingType: 'SERVICE',
+        serviceBookingId: bookingId,
+        customerId: serviceBooking.customerId,
         amount: parsedAmount,
         currency: 'EGP',
         status: PaymentStatus.COMPLETED,

@@ -74,19 +74,28 @@ export class PaymentService {
   }): Promise<PaymentIntent> {
     // Generate a unique payment intent ID
     const id = `pi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    
+
+    const bookingType = (data.metadata?.bookingType || 'SERVICE').toUpperCase() as 'SERVICE' | 'TEST_DRIVE'
+    const bookingId = data.metadata?.bookingId
+    const serviceBookingId = bookingType === 'SERVICE' ? bookingId ?? null : null
+    const testDriveBookingId = bookingType === 'TEST_DRIVE' ? bookingId ?? null : null
+    const customerId = data.metadata?.customerId || data.metadata?.userId
+
     // Store payment intent in database
     await db.payment.create({
       data: {
         id,
-        bookingId: metadata?.bookingId || '',
-        bookingType: metadata?.bookingType || 'SERVICE',
+        bookingId,
+        bookingType,
+        serviceBookingId,
+        testDriveBookingId,
+        customerId,
         amount: data.amount,
         currency: data.currency,
         status: PaymentStatus.PENDING,
         paymentMethod: PaymentMethod.CREDIT_CARD, // Default, will be updated
         description: data.description,
-        notes: metadata ? JSON.stringify(metadata) : undefined
+        notes: data.metadata ? JSON.stringify(data.metadata) : undefined
       }
     })
 
@@ -387,12 +396,18 @@ class FawryGateway implements PaymentGateway {
       // In production, this would integrate with Fawry's actual API
       const transactionId = `fawry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
+      const bookingType = request.bookingType.toUpperCase() as 'SERVICE' | 'TEST_DRIVE'
+      const serviceBookingId = bookingType === 'SERVICE' ? request.bookingId : null
+      const testDriveBookingId = bookingType === 'TEST_DRIVE' ? request.bookingId : null
+
       // Create payment record
       const payment = await db.payment.create({
         data: {
           id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           bookingId: request.bookingId,
-          bookingType: request.bookingType.toUpperCase() as any,
+          bookingType,
+          serviceBookingId,
+          testDriveBookingId,
           amount: request.amount,
           currency: request.currency,
           status: PaymentStatus.PENDING,
@@ -472,11 +487,17 @@ class BankTransferGateway implements PaymentGateway {
 
   async processPayment(request: PaymentRequest): Promise<PaymentResult> {
     try {
+      const bookingType = request.bookingType.toUpperCase() as 'SERVICE' | 'TEST_DRIVE'
+      const serviceBookingId = bookingType === 'SERVICE' ? request.bookingId : null
+      const testDriveBookingId = bookingType === 'TEST_DRIVE' ? request.bookingId : null
+
       const payment = await db.payment.create({
         data: {
           id: `bt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           bookingId: request.bookingId,
-          bookingType: request.bookingType.toUpperCase() as any,
+          bookingType,
+          serviceBookingId,
+          testDriveBookingId,
           amount: request.amount,
           currency: request.currency,
           status: PaymentStatus.PENDING,
@@ -528,11 +549,17 @@ class CashGateway implements PaymentGateway {
 
   async processPayment(request: PaymentRequest): Promise<PaymentResult> {
     try {
+      const bookingType = request.bookingType.toUpperCase() as 'SERVICE' | 'TEST_DRIVE'
+      const serviceBookingId = bookingType === 'SERVICE' ? request.bookingId : null
+      const testDriveBookingId = bookingType === 'TEST_DRIVE' ? request.bookingId : null
+
       const payment = await db.payment.create({
         data: {
           id: `cash_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           bookingId: request.bookingId,
-          bookingType: request.bookingType.toUpperCase() as any,
+          bookingType,
+          serviceBookingId,
+          testDriveBookingId,
           amount: request.amount,
           currency: request.currency,
           status: PaymentStatus.PENDING,

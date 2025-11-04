@@ -55,11 +55,19 @@ export class EnhancedPaymentService {
       const fees = gateway.getPaymentFees(request.paymentMethod, request.amount)
       const totalAmount = request.amount + fees
 
+      const bookingType = request.bookingType.toUpperCase() as 'SERVICE' | 'TEST_DRIVE'
+      const serviceBookingId = bookingType === 'SERVICE' ? request.bookingId : null
+      const testDriveBookingId = bookingType === 'TEST_DRIVE' ? request.bookingId : null
+      const customerId = request.metadata?.customerId || request.metadata?.userId || undefined
+
       // Create payment record in database
       const payment = await db.payment.create({
         data: {
           bookingId: request.bookingId,
-          bookingType: request.bookingType.toUpperCase() as 'SERVICE' | 'TEST_DRIVE',
+          bookingType,
+          serviceBookingId,
+          testDriveBookingId,
+          customerId,
           amount: totalAmount,
           currency: request.currency || 'EGP',
           status: PaymentStatus.PENDING,
@@ -426,18 +434,18 @@ export class EnhancedPaymentService {
   private async handlePaymentCompletion(payment: Payment): Promise<void> {
     try {
       // Update booking status
-      if (payment.bookingType === 'SERVICE') {
+      if (payment.bookingType === 'SERVICE' && payment.bookingId) {
         await db.serviceBooking.update({
           where: { id: payment.bookingId },
-          data: { 
+          data: {
             status: BookingStatus.CONFIRMED,
             paymentStatus: PaymentStatus.COMPLETED
           }
         })
-      } else if (payment.bookingType === 'TEST_DRIVE') {
+      } else if (payment.bookingType === 'TEST_DRIVE' && payment.bookingId) {
         await db.testDriveBooking.update({
           where: { id: payment.bookingId },
-          data: { 
+          data: {
             status: BookingStatus.CONFIRMED,
             paymentStatus: PaymentStatus.COMPLETED
           }
@@ -448,7 +456,7 @@ export class EnhancedPaymentService {
       let customerEmail = ''
       let customerName = ''
 
-      if (payment.bookingType === 'SERVICE') {
+      if (payment.bookingType === 'SERVICE' && payment.bookingId) {
         const booking = await db.serviceBooking.findUnique({
           where: { id: payment.bookingId },
           include: { customer: true }
@@ -457,7 +465,7 @@ export class EnhancedPaymentService {
           customerEmail = booking.customer.email
           customerName = booking.customer.name || 'عميل'
         }
-      } else if (payment.bookingType === 'TEST_DRIVE') {
+      } else if (payment.bookingType === 'TEST_DRIVE' && payment.bookingId) {
         const booking = await db.testDriveBooking.findUnique({
           where: { id: payment.bookingId },
           include: { customer: true }
@@ -506,7 +514,7 @@ export class EnhancedPaymentService {
       let customerEmail = ''
       let customerName = ''
 
-      if (payment.bookingType === 'SERVICE') {
+      if (payment.bookingType === 'SERVICE' && payment.bookingId) {
         const booking = await db.serviceBooking.findUnique({
           where: { id: payment.bookingId },
           include: { customer: true }
@@ -515,7 +523,7 @@ export class EnhancedPaymentService {
           customerEmail = booking.customer.email
           customerName = booking.customer.name || 'عميل'
         }
-      } else if (payment.bookingType === 'TEST_DRIVE') {
+      } else if (payment.bookingType === 'TEST_DRIVE' && payment.bookingId) {
         const booking = await db.testDriveBooking.findUnique({
           where: { id: payment.bookingId },
           include: { customer: true }

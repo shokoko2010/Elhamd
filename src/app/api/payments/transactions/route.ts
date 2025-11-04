@@ -117,6 +117,24 @@ export async function POST(request: NextRequest) {
       invoiceId
     } = body
 
+    let invoice: { id: string; customerId: string; paidAmount: number; totalAmount: number; status: string } | null = null
+    if (invoiceId) {
+      invoice = await db.invoice.findUnique({
+        where: { id: invoiceId },
+        select: {
+          id: true,
+          customerId: true,
+          paidAmount: true,
+          totalAmount: true,
+          status: true
+        }
+      })
+
+      if (!invoice) {
+        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+      }
+    }
+
     // Validate required fields
     if (!bookingId || !amount || !paymentMethod) {
       return NextResponse.json(
@@ -130,10 +148,13 @@ export async function POST(request: NextRequest) {
       data: {
         bookingId,
         bookingType: 'SERVICE',
+        serviceBookingId: bookingId,
+        customerId: invoice?.customerId,
         amount,
         paymentMethod,
         notes,
-        status: 'COMPLETED'
+        status: 'COMPLETED',
+        invoiceId: invoiceId || undefined
       },
       include: {
         serviceBooking: {
@@ -150,7 +171,7 @@ export async function POST(request: NextRequest) {
     })
 
     // If this payment is for an invoice, create the invoice payment relationship
-    if (invoiceId) {
+    if (invoiceId && invoice) {
       await db.invoicePayment.create({
         data: {
           invoiceId,
@@ -160,11 +181,6 @@ export async function POST(request: NextRequest) {
           paymentMethod: payment.paymentMethod,
           transactionId: payment.transactionId
         }
-      })
-
-      // Update invoice paid amount and status
-      const invoice = await db.invoice.findUnique({
-        where: { id: invoiceId }
       })
 
       if (invoice) {
@@ -182,7 +198,9 @@ export async function POST(request: NextRequest) {
           data: {
             paidAmount: newPaidAmount,
             status: newStatus,
-            paidAt: newStatus === 'PAID' ? new Date() : null
+            paymentStatus: newStatus === 'PAID' ? 'PAID' : newStatus === 'PARTIALLY_PAID' ? 'PARTIALLY_PAID' : 'PENDING',
+            paidAt: newStatus === 'PAID' ? new Date() : null,
+            lastPaymentAt: new Date()
           }
         })
       }

@@ -324,4 +324,47 @@ export class EmailService {
       html
     })
   }
+
+  async sendPaymentReceived(paymentId: string, customerEmail: string, customerName: string): Promise<void> {
+    const subject = 'Payment Confirmation'
+    const html = `
+      <html>
+        <body>
+          <h2>شكراً لك ${customerName}</h2>
+          <p>تم استلام دفعتك بنجاح. رقم العملية: <strong>${paymentId}</strong></p>
+          <p>سنتواصل معك في حال الحاجة لأي معلومات إضافية.</p>
+          <p>فريق شركة الحمد</p>
+        </body>
+      </html>
+    `
+
+    await sendEmail({
+      to: customerEmail,
+      subject,
+      html
+    })
+  }
+
+  async sendRefundConfirmation(paymentId: string, customerEmail: string, customerName: string, amount: number): Promise<void> {
+    const subject = 'Refund Confirmation'
+    const html = `
+      <html>
+        <body>
+          <h2>إشعار استرداد</h2>
+          <p>عزيزي ${customerName},</p>
+          <p>تم إصدار استرداد بقيمة <strong>${amount.toFixed(2)} EGP</strong> للدفعة ${paymentId}.</p>
+          <p>يرجى التواصل معنا إذا كانت لديك أي استفسارات.</p>
+          <p>فريق شركة الحمد</p>
+        </body>
+      </html>
+    `
+
+    await sendEmail({
+      to: customerEmail,
+      subject,
+      html
+    })
+  }
 }
+
+export const emailService = EmailService.getInstance()

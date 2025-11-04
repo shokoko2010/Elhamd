@@ -1,4 +1,10 @@
-import { PaymentMethod, PaymentStatus, InvoiceStatus, InvoiceType } from '@prisma/client'
+import {
+  PaymentMethod,
+  PaymentStatus,
+  InvoiceStatus,
+  InvoiceType,
+  InvoicePaymentStatus
+} from '@prisma/client'
 
 // Validation schemas and utilities for finance operations
 
@@ -346,6 +352,29 @@ export function determineInvoiceStatus(
   } else {
     return InvoiceStatus.SENT
   }
+}
+
+export function determineInvoicePaymentStatus(
+  totalAmount: number,
+  paidAmount: number
+): InvoicePaymentStatus {
+  if (paidAmount <= 0) {
+    return InvoicePaymentStatus.PENDING
+  }
+
+  if (paidAmount < totalAmount) {
+    return InvoicePaymentStatus.PARTIALLY_PAID
+  }
+
+  if (paidAmount === totalAmount) {
+    return InvoicePaymentStatus.PAID
+  }
+
+  if (paidAmount > totalAmount) {
+    return InvoicePaymentStatus.OVERPAID
+  }
+
+  return InvoicePaymentStatus.PENDING
 }
 
 // Format currency
