@@ -102,11 +102,12 @@ export default function EmployeesPage() {
   }, [])
 
   const fetchEmployeesData = async () => {
+    setLoading(true)
     try {
       const [employeesRes, departmentsRes, positionsRes] = await Promise.all([
-        fetch('/api/admin/employees'),
-        fetch('/api/departments'),
-        fetch('/api/positions')
+        fetch('/api/admin/employees', { cache: 'no-store' }),
+        fetch('/api/departments', { cache: 'no-store' }),
+        fetch('/api/positions', { cache: 'no-store' })
       ])
 
       if (employeesRes.ok) {
@@ -186,7 +187,7 @@ export default function EmployeesPage() {
       })
 
       if (response.ok) {
-        fetchEmployeesData()
+        await fetchEmployeesData()
         setIsCreateDialogOpen(false)
         setFormData({
           name: '',
@@ -220,7 +221,11 @@ export default function EmployeesPage() {
       })
 
       if (response.ok) {
-        fetchEmployeesData()
+        const data = await response.json()
+        if (data?.employee) {
+          setEmployees(prev => prev.map(emp => emp.id === data.employee.id ? data.employee : emp))
+        }
+        await fetchEmployeesData()
         setIsEditDialogOpen(false)
         setSelectedEmployee(null)
         // Show success message
@@ -244,7 +249,7 @@ export default function EmployeesPage() {
       })
 
       if (response.ok) {
-        fetchEmployeesData()
+        await fetchEmployeesData()
       }
     } catch (error) {
       console.error('Error deleting employee:', error)
