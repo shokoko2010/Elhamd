@@ -1,34 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authOptions'
+import { Prisma, TaxRateType } from '@prisma/client'
 
-const prisma = new PrismaClient()
+import { getAuthUser } from '@/lib/auth-server'
+import { db } from '@/lib/db'
+
+function parseTaxRateType(value: string | null): TaxRateType | undefined {
+  if (!value) return undefined
+  const normalized = value.toUpperCase() as TaxRateType
+  return (Object.values(TaxRateType) as string[]).includes(normalized)
+    ? normalized
+    : undefined
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type')
-    const isActive = searchParams.get('isActive')
+    const typeParam = parseTaxRateType(searchParams.get('type'))
+    const isActiveParam = searchParams.get('isActive')
 
-    const where: any = {}
-    if (type) where.type = type
-    if (isActive !== null) where.isActive = isActive === 'true'
+    const where: Prisma.TaxRateWhereInput = {}
+    if (typeParam) {
+      where.type = typeParam
+    }
+    if (isActiveParam !== null) {
+      where.isActive = isActiveParam === 'true'
+    }
 
-    const taxRates = await prisma.taxRate.findMany({
+    const rates = await db.taxRate.findMany({
       where,
       orderBy: [
-        { effectiveDate: 'desc' },
+        { effectiveFrom: 'desc' },
         { name: 'asc' }
       ]
     })
 
-    return NextResponse.json(taxRates)
+    return NextResponse.json({ rates })
   } catch (error) {
     console.error('Error fetching tax rates:', error)
     return NextResponse.json(
@@ -40,8 +51,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -52,37 +63,44 @@ export async function POST(request: NextRequest) {
       type,
       description,
       isActive = true,
-      effectiveDate
+      effectiveFrom,
+      effectiveTo
     } = body
 
-    // Validate required fields
-    if (!name || rate === undefined || !type || !effectiveDate) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, rate, type, effectiveDate' },
-        { status: 400 }
-      )
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
-    // Validate rate
+    if (typeof rate !== 'number' || Number.isNaN(rate)) {
+      return NextResponse.json({ error: 'Rate must be a number' }, { status: 400 })
+    }
+
     if (rate < 0 || rate > 100) {
-      return NextResponse.json(
-        { error: 'Rate must be between 0 and 100' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Rate must be between 0 and 100' }, { status: 400 })
     }
 
-    const taxRate = await prisma.taxRate.create({
-      data: {
-        name,
-        rate,
-        type,
-        description,
-        isActive,
-        effectiveDate: new Date(effectiveDate)
-      }
-    })
+    const parsedType = parseTaxRateType(type) || TaxRateType.STANDARD
 
-    return NextResponse.json(taxRate, { status: 201 })
+    if (!effectiveFrom) {
+      return NextResponse.json({ error: 'effectiveFrom is required' }, { status: 400 })
+    }
+
+    const data: Prisma.TaxRateCreateInput = {
+      name: name.trim(),
+      rate,
+      type: parsedType,
+      description,
+      isActive: Boolean(isActive),
+      effectiveFrom: new Date(effectiveFrom)
+    }
+
+    if (effectiveTo) {
+      data.effectiveTo = new Date(effectiveTo)
+    }
+
+    const createdRate = await db.taxRate.create({ data })
+
+    return NextResponse.json({ rate: createdRate }, { status: 201 })
   } catch (error) {
     console.error('Error creating tax rate:', error)
     return NextResponse.json(

@@ -3,6 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 export async function GET(request: NextRequest) {
@@ -31,13 +32,6 @@ export async function GET(request: NextRequest) {
           include: {
             account: true
           }
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true
-          }
         }
       },
       orderBy: {
@@ -45,7 +39,29 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(journalEntries)
+    const branchIds = Array.from(
+      new Set(
+        journalEntries
+          .map(entry => entry.branchId)
+          .filter(Boolean) as string[]
+      )
+    )
+
+    const branches = branchIds.length
+      ? await db.branch.findMany({
+          where: { id: { in: branchIds } },
+          select: { id: true, name: true, code: true }
+        })
+      : []
+
+    const branchMap = new Map(branches.map(branch => [branch.id, branch]))
+
+    const serializedEntries = journalEntries.map(entry => ({
+      ...entry,
+      branch: entry.branchId ? branchMap.get(entry.branchId) ?? null : null
+    }))
+
+    return NextResponse.json(serializedEntries)
   } catch (error) {
     console.error('Error fetching journal entries:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -121,7 +137,17 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(journalEntry)
+    const branch = journalEntry.branchId
+      ? await db.branch.findUnique({
+          where: { id: journalEntry.branchId },
+          select: { id: true, name: true, code: true }
+        })
+      : null
+
+    return NextResponse.json({
+      ...journalEntry,
+      branch
+    })
   } catch (error) {
     console.error('Error creating journal entry:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

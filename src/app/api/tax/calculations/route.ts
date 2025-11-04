@@ -3,6 +3,8 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma, TaxStatus, TaxType } from '@prisma/client'
+
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
 
@@ -21,6 +23,18 @@ interface TaxCalculation {
   paidDate?: string
 }
 
+const STATUS_MAP: Record<TaxStatus, TaxCalculation['status']> = {
+  [TaxStatus.PENDING]: 'draft',
+  [TaxStatus.CALCULATED]: 'calculated',
+  [TaxStatus.FILED]: 'filed',
+  [TaxStatus.PAID]: 'paid',
+  [TaxStatus.OVERDUE]: 'draft',
+  [TaxStatus.CANCELLED]: 'draft',
+  [TaxStatus.UNDER_REVIEW]: 'draft',
+  [TaxStatus.APPROVED]: 'filed',
+  [TaxStatus.REJECTED]: 'draft'
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser()
@@ -32,52 +46,42 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get('year')
     const status = searchParams.get('status')
 
-    // Build where clause
-    const where: any = {}
+    const where: Prisma.TaxRecordWhereInput = {}
     if (year) {
       where.period = { contains: year, mode: 'insensitive' }
     }
     if (status) {
-      where.status = status
+      const normalizedStatus = status.toUpperCase() as TaxStatus
+      if ((Object.values(TaxStatus) as string[]).includes(normalizedStatus)) {
+        where.status = normalizedStatus
+      }
     }
 
-    // Fetch real tax calculations from database
     const taxRecords = await db.taxRecord.findMany({
       where,
       orderBy: {
-        period: 'desc'
-      },
-      include: {
-        invoice: {
-          select: {
-            invoiceNumber: true,
-            totalAmount: true,
-            customer: {
-              select: {
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
+        dueDate: 'desc'
       }
     })
 
-    // Transform database records to match expected format
-    const calculations: TaxCalculation[] = taxRecords.map(record => ({
-      id: record.id,
-      period: record.period,
-      taxableIncome: record.taxableIncome,
-      taxAmount: record.taxAmount,
-      effectiveRate: record.taxableIncome > 0 ? (record.taxAmount / record.taxableIncome) * 100 : 0,
-      deductions: record.deductions,
-      credits: record.credits,
-      netTax: record.netTax,
-      status: record.status as 'draft' | 'calculated' | 'filed' | 'paid',
-      dueDate: record.dueDate.toISOString().split('T')[0],
-      filedDate: record.filedDate?.toISOString().split('T')[0],
-      paidDate: record.paidDate?.toISOString().split('T')[0]
-    }))
+    const calculations: TaxCalculation[] = taxRecords.map(record => {
+      const taxableAmount = record.amount
+      const netTax = record.amount
+      return {
+        id: record.id,
+        period: record.period,
+        taxableIncome: taxableAmount,
+        taxAmount: taxableAmount,
+        effectiveRate: taxableAmount > 0 ? 100 : 0,
+        deductions: 0,
+        credits: 0,
+        netTax,
+        status: STATUS_MAP[record.status] ?? 'draft',
+        dueDate: record.dueDate.toISOString().split('T')[0],
+        filedDate: record.updatedAt.toISOString().split('T')[0],
+        paidDate: record.paidDate?.toISOString().split('T')[0]
+      }
+    })
 
     return NextResponse.json({ calculations })
   } catch (error) {
@@ -97,62 +101,98 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { period, taxableIncome, deductions, credits } = body
+    const {
+      period,
+      taxableIncome,
+      deductions = 0,
+      credits = 0,
+      type,
+      reference,
+      notes,
+      branchId,
+      documents
+    } = body
 
-    // Validate required fields
-    if (!period || taxableIncome === undefined) {
+    if (typeof period !== 'string' || period.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Missing required fields: period, taxableIncome' },
+        { error: 'Missing required field: period' },
         { status: 400 }
       )
     }
 
-    // Calculate tax amount based on current tax rates
+    if (typeof taxableIncome !== 'number' || Number.isNaN(taxableIncome)) {
+      return NextResponse.json(
+        { error: 'taxableIncome must be a number' },
+        { status: 400 }
+      )
+    }
+
     const taxRates = await db.taxRate.findMany({
       where: { isActive: true }
     })
 
-    let taxAmount = 0
+    let taxAmount = taxableIncome
     if (taxRates.length > 0) {
-      // Use the highest applicable tax rate
       const highestRate = Math.max(...taxRates.map(rate => rate.rate))
       taxAmount = taxableIncome * (highestRate / 100)
     } else {
-      // Default to 14% if no tax rates are configured
       taxAmount = taxableIncome * 0.14
     }
 
-    const netTax = Math.max(0, taxAmount - (deductions || 0) - (credits || 0))
+    const netTax = Math.max(0, taxAmount - deductions - credits)
     const effectiveRate = taxableIncome > 0 ? (netTax / taxableIncome) * 100 : 0
 
-    // Create new tax calculation in database
-    const newCalculation = await db.taxRecord.create({
+    const parsedType = (type ? String(type).toUpperCase() : 'VAT') as TaxType
+    const taxType = (Object.values(TaxType) as string[]).includes(parsedType)
+      ? parsedType
+      : TaxType.VAT
+
+    const dueDate = (() => {
+      if (/^\d{4}-\d{2}$/.test(period.trim())) {
+        const [yearStr, monthStr] = period.trim().split('-')
+        const year = Number(yearStr)
+        const monthIndex = Number(monthStr)
+        if (!Number.isNaN(year) && !Number.isNaN(monthIndex)) {
+          return new Date(year, monthIndex, 0)
+        }
+      }
+      const fallback = new Date()
+      fallback.setMonth(fallback.getMonth() + 1)
+      return fallback
+    })()
+
+    const newRecord = await db.taxRecord.create({
       data: {
-        period,
-        taxableIncome,
-        taxAmount,
-        deductions: deductions || 0,
-        credits: credits || 0,
-        netTax,
-        status: 'DRAFT',
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        type: taxType,
+        period: period.trim(),
+        amount: netTax,
+        dueDate,
+        reference,
+        documents: documents ?? null,
+        notes,
+        branchId: branchId || user.branchId || null,
+        createdBy: user.id,
+        status: TaxStatus.CALCULATED
       }
     })
 
+    const calculation: TaxCalculation = {
+      id: newRecord.id,
+      period: newRecord.period,
+      taxableIncome,
+      taxAmount,
+      effectiveRate,
+      deductions,
+      credits,
+      netTax,
+      status: STATUS_MAP[newRecord.status] ?? 'draft',
+      dueDate: newRecord.dueDate.toISOString().split('T')[0],
+      filedDate: newRecord.updatedAt.toISOString().split('T')[0]
+    }
+
     return NextResponse.json({
       success: true,
-      calculation: {
-        id: newCalculation.id,
-        period: newCalculation.period,
-        taxableIncome: newCalculation.taxableIncome,
-        taxAmount: newCalculation.taxAmount,
-        effectiveRate,
-        deductions: newCalculation.deductions,
-        credits: newCalculation.credits,
-        netTax: newCalculation.netTax,
-        status: newCalculation.status,
-        dueDate: newCalculation.dueDate.toISOString().split('T')[0]
-      },
+      calculation,
       message: 'Tax calculation created successfully'
     })
   } catch (error) {
