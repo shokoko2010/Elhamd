@@ -130,7 +130,14 @@ export default function TaxManagement() {
       const reportsResponse = await fetch('/api/tax/reports')
       if (reportsResponse.ok) {
         const reportsData = await reportsResponse.json()
-        setReports(reportsData)
+        // Map the response to match the expected structure
+        setReports({
+          totalTaxCollected: reportsData.summary?.totalTaxCollected || 0,
+          totalTaxPaid: reportsData.summary?.totalTaxPaid || 0,
+          taxDue: reportsData.summary?.taxDue || 0,
+          complianceRate: reportsData.summary?.complianceRate || 0,
+          filings: reportsData.filings || []
+        })
       }
 
       // Fetch tax records
@@ -697,19 +704,27 @@ export default function TaxManagement() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-1">إجمالي المحصلات</p>
-                    <p className="text-lg font-semibold">{formatCurrency(542000)}</p>
+                    <p className="text-lg font-semibold">
+                      {reports ? formatCurrency(reports.totalTaxCollected) : formatCurrency(0)}
+                    </p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-1">إجمالي المدفوعات</p>
-                    <p className="text-lg font-semibold">{formatCurrency(485000)}</p>
+                    <p className="text-lg font-semibold">
+                      {reports ? formatCurrency(reports.totalTaxPaid) : formatCurrency(0)}
+                    </p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-1">المتبقي</p>
-                    <p className="text-lg font-semibold">{formatCurrency(57000)}</p>
+                    <p className="text-lg font-semibold">
+                      {reports ? formatCurrency(reports.taxDue) : formatCurrency(0)}
+                    </p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-1">معدل الامتثال</p>
-                    <p className="text-lg font-semibold">94.2%</p>
+                    <p className="text-lg font-semibold">
+                      {reports ? formatPercentage(reports.complianceRate) : '0%'}
+                    </p>
                   </div>
                 </div>
               </CardContent>

@@ -53,6 +53,7 @@ async function createSimpleFinancialTestData() {
         taxAmount: 454.55,
         totalAmount: 5000.00,
         paidAmount: 0,
+        paymentStatus: 'PENDING' as any,
         currency: 'EGP',
         notes: 'Test invoice for financial system verification',
         createdBy: testUser.id
@@ -80,6 +81,8 @@ async function createSimpleFinancialTestData() {
         data: {
           bookingId: testServiceBooking.id,
           bookingType: 'SERVICE',
+          serviceBookingId: testServiceBooking.id,
+          customerId: testUser.id,
           amount: 2500.00,
           currency: 'EGP',
           paymentMethod: 'BANK_TRANSFER',

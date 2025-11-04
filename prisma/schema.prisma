@@ -94,6 +94,7 @@ model User {
   permissions            UserPermission[]
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   roleTemplate           RoleTemplate?          @relation(fields: [roleTemplateId], references: [id])
+  customerPayments       Payment[]              @relation("CustomerPayments")
 
   @@index([email])
   @@index([role])
@@ -168,7 +169,9 @@ model Vehicle {
   images            VehicleImage[]
   pricing           VehiclePricing?
   specifications    VehicleSpecification[]
+  invoices          Invoice[]              @relation("VehicleInvoices")
   branch            Branch?                @relation(fields: [branchId], references: [id])
+  invoiceItems      InvoiceItem[]          @relation("VehicleInvoiceItems")
 
   @@index([make, model])
   @@index([status])
@@ -223,17 +226,19 @@ model VehiclePricing {
 }
 
 model TestDriveBooking {
-  id         String        @id @default(cuid())
-  customerId String
-  vehicleId  String
-  date       DateTime
-  timeSlot   String
-  status     BookingStatus @default(PENDING)
-  notes      String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  customer   User          @relation(fields: [customerId], references: [id])
-  vehicle    Vehicle       @relation(fields: [vehicleId], references: [id])
+  id            String        @id @default(cuid())
+  customerId    String
+  vehicleId     String
+  date          DateTime
+  timeSlot      String
+  status        BookingStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  customer      User          @relation(fields: [customerId], references: [id])
+  vehicle       Vehicle       @relation(fields: [vehicleId], references: [id])
+  payments      Payment[]     @relation("TestDriveBookingPayments")
 
   @@map("test_drive_bookings")
 }
@@ -270,7 +275,7 @@ model ServiceBooking {
   reminderSent  Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  payments      Payment[]
+  payments      Payment[]     @relation("ServiceBookingPayments")
   customer      User          @relation(fields: [customerId], references: [id])
   serviceType   ServiceType   @relation(fields: [serviceTypeId], references: [id])
   slot          TimeSlot?     @relation(fields: [timeSlotId], references: [id])
@@ -336,24 +341,35 @@ model UserPermission {
 }
 
 model Payment {
-  id              String           @id @default(cuid())
-  bookingId       String
-  bookingType     BookingType
-  amount          Float
-  currency        String           @default("EGP")
-  status          PaymentStatus    @default(PENDING)
-  paymentMethod   PaymentMethod
-  transactionId   String?
-  receiptUrl      String?
-  notes           String?
-  branchId        String?
-  metadata        Json?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  invoicePayments InvoicePayment[]
-  serviceBooking  ServiceBooking   @relation(fields: [bookingId], references: [id])
-  branch          Branch?          @relation(fields: [branchId], references: [id])
+  id                 String            @id @default(cuid())
+  bookingId          String?
+  bookingType        BookingType       @default(SERVICE)
+  amount             Float
+  currency           String            @default("EGP")
+  status             PaymentStatus     @default(PENDING)
+  paymentMethod      PaymentMethod
+  transactionId      String?
+  receiptUrl         String?
+  description        String?
+  notes              String?
+  branchId           String?
+  customerId         String?
+  invoiceId          String?
+  serviceBookingId   String?
+  testDriveBookingId String?
+  metadata           Json?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  invoicePayments    InvoicePayment[]
+  branch             Branch?           @relation(fields: [branchId], references: [id])
+  customer           User?             @relation("CustomerPayments", fields: [customerId], references: [id])
+  invoice            Invoice?          @relation("InvoicePaymentsDirect", fields: [invoiceId], references: [id])
+  serviceBooking     ServiceBooking?   @relation("ServiceBookingPayments", fields: [serviceBookingId], references: [id], onDelete: SetNull)
+  testDriveBooking   TestDriveBooking? @relation("TestDriveBookingPayments", fields: [testDriveBookingId], references: [id], onDelete: SetNull)
 
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([bookingType])
   @@map("payments")
 }
 
@@ -384,18 +400,20 @@ model Holiday {
 }
 
 model Notification {
-  id        String              @id @default(cuid())
+  id        String               @id @default(cuid())
   userId    String?
   type      NotificationType
   title     String
   message   String
-  status    NotificationStatus  @default(PENDING)
+  status    NotificationStatus   @default(PENDING)
   channel   NotificationChannel
   recipient String
+  priority  NotificationPriority @default(MEDIUM)
+  metadata  Json?
   sentAt    DateTime?
   readAt    DateTime?
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   @@map("notifications")
 }
@@ -528,23 +546,23 @@ model PerformanceMetric {
   notes                String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-  employee             Employee         @relation(fields: [employeeId], references: [id])
+  employee             Employee          @relation(fields: [employeeId], references: [id])
 
   @@unique([employeeId, period])
   @@map("performance_metrics")
 }
 
 model AttendanceRecord {
-  id          String            @id @default(cuid())
-  employeeId  String
-  date        DateTime
-  checkIn     DateTime?
-  checkOut    DateTime?
-  status      AttendanceStatus  @default(PRESENT)
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  employee    Employee          @relation(fields: [employeeId], references: [id])
+  id         String           @id @default(cuid())
+  employeeId String
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     AttendanceStatus @default(PRESENT)
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  employee   Employee         @relation(fields: [employeeId], references: [id])
 
   @@unique([employeeId, date])
   @@index([date])
@@ -864,6 +882,7 @@ model InventoryItem {
   branch          Branch?         @relation(fields: [branchId], references: [id])
   warehouseRel    Warehouse?      @relation(fields: [warehouseId], references: [id])
   stockAlerts     StockAlert[]
+  invoiceItems    InvoiceItem[]
 
   @@index([category])
   @@index([status])
@@ -1073,19 +1092,21 @@ model CustomerJourney {
 }
 
 model Invoice {
-  id                       String           @id @default(cuid())
-  invoiceNumber            String           @unique
+  id                       String               @id @default(cuid())
+  invoiceNumber            String               @unique
   customerId               String
   branchId                 String?
-  type                     InvoiceType      @default(SERVICE)
-  status                   InvoiceStatus    @default(DRAFT)
+  vehicleId                String?
+  type                     InvoiceType          @default(SERVICE)
+  status                   InvoiceStatus        @default(DRAFT)
+  paymentStatus            InvoicePaymentStatus @default(PENDING)
   issueDate                DateTime
   dueDate                  DateTime
-  subtotal                 Float            @default(0)
-  taxAmount                Float            @default(0)
-  totalAmount              Float            @default(0)
-  paidAmount               Float            @default(0)
-  currency                 String           @default("EGP")
+  subtotal                 Float                @default(0)
+  taxAmount                Float                @default(0)
+  totalAmount              Float                @default(0)
+  paidAmount               Float                @default(0)
+  currency                 String               @default("EGP")
   notes                    String?
   terms                    String?
   createdBy                String
@@ -1093,18 +1114,21 @@ model Invoice {
   approvedAt               DateTime?
   sentAt                   DateTime?
   paidAt                   DateTime?
+  lastPaymentAt            DateTime?
   cancelledAt              DateTime?
   metadata                 Json?
   convertedFromQuotationId String?
-  createdAt                DateTime         @default(now())
-  updatedAt                DateTime         @updatedAt
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
   items                    InvoiceItem[]
   payments                 InvoicePayment[]
   taxes                    InvoiceTax[]
-  branch                   Branch?          @relation(fields: [branchId], references: [id])
-  customer                 User             @relation(fields: [customerId], references: [id])
-  convertedFromQuotation   Quotation?       @relation("QuotationInvoice")
+  branch                   Branch?              @relation(fields: [branchId], references: [id])
+  customer                 User                 @relation(fields: [customerId], references: [id])
+  vehicle                  Vehicle?             @relation("VehicleInvoices", fields: [vehicleId], references: [id])
+  convertedFromQuotation   Quotation?           @relation("QuotationInvoice")
   transactions             Transaction[]
+  directPayments           Payment[]            @relation("InvoicePaymentsDirect")
 
   @@index([customerId, status])
   @@index([issueDate])
@@ -1113,18 +1137,22 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  description String
-  quantity    Int      @default(1)
-  unitPrice   Float    @default(0)
-  totalPrice  Float    @default(0)
-  taxRate     Float    @default(0)
-  taxAmount   Float    @default(0)
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  invoiceId       String
+  vehicleId       String?
+  inventoryItemId String?
+  description     String
+  quantity        Int            @default(1)
+  unitPrice       Float          @default(0)
+  totalPrice      Float          @default(0)
+  taxRate         Float          @default(0)
+  taxAmount       Float          @default(0)
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  vehicle         Vehicle?       @relation("VehicleInvoiceItems", fields: [vehicleId], references: [id])
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
 
   @@map("invoice_items")
 }
@@ -1978,48 +2006,52 @@ model MarketingMetric {
 }
 
 model ChartOfAccount {
-  id            String      @id @default(cuid())
-  code          String      @unique
+  id            String             @id @default(cuid())
+  code          String             @unique
   name          String
   type          AccountType
   parentId      String?
-  isActive      Boolean     @default(true)
+  isActive      Boolean            @default(true)
   normalBalance BalanceType
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  items         JournalEntryItem[]
 
   @@index([code])
   @@map("chart_of_accounts")
 }
 
 model JournalEntry {
-  id          String      @id @default(cuid())
-  entryNumber String      @unique
+  id          String             @id @default(cuid())
+  entryNumber String             @unique
   date        DateTime
   description String
   reference   String?
   totalDebit  Float
   totalCredit Float
-  status      EntryStatus @default(DRAFT)
+  status      EntryStatus        @default(DRAFT)
   createdBy   String
   approvedBy  String?
   approvedAt  DateTime?
   branchId    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  items       JournalEntryItem[]
 
   @@index([date])
   @@map("journal_entries")
 }
 
 model JournalEntryItem {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   entryId     String
   accountId   String
   description String?
-  debit       Float    @default(0)
-  credit      Float    @default(0)
-  createdAt   DateTime @default(now())
+  debit       Float          @default(0)
+  credit      Float          @default(0)
+  createdAt   DateTime       @default(now())
+  entry       JournalEntry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account     ChartOfAccount @relation(fields: [accountId], references: [id])
 
   @@index([entryId])
   @@index([accountId])
@@ -2894,6 +2926,13 @@ enum NotificationChannel {
   PUSH
 }
 
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 enum EmailTemplateType {
   BOOKING_CONFIRMATION
   BOOKING_REMINDER
@@ -3018,6 +3057,14 @@ enum InvoiceStatus {
   PARTIALLY_PAID
   OVERDUE
   CANCELLED
+  REFUNDED
+}
+
+enum InvoicePaymentStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERPAID
   REFUNDED
 }
 

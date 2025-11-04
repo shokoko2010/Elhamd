@@ -1,11 +1,17 @@
 import { db } from '@/lib/db'
-import { InvoiceStatus, PaymentStatus } from '@prisma/client'
-import { 
-  calculateInvoiceTotals, 
-  determineInvoiceStatus, 
+import {
+  InvoicePaymentStatus,
+  InvoiceStatus,
+  PaymentMethod,
+  PaymentStatus
+} from '@prisma/client'
+import {
+  calculateInvoiceTotals,
+  determineInvoiceStatus,
+  determineInvoicePaymentStatus,
   determineInventoryStatus,
   formatCurrency,
-  generateReferenceNumber 
+  generateReferenceNumber
 } from './finance-validation'
 
 // Financial utilities and helper functions
@@ -40,6 +46,7 @@ export class FinanceManager {
         customerId: data.customerId,
         type: data.type || 'SERVICE',
         status: InvoiceStatus.DRAFT,
+        paymentStatus: InvoicePaymentStatus.PENDING,
         issueDate: data.issueDate,
         dueDate: data.dueDate,
         subtotal,
@@ -135,7 +142,8 @@ export class FinanceManager {
           include: {
             payment: true
           }
-        }
+        },
+        directPayments: true
       }
     })
 
@@ -144,8 +152,25 @@ export class FinanceManager {
     }
 
     const { subtotal, taxAmount, totalAmount } = calculateInvoiceTotals(invoice.items)
-    const paidAmount = invoice.payments.reduce((sum, ip) => sum + ip.payment.amount, 0)
+    const allPayments = [
+      ...invoice.payments.map(ip => ip.payment),
+      ...invoice.directPayments
+    ]
+    const paidAmount = allPayments.reduce((sum, payment) => sum + payment.amount, 0)
+    const paymentStatus = determineInvoicePaymentStatus(totalAmount, paidAmount)
     const newStatus = determineInvoiceStatus(totalAmount, paidAmount, invoice.dueDate)
+    const latestPaymentAt = allPayments.length
+      ? allPayments.reduce((latest, payment) =>
+          (payment.createdAt > latest ? payment.createdAt : latest),
+          allPayments[0].createdAt
+        )
+      : invoice.lastPaymentAt
+    const paidAt =
+      paymentStatus === InvoicePaymentStatus.PAID || paymentStatus === InvoicePaymentStatus.OVERPAID
+        ? latestPaymentAt ?? new Date()
+        : paymentStatus === InvoicePaymentStatus.REFUNDED
+          ? null
+          : invoice.paidAt
 
     return await db.invoice.update({
       where: { id: invoiceId },
@@ -155,7 +180,9 @@ export class FinanceManager {
         totalAmount,
         paidAmount,
         status: newStatus,
-        paidAt: newStatus === InvoiceStatus.PAID ? new Date() : invoice.paidAt
+        paymentStatus,
+        paidAt,
+        lastPaymentAt: latestPaymentAt ?? invoice.lastPaymentAt
       },
       include: {
         customer: {
@@ -170,7 +197,8 @@ export class FinanceManager {
           include: {
             payment: true
           }
-        }
+        },
+        directPayments: true
       }
     })
   }
@@ -179,6 +207,7 @@ export class FinanceManager {
   static async createPayment(data: {
     invoiceId?: string
     bookingId?: string
+    bookingType?: 'SERVICE' | 'TEST_DRIVE'
     amount: number
     paymentMethod: string
     notes?: string
@@ -186,26 +215,62 @@ export class FinanceManager {
     userId: string
     branchId?: string
     metadata?: any
+    customerId?: string
   }) {
-    const paymentData: any = {
-      bookingId: data.bookingId || data.invoiceId,
-      bookingType: 'SERVICE',
-      amount: data.amount,
-      currency: 'EGP',
-      status: PaymentStatus.COMPLETED,
-      paymentMethod: data.paymentMethod,
-      transactionId: data.transactionId || generateReferenceNumber('PAY'),
-      notes: data.notes,
-      branchId: data.branchId,
-      metadata: {
-        ...data.metadata,
-        createdBy: data.userId,
-        createdAt: new Date().toISOString()
+    let invoiceContext: {
+      id: string
+      customerId: string
+      branchId: string | null
+      currency: string
+    } | null = null
+
+    if (data.invoiceId) {
+      invoiceContext = await db.invoice.findUnique({
+        where: { id: data.invoiceId },
+        select: {
+          id: true,
+          customerId: true,
+          branchId: true,
+          currency: true
+        }
+      })
+
+      if (!invoiceContext) {
+        throw new Error('Invoice not found')
       }
     }
 
+    const inferredBookingType = (data.bookingType ||
+      (typeof data.metadata?.bookingType === 'string'
+        ? data.metadata.bookingType.toUpperCase()
+        : undefined) ||
+      (data.bookingId ? 'SERVICE' : undefined) ||
+      'SERVICE') as 'SERVICE' | 'TEST_DRIVE'
+
+    const serviceBookingId = inferredBookingType === 'SERVICE' ? data.bookingId ?? null : null
+    const testDriveBookingId = inferredBookingType === 'TEST_DRIVE' ? data.bookingId ?? null : null
+
     const payment = await db.payment.create({
-      data: paymentData
+      data: {
+        bookingId: data.bookingId,
+        bookingType: inferredBookingType,
+        serviceBookingId,
+        testDriveBookingId,
+        invoiceId: data.invoiceId,
+        customerId: data.customerId ?? invoiceContext?.customerId,
+        amount: data.amount,
+        currency: invoiceContext?.currency ?? 'EGP',
+        status: PaymentStatus.COMPLETED,
+        paymentMethod: data.paymentMethod as PaymentMethod,
+        transactionId: data.transactionId || generateReferenceNumber('PAY'),
+        notes: data.notes,
+        branchId: data.branchId ?? invoiceContext?.branchId ?? undefined,
+        metadata: {
+          ...data.metadata,
+          createdBy: data.userId,
+          createdAt: new Date().toISOString()
+        }
+      }
     })
 
     // If this is an invoice payment, create the relationship
@@ -268,6 +333,8 @@ export class FinanceManager {
       transactionId: data.referenceNumber || generateReferenceNumber('OFF'),
       userId: data.userId,
       branchId: invoice.branchId,
+      customerId: invoice.customerId,
+      bookingType: 'SERVICE',
       metadata: {
         type: 'OFFLINE',
         recordedBy: data.userId,

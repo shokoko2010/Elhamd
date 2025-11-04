@@ -1153,6 +1153,8 @@ async function main() {
     {
       bookingId: createdServiceBookings[0].id,
       bookingType: 'SERVICE' as any,
+      serviceBookingId: createdServiceBookings[0].id,
+      customerId: createdServiceBookings[0].customerId,
       amount: 500,
       currency: 'EGP',
       status: 'COMPLETED' as any,
@@ -1171,6 +1173,8 @@ async function main() {
     {
       bookingId: createdServiceBookings[2].id,
       bookingType: 'SERVICE' as any,
+      serviceBookingId: createdServiceBookings[2].id,
+      customerId: createdServiceBookings[2].customerId,
       amount: 300,
       currency: 'EGP',
       status: 'COMPLETED' as any,
@@ -1201,6 +1205,7 @@ async function main() {
       branchId: mainBranch.id,
       type: 'SERVICE' as any,
       status: 'PAID' as any,
+      paymentStatus: 'PAID' as any,
       issueDate: new Date(),
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       subtotal: 500,
@@ -1228,6 +1233,7 @@ async function main() {
       branchId: mainBranch.id,
       type: 'SERVICE' as any,
       status: 'PAID' as any,
+      paymentStatus: 'PAID' as any,
       issueDate: new Date(),
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       subtotal: 300,

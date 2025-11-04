@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 
 export default function SimpleLoginPage() {
-  const [email, setEmail] = useState('admin@elhamdimport.online')
-  const [password, setPassword] = useState('admin123456')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -75,7 +75,7 @@ export default function SimpleLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@elhamdimport.online"
+                placeholder="أدخل بريدك الإلكتروني"
                 required
               />
             </div>
@@ -86,7 +86,7 @@ export default function SimpleLoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="admin123456"
+                placeholder="أدخل كلمة المرور"
                 required
               />
             </div>
@@ -98,12 +98,6 @@ export default function SimpleLoginPage() {
               {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
           </form>
-          
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2">بيانات الاختبار:</h4>
-            <p className="text-sm text-blue-700">البريد: admin@elhamdimport.online</p>
-            <p className="text-sm text-blue-700">كلمة المرور: admin123456</p>
-          </div>
           
           <div className="mt-4 space-y-2">
             <Button 

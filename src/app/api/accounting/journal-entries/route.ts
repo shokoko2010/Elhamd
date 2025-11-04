@@ -12,7 +12,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const branchId = searchParams.get('branchId')
+    const status = searchParams.get('status')
+
+    const where: any = {}
+    if (branchId && branchId !== 'all') {
+      where.branchId = branchId
+    }
+    if (status) {
+      where.status = status
+    }
+
     const journalEntries = await db.journalEntry.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            account: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        }
+      },
       orderBy: {
         date: 'desc'
       }
@@ -58,6 +85,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Create journal entry with items
     const journalEntry = await db.journalEntry.create({
       data: {
         entryNumber,
@@ -67,7 +95,29 @@ export async function POST(request: NextRequest) {
         totalDebit,
         totalCredit,
         createdBy: user.id,
-        branchId
+        branchId,
+        items: {
+          create: items.map((item: any) => ({
+            accountId: item.accountId,
+            description: item.description,
+            debit: item.debit || 0,
+            credit: item.credit || 0
+          }))
+        }
+      },
+      include: {
+        items: {
+          include: {
+            account: true
+          }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        }
       }
     })
 

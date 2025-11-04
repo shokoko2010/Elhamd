@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser, verifyAuth } from '@/lib/auth-server'
 import { getApiUser } from '@/lib/api-auth'
-import { PaymentStatus, PaymentMethod, InvoiceStatus, UserRole } from '@prisma/client'
+import {
+  InvoicePaymentStatus,
+  InvoiceStatus,
+  PaymentMethod,
+  PaymentStatus,
+  UserRole
+} from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
 // Handle OPTIONS requests for CORS
@@ -411,6 +417,9 @@ export async function POST(request: NextRequest) {
     const paymentData = {
       bookingId: serviceBooking.id,
       bookingType: 'SERVICE' as const,
+      serviceBookingId: serviceBooking.id,
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
       amount: parsedAmount,
       currency: invoice.currency,
       status: PaymentStatus.COMPLETED,
@@ -501,10 +510,18 @@ export async function POST(request: NextRequest) {
 
     // Update invoice status based on payment
     let newStatus: InvoiceStatus = invoice.status
+    let newPaymentStatus: InvoicePaymentStatus = invoice.paymentStatus
     if (Math.abs(newTotalPaid - invoice.totalAmount) < 0.01) {
       newStatus = InvoiceStatus.PAID
+      newPaymentStatus = InvoicePaymentStatus.PAID
+    } else if (newTotalPaid > invoice.totalAmount + 0.01) {
+      newStatus = InvoiceStatus.PAID
+      newPaymentStatus = InvoicePaymentStatus.OVERPAID
     } else if (newTotalPaid > 0) {
       newStatus = InvoiceStatus.PARTIALLY_PAID
+      newPaymentStatus = InvoicePaymentStatus.PARTIALLY_PAID
+    } else {
+      newPaymentStatus = InvoicePaymentStatus.PENDING
     }
 
     // Update invoice
@@ -513,7 +530,12 @@ export async function POST(request: NextRequest) {
       data: {
         paidAmount: newTotalPaid,
         status: newStatus,
-        paidAt: newStatus === InvoiceStatus.PAID ? new Date() : invoice.paidAt,
+        paymentStatus: newPaymentStatus,
+        paidAt:
+          newPaymentStatus === InvoicePaymentStatus.PAID || newPaymentStatus === InvoicePaymentStatus.OVERPAID
+            ? new Date()
+            : invoice.paidAt,
+        lastPaymentAt: new Date(),
         updatedAt: new Date()
       }
     })

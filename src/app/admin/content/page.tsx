@@ -132,128 +132,82 @@ function ContentContent() {
   const loadContentData = async () => {
     setLoading(true)
     try {
-      // Mock data - will be replaced with API calls
-      const mockPages: ContentPage[] = [
-        {
-          id: '1',
-          title: 'من نحن',
-          slug: 'about',
-          content: '<p>نحن شركة الحمد للسيارات، الوكيل الرسمي المعتمد لسيارات تاتا في مصر...</p>',
-          excerpt: 'تعرف على تاريخ شركة الحمد للسيارات وخدماتنا',
-          status: 'published',
-          template: 'default',
-          seoTitle: 'من نحن - الحمد للسيارات',
-          seoDescription: 'تعرف على تاريخ شركة الحمد للسيارات وخدماتنا في مصر',
-          author: 'admin',
-          publishedAt: '2024-01-01T00:00:00Z',
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-15T10:00:00Z'
-        },
-        {
-          id: '2',
-          title: 'اتصل بنا',
-          slug: 'contact',
-          content: '<p>تواصل معنا عبر الهاتف أو البريد الإلكتروني أو زيارة فروعنا...</p>',
-          excerpt: 'معلومات الاتصال بفروع الحمد للسيارات',
-          status: 'published',
-          template: 'contact',
-          seoTitle: 'اتصل بنا - الحمد للسيارات',
-          seoDescription: 'عناوين ومعلومات الاتصال بفروع الحمد للسيارات في مصر',
-          author: 'admin',
-          publishedAt: '2024-01-01T00:00:00Z',
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-10T15:30:00Z'
+      // Load navigation from API
+      try {
+        const navResponse = await fetch('/api/header/navigation')
+        if (navResponse.ok) {
+          const navData = await navResponse.json()
+          // Transform API navigation data to match NavigationItem interface
+          const transformedNav: NavigationItem[] = Array.isArray(navData) ? navData.map((item: any) => ({
+            id: item.id || item.href || '',
+            label: item.label || item.name || '',
+            link: item.href || item.link || item.url || '',
+            order: item.order || 0,
+            target: item.target || '_self',
+            isActive: item.isVisible !== false,
+            children: item.children ? item.children.map((child: any) => ({
+              id: child.id || child.href || '',
+              label: child.label || child.name || '',
+              link: child.href || child.link || child.url || '',
+              order: child.order || 0,
+              parent: item.id || item.href || '',
+              target: child.target || '_self',
+              isActive: child.isVisible !== false
+            })) : undefined
+          })) : []
+          setNavigation(transformedNav)
         }
-      ]
-
-      const mockNavigation: NavigationItem[] = [
-        {
-          id: '1',
-          label: 'الرئيسية',
-          link: '/',
-          order: 0,
-          target: '_self',
-          isActive: true
-        },
-        {
-          id: '2',
-          label: 'السيارات',
-          link: '/vehicles',
-          order: 1,
-          target: '_self',
-          isActive: true
-        },
-        {
-          id: '3',
-          label: 'خدماتنا',
-          link: '/services',
-          order: 2,
-          target: '_self',
-          isActive: true,
-          children: [
-            {
-              id: '4',
-              label: 'صيانة',
-              link: '/maintenance',
-              order: 0,
-              parent: '3',
-              target: '_self',
-              isActive: true
-            },
-            {
-              id: '5',
-              label: 'قيادة تجريبية',
-              link: '/test-drive',
-              order: 1,
-              parent: '3',
-              target: '_self',
-              isActive: true
-            }
-          ]
-        },
-        {
-          id: '6',
-          label: 'من نحن',
-          link: '/about',
-          order: 3,
-          target: '_self',
-          isActive: true
-        },
-        {
-          id: '7',
-          label: 'اتصل بنا',
-          link: '/contact',
-          order: 4,
-          target: '_self',
-          isActive: true
-        }
-      ]
-
-      const mockSettings: SiteSettings = {
-        siteName: 'الحمد للسيارات',
-        siteDescription: 'الوكيل الرسمي المعتمد لسيارات تاتا في مصر',
-        siteUrl: 'https://elhamd-cars.com',
-        primaryColor: '#2563eb',
-        secondaryColor: '#dc2626',
-        contactEmail: 'info@elhamd-cars.com',
-        contactPhone: '+201234567890',
-        contactAddress: 'شارع التحرير، مصر الجديدة، القاهرة',
-        socialLinks: {
-          facebook: 'https://facebook.com/elhamdcars',
-          instagram: 'https://instagram.com/elhamdcars'
-        },
-        seo: {
-          metaTitle: 'الحمد للسيارات - الوكيل الرسمي لتاتا في مصر',
-          metaDescription: 'الحمد للسيارات هي الوكيل الرسمي المعتمد لسيارات تاتا في مصر. نقدم أحدث الموديلات مع ضمان الجودة الأصلي.',
-          metaKeywords: 'تاتا, سيارات, مصر, وكيل, معتمد, الحمد, سيارات جديدة, صيانة'
-        }
+      } catch (error) {
+        console.error('Error loading navigation:', error)
+        setNavigation([])
       }
 
-      setPages(mockPages)
-      setNavigation(mockNavigation)
-      setSettings(mockSettings)
+      // Load site settings from API
+      try {
+        const settingsResponse = await fetch('/api/site-settings')
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json()
+          // Transform API settings data to match SiteSettings interface
+          const transformedSettings: SiteSettings = {
+            siteName: settingsData.siteTitle || settingsData.siteName || '',
+            siteDescription: settingsData.siteDescription || '',
+            siteUrl: settingsData.siteUrl || window.location.origin,
+            logo: settingsData.logoUrl || settingsData.logo,
+            favicon: settingsData.favicon,
+            primaryColor: settingsData.primaryColor || '#3B82F6',
+            secondaryColor: settingsData.secondaryColor || '#10B981',
+            contactEmail: settingsData.contactEmail || '',
+            contactPhone: settingsData.contactPhone || '',
+            contactAddress: settingsData.contactAddress || '',
+            socialLinks: settingsData.socialLinks || {},
+            seo: settingsData.seoSettings || settingsData.seo || {}
+          }
+          setSettings(transformedSettings)
+        }
+      } catch (error) {
+        console.error('Error loading site settings:', error)
+        // Set default settings if API fails
+        setSettings({
+          siteName: 'Elhamd Import',
+          siteDescription: 'متخصصون في استيراد وبيع أفضل الشاحنات التجارية',
+          siteUrl: window.location.origin,
+          primaryColor: '#3B82F6',
+          secondaryColor: '#10B981',
+          contactEmail: 'info@elhamdimport.com',
+          contactPhone: '+966 50 123 4567',
+          contactAddress: 'الرياض، المملكة العربية السعودية',
+          socialLinks: {},
+          seo: {}
+        })
+      }
+
+      // Pages API not available yet - set empty array
+      setPages([])
     } catch (error) {
       console.error('Error loading content data:', error)
+      setPages([])
+      setNavigation([])
+      setSettings(null)
     } finally {
       setLoading(false)
     }

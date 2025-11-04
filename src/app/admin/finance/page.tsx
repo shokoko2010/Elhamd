@@ -1,13 +1,211 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { DollarSign, TrendingUp, CreditCard, AlertTriangle } from 'lucide-react'
+import { DollarSign, TrendingUp, CreditCard, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { format } from 'date-fns'
+import { ar } from 'date-fns/locale'
+import { toast } from 'sonner'
+
+interface FinanceOverview {
+  totalRevenue: number
+  totalExpenses: number
+  netProfit: number
+  profitMargin: number
+  invoiceStats: {
+    total: number
+    pending: number
+    overdue: number
+    paid: number
+  }
+  recentInvoices: Array<{
+    id: string
+    invoiceNumber: string
+    customer: {
+      name: string
+    }
+    totalAmount: number
+    paidAmount: number
+    status: string
+    issueDate: string
+  }>
+  recentPayments: Array<{
+    id: string
+    invoice: {
+      invoiceNumber: string
+    }
+    amount: number
+    paymentMethod: string
+    createdAt: string
+  }>
+  monthlySummary: Array<{
+    category: string
+    revenue: number
+    expenses: number
+    profit: number
+    margin: number
+  }>
+}
 
 export default function FinancePage() {
+  const [data, setData] = useState<FinanceOverview | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchFinanceData()
+  }, [])
+
+  const fetchFinanceData = async () => {
+    try {
+      setLoading(true)
+      
+      // Fetch overview data
+      const overviewResponse = await fetch('/api/finance/overview?period=month')
+      if (overviewResponse.ok) {
+        const overviewData = await overviewResponse.json()
+        
+        // Fetch recent invoices
+        const invoicesResponse = await fetch('/api/finance/invoices?limit=4')
+        const invoicesData = invoicesResponse.ok ? await invoicesResponse.json() : { invoices: [] }
+        
+        // Fetch recent payments
+        const paymentsResponse = await fetch('/api/finance/payments?limit=4')
+        const paymentsData = paymentsResponse.ok ? await paymentsResponse.json() : { payments: [] }
+        
+        // Calculate net profit and margin
+        const totalRevenue = overviewData.totalRevenue || 0
+        const totalExpenses = overviewData.totalExpenses || 0
+        const netProfit = totalRevenue - totalExpenses
+        const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
+        
+        // Calculate invoice stats
+        const invoiceStats = {
+          total: overviewData.invoiceStats?.total || 0,
+          pending: (overviewData.invoiceStats?.sent || 0) + (overviewData.invoiceStats?.partiallyPaid || 0),
+          overdue: overviewData.invoiceStats?.overdue || 0,
+          paid: overviewData.invoiceStats?.paid || 0
+        }
+        
+        // Format recent invoices
+        const recentInvoices = (invoicesData.invoices || []).map((inv: any) => ({
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          customer: inv.customer || { name: 'غير محدد' },
+          totalAmount: inv.totalAmount,
+          paidAmount: inv.paidAmount || 0,
+          status: inv.status,
+          issueDate: inv.issueDate
+        }))
+        
+        // Format recent payments
+        const recentPayments = (paymentsData.payments || []).map((p: any) => ({
+          id: p.id,
+          invoice: p.invoicePayments?.[0]?.invoice || { invoiceNumber: 'غير محدد' },
+          amount: p.amount,
+          paymentMethod: p.paymentMethod,
+          createdAt: p.createdAt
+        }))
+        
+        // Calculate monthly summary by category
+        const revenueData = await fetch('/api/revenue').then(r => r.ok ? r.json() : { summary: null })
+        const expensesData = await fetch('/api/expenses').then(r => r.ok ? r.json() : { summary: null })
+        
+        const monthlySummary: any[] = []
+        if (revenueData.summary?.revenueBySource) {
+          revenueData.summary.revenueBySource.forEach((source: any) => {
+            const expenses = expensesData.summary?.expensesByCategory?.find((e: any) => e.category === source.source)
+            const revenue = source.amount || 0
+            const expensesAmount = expenses?.amount || 0
+            const profit = revenue - expensesAmount
+            const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+            
+            monthlySummary.push({
+              category: source.source,
+              revenue,
+              expenses: expensesAmount,
+              profit,
+              margin
+            })
+          })
+        }
+        
+        setData({
+          totalRevenue,
+          totalExpenses,
+          netProfit,
+          profitMargin,
+          invoiceStats,
+          recentInvoices,
+          recentPayments,
+          monthlySummary
+        })
+      } else {
+        toast.error('فشل في تحميل بيانات المالية')
+      }
+    } catch (error) {
+      console.error('Error fetching finance data:', error)
+      toast.error('حدث خطأ أثناء تحميل بيانات المالية')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ar-EG', {
+      style: 'currency',
+      currency: 'EGP',
+      minimumFractionDigits: 0
+    }).format(amount)
+  }
+
+  const getStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'PAID': 'مدفوعة',
+      'SENT': 'معلقة',
+      'PARTIALLY_PAID': 'مدفوعة جزئياً',
+      'OVERDUE': 'متأخرة',
+      'DRAFT': 'مسودة',
+      'CANCELLED': 'ملغاة',
+      'REFUNDED': 'مستردة'
+    }
+    return statusMap[status] || status
+  }
+
+  const getStatusColor = (status: string) => {
+    if (status === 'PAID') return 'bg-green-100 text-green-800'
+    if (status === 'SENT' || status === 'PARTIALLY_PAID') return 'bg-yellow-100 text-yellow-800'
+    if (status === 'OVERDUE') return 'bg-red-100 text-red-800'
+    return 'bg-gray-100 text-gray-800'
+  }
+
+  const getPaymentMethodText = (method: string) => {
+    const methodMap: { [key: string]: string } = {
+      'CASH': 'نقدي',
+      'BANK_TRANSFER': 'تحويل بنكي',
+      'CARD': 'بطاقة ائتمان',
+      'CHECK': 'شيك'
+    }
+    return methodMap[method] || method
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">الإدارة المالية</h1>
+        <Button variant="outline" onClick={fetchFinanceData}>
+          <RefreshCw className="ml-2 h-4 w-4" />
+          تحديث
+        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -17,9 +215,11 @@ export default function FinancePage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,847,850 ر.س</div>
+            <div className="text-2xl font-bold">
+              {data ? formatCurrency(data.totalRevenue) : formatCurrency(0)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              +18% من الشهر الماضي
+              هذا الشهر
             </p>
           </CardContent>
         </Card>
@@ -30,7 +230,9 @@ export default function FinancePage() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45</div>
+            <div className="text-2xl font-bold">
+              {data ? data.invoiceStats.pending : 0}
+            </div>
             <p className="text-xs text-muted-foreground">
               بانتظار الدفع
             </p>
@@ -43,7 +245,9 @@ export default function FinancePage() {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">
+              {data ? data.invoiceStats.overdue : 0}
+            </div>
             <p className="text-xs text-muted-foreground">
               تحتاج للمتابعة
             </p>
@@ -56,9 +260,11 @@ export default function FinancePage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">485,000 ر.س</div>
+            <div className={`text-2xl font-bold ${data && data.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {data ? formatCurrency(data.netProfit) : formatCurrency(0)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              17% هامش ربح
+              {data ? data.profitMargin.toFixed(1) : 0}% هامش ربح
             </p>
           </CardContent>
         </Card>
@@ -74,32 +280,31 @@ export default function FinancePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { number: 'INV-2024-001', customer: 'محمد الأحمدي', amount: '85,000 ر.س', status: 'مدفوعة', date: '2024-01-18' },
-                { number: 'INV-2024-002', customer: 'عبدالله العلي', amount: '110,000 ر.س', status: 'معلقة', date: '2024-01-17' },
-                { number: 'INV-2024-003', customer: 'فهد الأحمد', amount: '65,000 ر.س', status: 'مدفوعة', date: '2024-01-16' },
-                { number: 'INV-2024-004', customer: 'سالم العتيبي', amount: '72,000 ر.س', status: 'متأخرة', date: '2024-01-15' },
-              ].map((invoice, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{invoice.number}</p>
-                    <p className="text-sm text-muted-foreground">{invoice.customer}</p>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">{invoice.amount}</p>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        invoice.status === 'مدفوعة' ? 'bg-green-100 text-green-800' :
-                        invoice.status === 'معلقة' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {invoice.status}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{invoice.date}</span>
+              {data && data.recentInvoices.length > 0 ? (
+                data.recentInvoices.map((invoice) => (
+                  <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{invoice.invoiceNumber}</p>
+                      <p className="text-sm text-muted-foreground">{invoice.customer.name}</p>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium">{formatCurrency(invoice.totalAmount)}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(invoice.status)}>
+                          {getStatusText(invoice.status)}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(invoice.issueDate), 'dd/MM/yyyy', { locale: ar })}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  لا توجد فواتير مسجلة
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -113,23 +318,26 @@ export default function FinancePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { invoice: 'INV-2024-001', amount: '85,000 ر.س', method: 'تحويل بنكي', date: '2024-01-18' },
-                { invoice: 'INV-2024-003', amount: '65,000 ر.س', method: 'بطاقة ائتمان', date: '2024-01-16' },
-                { invoice: 'INV-2024-005', amount: '45,000 ر.س', method: 'نقدي', date: '2024-01-14' },
-                { invoice: 'INV-2024-006', amount: '92,000 ر.س', method: 'تحويل بنكي', date: '2024-01-13' },
-              ].map((payment, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{payment.invoice}</p>
-                    <p className="text-sm text-muted-foreground">{payment.method}</p>
+              {data && data.recentPayments.length > 0 ? (
+                data.recentPayments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{payment.invoice.invoiceNumber}</p>
+                      <p className="text-sm text-muted-foreground">{getPaymentMethodText(payment.paymentMethod)}</p>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium">{formatCurrency(payment.amount)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(payment.createdAt), 'dd/MM/yyyy', { locale: ar })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="font-medium">{payment.amount}</p>
-                    <p className="text-xs text-muted-foreground">{payment.date}</p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  لا توجد مدفوعات مسجلة
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -144,23 +352,28 @@ export default function FinancePage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[
-              { category: 'مبيعات سيارات', revenue: '2,547,850 ر.س', expenses: '1,850,000 ر.س', profit: '697,850 ر.س', margin: '27%' },
-              { category: 'خدمات صيانة', revenue: '300,000 ر.س', expenses: '180,000 ر.س', profit: '120,000 ر.س', margin: '40%' },
-              { category: 'قطع غيار', revenue: '180,000 ر.س', expenses: '135,000 ر.س', profit: '45,000 ر.س', margin: '25%' },
-              { category: 'خدمات إضافية', revenue: '120,000 ر.س', expenses: '60,000 ر.س', profit: '60,000 ر.س', margin: '50%' },
-            ].map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">{item.category}</p>
-                  <p className="text-sm text-muted-foreground">إيرادات: {item.revenue} | مصروفات: {item.expenses}</p>
+            {data && data.monthlySummary.length > 0 ? (
+              data.monthlySummary.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">{item.category}</p>
+                    <p className="text-sm text-muted-foreground">
+                      إيرادات: {formatCurrency(item.revenue)} | مصروفات: {formatCurrency(item.expenses)}
+                    </p>
+                  </div>
+                  <div className="text-left">
+                    <p className={`font-medium ${item.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(item.profit)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">هامش: {item.margin.toFixed(1)}%</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="font-medium text-green-600">{item.profit}</p>
-                  <p className="text-xs text-muted-foreground">هامش: {item.margin}</p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                لا توجد بيانات مالية لهذا الشهر
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
