@@ -213,22 +213,25 @@ export default function PayrollPage() {
     }
   }
 
+  const getPeriodEndDate = () => {
+    const [year, month] = selectedPeriod.split('-').map(Number)
+    const endOfMonth = new Date(year, month, 0)
+    endOfMonth.setHours(23, 59, 59, 999)
+    return endOfMonth
+  }
+
   const getNextPayDate = () => {
-    const now = new Date()
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 25)
-    if (nextMonth <= now) {
-      nextMonth.setMonth(nextMonth.getMonth() + 1)
-    }
-    return format(nextMonth, 'd MMMM', { locale: ar })
+    const payDate = getPeriodEndDate()
+    return format(payDate, 'd MMMM', { locale: ar })
   }
 
   const getDaysUntilPayday = () => {
     const now = new Date()
-    const nextPayday = new Date(now.getFullYear(), now.getMonth() + 1, 25)
-    if (nextPayday <= now) {
-      nextPayday.setMonth(nextPayday.getMonth() + 1)
+    const payDate = getPeriodEndDate()
+    const diffTime = payDate.getTime() - now.getTime()
+    if (diffTime <= 0) {
+      return 0
     }
-    const diffTime = nextPayday.getTime() - now.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays
   }
