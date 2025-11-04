@@ -956,12 +956,36 @@ async function main() {
 
   // 13. Departments and Positions for Employee Management
   const departments = await Promise.all([
-    prisma.department.create({ data: { name: 'الإدارة العليا', description: 'المديرون التنفيذيون وكبار المديرين' } }),
-    prisma.department.create({ data: { name: 'المبيعات', description: 'فريق المبيعات والتسويق' } }),
-    prisma.department.create({ data: { name: 'الخدمة الفنية', description: 'الفنيون والهندسة' } }),
-    prisma.department.create({ data: { name: 'المحاسبة والمالية', description: 'المحاسبون والماليون' } }),
-    prisma.department.create({ data: { name: 'الموارد البشرية', description: 'إدارة الموظفين والشؤون الإدارية' } }),
-    prisma.department.create({ data: { name: 'المخزون والمشتريات', description: 'إدارة المخزون والمشتريات' } })
+    prisma.department.upsert({
+      where: { name: 'الإدارة العليا' },
+      update: { description: 'المديرون التنفيذيون وكبار المديرين' },
+      create: { name: 'الإدارة العليا', description: 'المديرون التنفيذيون وكبار المديرين' }
+    }),
+    prisma.department.upsert({
+      where: { name: 'المبيعات' },
+      update: { description: 'فريق المبيعات والتسويق' },
+      create: { name: 'المبيعات', description: 'فريق المبيعات والتسويق' }
+    }),
+    prisma.department.upsert({
+      where: { name: 'الخدمة الفنية' },
+      update: { description: 'الفنيون والهندسة' },
+      create: { name: 'الخدمة الفنية', description: 'الفنيون والهندسة' }
+    }),
+    prisma.department.upsert({
+      where: { name: 'المحاسبة والمالية' },
+      update: { description: 'المحاسبون والماليون' },
+      create: { name: 'المحاسبة والمالية', description: 'المحاسبون والماليون' }
+    }),
+    prisma.department.upsert({
+      where: { name: 'الموارد البشرية' },
+      update: { description: 'إدارة الموظفين والشؤون الإدارية' },
+      create: { name: 'الموارد البشرية', description: 'إدارة الموظفين والشؤون الإدارية' }
+    }),
+    prisma.department.upsert({
+      where: { name: 'المخزون والمشتريات' },
+      update: { description: 'إدارة المخزون والمشتريات' },
+      create: { name: 'المخزون والمشتريات', description: 'إدارة المخزون والمشتريات' }
+    })
   ])
   console.log('✓ departments created')
 
@@ -1122,6 +1146,18 @@ async function main() {
 
   console.log('✅ Comprehensive database seeding completed successfully!')
   console.log('📊 Summary:')
+  console.log(`- Vehicles: ${vehiclesData.length}`)
+  console.log('- Users: 8')
+  console.log('- Employees: Created for staff users')
+  console.log('- Departments: 6')
+  console.log('- Positions: 14')
+  console.log('- Role Templates: 8')
+  console.log('- Permissions: 32')
+  console.log('- Service Types: 5')
+  console.log('- Leave Requests: Sample data')
+  console.log('- Payroll Records: Sample data')
+  console.log('- Sliders: 4')
+  console.log('- All emails updated to use @elhamdimport.online domain')
   
   // Import and run additional seed scripts
   console.log('\n🔄 Running additional seed scripts...')

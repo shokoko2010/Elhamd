@@ -48,15 +48,8 @@ async function main() {
     ]
 
     for (const warehouse of warehouses) {
-      await prisma.warehouse.upsert({
-        where: { 
-          name_branchId: {
-            name: warehouse.name,
-            branchId: warehouse.branchId
-          }
-        },
-        update: warehouse,
-        create: warehouse
+      await prisma.warehouse.create({
+        data: warehouse
       })
     }
     console.log('✓ Warehouses created')
@@ -75,7 +68,6 @@ async function main() {
         address: 'Mumbai, India',
         rating: 5.0,
         status: 'active',
-        branchId: branches[0]?.id,
         metadata: {
           type: 'MANUFACTURER',
           paymentTerms: '30 days',
@@ -90,7 +82,6 @@ async function main() {
         address: 'القاهرة، مصر',
         rating: 4.5,
         status: 'active',
-        branchId: branches[0]?.id,
         metadata: {
           type: 'PARTS_SUPPLIER',
           paymentTerms: '15 days',
@@ -105,7 +96,6 @@ async function main() {
         address: 'الإسكندرية، مصر',
         rating: 4.0,
         status: 'active',
-        branchId: branches[0]?.id,
         metadata: {
           type: 'OIL_SUPPLIER',
           paymentTerms: '30 days',
@@ -115,15 +105,8 @@ async function main() {
     ]
 
     for (const supplier of suppliers) {
-      await prisma.supplier.upsert({
-        where: { 
-          email_branchId: {
-            email: supplier.email,
-            branchId: supplier.branchId
-          }
-        },
-        update: supplier,
-        create: supplier
+      await prisma.supplier.create({
+        data: supplier
       })
     }
     console.log('✓ Suppliers created')
@@ -241,10 +224,8 @@ async function main() {
     ]
 
     for (const item of inventoryItems) {
-      await prisma.inventoryItem.upsert({
-        where: { partNumber: item.partNumber },
-        update: item,
-        create: item
+      await prisma.inventoryItem.create({
+        data: item
       })
     }
     console.log('✓ Inventory Items created')
@@ -316,15 +297,8 @@ async function main() {
     }
 
     for (const record of attendanceRecords) {
-      await prisma.attendance.upsert({
-        where: {
-          userId_date: {
-            userId: record.userId,
-            date: record.date
-          }
-        },
-        update: record,
-        create: record
+      await prisma.attendance.create({
+        data: record
       })
     }
     console.log('✓ Attendance Records created')
@@ -397,16 +371,8 @@ async function main() {
 
     for (const metric of performanceMetrics) {
       if (metric.userId) {
-        await prisma.performanceMetric.upsert({
-          where: {
-            userId_period_date: {
-              userId: metric.userId,
-              period: metric.period,
-              date: metric.date
-            }
-          },
-          update: metric,
-          create: metric
+        await prisma.performanceMetric.create({
+          data: metric
         })
       }
     }

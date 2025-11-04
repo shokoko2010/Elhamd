@@ -177,9 +177,14 @@ async function main() {
     ]
 
     for (const lead of leads) {
-      await prisma.lead.create({
-        data: lead
-      })
+      try {
+        await prisma.lead.create({
+          data: lead
+        })
+      } catch (error) {
+        // Skip if lead already exists
+        console.log(`Lead ${lead.leadNumber} already exists, skipping...`)
+      }
     }
     console.log('✓ Leads created')
 
@@ -199,7 +204,6 @@ async function main() {
         budget: 50000,
         description: 'حملة ترويجية لموديل تاتا نكسون الجديد',
         targetAudience: ['عملاء محتملون', 'عملاء حاليين'],
-        templateId: null,
         createdBy: staffUsers[0]?.id,
         branchId: branches[0]?.id,
         settings: {
@@ -217,7 +221,6 @@ async function main() {
         budget: 25000,
         description: 'عرض خاص على شاحنات وبيك أب تاتا',
         targetAudience: ['شركات', 'أصحاب أعمال'],
-        templateId: null,
         createdBy: staffUsers[1]?.id,
         branchId: branches[0]?.id,
         settings: {
@@ -235,7 +238,6 @@ async function main() {
         budget: 15000,
         description: 'تذكير العملاء بالصيانة الدورية',
         targetAudience: ['عملاء حاليين'],
-        templateId: null,
         createdBy: staffUsers[0]?.id,
         branchId: branches[0]?.id,
         settings: {
@@ -310,16 +312,8 @@ async function main() {
     ]
 
     for (const metric of marketingMetrics) {
-      await prisma.marketingMetric.upsert({
-        where: {
-          date_period_branchId: {
-            date: metric.date,
-            period: metric.period,
-            branchId: metric.branchId
-          }
-        },
-        update: metric,
-        create: metric
+      await prisma.marketingMetric.create({
+        data: metric
       })
     }
     console.log('✓ Marketing Metrics created')
