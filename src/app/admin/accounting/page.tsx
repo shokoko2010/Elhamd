@@ -115,7 +115,7 @@ export default function AccountingPage() {
     code: '',
     name: '',
     type: 'ASSET' as ChartOfAccount['type'],
-    parentId: '' as string | null,
+    parentId: null as string | null,
     normalBalance: 'DEBIT' as ChartOfAccount['normalBalance'],
     isActive: true
   })
@@ -313,7 +313,7 @@ export default function AccountingPage() {
       code: '',
       name: '',
       type: 'ASSET',
-      parentId: '',
+      parentId: null,
       normalBalance: 'DEBIT',
       isActive: true
     })
@@ -1034,11 +1034,11 @@ export default function AccountingPage() {
             <div className="grid gap-2">
               <Label>الحساب الرئيسي</Label>
               <Select
-                value={accountForm.parentId || ''}
+                value={accountForm.parentId ?? 'none'}
                 onValueChange={(value) =>
                   setAccountForm((prev) => ({
                     ...prev,
-                    parentId: value || ''
+                    parentId: value === 'none' ? null : value
                   }))
                 }
               >
@@ -1046,7 +1046,7 @@ export default function AccountingPage() {
                   <SelectValue placeholder="بدون حساب رئيسي" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">بدون</SelectItem>
+                  <SelectItem value="none">بدون</SelectItem>
                   {accounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.code} - {account.name}
@@ -1103,14 +1103,16 @@ export default function AccountingPage() {
               <div className="grid gap-2">
                 <Label htmlFor="entry-branch">الفرع</Label>
                 <Select
-                  value={entryForm.branchId}
-                  onValueChange={(value) => setEntryForm((prev) => ({ ...prev, branchId: value }))}
+                  value={entryForm.branchId || 'none'}
+                  onValueChange={(value) =>
+                    setEntryForm((prev) => ({ ...prev, branchId: value === 'none' ? '' : value }))
+                  }
                 >
                   <SelectTrigger id="entry-branch">
                     <SelectValue placeholder="اختر الفرع" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">بدون</SelectItem>
+                    <SelectItem value="none">بدون</SelectItem>
                     {branches.map((branch) => (
                       <SelectItem key={branch.id} value={branch.id}>
                         {branch.name}
