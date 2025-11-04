@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authOptions'
-
-const prisma = new PrismaClient()
+import { getAuthUser } from '@/lib/auth-server'
+import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -22,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (isActive !== null) where.isActive = isActive === 'true'
     if (parentId) where.parentId = parentId
 
-    const accounts = await prisma.chartOfAccount.findMany({
+    const accounts = await db.chartOfAccount.findMany({
       where,
       include: {
         items: {
@@ -42,7 +39,30 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    return NextResponse.json(accounts)
+    const parentIds = Array.from(
+      new Set(
+        accounts
+          .map((account) => account.parentId)
+          .filter((parentId): parentId is string => typeof parentId === 'string' && parentId.length > 0)
+      )
+    )
+
+    let parents: Array<{ id: string; name: string; code: string | null }> = []
+    if (parentIds.length > 0) {
+      parents = await db.chartOfAccount.findMany({
+        where: { id: { in: parentIds } },
+        select: { id: true, name: true, code: true }
+      })
+    }
+
+    const parentMap = new Map(parents.map((parent) => [parent.id, parent]))
+
+    const enrichedAccounts = accounts.map((account) => ({
+      ...account,
+      parent: account.parentId ? parentMap.get(account.parentId) ?? null : null
+    }))
+
+    return NextResponse.json(enrichedAccounts)
   } catch (error) {
     console.error('Error fetching chart of accounts:', error)
     return NextResponse.json(
@@ -54,8 +74,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const user = await getAuthUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -78,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if account code already exists
-    const existingAccount = await prisma.chartOfAccount.findUnique({
+    const existingAccount = await db.chartOfAccount.findUnique({
       where: { code }
     })
 
@@ -89,7 +109,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const account = await prisma.chartOfAccount.create({
+    const account = await db.chartOfAccount.create({
       data: {
         code,
         name,
