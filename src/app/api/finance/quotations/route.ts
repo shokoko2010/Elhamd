@@ -16,11 +16,10 @@ export async function GET(request: NextRequest) {
     }
 
     const user = await db.user.findUnique({
-      where: { id: authUser.id },
-      include: { role: true }
+      where: { id: authUser.id }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -64,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Add branch filter for branch managers
-    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId) {
+    if (user.role === UserRole.BRANCH_MANAGER && user.branchId) {
       where.customer = {
         branchId: user.branchId
       }
@@ -89,7 +88,7 @@ export async function GET(request: NextRequest) {
         db.quotation.count({
           where: {
             createdAt: { gte: currentPeriodStart },
-            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+            ...(user.role === UserRole.BRANCH_MANAGER && user.branchId && {
               customer: { branchId: user.branchId }
             })
           }
@@ -101,7 +100,7 @@ export async function GET(request: NextRequest) {
               gte: previousPeriodStart,
               lt: currentPeriodStart
             },
-            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+            ...(user.role === UserRole.BRANCH_MANAGER && user.branchId && {
               customer: { branchId: user.branchId }
             })
           }
@@ -111,7 +110,7 @@ export async function GET(request: NextRequest) {
           by: ['status'],
           where: {
             createdAt: { gte: currentPeriodStart },
-            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+            ...(user.role === UserRole.BRANCH_MANAGER && user.branchId && {
               customer: { branchId: user.branchId }
             })
           },
@@ -121,7 +120,7 @@ export async function GET(request: NextRequest) {
         db.quotation.aggregate({
           where: {
             createdAt: { gte: currentPeriodStart },
-            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+            ...(user.role === UserRole.BRANCH_MANAGER && user.branchId && {
               customer: { branchId: user.branchId }
             })
           },
@@ -134,7 +133,7 @@ export async function GET(request: NextRequest) {
               gte: previousPeriodStart,
               lt: currentPeriodStart
             },
-            ...(user.role.name === UserRole.BRANCH_MANAGER && user.branchId && {
+            ...(user.role === UserRole.BRANCH_MANAGER && user.branchId && {
               customer: { branchId: user.branchId }
             })
           },
@@ -220,11 +219,10 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await db.user.findUnique({
-      where: { id: authUser.id },
-      include: { role: true }
+      where: { id: authUser.id }
     })
 
-    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role.name as UserRole)) {
+    if (!user || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.BRANCH_MANAGER].includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -248,7 +246,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check branch permissions
-    if (user.role.name === UserRole.BRANCH_MANAGER && user.branchId && customer.branchId !== user.branchId) {
+    if (user.role === UserRole.BRANCH_MANAGER && user.branchId && customer.branchId !== user.branchId) {
       return NextResponse.json({ error: 'Cannot create quotation for customer from different branch' }, { status: 403 })
     }
 
