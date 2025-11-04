@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { EmployeeFinanceService } from '@/lib/employee-finance-service'
+import { fetchEmployeeWithDetails } from '@/lib/employee-response'
 import { UserRole, EmployeeStatus } from '@prisma/client'
 import { z } from 'zod'
 
+const optionalTrimmedString = z
+  .string()
+  .optional()
+  .transform((val) => (val && val.trim().length > 0 ? val.trim() : undefined))
+
 const createEmployeeSchema = z.object({
   name: z.string().min(2, 'الاسم يجب أن يكون حرفين على الأقل'),
-  email: z.string().email('البريد الإلكتروني غير صالح'),
-  phone: z.string().optional(),
+  email: z.string().trim().email('البريد الإلكتروني غير صالح'),
+  phone: optionalTrimmedString,
   department: z.string().min(1, 'القسم مطلوب'),
   position: z.string().min(1, 'المنصب مطلوب'),
   salary: z.string().transform((val) => parseFloat(val)).refine((val) => val > 0, 'الراتب يجب أن يكون أكبر من صفر'),
   branchId: z.string().optional(),
-  emergencyContactName: z.string().optional(),
-  emergencyContactPhone: z.string().optional(),
-  emergencyContactRelationship: z.string().optional(),
-  notes: z.string().optional()
+  emergencyContactName: optionalTrimmedString,
+  emergencyContactPhone: optionalTrimmedString,
+  emergencyContactRelationship: optionalTrimmedString,
+  notes: optionalTrimmedString,
+  bankAccount: optionalTrimmedString,
+  taxNumber: optionalTrimmedString,
+  insuranceNumber: optionalTrimmedString
 })
 
 export async function GET(request: NextRequest) {
@@ -153,6 +163,12 @@ export async function POST(request: NextRequest) {
     })
 
     // Create employee
+    const accounts = await EmployeeFinanceService.setupEmployeeAccounts({
+      employeeNumber,
+      employeeName: validatedData.name,
+      branchId: validatedData.branchId
+    })
+
     const employee = await db.employee.create({
       data: {
         employeeNumber,
@@ -163,44 +179,25 @@ export async function POST(request: NextRequest) {
         hireDate: new Date(),
         status: EmployeeStatus.ACTIVE,
         branchId: validatedData.branchId || null,
-        emergencyContact: validatedData.emergencyContactName ? {
-          name: validatedData.emergencyContactName,
-          phone: validatedData.emergencyContactPhone || '',
-          relationship: validatedData.emergencyContactRelationship || ''
-        } : undefined,
-        notes: validatedData.notes
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        department: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        position: {
-          select: {
-            id: true,
-            title: true
-          }
-        }
+        emergencyContact: validatedData.emergencyContactName
+          ? {
+              name: validatedData.emergencyContactName,
+              phone: validatedData.emergencyContactPhone || '',
+              relationship: validatedData.emergencyContactRelationship || ''
+            }
+          : undefined,
+        notes: validatedData.notes,
+        bankAccount: validatedData.bankAccount,
+        taxNumber: validatedData.taxNumber,
+        insuranceNumber: validatedData.insuranceNumber,
+        payrollExpenseAccountId: accounts.payrollExpenseAccountId,
+        payrollLiabilityAccountId: accounts.payrollLiabilityAccountId
       }
     })
 
-    return NextResponse.json(employee, { status: 201 })
+    const detailedEmployee = await fetchEmployeeWithDetails(employee.id)
+
+    return NextResponse.json(detailedEmployee, { status: 201 })
   } catch (error) {
     console.error('Error creating employee:', error)
     
