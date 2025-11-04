@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { InvoiceStatus, PaymentStatus } from '@prisma/client'
+import { InvoiceStatus, PaymentStatus, PayrollStatus } from '@prisma/client'
 import { 
   calculateInvoiceTotals, 
   determineInvoiceStatus, 
@@ -177,8 +177,10 @@ export class FinanceManager {
 
   // Payment utilities
   static async createPayment(data: {
+    type?: 'INVOICE' | 'SERVICE' | 'PAYROLL'
     invoiceId?: string
     bookingId?: string
+    payrollRecordId?: string
     amount: number
     paymentMethod: string
     notes?: string
@@ -187,8 +189,14 @@ export class FinanceManager {
     branchId?: string
     metadata?: any
   }) {
+    const paymentType = data.type || (data.invoiceId ? 'INVOICE' : 'SERVICE')
+
+    if (paymentType === 'PAYROLL' && !data.payrollRecordId) {
+      throw new Error('Payroll payments require a payrollRecordId')
+    }
+
     const paymentData: any = {
-      bookingId: data.bookingId || data.invoiceId,
+      bookingId: data.bookingId || (paymentType === 'INVOICE' ? data.invoiceId : undefined),
       bookingType: 'SERVICE',
       amount: data.amount,
       currency: 'EGP',
@@ -199,9 +207,11 @@ export class FinanceManager {
       branchId: data.branchId,
       metadata: {
         ...data.metadata,
+        paymentType,
         createdBy: data.userId,
         createdAt: new Date().toISOString()
-      }
+      },
+      payrollRecordId: data.payrollRecordId
     }
 
     const payment = await db.payment.create({
@@ -209,7 +219,7 @@ export class FinanceManager {
     })
 
     // If this is an invoice payment, create the relationship
-    if (data.invoiceId) {
+    if (paymentType === 'INVOICE' && data.invoiceId) {
       await db.invoicePayment.create({
         data: {
           invoiceId: data.invoiceId,
@@ -218,12 +228,21 @@ export class FinanceManager {
           paymentDate: new Date(),
           paymentMethod: data.paymentMethod,
           transactionId: payment.transactionId,
-          notes: data.notes
+          notes: data.notes,
+          payrollRecordId: data.payrollRecordId
         }
       })
 
       // Update invoice status and totals
       await this.recalculateInvoiceTotals(data.invoiceId)
+    } else if (paymentType === 'PAYROLL' && data.payrollRecordId) {
+      await db.payrollRecord.update({
+        where: { id: data.payrollRecordId },
+        data: {
+          status: PayrollStatus.PAID,
+          payDate: new Date()
+        }
+      })
     }
 
     return payment

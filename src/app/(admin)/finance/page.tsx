@@ -58,6 +58,30 @@ interface Invoice {
   branchName?: string
 }
 
+interface PayrollPayment {
+  id: string
+  amount: number
+  paymentMethod: string
+  transactionId?: string | null
+  createdAt: string
+  branch?: Branch | null
+  payrollRecord?: {
+    id: string
+    period: string
+    status: string
+    payDate?: string | null
+    employee?: {
+      id: string
+      user?: {
+        id: string
+        name: string | null
+        email: string | null
+      } | null
+      branch?: Branch | null
+    } | null
+  } | null
+}
+
 export default function FinancePage() {
   const [overview, setOverview] = useState<FinancialOverview | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -65,11 +89,19 @@ export default function FinancePage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+  const [payrollPayments, setPayrollPayments] = useState<PayrollPayment[]>([])
+  const [payrollLoading, setPayrollLoading] = useState(true)
+  const [payrollPeriods, setPayrollPeriods] = useState<string[]>([])
+  const [selectedPayrollPeriod, setSelectedPayrollPeriod] = useState<string>('')
 
   useEffect(() => {
     fetchFinancialData()
     fetchBranches()
   }, [selectedBranch])
+
+  useEffect(() => {
+    fetchPayrollPayments()
+  }, [selectedBranch, selectedPayrollPeriod])
 
   const fetchBranches = async () => {
     try {
@@ -107,12 +139,76 @@ export default function FinancePage() {
     }
   }
 
+  const fetchPayrollPayments = async () => {
+    setPayrollLoading(true)
+
+    try {
+      const baseParams = new URLSearchParams()
+      baseParams.set('type', 'PAYROLL')
+      if (selectedBranch) {
+        baseParams.set('branchId', selectedBranch)
+      }
+
+      const baseResponse = await fetch(`/api/finance/payments?${baseParams.toString()}`)
+      let baseData: PayrollPayment[] = []
+
+      if (baseResponse.ok) {
+        const baseJson = await baseResponse.json()
+        baseData = (baseJson.payments || []) as PayrollPayment[]
+
+        const periods = Array.from(
+          new Set(
+            baseData
+              .map((payment) => payment.payrollRecord?.period)
+              .filter((period): period is string => Boolean(period))
+          )
+        ).sort((a, b) => b.localeCompare(a))
+
+        setPayrollPeriods(periods)
+      } else {
+        setPayrollPeriods([])
+      }
+
+      let paymentsToDisplay = baseData
+
+      if (selectedPayrollPeriod) {
+        const filteredParams = new URLSearchParams(baseParams)
+        filteredParams.set('payrollPeriod', selectedPayrollPeriod)
+
+        const filteredResponse = await fetch(`/api/finance/payments?${filteredParams.toString()}`)
+        if (filteredResponse.ok) {
+          const filteredJson = await filteredResponse.json()
+          paymentsToDisplay = (filteredJson.payments || []) as PayrollPayment[]
+        } else {
+          paymentsToDisplay = []
+        }
+      }
+
+      setPayrollPayments(paymentsToDisplay)
+    } catch (error) {
+      console.error('Error fetching payroll payments:', error)
+      setPayrollPayments([])
+    } finally {
+      setPayrollLoading(false)
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-EG', {
       style: 'currency',
       currency: 'EGP',
       minimumFractionDigits: 0
     }).format(amount)
+  }
+
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return 'غير محدد'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
   }
 
   const getStatusBadge = (status: string) => {
@@ -129,6 +225,21 @@ export default function FinancePage() {
     const config = statusConfig[status as keyof typeof statusConfig] || { label: status, variant: 'secondary' as const }
     return <Badge variant={config.variant}>{config.label}</Badge>
   }
+
+  const getPayrollStatusBadge = (status: string) => {
+    const statusConfig = {
+      PENDING: { label: 'قيد الانتظار', variant: 'secondary' as const },
+      PROCESSED: { label: 'قيد المعالجة', variant: 'outline' as const },
+      APPROVED: { label: 'معتمدة', variant: 'default' as const },
+      PAID: { label: 'مدفوعة', variant: 'default' as const },
+      CANCELLED: { label: 'ملغاة', variant: 'destructive' as const }
+    }
+
+    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, variant: 'secondary' as const }
+    return <Badge variant={config.variant}>{config.label}</Badge>
+  }
+
+  const totalPayrollAmount = payrollPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0)
 
   if (loading) {
     return (
@@ -148,13 +259,14 @@ export default function FinancePage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
-            <TabsTrigger value="invoices">الفواتير</TabsTrigger>
-            <TabsTrigger value="payments">المدفوعات</TabsTrigger>
-            <TabsTrigger value="consolidated">تقارير موحدة</TabsTrigger>
-            <TabsTrigger value="transfers">التحويلات</TabsTrigger>
-          </TabsList>
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
+          <TabsTrigger value="invoices">الفواتير</TabsTrigger>
+          <TabsTrigger value="payments">المدفوعات</TabsTrigger>
+          <TabsTrigger value="payroll-payments">مدفوعات الرواتب</TabsTrigger>
+          <TabsTrigger value="consolidated">تقارير موحدة</TabsTrigger>
+          <TabsTrigger value="transfers">التحويلات</TabsTrigger>
+        </TabsList>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
@@ -383,6 +495,146 @@ export default function FinancePage() {
                   <p className="text-gray-500 mb-4">نحن نعمل على تطوير نظام إدارة المدفوعات</p>
                   <Button variant="outline">تعلم المزيد</Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Payroll Payments Tab */}
+          <TabsContent value="payroll-payments" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>مدفوعات الرواتب</CardTitle>
+                <CardDescription>متابعة المدفوعات المرتبطة بسجلات الرواتب المعتمدة</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">اختر الفرع</label>
+                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="جميع الفروع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">جميع الفروع</SelectItem>
+                        {branches.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id}>
+                            {branch.name} ({branch.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">دفعة الرواتب</label>
+                    <Select value={selectedPayrollPeriod} onValueChange={setSelectedPayrollPeriod}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="جميع الدفعات" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">جميع الدفعات</SelectItem>
+                        {payrollPeriods.map((period) => (
+                          <SelectItem key={period} value={period}>
+                            {period}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedBranch('')
+                        setSelectedPayrollPeriod('')
+                      }}
+                    >
+                      إعادة تعيين المرشحات
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>ملخص المدفوعات</CardTitle>
+                    <CardDescription>إجمالي مدفوعات الرواتب خلال الفترة المحددة</CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-4 space-x-reverse text-right">
+                    <div>
+                      <div className="text-sm text-gray-500">إجمالي المدفوع</div>
+                      <div className="text-2xl font-bold text-green-600">{formatCurrency(totalPayrollAmount)}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-500">عدد السجلات</div>
+                      <div className="text-2xl font-bold">{payrollPayments.length}</div>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {payrollLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : payrollPayments.length === 0 ? (
+                  <div className="text-center py-10">
+                    <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مدفوعات رواتب مسجلة</h3>
+                    <p className="text-gray-500">قم بتحديد فترة أو فرع آخر لعرض بيانات مختلفة</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {payrollPayments.map((payment) => {
+                      const employeeName = payment.payrollRecord?.employee?.user?.name || 'موظف غير معروف'
+                      const employeeBranch = payment.payrollRecord?.employee?.branch?.name
+                      const period = payment.payrollRecord?.period || 'غير محدد'
+                      const paymentDate = payment.payrollRecord?.payDate || payment.createdAt
+
+                      return (
+                        <div key={payment.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">{employeeName}</h3>
+                              <p className="text-sm text-gray-500">
+                                {employeeBranch ? `فرع ${employeeBranch}` : 'فرع غير محدد'}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-gray-500">صافي الدفعة</div>
+                              <div className="text-2xl font-bold text-green-600">{formatCurrency(payment.amount)}</div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <span>الفترة: {period}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                              <Clock className="h-4 w-4 text-gray-400" />
+                              <span>تاريخ الدفع: {formatDate(paymentDate)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                              <DollarSign className="h-4 w-4 text-gray-400" />
+                              <span>طريقة الدفع: {payment.paymentMethod}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center gap-3">
+                            {getPayrollStatusBadge(payment.payrollRecord?.status || 'PENDING')}
+                            <Badge variant="outline">
+                              رقم المعاملة: {payment.transactionId || 'غير متوفر'}
+                            </Badge>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
