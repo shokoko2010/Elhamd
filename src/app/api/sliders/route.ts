@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication and authorization
-    await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    if ('error' in auth) {
+      return auth.error
+    }
 
     const body = await request.json()
     const {

@@ -5,14 +5,13 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { authorize, UserRole } from '@/lib/auth-server'
 
-const authHandler = async (request: NextRequest) => {
-  return await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
-}
+const authHandler = (request: NextRequest) =>
+  authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
 export async function GET(request: NextRequest) {
   const auth = await authHandler(request)
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if ('error' in auth) {
+    return auth.error
   }
   
   try {

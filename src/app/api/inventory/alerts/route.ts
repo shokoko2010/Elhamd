@@ -6,18 +6,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
 
-const authHandler = async (request: NextRequest) => {
-  try {
-    return await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] })
-  } catch (error) {
-    return null
-  }
-}
+const authHandler = (request: NextRequest) =>
+  authorize(request, {
+    roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER]
+  })
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await authHandler(request)
-    if (auth.error) {
+    if ('error' in auth) {
       return auth.error
     }
 
@@ -61,7 +58,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const auth = await authHandler(request)
-    if (auth.error) {
+    if ('error' in auth) {
       return auth.error
     }
 
