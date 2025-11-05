@@ -256,17 +256,17 @@ const sidebarConfig: SidebarEntry[] = [
     items: [
       {
         title: 'نظرة عامة',
-        href: '/admin/reports/overview',
+        href: '/admin/reports?tab=overview',
         icon: BarChart3,
       },
       {
         title: 'تقارير العملاء',
-        href: '/admin/reports/customers',
+        href: '/admin/reports?tab=customers',
         icon: Users,
       },
       {
         title: 'تقارير مالية',
-        href: '/admin/reports/financial',
+        href: '/admin/reports?tab=financial',
         icon: TrendingUp,
       },
     ],

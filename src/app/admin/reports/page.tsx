@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { redirect, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,11 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
+import {
+  BarChart3,
+  TrendingUp,
+  Users,
+  DollarSign,
   Search,
   Filter,
   Download,
@@ -77,15 +77,37 @@ interface CustomerMetric {
   retention: number
 }
 
+const TAB_KEYS = ['overview', 'financial', 'customers', 'operations', 'marketing'] as const
+type TabKey = (typeof TAB_KEYS)[number]
+
+const DEFAULT_TAB: TabKey = 'overview'
+
+const isValidTab = (value: string | null): value is TabKey => {
+  return typeof value === 'string' && TAB_KEYS.includes(value as TabKey)
+}
+
 export default function ReportsPage() {
   const { data: session, status } = useSession()
-  const [activeTab, setActiveTab] = useState('overview')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<TabKey>(() =>
+    isValidTab(tabParam) ? tabParam : DEFAULT_TAB
+  )
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetric[]>([])
   const [customerMetrics, setCustomerMetrics] = useState<CustomerMetric[]>([])
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState('month')
   const [branchFilter, setBranchFilter] = useState('all')
+
+  useEffect(() => {
+    const nextTab = isValidTab(tabParam) ? tabParam : DEFAULT_TAB
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab)
+    }
+  }, [tabParam, activeTab])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -126,6 +148,21 @@ export default function ReportsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleTabChange = (value: string) => {
+    const nextTab = isValidTab(value) ? value : DEFAULT_TAB
+    setActiveTab(nextTab)
+
+    const params = new URLSearchParams(searchParams.toString())
+    if (nextTab === DEFAULT_TAB) {
+      params.delete('tab')
+    } else {
+      params.set('tab', nextTab)
+    }
+
+    const queryString = params.toString()
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
   }
 
   if (loading) {
@@ -240,7 +277,7 @@ export default function ReportsPage() {
       )}
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
           <TabsTrigger value="financial">مالية</TabsTrigger>
