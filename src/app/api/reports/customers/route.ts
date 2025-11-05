@@ -6,6 +6,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
+import { Prisma } from '@prisma/client'
+
+const isSchemaMissingError = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P2021', 'P2022', 'P2023'].includes(error.code)
+  }
+
+  return error instanceof Error && error.message.toLowerCase().includes('does not exist')
+}
+
+const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise<T> => {
+  try {
+    return await executeWithRetry(operation)
+  } catch (error) {
+    if (isSchemaMissingError(error)) {
+      return fallback
+    }
+
+    throw error
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -98,51 +119,57 @@ export async function GET(request: NextRequest) {
         totalCustomersAtEnd,
         activeCustomers
       ] = await Promise.all([
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              ...monthWhere
-            }
-          });
-        }),
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              createdAt: {
-                lte: monthEnd
+        safeExecute(
+          () =>
+            db.customerProfile.count({
+              where: {
+                ...monthWhere
               }
-            }
-          });
-        }),
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              createdAt: {
-                lte: monthEnd
-              },
-              OR: [
-                {
-                  invoices: {
-                    some: {
-                      createdAt: {
-                        gte: subDays(monthEnd, 90) // Active in last 90 days
-                      }
-                    }
-                  }
-                },
-                {
-                  serviceBookings: {
-                    some: {
-                      createdAt: {
-                        gte: subDays(monthEnd, 90)
-                      }
-                    }
-                  }
+            }),
+          0
+        ),
+        safeExecute(
+          () =>
+            db.customerProfile.count({
+              where: {
+                createdAt: {
+                  lte: monthEnd
                 }
-              ]
-            }
-          });
-        })
+              }
+            }),
+          0
+        ),
+        safeExecute(
+          () =>
+            db.customerProfile.count({
+              where: {
+                createdAt: {
+                  lte: monthEnd
+                },
+                OR: [
+                  {
+                    invoices: {
+                      some: {
+                        createdAt: {
+                          gte: subDays(monthEnd, 90) // Active in last 90 days
+                        }
+                      }
+                    }
+                  },
+                  {
+                    serviceBookings: {
+                      some: {
+                        createdAt: {
+                          gte: subDays(monthEnd, 90)
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }),
+          0
+        )
       ])
 
       const retention = totalCustomersAtEnd > 0 ? (activeCustomers / totalCustomersAtEnd) * 100 : 0
@@ -172,117 +199,131 @@ export async function GET(request: NextRequest) {
       churnRate
     ] = await Promise.all([
       // Customer segments
-      executeWithRetry(async () => {
-        return await db.customerProfile.groupBy({
-          by: ['segment'],
-          where: {
-            ...where
-          },
-          _count: {
-            _all: true
-          }
-        });
-      }),
+      safeExecute(
+        () =>
+          db.customerProfile.groupBy({
+            by: ['segment'],
+            where: {
+              ...where
+            },
+            _count: {
+              _all: true
+            }
+          }),
+        [] as Array<{ segment: string | null; _count: { _all: number } }>
+      ),
       // Top customers by revenue
-      executeWithRetry(async () => {
-        return await db.customerProfile.findMany({
-          where: {
-            ...where
-          },
-          include: {
-            invoices: {
-              where: {
-                status: 'PAID'
-              },
-              select: {
-                totalAmount: true
+      safeExecute(
+        () =>
+          db.customerProfile.findMany({
+            where: {
+              ...where
+            },
+            include: {
+              invoices: {
+                where: {
+                  status: 'PAID'
+                },
+                select: {
+                  totalAmount: true
+                }
               }
-            }
-          },
-          orderBy: {
-            invoices: {
-              _sum: {
-                totalAmount: 'desc'
+            },
+            orderBy: {
+              invoices: {
+                _sum: {
+                  totalAmount: 'desc'
+                }
               }
-            }
-          },
-          take: 10
-        });
-      }),
+            },
+            take: 10
+          }),
+        [] as Array<{ invoices: Array<{ totalAmount: number }> } & { id: string; name: string | null }>
+      ),
       // Customer acquisition sources
-      executeWithRetry(async () => {
-        return await db.lead.groupBy({
-          by: ['source'],
-          where: {
-            ...currentPeriodWhere,
-            status: 'CLOSED_WON'
-          },
-          _count: {
-            _all: true
-          }
-        });
-      }),
+      safeExecute(
+        () =>
+          db.lead.groupBy({
+            by: ['source'],
+            where: {
+              ...currentPeriodWhere,
+              status: 'CLOSED_WON'
+            },
+            _count: {
+              _all: true
+            }
+          }),
+        [] as Array<{ source: string | null; _count: { _all: number } }>
+      ),
       // Customer lifetime value
-      executeWithRetry(async () => {
-        return await db.customerProfile.findMany({
-          where: {
-            ...where
-          },
-          include: {
-            invoices: {
-              where: {
-                status: 'PAID'
-              },
-              select: {
-                totalAmount: true,
-                createdAt: true
+      safeExecute(
+        () =>
+          db.customerProfile.findMany({
+            where: {
+              ...where
+            },
+            include: {
+              invoices: {
+                where: {
+                  status: 'PAID'
+                },
+                select: {
+                  totalAmount: true,
+                  createdAt: true
+                }
               }
             }
-          }
-        });
-      }),
+          }),
+        [] as Array<{
+          invoices: Array<{ totalAmount: number; createdAt: Date }>
+        } & { id: string }>
+      ),
       // Churn rate calculation
       Promise.all([
         // Customers at start of period
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              createdAt: {
-                lte: subDays(startDate, 1)
-              }
-            }
-          });
-        }),
-        // Customers who churned in period
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              createdAt: {
-                lte: subDays(startDate, 1)
-              },
-              AND: [
-                {
-                  invoices: {
-                    none: {
-                      createdAt: {
-                        gte: startDate
-                      }
-                    }
-                  }
-                },
-                {
-                  serviceBookings: {
-                    none: {
-                      createdAt: {
-                        gte: startDate
-                      }
-                    }
-                  }
+        safeExecute(
+          () =>
+            db.customerProfile.count({
+              where: {
+                createdAt: {
+                  lte: subDays(startDate, 1)
                 }
-              ]
-            }
-          });
-        })
+              }
+            }),
+          0
+        ),
+        // Customers who churned in period
+        safeExecute(
+          () =>
+            db.customerProfile.count({
+              where: {
+                createdAt: {
+                  lte: subDays(startDate, 1)
+                },
+                AND: [
+                  {
+                    invoices: {
+                      none: {
+                        createdAt: {
+                          gte: startDate
+                        }
+                      }
+                    }
+                  },
+                  {
+                    serviceBookings: {
+                      none: {
+                        createdAt: {
+                          gte: startDate
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }),
+          0
+        )
       ])
     ])
 

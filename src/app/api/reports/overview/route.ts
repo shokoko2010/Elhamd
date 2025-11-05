@@ -6,6 +6,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import { Prisma } from '@prisma/client'
+
+const isSchemaMissingError = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P2021', 'P2022', 'P2023'].includes(error.code)
+  }
+
+  return error instanceof Error && error.message.toLowerCase().includes('does not exist')
+}
+
+const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise<T> => {
+  try {
+    return await executeWithRetry(operation)
+  } catch (error) {
+    if (isSchemaMissingError(error)) {
+      return fallback
+    }
+
+    throw error
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -81,40 +102,46 @@ export async function GET(request: NextRequest) {
       totalExpenses,
       invoicesData
     ] = await Promise.all([
-      executeWithRetry(async () => {
-        return await db.invoice.aggregate({
-          where: {
-            ...where,
-            status: 'PAID'
-          },
-          _sum: {
-            totalAmount: true
-          }
-        });
-      }),
-      executeWithRetry(async () => {
-        return await db.transaction.aggregate({
-          where: {
-            ...where,
-            type: 'EXPENSE'
-          },
-          _sum: {
-            amount: true
-          }
-        });
-      }),
-      executeWithRetry(async () => {
-        return await db.invoice.findMany({
-          where: {
-            ...where,
-            status: 'PAID'
-          },
-          select: {
-            totalAmount: true,
-            createdAt: true
-          }
-        });
-      })
+      safeExecute(
+        () =>
+          db.invoice.aggregate({
+            where: {
+              ...where,
+              status: 'PAID'
+            },
+            _sum: {
+              totalAmount: true
+            }
+          }),
+        { _sum: { totalAmount: 0 } }
+      ),
+      safeExecute(
+        () =>
+          db.transaction.aggregate({
+            where: {
+              ...where,
+              type: 'EXPENSE'
+            },
+            _sum: {
+              amount: true
+            }
+          }),
+        { _sum: { amount: 0 } }
+      ),
+      safeExecute(
+        () =>
+          db.invoice.findMany({
+            where: {
+              ...where,
+              status: 'PAID'
+            },
+            select: {
+              totalAmount: true,
+              createdAt: true
+            }
+          }),
+        [] as Array<{ totalAmount: number | null; createdAt: Date }>
+      )
     ])
 
     const revenue = totalRevenue._sum.totalAmount || 0
@@ -127,30 +154,32 @@ export async function GET(request: NextRequest) {
       newCustomers,
       leadsData
     ] = await Promise.all([
-      executeWithRetry(async () => {
-        return await db.customerProfile.count();
-      }),
-      executeWithRetry(async () => {
-        return await db.customerProfile.count({
-          where: {
-            createdAt: {
-              gte: startDate,
-              lte: endDate
+      safeExecute(() => db.customerProfile.count(), 0),
+      safeExecute(
+        () =>
+          db.customerProfile.count({
+            where: {
+              createdAt: {
+                gte: startDate,
+                lte: endDate
+              }
             }
-          }
-        });
-      }),
-      executeWithRetry(async () => {
-        return await db.lead.findMany({
-          where: {
-            ...where
-          },
-          select: {
-            status: true,
-            estimatedValue: true
-          }
-        });
-      })
+          }),
+        0
+      ),
+      safeExecute(
+        () =>
+          db.lead.findMany({
+            where: {
+              ...where
+            },
+            select: {
+              status: true,
+              estimatedValue: true
+            }
+          }),
+        [] as Array<{ status: string; estimatedValue: number | null }>
+      )
     ])
 
     const totalLeads = leadsData.length
@@ -163,30 +192,32 @@ export async function GET(request: NextRequest) {
       resolvedTickets,
       ticketsData
     ] = await Promise.all([
-      executeWithRetry(async () => {
-        return await db.supportTicket.count({ where });
-      }),
-      executeWithRetry(async () => {
-        return await db.supportTicket.count({
-          where: {
-            ...where,
-            status: 'RESOLVED'
-          }
-        });
-      }),
-      executeWithRetry(async () => {
-        return await db.supportTicket.findMany({
-          where: {
-            ...where,
-            status: 'RESOLVED',
-            resolvedAt: { not: null }
-          },
-          select: {
-            createdAt: true,
-            resolvedAt: true
-          }
-        });
-      })
+      safeExecute(() => db.supportTicket.count({ where }), 0),
+      safeExecute(
+        () =>
+          db.supportTicket.count({
+            where: {
+              ...where,
+              status: 'RESOLVED'
+            }
+          }),
+        0
+      ),
+      safeExecute(
+        () =>
+          db.supportTicket.findMany({
+            where: {
+              ...where,
+              status: 'RESOLVED',
+              resolvedAt: { not: null }
+            },
+            select: {
+              createdAt: true,
+              resolvedAt: true
+            }
+          }),
+        [] as Array<{ createdAt: Date; resolvedAt: Date | null }>
+      )
     ])
 
     // Calculate average resolution time
@@ -206,35 +237,40 @@ export async function GET(request: NextRequest) {
       activeCampaigns,
       campaignsData
     ] = await Promise.all([
-      executeWithRetry(async () => {
-        return await db.marketingCampaign.count({ where });
-      }),
-      executeWithRetry(async () => {
-        return await db.marketingCampaign.count({
-          where: {
-            ...where,
-            status: 'ACTIVE'
-          }
-        });
-      }),
-      executeWithRetry(async () => {
-        return await db.marketingCampaign.findMany({
-          where: {
-            ...where,
-            budget: { not: null }
-          },
-          select: {
-            budget: true,
-            leads: {
-              select: {
-                id: true,
-                estimatedValue: true,
-                status: true
+      safeExecute(() => db.marketingCampaign.count({ where }), 0),
+      safeExecute(
+        () =>
+          db.marketingCampaign.count({
+            where: {
+              ...where,
+              status: 'ACTIVE'
+            }
+          }),
+        0
+      ),
+      safeExecute(
+        () =>
+          db.marketingCampaign.findMany({
+            where: {
+              ...where,
+              budget: { not: null }
+            },
+            select: {
+              budget: true,
+              leads: {
+                select: {
+                  id: true,
+                  estimatedValue: true,
+                  status: true
+                }
               }
             }
-          }
-        });
-      })
+          }),
+        [] as Array<{
+          budget: number | null
+          leads: Array<{ id: string; estimatedValue: number | null; status: string }>
+        }>
+      )
     ])
 
     // Calculate campaign ROI
@@ -260,68 +296,79 @@ export async function GET(request: NextRequest) {
       inventoryValue,
       lowStockItems
     ] = await Promise.all([
-      executeWithRetry(async () => {
-        return await db.inventoryItem.aggregate({
-          where: {
-            ...(branchId && branchId !== 'all' && { branchId })
-          },
-          _sum: {
-            totalValue: true
-          }
-        });
-      }),
-      executeWithRetry(async () => {
-        return await db.inventoryItem.count({
-          where: {
-            ...(branchId && branchId !== 'all' && { branchId }),
-            quantity: {
-              lte: 10 // Low stock threshold
+      safeExecute(
+        () =>
+          db.inventoryItem.aggregate({
+            where: {
+              ...(branchId && branchId !== 'all' && { branchId })
+            },
+            _sum: {
+              totalValue: true
             }
-          }
-        });
-      })
+          }),
+        { _sum: { totalValue: 0 } }
+      ),
+      safeExecute(
+        () =>
+          db.inventoryItem.count({
+            where: {
+              ...(branchId && branchId !== 'all' && { branchId }),
+              quantity: {
+                lte: 10 // Low stock threshold
+              }
+            }
+          }),
+        0
+      )
     ])
 
     // Fetch top selling products (from invoices)
-    const topSellingProducts = await executeWithRetry(async () => {
-      return await db.invoiceItem.groupBy({
-        by: ['vehicleId'],
-        where: {
-          invoice: {
-            ...where,
-            status: 'PAID'
-          }
-        },
-        _sum: {
-          quantity: true,
-          totalPrice: true
-        },
-        orderBy: {
+    const topSellingProducts = await safeExecute(
+      () =>
+        db.invoiceItem.groupBy({
+          by: ['vehicleId'],
+          where: {
+            invoice: {
+              ...where,
+              status: 'PAID'
+            }
+          },
           _sum: {
-            quantity: 'desc'
-          }
-        },
-        take: 10
-      });
-    });
+            quantity: true,
+            totalPrice: true
+          },
+          orderBy: {
+            _sum: {
+              quantity: 'desc'
+            }
+          },
+          take: 10
+        }),
+      [] as Array<{
+        vehicleId: string | null
+        _sum: { quantity: number | null; totalPrice: number | null }
+      }>
+    )
 
     // Get vehicle details for top selling products
     const vehicleIds = topSellingProducts.map(item => item.vehicleId)
-    const vehicles = await executeWithRetry(async () => {
-      return await db.vehicle.findMany({
-        where: {
-          id: {
-            in: vehicleIds
+    const vehicles = await safeExecute(
+      () =>
+        db.vehicle.findMany({
+          where: {
+            id: {
+              in: vehicleIds
+            }
+          },
+          select: {
+            id: true,
+            make: true,
+            model: true,
+            year: true
           }
-        },
-        select: {
-          id: true,
-          make: true,
-          model: true,
-          year: true
-        }
-      });
-    });
+        }),
+      [] as Array<{ id: string; make: string; model: string; year: number }>
+    )
 
     const topSellingProductsWithDetails = topSellingProducts.map(item => {
       const vehicle = vehicles.find(v => v.id === item.vehicleId)
@@ -334,10 +381,9 @@ export async function GET(request: NextRequest) {
     })
 
     // Fetch top performers (employees with best performance)
-    const topPerformers = await Promise.all([
-      // Top performers by revenue
-      executeWithRetry(async () => {
-        return await db.user.findMany({
+    const topPerformers = await safeExecute(
+      () =>
+        db.user.findMany({
           where: {
             role: {
               in: ['SALES', 'MANAGER']
@@ -374,11 +420,17 @@ export async function GET(request: NextRequest) {
             }
           },
           take: 5
-        });
-      })
-    ])
+        }),
+      [] as Array<{
+        id: string
+        name: string | null
+        role: string
+        invoices: Array<{ totalAmount: number }>
+        assignedTickets: Array<{ satisfaction: number | null }>
+      }>
+    )
 
-    const topPerformersWithMetrics = topPerformers[0].map(user => {
+    const topPerformersWithMetrics = topPerformers.map(user => {
       const revenue = user.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
       const satisfactionRatings = user.assignedTickets.map(ticket => ticket.satisfaction).filter(rating => rating !== null)
       const avgSatisfaction = satisfactionRatings.length > 0 

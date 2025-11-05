@@ -11,6 +11,7 @@ import {
 } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 import { normalizeInvoiceRecord } from '@/lib/invoice-normalizer'
+import { applyInvoiceSideEffects, extractInvoiceItemLinks } from '@/lib/invoice-fulfillment'
 
 // Handle OPTIONS requests for CORS
 export async function OPTIONS(request: NextRequest) {
@@ -549,7 +550,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update invoice
-    await db.invoice.update({
+    const updatedInvoice = await db.invoice.update({
       where: { id: invoiceId },
       data: {
         subtotal: normalizedInvoice.subtotal,
@@ -564,7 +565,56 @@ export async function POST(request: NextRequest) {
             : invoice.paidAt,
         lastPaymentAt: new Date(),
         updatedAt: new Date()
-      }
+      },
+      include: {
+        items: true,
+        taxes: true,
+      },
+    })
+
+    const updatedNormalization = normalizeInvoiceRecord({
+      subtotal: updatedInvoice.subtotal,
+      taxAmount: updatedInvoice.taxAmount,
+      totalAmount: updatedInvoice.totalAmount,
+      paidAmount: updatedInvoice.paidAmount,
+      items: updatedInvoice.items,
+      taxes: updatedInvoice.taxes,
+    })
+
+    const { links: fulfillmentLinks, inventoryIds, vehicleIds } = extractInvoiceItemLinks(updatedNormalization.items)
+
+    const [inventoryRecords, vehicleRecords] = await Promise.all([
+      inventoryIds.length
+        ? db.inventoryItem.findMany({ where: { id: { in: inventoryIds } } })
+        : Promise.resolve([]),
+      vehicleIds.length
+        ? db.vehicle.findMany({ where: { id: { in: vehicleIds } } })
+        : Promise.resolve([]),
+    ])
+
+    const updatedMetadata: Record<string, unknown> =
+      updatedInvoice.metadata && typeof updatedInvoice.metadata === 'object' && !Array.isArray(updatedInvoice.metadata)
+        ? (updatedInvoice.metadata as Record<string, unknown>)
+        : {}
+
+    const inventoryAlreadyAdjusted = updatedMetadata['inventoryAdjusted'] === true
+
+    const shouldApplyInventory =
+      !inventoryAlreadyAdjusted &&
+      (newStatus === InvoiceStatus.PAID || newStatus === InvoiceStatus.SENT || newStatus === InvoiceStatus.PARTIALLY_PAID)
+
+    await applyInvoiceSideEffects({
+      invoice: updatedInvoice,
+      links: fulfillmentLinks,
+      inventoryMap: new Map(inventoryRecords.map(record => [record.id, record])),
+      vehicleMap: new Map(vehicleRecords.map(record => [record.id, record])),
+      totals: {
+        subtotal: updatedNormalization.subtotal,
+        taxAmount: updatedNormalization.taxAmount,
+        totalAmount: updatedNormalization.totalAmount,
+        breakdown: updatedNormalization.taxes,
+      },
+      adjustInventory: shouldApplyInventory,
     })
 
     // Create transaction record

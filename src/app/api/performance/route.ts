@@ -1,44 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+
+const isSchemaMissingError = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P2021', 'P2022', 'P2023'].includes(error.code)
+  }
+
+  return error instanceof Error && error.message.toLowerCase().includes('does not exist')
+}
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || new Date().toISOString().slice(0, 7)
     
-    const performanceMetrics = await db.performanceMetric.findMany({
-      where: {
-        period: period
-      },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            department: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            position: {
-              select: {
-                id: true,
-                title: true
+    let performanceMetrics: any[] = []
+    let schemaMissing = false
+
+    try {
+      performanceMetrics = await db.performanceMetric.findMany({
+        where: {
+          period: period
+        },
+        include: {
+          employee: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              },
+              department: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
+              position: {
+                select: {
+                  id: true,
+                  title: true
+                }
               }
             }
           }
+        },
+        orderBy: {
+          overallScore: 'desc'
         }
-      },
-      orderBy: {
-        overallScore: 'desc'
+      })
+    } catch (error) {
+      if (isSchemaMissingError(error)) {
+        schemaMissing = true
+      } else {
+        throw error
       }
-    })
+    }
+
+    if (schemaMissing) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        period: period,
+        count: 0,
+        warning: 'performance-metrics-unavailable'
+      })
+    }
 
     return NextResponse.json({
       success: true,
@@ -131,6 +161,14 @@ export async function POST(request: NextRequest) {
       metricsCount: employees.length
     })
   } catch (error) {
+    if (isSchemaMissingError(error)) {
+      return NextResponse.json({
+        success: false,
+        warning: 'performance-metrics-unavailable',
+        message: 'جدول تقييم الأداء غير متاح في قاعدة البيانات الحالية'
+      })
+    }
+
     console.error('Error creating performance data:', error)
     return NextResponse.json(
       { error: 'حدث خطأ أثناء إنشاء بيانات تقييم الأداء' },

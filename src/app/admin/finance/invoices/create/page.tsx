@@ -57,6 +57,10 @@ interface InvoiceItem {
   totalPrice: number
   taxRate: number
   taxAmount: number
+  itemType: 'SERVICE' | 'PART' | 'VEHICLE'
+  inventoryItemId?: string
+  vehicleId?: string
+  metadata?: Record<string, unknown>
 }
 
 interface TaxRate {
@@ -65,6 +69,23 @@ interface TaxRate {
   rate: number
   description: string
   isActive: boolean
+}
+
+interface InventoryOption {
+  id: string
+  name: string
+  partNumber: string
+  quantity: number
+  unitPrice: number
+}
+
+interface VehicleOption {
+  id: string
+  make: string
+  model: string
+  stockNumber: string
+  price: number
+  year: number
 }
 
 export default function CreateInvoicePage() {
@@ -80,6 +101,8 @@ function CreateInvoiceContent() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([])
   const [taxRates, setTaxRates] = useState<TaxRate[]>([])
+  const [inventoryItems, setInventoryItems] = useState<InventoryOption[]>([])
+  const [vehicleOptions, setVehicleOptions] = useState<VehicleOption[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [invoiceType, setInvoiceType] = useState('SERVICE')
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0])
@@ -128,6 +151,35 @@ function CreateInvoiceContent() {
         setServiceItems(transformedItems || [])
       }
 
+      // Fetch inventory items for spare parts
+      const inventoryResponse = await fetch('/api/inventory/items?limit=200')
+      if (inventoryResponse.ok) {
+        const inventoryData = await inventoryResponse.json()
+        const inventoryOptions: InventoryOption[] = (inventoryData.items || []).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          partNumber: item.partNumber,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || 0,
+        }))
+        setInventoryItems(inventoryOptions)
+      }
+
+      // Fetch available vehicles
+      const vehiclesResponse = await fetch('/api/admin/vehicles?status=AVAILABLE&limit=200')
+      if (vehiclesResponse.ok) {
+        const vehiclesData = await vehiclesResponse.json()
+        const vehicleOptions: VehicleOption[] = (vehiclesData.vehicles || []).map((vehicle: any) => ({
+          id: vehicle.id,
+          make: vehicle.make,
+          model: vehicle.model,
+          stockNumber: vehicle.stockNumber,
+          price: vehicle.price || vehicle.pricing?.totalPrice || 0,
+          year: vehicle.year,
+        }))
+        setVehicleOptions(vehicleOptions)
+      }
+
       // Fetch tax rates
       const taxRatesResponse = await fetch('/api/tax/rates')
       if (taxRatesResponse.ok) {
@@ -158,7 +210,9 @@ function CreateInvoiceContent() {
       unitPrice: 0,
       totalPrice: 0,
       taxRate: 14, // Default VAT rate
-      taxAmount: 0
+      taxAmount: 0,
+      itemType: 'SERVICE',
+      metadata: { itemType: 'SERVICE' },
     }
     setItems([...items, newItem])
   }
@@ -170,19 +224,38 @@ function CreateInvoiceContent() {
   const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
     setItems(items.map(item => {
       if (item.id === id) {
-        const updatedItem = { ...item, [field]: value }
-        
-        // Ensure numeric values are properly initialized
-        const quantity = parseFloat(updatedItem.quantity) || 0
-        const unitPrice = parseFloat(updatedItem.unitPrice) || 0
-        const taxRate = parseFloat(updatedItem.taxRate) || 0
-        
-        // Recalculate totals
+        const updatedItem: InvoiceItem = { ...item, [field]: value }
+
+        let quantity = parseFloat(updatedItem.quantity?.toString()) || 0
+        const unitPrice = parseFloat(updatedItem.unitPrice?.toString()) || 0
+        const taxRate = parseFloat(updatedItem.taxRate?.toString()) || 0
+
+        if (updatedItem.itemType === 'VEHICLE') {
+          quantity = 1
+          updatedItem.quantity = 1
+        }
+
+        if (updatedItem.itemType === 'PART' && updatedItem.inventoryItemId) {
+          const option = inventoryItems.find((inventory) => inventory.id === updatedItem.inventoryItemId)
+          if (option) {
+            const maxQty = Math.max(1, option.quantity)
+            quantity = Math.min(Math.max(quantity, 1), maxQty)
+            updatedItem.quantity = quantity
+          }
+        }
+
         if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
           updatedItem.totalPrice = quantity * unitPrice
           updatedItem.taxAmount = updatedItem.totalPrice * (taxRate / 100)
         }
-        
+
+        updatedItem.metadata = {
+          ...(updatedItem.metadata || {}),
+          itemType: updatedItem.itemType,
+          inventoryItemId: updatedItem.inventoryItemId,
+          vehicleId: updatedItem.vehicleId,
+        }
+
         return updatedItem
       }
       return item
@@ -198,9 +271,120 @@ function CreateInvoiceContent() {
       unitPrice: price,
       totalPrice: price,
       taxRate: 14,
-      taxAmount: price * 0.14
+      taxAmount: price * 0.14,
+      itemType: 'SERVICE',
+      metadata: {
+        itemType: 'SERVICE',
+        serviceId: serviceItem.id,
+      },
     }
     setItems([...items, newItem])
+  }
+
+  const handleItemTypeChange = (id: string, nextType: InvoiceItem['itemType']) => {
+    setItems(items.map(item => {
+      if (item.id !== id) {
+        return item
+      }
+
+      const updated: InvoiceItem = {
+        ...item,
+        itemType: nextType,
+        metadata: {
+          ...(item.metadata || {}),
+          itemType: nextType,
+        },
+      }
+
+      if (nextType === 'SERVICE') {
+        updated.inventoryItemId = undefined
+        updated.vehicleId = undefined
+      }
+
+      if (nextType === 'PART') {
+        updated.quantity = Math.max(1, Math.round(item.quantity) || 1)
+        updated.unitPrice = 0
+        updated.totalPrice = 0
+        updated.taxAmount = 0
+        updated.inventoryItemId = undefined
+        updated.vehicleId = undefined
+      }
+
+      if (nextType === 'VEHICLE') {
+        updated.quantity = 1
+        updated.unitPrice = 0
+        updated.totalPrice = 0
+        updated.taxAmount = 0
+        updated.vehicleId = undefined
+        updated.inventoryItemId = undefined
+      }
+
+      return updated
+    }))
+  }
+
+  const handleInventorySelection = (id: string, inventoryId: string) => {
+    const inventoryOption = inventoryItems.find(option => option.id === inventoryId)
+    setItems(items.map(item => {
+      if (item.id !== id) {
+        return item
+      }
+
+      const safeQuantity = inventoryOption ? Math.min(Math.max(item.quantity, 1), Math.max(1, inventoryOption.quantity)) : Math.max(1, item.quantity)
+      const unitPrice = inventoryOption?.unitPrice ?? item.unitPrice
+
+      return {
+        ...item,
+        itemType: 'PART',
+        inventoryItemId: inventoryId,
+        vehicleId: undefined,
+        description: inventoryOption ? `${inventoryOption.name} (${inventoryOption.partNumber})` : item.description,
+        quantity: safeQuantity,
+        unitPrice,
+        totalPrice: unitPrice * safeQuantity,
+        taxAmount: (unitPrice * safeQuantity) * ((item.taxRate || 0) / 100),
+        metadata: {
+          ...(item.metadata || {}),
+          itemType: 'PART',
+          inventoryItemId,
+          vehicleId: undefined,
+          sourceName: inventoryOption?.name,
+          partNumber: inventoryOption?.partNumber,
+        },
+      }
+    }))
+  }
+
+  const handleVehicleSelection = (id: string, vehicleId: string) => {
+    const vehicleOption = vehicleOptions.find(option => option.id === vehicleId)
+    setItems(items.map(item => {
+      if (item.id !== id) {
+        return item
+      }
+
+      const unitPrice = vehicleOption?.price ?? item.unitPrice
+
+      return {
+        ...item,
+        itemType: 'VEHICLE',
+        vehicleId,
+        inventoryItemId: undefined,
+        quantity: 1,
+        unitPrice,
+        totalPrice: unitPrice,
+        taxAmount: unitPrice * ((item.taxRate || 0) / 100),
+        description: vehicleOption ? `${vehicleOption.make} ${vehicleOption.model} (${vehicleOption.stockNumber})` : item.description,
+        metadata: {
+          ...(item.metadata || {}),
+          itemType: 'VEHICLE',
+          vehicleId,
+          inventoryItemId: undefined,
+          stockNumber: vehicleOption?.stockNumber,
+          make: vehicleOption?.make,
+          model: vehicleOption?.model,
+        },
+      }
+    }))
   }
 
   const calculateTotals = () => {
@@ -286,14 +470,21 @@ function CreateInvoiceContent() {
     try {
       const { subtotal, taxAmount, totalAmount } = calculateTotals()
       
+      const derivedInvoiceType = items.some(item => item.itemType === 'VEHICLE') ? 'PRODUCT' : invoiceType
+
       const invoiceData = {
         customerId: selectedCustomer,
-        type: invoiceType,
+        type: derivedInvoiceType,
         items: items.map(item => ({
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          taxRate: item.taxRate
+          taxRate: item.taxRate,
+          metadata: {
+            itemType: item.itemType,
+            inventoryItemId: item.inventoryItemId,
+            vehicleId: item.vehicleId,
+          }
         })),
         issueDate,
         dueDate,
@@ -579,39 +770,121 @@ function CreateInvoiceContent() {
                       </Button>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-sm">الوصف</Label>
-                        <Input
-                          value={item.description}
-                          onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                          placeholder="وصف البند"
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-sm">الكمية</Label>
-                          <Input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                            min="1"
-                          />
+                    {(() => {
+                      const inventoryOption = item.inventoryItemId
+                        ? inventoryItems.find(option => option.id === item.inventoryItemId)
+                        : undefined
+                      const vehicleOption = item.vehicleId
+                        ? vehicleOptions.find(option => option.id === item.vehicleId)
+                        : undefined
+
+                      return (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-sm">نوع البند</Label>
+                              <Select value={item.itemType} onValueChange={(value) => handleItemTypeChange(item.id, value as InvoiceItem['itemType'])}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="SERVICE">خدمة</SelectItem>
+                                  <SelectItem value="PART">قطعة غيار</SelectItem>
+                                  <SelectItem value="VEHICLE">مركبة</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {item.itemType === 'PART' && (
+                              <div className="md:col-span-2">
+                                <Label className="text-sm">اختر الصنف من المخزون</Label>
+                                <Select value={item.inventoryItemId || ''} onValueChange={(value) => handleInventorySelection(item.id, value)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="اختر صنف المخزون" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {inventoryItems.map(option => (
+                                      <SelectItem key={option.id} value={option.id} disabled={option.quantity <= 0}>
+                                        {option.name} ({option.partNumber}) - المتوفر: {option.quantity}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {inventoryOption && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    المتوفر: {inventoryOption.quantity} قطعة
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {item.itemType === 'VEHICLE' && (
+                              <div className="md:col-span-2">
+                                <Label className="text-sm">اختر المركبة</Label>
+                                <Select value={item.vehicleId || ''} onValueChange={(value) => handleVehicleSelection(item.id, value)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="اختر المركبة" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {vehicleOptions.map(option => (
+                                      <SelectItem key={option.id} value={option.id}>
+                                        {option.make} {option.model} ({option.stockNumber}) - {option.price.toLocaleString()} ج.م
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {vehicleOption && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    رقم المخزون: {vehicleOption.stockNumber} • سنة الصنع: {vehicleOption.year}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-sm">الوصف</Label>
+                              <Input
+                                value={item.description}
+                                onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                                placeholder="وصف البند"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-sm">الكمية</Label>
+                                <Input
+                                  type="number"
+                                  value={item.quantity}
+                                  onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                                  min="1"
+                                  disabled={item.itemType === 'VEHICLE'}
+                                />
+                                {item.itemType === 'PART' && item.inventoryItemId && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    سيتم خصم الكمية المحددة من المخزون عند تأكيد الفاتورة
+                                  </p>
+                                )}
+                              </div>
+
+                              <div>
+                                <Label className="text-sm">السعر</Label>
+                                <Input
+                                  type="number"
+                                  value={item.unitPrice}
+                                  onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                                  min="0"
+                                  step="0.01"
+                                  disabled={item.itemType === 'VEHICLE' && !!item.vehicleId}
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        
-                        <div>
-                          <Label className="text-sm">السعر</Label>
-                          <Input
-                            type="number"
-                            value={item.unitPrice}
-                            onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    })()}
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>

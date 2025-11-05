@@ -6,6 +6,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
+import { Prisma } from '@prisma/client'
+
+const isSchemaMissingError = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P2021', 'P2022', 'P2023'].includes(error.code)
+  }
+
+  return error instanceof Error && error.message.toLowerCase().includes('does not exist')
+}
+
+const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise<T> => {
+  try {
+    return await executeWithRetry(operation)
+  } catch (error) {
+    if (isSchemaMissingError(error)) {
+      return fallback
+    }
+
+    throw error
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -97,28 +118,32 @@ export async function GET(request: NextRequest) {
         revenueData,
         expensesData
       ] = await Promise.all([
-        executeWithRetry(async () => {
-          return await db.invoice.aggregate({
-            where: {
-              ...monthWhere,
-              status: 'PAID'
-            },
-            _sum: {
-              totalAmount: true
-            }
-          });
-        }),
-        executeWithRetry(async () => {
-          return await db.transaction.aggregate({
-            where: {
-              ...monthWhere,
-              type: 'EXPENSE'
-            },
-            _sum: {
-              amount: true
-            }
-          });
-        })
+        safeExecute(
+          () =>
+            db.invoice.aggregate({
+              where: {
+                ...monthWhere,
+                status: 'PAID'
+              },
+              _sum: {
+                totalAmount: true
+              }
+            }),
+          { _sum: { totalAmount: 0 } }
+        ),
+        safeExecute(
+          () =>
+            db.transaction.aggregate({
+              where: {
+                ...monthWhere,
+                type: 'EXPENSE'
+              },
+              _sum: {
+                amount: true
+              }
+            }),
+          { _sum: { amount: 0 } }
+        )
       ])
 
       const revenue = revenueData._sum.totalAmount || 0
@@ -149,103 +174,115 @@ export async function GET(request: NextRequest) {
       monthlyTrend
     ] = await Promise.all([
       // Revenue by category/type
-      executeWithRetry(async () => {
-        return await db.invoice.groupBy({
-          by: ['type'],
-          where: {
-            ...currentPeriodWhere,
-            status: 'PAID'
-          },
-          _sum: {
-            totalAmount: true
-          },
-          _count: {
-            _all: true
-          }
-        });
-      }),
-      // Expenses by category
-      executeWithRetry(async () => {
-        return await db.transaction.groupBy({
-          by: ['category'],
-          where: {
-            ...currentPeriodWhere,
-            type: 'EXPENSE'
-          },
-          _sum: {
-            amount: true
-          },
-          _count: {
-            _all: true
-          }
-        });
-      }),
-      // Top invoices
-      executeWithRetry(async () => {
-        return await db.invoice.findMany({
-          where: {
-            ...currentPeriodWhere,
-            status: 'PAID'
-          },
-          include: {
-            customer: {
-              select: {
-                id: true,
-                name: true
-              }
+      safeExecute(
+        () =>
+          db.invoice.groupBy({
+            by: ['type'],
+            where: {
+              ...currentPeriodWhere,
+              status: 'PAID'
+            },
+            _sum: {
+              totalAmount: true
+            },
+            _count: {
+              _all: true
             }
-          },
-          orderBy: {
-            totalAmount: 'desc'
-          },
-          take: 10
-        });
-      }),
-      // Monthly trend for the last 6 months
-      Promise.all(Array.from({ length: 6 }, async (_, i) => {
-        const monthDate = addMonths(now, -i)
-        const monthStart = startOfMonth(monthDate)
-        const monthEnd = endOfMonth(monthDate)
-        
-        const [revenue, expenses] = await Promise.all([
-          executeWithRetry(async () => {
-            return await db.invoice.aggregate({
-              where: {
-                ...where,
-                createdAt: {
-                  gte: monthStart,
-                  lte: monthEnd
-                },
-                status: 'PAID'
-              },
-              _sum: {
-                totalAmount: true
-              }
-            });
           }),
-          executeWithRetry(async () => {
-            return await db.transaction.aggregate({
-              where: {
-                ...where,
-                createdAt: {
-                  gte: monthStart,
-                  lte: monthEnd
-                },
-                type: 'EXPENSE'
-              },
-              _sum: {
-                amount: true
+        [] as Array<{ type: string | null; _sum: { totalAmount: number | null }; _count: { _all: number } }>
+      ),
+      // Expenses by category
+      safeExecute(
+        () =>
+          db.transaction.groupBy({
+            by: ['category'],
+            where: {
+              ...currentPeriodWhere,
+              type: 'EXPENSE'
+            },
+            _sum: {
+              amount: true
+            },
+            _count: {
+              _all: true
+            }
+          }),
+        [] as Array<{ category: string | null; _sum: { amount: number | null }; _count: { _all: number } }>
+      ),
+      // Top invoices
+      safeExecute(
+        () =>
+          db.invoice.findMany({
+            where: {
+              ...currentPeriodWhere,
+              status: 'PAID'
+            },
+            include: {
+              customer: {
+                select: {
+                  id: true,
+                  name: true
+                }
               }
-            });
-          })
-        ])
+            },
+            orderBy: {
+              totalAmount: 'desc'
+            },
+            take: 10
+          }),
+        [] as Array<{ totalAmount: number; customer: { id: string; name: string | null } | null }>
+      ),
+      // Monthly trend for the last 6 months
+      Promise.all(
+        Array.from({ length: 6 }, async (_, i) => {
+          const monthDate = addMonths(now, -i)
+          const monthStart = startOfMonth(monthDate)
+          const monthEnd = endOfMonth(monthDate)
 
-        return {
-          month: format(monthDate, 'MMM yyyy', { locale: { code: 'ar' } }),
-          revenue: revenue._sum.totalAmount || 0,
-          expenses: expenses._sum.amount || 0
-        }
-      }))
+          const [revenue, expenses] = await Promise.all([
+            safeExecute(
+              () =>
+                db.invoice.aggregate({
+                  where: {
+                    ...where,
+                    createdAt: {
+                      gte: monthStart,
+                      lte: monthEnd
+                    },
+                    status: 'PAID'
+                  },
+                  _sum: {
+                    totalAmount: true
+                  }
+                }),
+              { _sum: { totalAmount: 0 } }
+            ),
+            safeExecute(
+              () =>
+                db.transaction.aggregate({
+                  where: {
+                    ...where,
+                    createdAt: {
+                      gte: monthStart,
+                      lte: monthEnd
+                    },
+                    type: 'EXPENSE'
+                  },
+                  _sum: {
+                    amount: true
+                  }
+                }),
+              { _sum: { amount: 0 } }
+            )
+          ])
+
+          return {
+            month: format(monthDate, 'MMM yyyy', { locale: { code: 'ar' } }),
+            revenue: revenue._sum.totalAmount || 0,
+            expenses: expenses._sum.amount || 0
+          }
+        })
+      )
     ])
 
     const financialReport = {
