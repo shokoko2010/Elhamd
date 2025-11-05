@@ -2006,15 +2006,18 @@ model MarketingMetric {
 }
 
 model ChartOfAccount {
-  id            String             @id @default(cuid())
-  code          String             @unique
-  name          String
-  type          AccountType
-  parentId      String?
-  isActive      Boolean            @default(true)
-  normalBalance BalanceType
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                        String             @id @default(cuid())
+  code                      String             @unique
+  name                      String
+  type                      AccountType
+  parentId                  String?
+  isActive                  Boolean            @default(true)
+  normalBalance             BalanceType
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  items                     JournalEntryItem[] @relation("ChartOfAccountEntries")
+  payrollExpenseEmployees   Employee[]         @relation("PayrollExpenseAccount")
+  payrollLiabilityEmployees Employee[]         @relation("PayrollLiabilityAccount")
 
   @@index([code])
   @@map("chart_of_accounts")
@@ -2050,7 +2053,7 @@ model JournalEntryItem {
   credit      Float          @default(0)
   createdAt   DateTime       @default(now())
   entry       JournalEntry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  account     ChartOfAccount @relation(fields: [accountId], references: [id])
+  account     ChartOfAccount @relation("ChartOfAccountEntries", fields: [accountId], references: [id])
 
   @@index([entryId])
   @@index([accountId])
@@ -2087,39 +2090,39 @@ model Position {
 }
 
 model Employee {
-  id                 String              @id @default(cuid())
-  employeeNumber     String              @unique
-  userId             String              @unique
-  departmentId       String?
-  positionId         String?
-  hireDate           DateTime
-  salary             Float
-  bankAccount        String?
-  taxNumber          String?
-  insuranceNumber    String?
-  status             EmployeeStatus      @default(ACTIVE)
-  managerId          String?
-  branchId           String?
-  emergencyContact   Json?
-  notes              String?
+  id                        String              @id @default(cuid())
+  employeeNumber            String              @unique
+  userId                    String              @unique
+  departmentId              String?
+  positionId                String?
+  hireDate                  DateTime
+  salary                    Float
+  bankAccount               String?
+  taxNumber                 String?
+  insuranceNumber           String?
+  status                    EmployeeStatus      @default(ACTIVE)
+  managerId                 String?
+  branchId                  String?
+  emergencyContact          Json?
+  notes                     String?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
   payrollExpenseAccountId   String?
   payrollLiabilityAccountId String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  branch             Branch?             @relation(fields: [branchId], references: [id])
-  department         Department?         @relation(fields: [departmentId], references: [id])
-  manager            Employee?           @relation("EmployeeManager", fields: [managerId], references: [id])
-  managedEmployees   Employee[]          @relation("EmployeeManager")
-  position           Position?           @relation(fields: [positionId], references: [id])
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payrollExpenseAccount     ChartOfAccount?    @relation("PayrollExpenseAccount", fields: [payrollExpenseAccountId], references: [id])
-  payrollLiabilityAccount   ChartOfAccount?    @relation("PayrollLiabilityAccount", fields: [payrollLiabilityAccountId], references: [id])
-  leaveRequests      LeaveRequest[]
-  payrollRecords     PayrollRecord[]
-  performanceMetrics PerformanceMetric[]
-  attendanceRecords  AttendanceRecord[]
-  performanceReviews PerformanceReview[]
-  trainingRecords    TrainingRecord[]
+  branch                    Branch?             @relation(fields: [branchId], references: [id])
+  department                Department?         @relation(fields: [departmentId], references: [id])
+  manager                   Employee?           @relation("EmployeeManager", fields: [managerId], references: [id])
+  managedEmployees          Employee[]          @relation("EmployeeManager")
+  position                  Position?           @relation(fields: [positionId], references: [id])
+  user                      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payrollExpenseAccount     ChartOfAccount?     @relation("PayrollExpenseAccount", fields: [payrollExpenseAccountId], references: [id])
+  payrollLiabilityAccount   ChartOfAccount?     @relation("PayrollLiabilityAccount", fields: [payrollLiabilityAccountId], references: [id])
+  leaveRequests             LeaveRequest[]
+  payrollRecords            PayrollRecord[]
+  performanceMetrics        PerformanceMetric[]
+  attendanceRecords         AttendanceRecord[]
+  performanceReviews        PerformanceReview[]
+  trainingRecords           TrainingRecord[]
 
   @@index([employeeNumber])
   @@index([departmentId])

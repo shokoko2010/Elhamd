@@ -4,6 +4,8 @@ import { getAuthUser } from '@/lib/auth-server'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization

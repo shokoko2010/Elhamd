@@ -5,13 +5,84 @@ import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: { id: string }
+}
+
+async function resolveDepartmentAndPosition(departmentName?: string, positionTitle?: string) {
+  let departmentId: string | undefined
+  let positionId: string | undefined
+
+  const trimmedDepartment = departmentName?.trim() || ''
+  const trimmedPosition = positionTitle?.trim() || ''
+
+  if (!trimmedDepartment && !trimmedPosition) {
+    return { departmentId, positionId }
+  }
+
+  let departmentRecord = null
+
+  if (trimmedDepartment) {
+    departmentRecord = await db.department.findFirst({
+      where: { name: trimmedDepartment }
+    })
+
+    if (!departmentRecord) {
+      departmentRecord = await db.department.create({
+        data: {
+          name: trimmedDepartment,
+          description: `قسم ${trimmedDepartment}`,
+          isActive: true
+        }
+      })
+    }
+
+    departmentId = departmentRecord.id
+  }
+
+  if (trimmedPosition && departmentRecord) {
+    let positionRecord = await db.position.findFirst({
+      where: {
+        title: trimmedPosition,
+        departmentId: departmentRecord.id
+      }
+    })
+
+    if (!positionRecord) {
+      positionRecord = await db.position.create({
+        data: {
+          title: trimmedPosition,
+          departmentId: departmentRecord.id,
+          level: 'JUNIOR',
+          description: `منصب ${trimmedPosition}`,
+          isActive: true
+        }
+      })
+    }
+
+    positionId = positionRecord.id
+  }
+
+  return { departmentId, positionId }
+}
+
+function normalizeSalary(rawSalary: unknown) {
+  if (rawSalary === undefined || rawSalary === null || rawSalary === '') {
+    return undefined
+  }
+
+  const salaryNumber = typeof rawSalary === 'number' ? rawSalary : parseFloat(String(rawSalary))
+
+  if (Number.isNaN(salaryNumber) || !Number.isFinite(salaryNumber)) {
+    throw new Error('قيمة الراتب غير صالحة')
+  }
+
+  return salaryNumber
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = await params
-    
+    const { id } = params
+
     // Check authentication and authorization
     const user = await getAuthUser()
     if (!user) {
@@ -29,6 +100,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     
     const body = await request.json()
     const { name, email, phone, isActive, role, department, position, salary, branchId, emergencyContactName, emergencyContactPhone, emergencyContactRelationship, notes } = body
+
+    if (!name || !name.trim() || !email || !email.trim()) {
+      return NextResponse.json({ error: 'الاسم والبريد الإلكتروني مطلوبان' }, { status: 400 })
+    }
 
     // Check if employee exists
     const existingEmployee = await db.user.findUnique({
@@ -53,90 +128,185 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Update user
-    const updatedUser = await db.user.update({
-      where: { id },
-      data: {
-        name,
-        email,
-        phone,
-        isActive: isActive !== undefined ? isActive : existingEmployee.isActive,
-        role: role || existingEmployee.role
-      }
-    })
+    let salaryValue: number | undefined
+    try {
+      salaryValue = normalizeSalary(salary)
+    } catch (validationError) {
+      const message = validationError instanceof Error ? validationError.message : 'قيمة الراتب غير صالحة'
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
 
-    // Update employee record if it exists
-    if (existingEmployee.employee) {
-      const employeeUpdateData: any = {}
-      
-      if (salary !== undefined) employeeUpdateData.salary = parseFloat(salary)
-      if (branchId !== undefined) employeeUpdateData.branchId = branchId || null
-      if (notes !== undefined) employeeUpdateData.notes = notes
-      
-      if (emergencyContactName !== undefined || emergencyContactPhone !== undefined || emergencyContactRelationship !== undefined) {
-        employeeUpdateData.emergencyContact = {
-          name: emergencyContactName || existingEmployee.employee.emergencyContact?.name || '',
-          phone: emergencyContactPhone || existingEmployee.employee.emergencyContact?.phone || '',
-          relationship: emergencyContactRelationship || existingEmployee.employee.emergencyContact?.relationship || ''
-        }
-      }
+    const notesValue = typeof notes === 'string' ? notes.trim() : notes
+    const branchValue = branchId === undefined ? undefined : branchId === '' ? null : branchId
 
-      // Handle department and position updates
-      if (department !== undefined || position !== undefined) {
-        let deptRecord = null
-        let positionRecord = null
-
-        if (department) {
-          deptRecord = await db.department.findFirst({
-            where: { name: department }
-          })
-          
-          if (!deptRecord) {
-            deptRecord = await db.department.create({
-              data: {
-                name: department,
-                description: `قسم ${department}`,
-                isActive: true
-              }
-            })
+    const emergencyContactPayload =
+      emergencyContactName !== undefined ||
+      emergencyContactPhone !== undefined ||
+      emergencyContactRelationship !== undefined
+        ? {
+            name: emergencyContactName?.trim() || existingEmployee.employee?.emergencyContact?.name || '',
+            phone: emergencyContactPhone?.trim() || existingEmployee.employee?.emergencyContact?.phone || '',
+            relationship: emergencyContactRelationship?.trim() || existingEmployee.employee?.emergencyContact?.relationship || ''
           }
+        : undefined
 
-          employeeUpdateData.departmentId = deptRecord.id
+    const { departmentId, positionId } = await resolveDepartmentAndPosition(department, position)
+
+    await db.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: {
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone?.trim() || null,
+          isActive: isActive !== undefined ? isActive : existingEmployee.isActive,
+          role: role || existingEmployee.role
         }
+      })
 
-        if (position && deptRecord) {
-          positionRecord = await db.position.findFirst({
-            where: { 
-              title: position,
-              departmentId: deptRecord.id 
+      if (!existingEmployee.employee) {
+        if (departmentId || positionId || salaryValue !== undefined || branchValue || emergencyContactPayload || notesValue) {
+          const employeeNumber = `EMP${String(id.slice(-4)).padStart(4, '0').toUpperCase()}`
+
+          await tx.employee.create({
+            data: {
+              employeeNumber,
+              userId: id,
+              hireDate: new Date(),
+              status: 'ACTIVE',
+              departmentId: departmentId || null,
+              positionId: positionId || null,
+              salary: salaryValue !== undefined ? salaryValue : existingEmployee.employee?.salary || 0,
+              branchId: branchValue,
+              emergencyContact: emergencyContactPayload,
+              notes: notesValue || existingEmployee.employee?.notes || null
             }
           })
-          
-          if (!positionRecord) {
-            positionRecord = await db.position.create({
-              data: {
-                title: position,
-                departmentId: deptRecord.id,
-                level: 'JUNIOR',
-                description: `منصب ${position}`,
-                isActive: true
-              }
-            })
-          }
-
-          employeeUpdateData.positionId = positionRecord.id
         }
+
+        return
+      }
+
+      const employeeUpdateData: any = {}
+
+      if (salaryValue !== undefined) {
+        employeeUpdateData.salary = salaryValue
+      }
+
+      if (branchValue !== undefined) {
+        employeeUpdateData.branchId = branchValue
+      }
+
+      if (notesValue !== undefined) {
+        employeeUpdateData.notes = notesValue || null
+      }
+
+      if (emergencyContactPayload) {
+        const emptyContact =
+          !emergencyContactPayload.name &&
+          !emergencyContactPayload.phone &&
+          !emergencyContactPayload.relationship
+
+        employeeUpdateData.emergencyContact = emptyContact ? null : emergencyContactPayload
+      }
+
+      if (departmentId !== undefined) {
+        employeeUpdateData.departmentId = departmentId || null
+      }
+
+      if (positionId !== undefined) {
+        employeeUpdateData.positionId = positionId || null
       }
 
       if (Object.keys(employeeUpdateData).length > 0) {
-        await db.employee.update({
+        await tx.employee.update({
           where: { userId: id },
           data: employeeUpdateData
         })
       }
+    })
+
+    const updatedRecord = await db.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            testDriveBookings: true,
+            serviceBookings: true,
+            permissions: true
+          }
+        },
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        employee: {
+          include: {
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            position: {
+              select: {
+                id: true,
+                title: true
+              }
+            },
+            branch: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!updatedRecord) {
+      return NextResponse.json({ error: 'تعذر تحميل بيانات الموظف بعد التحديث' }, { status: 500 })
     }
 
-    return NextResponse.json({ employee: updatedUser })
+    const updatedEmployee = {
+      id: updatedRecord.id,
+      employeeNumber: updatedRecord.employee?.employeeNumber || `EMP${updatedRecord.id.slice(-4).toUpperCase()}`,
+      user: {
+        id: updatedRecord.id,
+        name: updatedRecord.name,
+        email: updatedRecord.email,
+        phone: updatedRecord.phone
+      },
+      department: updatedRecord.employee?.department || null,
+      position: updatedRecord.employee?.position || null,
+      hireDate: updatedRecord.employee?.hireDate || updatedRecord.createdAt,
+      salary: updatedRecord.employee?.salary || 0,
+      status: updatedRecord.isActive ? 'ACTIVE' : 'INACTIVE',
+      branch: updatedRecord.employee?.branch || null,
+      role: updatedRecord.role,
+      permissions: updatedRecord.permissions,
+      totalBookings: (updatedRecord._count.testDriveBookings || 0) + (updatedRecord._count.serviceBookings || 0),
+      lastLoginAt: updatedRecord.lastLoginAt,
+      createdAt: updatedRecord.createdAt,
+      emergencyContact: updatedRecord.employee?.emergencyContact || null,
+      notes: updatedRecord.employee?.notes || null
+    }
+
+    return NextResponse.json({
+      message: 'تم تحديث بيانات الموظف بنجاح',
+      employee: updatedEmployee
+    })
   } catch (error) {
     console.error('Error updating employee:', error)
     return NextResponse.json(
@@ -148,7 +318,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = await params
+    const { id } = params
     
     // Check authentication and authorization
     const user = await getAuthUser()
