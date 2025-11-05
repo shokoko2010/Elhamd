@@ -26,6 +26,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 interface Branch {
   id: string;
@@ -59,17 +60,46 @@ interface Invoice {
 }
 
 export default function FinancePage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [overview, setOverview] = useState<FinancialOverview | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [selectedBranch, setSelectedBranch] = useState<string>('')
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview')
 
   useEffect(() => {
     fetchFinancialData()
     fetchBranches()
   }, [selectedBranch])
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
+
+    if (!tabParam && activeTab !== 'overview') {
+      setActiveTab('overview')
+    }
+  }, [searchParams, activeTab])
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+
+    const params = new URLSearchParams(searchParams.toString())
+    if (value === 'overview') {
+      params.delete('tab')
+    } else {
+      params.set('tab', value)
+    }
+
+    const queryString = params.toString()
+    router.replace(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false })
+  }
 
   const fetchBranches = async () => {
     try {
@@ -147,7 +177,7 @@ export default function FinancePage() {
           <p className="text-gray-600">إدارة الفواتير والمدفوعات والتقارير المالية</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
             <TabsTrigger value="invoices">الفواتير</TabsTrigger>
@@ -348,15 +378,35 @@ export default function FinancePage() {
                             {getStatusBadge(invoice.status)}
                           </td>
                           <td className="text-right py-3 px-4">
-                            <div className="flex items-center justify-end space-x-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link
+                                  href={`/admin/finance/invoices/${invoice.id}`}
+                                  aria-label={`عرض فاتورة ${invoice.invoiceNumber}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  <span className="sr-only">عرض الفاتورة</span>
+                                </Link>
                               </Button>
-                              <Button variant="ghost" size="sm">
-                                <Edit className="h-4 w-4" />
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link
+                                  href={`/admin/finance/invoices/${invoice.id}/edit`}
+                                  aria-label={`تعديل فاتورة ${invoice.invoiceNumber}`}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  <span className="sr-only">تعديل الفاتورة</span>
+                                </Link>
                               </Button>
-                              <Button variant="ghost" size="sm">
-                                <Download className="h-4 w-4" />
+                              <Button variant="ghost" size="sm" asChild>
+                                <a
+                                  href={`/api/finance/invoices/${invoice.id}/download`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`تنزيل فاتورة ${invoice.invoiceNumber}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                  <span className="sr-only">تنزيل الفاتورة</span>
+                                </a>
                               </Button>
                             </div>
                           </td>

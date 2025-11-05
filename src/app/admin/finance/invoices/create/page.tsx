@@ -242,7 +242,7 @@ function CreateInvoiceContent() {
           email: newCustomer.email,
           phone: newCustomer.phone,
           segment: 'CUSTOMER',
-          leadSource: 'Invoice Creation'
+          leadSource: 'OTHER'
         })
       })
 
@@ -312,14 +312,20 @@ function CreateInvoiceContent() {
       })
 
       if (response.ok) {
-        const invoice = await response.json()
+        const invoiceResponse = await response.json()
+        const invoiceId = invoiceResponse?.invoice?.id || invoiceResponse?.id
+
+        if (!invoiceId) {
+          throw new Error('لم يتم استلام معرف الفاتورة من الخادم')
+        }
+
         toast({
           title: 'نجاح',
           description: status === 'DRAFT' ? 'تم حفظ الفاتورة كمسودة' : 'تم إنشاء وإرسال الفاتورة بنجاح'
         })
-        
+
         // Redirect to invoice details
-        window.location.href = `/admin/finance/invoices/${invoice.id}`
+        window.location.href = `/admin/finance/invoices/${invoiceId}`
       } else {
         const error = await response.json()
         throw new Error(error.error || 'Failed to create invoice')
