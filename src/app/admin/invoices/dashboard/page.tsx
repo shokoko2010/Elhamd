@@ -267,7 +267,7 @@ export default function InvoicesDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Link href="/admin/finance?tab=invoices">
+              <Link href="/admin/invoices/list">
                 <Button variant="outline" className="w-full justify-start">
                   <FileText className="ml-2 h-4 w-4" />
                   جميع الفواتير

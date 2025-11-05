@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -69,6 +69,7 @@ export default function FinanceDashboard() {
   const [selectedBranch, setSelectedBranch] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview')
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     fetchFinancialData()
@@ -128,7 +129,22 @@ export default function FinanceDashboard() {
       const invoicesResponse = await fetch(`/api/finance/invoices${invoicesParams}`)
       if (invoicesResponse.ok) {
         const invoicesData = await invoicesResponse.json()
-        setInvoices(invoicesData.invoices || [])
+        const normalizedInvoices = (invoicesData.invoices || []).map((invoice: any) => ({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber ?? 'غير محدد',
+          customerId: invoice.customerId ?? '',
+          customerName: invoice.customer?.name ?? invoice.customerName ?? 'عميل غير معروف',
+          type: invoice.type ?? 'SERVICE',
+          status: invoice.status ?? 'DRAFT',
+          issueDate: invoice.issueDate ?? invoice.createdAt ?? new Date().toISOString(),
+          dueDate: invoice.dueDate ?? invoice.issueDate ?? new Date().toISOString(),
+          totalAmount: Number(invoice.totalAmount ?? invoice.subtotal ?? 0),
+          paidAmount: Number(invoice.paidAmount ?? 0),
+          currency: invoice.currency ?? 'EGP',
+          branchId: invoice.branchId ?? undefined,
+          branchName: invoice.branch?.name ?? invoice.branchName ?? undefined,
+        }))
+        setInvoices(normalizedInvoices)
       }
     } catch (error) {
       console.error('Error fetching financial data:', error)
@@ -159,6 +175,19 @@ export default function FinanceDashboard() {
     const config = statusConfig[status as keyof typeof statusConfig] || { label: status, variant: 'secondary' as const }
     return <Badge variant={config.variant}>{config.label}</Badge>
   }
+
+  const filteredInvoices = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return invoices
+    }
+
+    const term = searchTerm.trim().toLowerCase()
+    return invoices.filter((invoice) => {
+      const invoiceNumber = invoice.invoiceNumber?.toLowerCase() ?? ''
+      const customerName = invoice.customerName?.toLowerCase() ?? ''
+      return invoiceNumber.includes(term) || customerName.includes(term)
+    })
+  }, [invoices, searchTerm])
 
   if (loading) {
     return (
@@ -313,7 +342,7 @@ export default function FinanceDashboard() {
                     <CardTitle>الفواتير</CardTitle>
                     <CardDescription>إدارة فواتير العملاء والموردين</CardDescription>
                   </div>
-                  <Link href="/finance/invoices/create">
+                  <Link href="/admin/finance/invoices/create">
                     <Button>
                       <Plus className="ml-2 h-4 w-4" />
                       فاتورة جديدة
@@ -322,23 +351,32 @@ export default function FinanceDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center space-x-4 mb-6">
-                  <div className="relative flex-1">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+                  <div className="relative flex-1 w-full lg:max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
                       placeholder="بحث في الفواتير..."
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
                     />
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Filter className="ml-2 h-4 w-4" />
-                    تصفية
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="ml-2 h-4 w-4" />
-                    تصدير
-                  </Button>
+                  <div className="flex items-center gap-2 self-end lg:self-auto">
+                    <Button variant="outline" size="sm">
+                      <Filter className="ml-2 h-4 w-4" />
+                      تصفية
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Download className="ml-2 h-4 w-4" />
+                      تصدير
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/admin/invoices/list">
+                        عرض كل الفواتير
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -355,7 +393,7 @@ export default function FinanceDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {invoices.map((invoice) => (
+                      {filteredInvoices.map((invoice) => (
                         <tr key={invoice.id} className="border-b hover:bg-gray-50">
                           <td className="text-right py-3 px-4 font-medium">{invoice.invoiceNumber}</td>
                           <td className="text-right py-3 px-4">{invoice.customerName}</td>

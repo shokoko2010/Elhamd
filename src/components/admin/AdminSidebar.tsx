@@ -187,7 +187,7 @@ const sidebarConfig: SidebarEntry[] = [
       },
       {
         title: 'الفواتير',
-        href: '/admin/invoices',
+        href: '/admin/invoices/list',
         icon: CreditCard,
       },
     ],
