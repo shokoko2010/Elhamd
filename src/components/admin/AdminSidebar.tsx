@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { 
+import type { LucideIcon } from 'lucide-react'
+import {
   LayoutDashboard, 
   Car, 
   Calendar, 
@@ -126,18 +127,34 @@ import {
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/hooks/use-auth'
-import { useRouter } from 'next/navigation'
 
-const sidebarItems = [
+type SidebarLink = {
+  title: string
+  href: string
+  icon: LucideIcon
+}
+
+type SidebarSection = {
+  type: 'section'
+  title: string
+  icon: LucideIcon
+  items: SidebarLink[]
+}
+
+type SidebarEntry = SidebarSection | (SidebarLink & { type: 'link' })
+
+const sidebarConfig: SidebarEntry[] = [
   {
+    type: 'link',
     title: 'لوحة التحكم',
     href: '/admin',
     icon: LayoutDashboard,
   },
   {
+    type: 'section',
     title: 'المبيعات والعملاء',
     icon: Users,
-    children: [
+    items: [
       {
         title: 'المركبات',
         href: '/admin/vehicles',
@@ -173,12 +190,13 @@ const sidebarItems = [
         href: '/admin/invoices',
         icon: CreditCard,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'المخزون والعمليات',
     icon: Package,
-    children: [
+    items: [
       {
         title: 'المخزون',
         href: '/admin/inventory',
@@ -209,12 +227,13 @@ const sidebarItems = [
         href: '/admin/warehouse',
         icon: Building,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'الموارد البشرية',
     icon: UserCheck,
-    children: [
+    items: [
       {
         title: 'الموارد البشرية',
         href: '/admin/hr',
@@ -245,12 +264,13 @@ const sidebarItems = [
         href: '/admin/performance',
         icon: Award,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'المالية والمحاسبة',
     icon: Calculator,
-    children: [
+    items: [
       {
         title: 'المحاسبة',
         href: '/admin/accounting',
@@ -281,12 +301,13 @@ const sidebarItems = [
         href: '/admin/banking',
         icon: Building,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'العقود والقانون',
     icon: Shield,
-    children: [
+    items: [
       {
         title: 'العقود',
         href: '/admin/contracts',
@@ -307,12 +328,13 @@ const sidebarItems = [
         href: '/admin/documents',
         icon: Archive,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'النظام والإعدادات',
     icon: Settings,
-    children: [
+    items: [
       {
         title: 'الصلاحيات',
         href: '/admin/permissions',
@@ -343,12 +365,13 @@ const sidebarItems = [
         href: '/admin/logs',
         icon: FileText,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'التواصل والدعم',
     icon: MessageSquare,
-    children: [
+    items: [
       {
         title: 'الإشعارات',
         href: '/admin/notifications',
@@ -374,12 +397,13 @@ const sidebarItems = [
         href: '/admin/contact',
         icon: Phone,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'الأدوات والبحث',
     icon: Search,
-    children: [
+    items: [
       {
         title: 'بحث',
         href: '/admin/search',
@@ -405,12 +429,13 @@ const sidebarItems = [
         href: '/admin/print',
         icon: Printer,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'إدارة الموقع',
     icon: Building,
-    children: [
+    items: [
       {
         title: 'الصفحة الرئيسية',
         href: '/admin/homepage',
@@ -461,12 +486,13 @@ const sidebarItems = [
         href: '/admin/page-seo',
         icon: Palette,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'إدارة المركبات',
     icon: Car,
-    children: [
+    items: [
       {
         title: 'موديلات السيارات',
         href: '/admin/models',
@@ -477,12 +503,13 @@ const sidebarItems = [
         href: '/admin/vehicles',
         icon: Car,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'الحجوزات والمواعيد',
     icon: Calendar,
-    children: [
+    items: [
       {
         title: 'المواعيد',
         href: '/admin/appointments',
@@ -498,12 +525,13 @@ const sidebarItems = [
         href: '/admin/bookings',
         icon: Wrench,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'الإدارة المالية',
     icon: DollarSign,
-    children: [
+    items: [
       {
         title: 'النظرة العامة',
         href: '/admin/finance',
@@ -524,23 +552,25 @@ const sidebarItems = [
         href: '/admin/tax',
         icon: Calculator,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'التجارة الإلكترونية',
     icon: ShoppingCart,
-    children: [
+    items: [
       {
         title: 'إدارة المتجر',
         href: '/admin/commerce',
         icon: ShoppingCart,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'التقارير والتحليلات',
     icon: BarChart3,
-    children: [
+    items: [
       {
         title: 'التقارير',
         href: '/admin/reports',
@@ -551,18 +581,19 @@ const sidebarItems = [
         href: '/admin/marketing',
         icon: Send,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'نظام التأمين',
     icon: Shield,
-    children: [
+    items: [
       {
         title: 'إدارة التأمين',
         href: '/admin/insurance',
         icon: Shield,
       },
-    ]
+    ],
   },
 ]
 
@@ -572,7 +603,6 @@ export function AdminSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const router = useRouter()
 
   const handleSignOut = async () => {
     await logout()
@@ -587,23 +617,15 @@ export function AdminSidebar() {
   }
 
   const isActive = (href: string) => pathname === href
-  const isParentActive = (children: any[]) => {
-    if (!Array.isArray(children)) return false
-    return children.some(child => child && child.href && isActive(child.href))
-  }
+  const isParentActive = (links: SidebarLink[]) =>
+    links.some(link => isActive(link.href))
 
-  const renderMenuItem = (item: any) => {
-    // Ensure item is valid
-    if (!item || !item.title) return null
-    
-    const hasChildren = item.children && Array.isArray(item.children) && item.children.length > 0
-    const isExpanded = expandedItems.includes(item.title)
-    const active = hasChildren ? isParentActive(item.children) : isActive(item.href)
+  const renderMenuItem = (item: SidebarEntry) => {
+    if (item.type === 'section') {
+      const isExpanded = expandedItems.includes(item.title)
+      const active = isParentActive(item.items)
+      const IconComponent = item.icon || Package
 
-    // Ensure icon is valid
-    const IconComponent = item.icon || Package
-
-    if (hasChildren) {
       return (
         <div key={item.title} className="space-y-1">
           <Button
@@ -612,8 +634,8 @@ export function AdminSidebar() {
             onClick={() => toggleExpanded(item.title)}
             className={cn(
               'w-full justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              active 
-                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
+              active
+                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             )}
           >
@@ -632,10 +654,10 @@ export function AdminSidebar() {
               )
             )}
           </Button>
-          
+
           {(!isCollapsed && isExpanded) && (
             <div className="mr-4 space-y-1">
-              {item.children.map((child: any) => {
+              {item.items.map((child) => {
                 const ChildIconComponent = child.icon || Package
                 return (
                   <Link
@@ -663,6 +685,7 @@ export function AdminSidebar() {
       )
     }
 
+    const IconComponent = item.icon || Package
     return (
       <Link
         key={item.href}
@@ -670,14 +693,14 @@ export function AdminSidebar() {
         onClick={() => setIsMobileOpen(false)}
         className={cn(
           'flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-          active
+          isActive(item.href)
             ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
         )}
       >
         <IconComponent className={cn(
           'h-5 w-5',
-          active ? 'text-blue-700' : 'text-gray-400'
+          isActive(item.href) ? 'text-blue-700' : 'text-gray-400'
         )} />
         {!isCollapsed && <span>{item.title}</span>}
       </Link>
@@ -711,7 +734,7 @@ export function AdminSidebar() {
 
           {/* Mobile Navigation */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {sidebarItems.map((item) => renderMenuItem(item))}
+            {sidebarConfig.map((item) => renderMenuItem(item))}
           </nav>
 
           {/* Mobile User Section */}
@@ -764,7 +787,7 @@ export function AdminSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {sidebarItems.map((item) => renderMenuItem(item))}
+          {sidebarConfig.map((item) => renderMenuItem(item))}
         </nav>
 
         {/* User Section */}
