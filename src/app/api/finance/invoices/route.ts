@@ -7,6 +7,10 @@ import { db } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/simple-production-auth'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
+import {
+  normalizeInvoiceItemsFromInput,
+  normalizeInvoiceRecord,
+} from '@/lib/invoice-normalizer'
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
@@ -96,42 +100,114 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               email: true,
-              phone: true
-            }
+              phone: true,
+            },
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
           items: true,
           payments: {
             include: {
-              payment: true
-            }
+              payment: true,
+            },
           },
-          taxes: {
-            include: {
-              taxRate: true
-            }
-          }
+          taxes: true,
         },
         orderBy: {
-          issueDate: 'desc'
+          issueDate: 'desc',
         },
         skip,
-        take: limit
+        take: limit,
       }),
-      db.invoice.count({ where })
+      db.invoice.count({ where }),
     ])
 
     const totalPages = Math.ceil(total / limit)
 
+    const serializedInvoices = invoices.map(invoice => {
+      const normalized = normalizeInvoiceRecord({
+        subtotal: invoice.subtotal,
+        taxAmount: invoice.taxAmount,
+        totalAmount: invoice.totalAmount,
+        paidAmount: invoice.paidAmount,
+        items: invoice.items,
+        taxes: invoice.taxes,
+      })
+
+      const paidAmount = normalized.totalAmount - normalized.outstanding
+
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        status: invoice.status,
+        paymentStatus: invoice.paymentStatus,
+        type: invoice.type,
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        subtotal: normalized.subtotal,
+        taxAmount: normalized.taxAmount,
+        totalAmount: normalized.totalAmount,
+        paidAmount,
+        outstanding: normalized.outstanding,
+        currency: invoice.currency,
+        createdAt: invoice.createdAt,
+        updatedAt: invoice.updatedAt,
+        customer: invoice.customer,
+        branch: invoice.branch,
+        items: normalized.items,
+        taxes: normalized.taxes,
+        payments: invoice.payments.map(payment => ({
+          id: payment.id,
+          amount: Number(payment.amount ?? payment.payment?.amount ?? 0),
+          paymentDate:
+            payment.paymentDate instanceof Date
+              ? payment.paymentDate
+              : new Date(payment.paymentDate),
+          paymentMethod: payment.paymentMethod,
+          transactionId: payment.transactionId,
+          notes: payment.notes,
+          payment: payment.payment
+            ? {
+                id: payment.payment.id,
+                amount: payment.payment.amount,
+                paymentMethod: payment.payment.paymentMethod,
+                status: payment.payment.status,
+                transactionId: payment.payment.transactionId,
+                createdAt: payment.payment.createdAt,
+                notes: payment.payment.notes,
+              }
+            : null,
+        })),
+      }
+    })
+
+    const pageTotals = serializedInvoices.reduce(
+      (acc, invoice) => {
+        acc.totalAmount += invoice.totalAmount
+        acc.totalPaid += invoice.paidAmount
+        acc.outstanding += invoice.outstanding
+        return acc
+      },
+      { totalAmount: 0, totalPaid: 0, outstanding: 0 }
+    )
+
     return NextResponse.json({
-      invoices,
+      invoices: serializedInvoices,
       pagination: {
         page,
         limit,
         total,
         totalPages,
         hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+        hasPrev: page > 1,
+      },
+      summary: {
+        page: pageTotals,
+      },
     }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
@@ -335,43 +411,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate totals
-    const subtotal = items.reduce((sum: number, item: any) => {
-      return sum + (item.quantity * item.unitPrice)
-    }, 0)
+    // Normalize invoice items and totals
+    const { items: normalizedItems, totals } = normalizeInvoiceItemsFromInput(items)
 
-    // Calculate taxes from database tax rates
-    let taxRates = await db.taxRate.findMany({
-      where: { isActive: true }
-    })
-
-    // Create default VAT rate if none exists
-    if (taxRates.length === 0) {
-      try {
-        const defaultVAT = await db.taxRate.create({
-          data: {
-            name: 'ضريبة القيمة المضافة',
-            type: 'STANDARD',
-            rate: 14.0, // 14% VAT in Egypt
-            description: 'ضريبة القيمة المضافة القياسية في مصر',
-            isActive: true,
-            effectiveFrom: new Date('2020-01-01')
-          }
-        })
-        taxRates = [defaultVAT]
-      } catch (taxError) {
-        console.warn('Warning: Could not create default tax rate:', taxError)
-        // Continue with no tax if tax creation fails
-        taxRates = []
-      }
-    }
-
-    // Calculate total tax amount from all applicable tax rates
-    const totalTaxAmount = taxRates.reduce((sum, taxRate) => {
-      return sum + (subtotal * taxRate.rate / 100)
-    }, 0)
-
-    const totalAmount = subtotal + totalTaxAmount
+    const subtotal = totals.subtotal
+    const totalTaxAmount = totals.taxAmount
+    const totalAmount = totals.totalAmount
 
     // Generate invoice number
     const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -401,34 +446,28 @@ export async function POST(request: NextRequest) {
       
       // Create invoice items
       await tx.invoiceItem.createMany({
-        data: items.map((item: any) => ({
+        data: normalizedItems.map(item => ({
           invoiceId: newInvoice.id,
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          totalPrice: item.quantity * item.unitPrice,
-          taxRate: item.taxRate || 0,
-          taxAmount: (item.quantity * item.unitPrice) * (item.taxRate || 0) / 100,
-          metadata: item.metadata || {}
-        }))
+          totalPrice: item.totalPrice,
+          taxRate: item.taxRate,
+          taxAmount: item.taxAmount,
+          metadata: item.metadata ?? {},
+        })),
       })
-      
-      // Create invoice taxes (only if tax rates exist)
-      if (taxRates.length > 0) {
-        try {
-          await tx.invoiceTax.createMany({
-            data: taxRates.map(taxRate => ({
-              invoiceId: newInvoice.id,
-              taxType: taxRate.type as any,
-              rate: taxRate.rate,
-              taxAmount: subtotal * taxRate.rate / 100,
-              description: taxRate.description
-            }))
-          })
-        } catch (taxError) {
-          console.warn('Warning: Could not create invoice taxes:', taxError)
-          // Continue without failing the whole operation
-        }
+
+      if (totals.breakdown.length > 0) {
+        await tx.invoiceTax.createMany({
+          data: totals.breakdown.map(tax => ({
+            invoiceId: newInvoice.id,
+            taxType: tax.taxType,
+            rate: tax.rate,
+            taxAmount: tax.taxAmount,
+            description: tax.description,
+          })),
+        })
       }
       
       return newInvoice
@@ -443,19 +482,45 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             email: true,
-            phone: true
-          }
+            phone: true,
+          },
         },
         items: true,
-        taxes: true
-      }
+        taxes: true,
+      },
     })
-    
+
+    const responseInvoice = completeInvoice
+      ? (() => {
+          const normalized = normalizeInvoiceRecord({
+            subtotal: completeInvoice.subtotal,
+            taxAmount: completeInvoice.taxAmount,
+            totalAmount: completeInvoice.totalAmount,
+            paidAmount: completeInvoice.paidAmount,
+            items: completeInvoice.items,
+            taxes: completeInvoice.taxes,
+          })
+
+          const paidAmount = normalized.totalAmount - normalized.outstanding
+
+          return {
+            ...completeInvoice,
+            subtotal: normalized.subtotal,
+            taxAmount: normalized.taxAmount,
+            totalAmount: normalized.totalAmount,
+            paidAmount,
+            outstanding: normalized.outstanding,
+            items: normalized.items,
+            taxes: normalized.taxes,
+          }
+        })()
+      : null
+
     return NextResponse.json({
       success: true,
       message: 'Invoice created successfully',
-      invoice: completeInvoice
-    }, { 
+      invoice: responseInvoice,
+    }, {
       status: 201,
       headers: {
         'Access-Control-Allow-Origin': '*',

@@ -122,6 +122,10 @@ interface InventoryItem {
   status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'discontinued'
 }
 
+const ensureArray = <T,>(value: unknown): T[] => {
+  return Array.isArray(value) ? value : []
+}
+
 export default function PurchaseOrdersPage() {
   return (
     <AdminRoute>
@@ -168,28 +172,52 @@ function PurchaseOrdersContent() {
       const ordersResponse = await fetch('/api/inventory/purchase-orders')
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json()
-        setPurchaseOrders(ordersData.orders || [])
+        const ordersList = Array.isArray(ordersData?.orders)
+          ? ordersData.orders
+          : ensureArray<PurchaseOrder>(ordersData)
+        setPurchaseOrders(ordersList)
+      } else {
+        setPurchaseOrders([])
       }
 
       // Fetch suppliers
       const suppliersResponse = await fetch('/api/inventory/suppliers')
       if (suppliersResponse.ok) {
         const suppliersData = await suppliersResponse.json()
-        setSuppliers(suppliersData)
+        const suppliersList = Array.isArray(suppliersData)
+          ? suppliersData
+          : Array.isArray(suppliersData?.suppliers)
+            ? suppliersData.suppliers
+            : []
+        setSuppliers(suppliersList)
+      } else {
+        setSuppliers([])
       }
 
       // Fetch warehouses
       const warehousesResponse = await fetch('/api/inventory/warehouses')
       if (warehousesResponse.ok) {
         const warehousesData = await warehousesResponse.json()
-        setWarehouses(warehousesData)
+        const warehousesList = Array.isArray(warehousesData)
+          ? warehousesData
+          : Array.isArray(warehousesData?.warehouses)
+            ? warehousesData.warehouses
+            : []
+        setWarehouses(warehousesList)
+      } else {
+        setWarehouses([])
       }
 
       // Fetch inventory items
       const itemsResponse = await fetch('/api/inventory/items')
       if (itemsResponse.ok) {
         const itemsData = await itemsResponse.json()
-        setInventoryItems(itemsData.items || [])
+        const itemsList = Array.isArray(itemsData?.items)
+          ? itemsData.items
+          : ensureArray<InventoryItem>(itemsData)
+        setInventoryItems(itemsList)
+      } else {
+        setInventoryItems([])
       }
     } catch (error) {
       toast({

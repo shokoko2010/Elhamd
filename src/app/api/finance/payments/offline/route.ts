@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser, verifyAuth } from '@/lib/auth-server'
+import { getAuthUser } from '@/lib/auth-server'
 import { getApiUser } from '@/lib/api-auth'
 import {
   InvoicePaymentStatus,
@@ -10,6 +10,7 @@ import {
   UserRole
 } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
+import { normalizeInvoiceRecord } from '@/lib/invoice-normalizer'
 
 // Handle OPTIONS requests for CORS
 export async function OPTIONS(request: NextRequest) {
@@ -287,15 +288,17 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            email: true
-          }
+            email: true,
+          },
         },
+        items: true,
+        taxes: true,
         payments: {
           include: {
-            payment: true
-          }
-        }
-      }
+            payment: true,
+          },
+        },
+      },
     })
 
     if (!invoice) {
@@ -313,35 +316,56 @@ export async function POST(request: NextRequest) {
       return errorResponse
     }
     
+    const normalizedInvoice = normalizeInvoiceRecord({
+      subtotal: invoice.subtotal,
+      taxAmount: invoice.taxAmount,
+      totalAmount: invoice.totalAmount,
+      paidAmount: invoice.paidAmount,
+      items: invoice.items,
+      taxes: invoice.taxes,
+    })
+
+    if (normalizedInvoice.needsNormalization) {
+      await db.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          subtotal: normalizedInvoice.subtotal,
+          taxAmount: normalizedInvoice.taxAmount,
+          totalAmount: normalizedInvoice.totalAmount,
+        },
+      })
+    }
+
     console.log('Processing offline payment for invoice:', {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
-      totalAmount: invoice.totalAmount,
-      currentPaid: invoice.paidAmount,
+      totalAmount: normalizedInvoice.totalAmount,
+      currentPaid: normalizedInvoice.totalAmount - normalizedInvoice.outstanding,
       status: invoice.status,
-      customerName: invoice.customer?.name
+      customerName: invoice.customer?.name,
     })
 
-    // Calculate total paid amount
-    const totalPaid = invoice.payments.reduce((sum, ip) => sum + ip.payment.amount, 0)
-    const newTotalPaid = totalPaid + parsedAmount
+    const totalPaid = invoice.payments.reduce(
+      (sum, ip) => sum + Number(ip.amount ?? ip.payment?.amount ?? 0),
+      0
+    )
+    const newTotalPaid = Math.round((totalPaid + parsedAmount) * 100) / 100
 
-    // Check if payment amount exceeds invoice total
-    if (newTotalPaid > invoice.totalAmount) {
+    if (newTotalPaid > normalizedInvoice.totalAmount + 0.01) {
       console.log('Payment amount exceeds invoice total:', {
         paymentAmount: parsedAmount,
         currentTotal: totalPaid,
         newTotal: newTotalPaid,
-        invoiceTotal: invoice.totalAmount
+        invoiceTotal: normalizedInvoice.totalAmount,
       })
-      return NextResponse.json({ 
-        error: `Payment amount (¥${parsedAmount.toFixed(2)}) exceeds invoice total (¥${invoice.totalAmount.toFixed(2)}). Current paid amount: ¥${totalPaid.toFixed(2)}`,
+      return NextResponse.json({
+        error: `Payment amount (¥${parsedAmount.toFixed(2)}) exceeds invoice total (¥${normalizedInvoice.totalAmount.toFixed(2)}). Current paid amount: ¥${totalPaid.toFixed(2)}`,
         code: 'PAYMENT_EXCEEDS_TOTAL',
         details: {
           paymentAmount: parsedAmount,
-          invoiceTotal: invoice.totalAmount,
+          invoiceTotal: normalizedInvoice.totalAmount,
           currentPaid: totalPaid,
-          remainingAmount: invoice.totalAmount - totalPaid
+          remainingAmount: normalizedInvoice.totalAmount - totalPaid,
         }
       }, { status: 400 })
     }
@@ -511,10 +535,10 @@ export async function POST(request: NextRequest) {
     // Update invoice status based on payment
     let newStatus: InvoiceStatus = invoice.status
     let newPaymentStatus: InvoicePaymentStatus = invoice.paymentStatus
-    if (Math.abs(newTotalPaid - invoice.totalAmount) < 0.01) {
+    if (Math.abs(newTotalPaid - normalizedInvoice.totalAmount) < 0.01) {
       newStatus = InvoiceStatus.PAID
       newPaymentStatus = InvoicePaymentStatus.PAID
-    } else if (newTotalPaid > invoice.totalAmount + 0.01) {
+    } else if (newTotalPaid > normalizedInvoice.totalAmount + 0.01) {
       newStatus = InvoiceStatus.PAID
       newPaymentStatus = InvoicePaymentStatus.OVERPAID
     } else if (newTotalPaid > 0) {
@@ -528,6 +552,9 @@ export async function POST(request: NextRequest) {
     await db.invoice.update({
       where: { id: invoiceId },
       data: {
+        subtotal: normalizedInvoice.subtotal,
+        taxAmount: normalizedInvoice.taxAmount,
+        totalAmount: normalizedInvoice.totalAmount,
         paidAmount: newTotalPaid,
         status: newStatus,
         paymentStatus: newPaymentStatus,
@@ -599,7 +626,7 @@ export async function POST(request: NextRequest) {
       invoice: {
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
-        totalAmount: invoice.totalAmount,
+        totalAmount: normalizedInvoice.totalAmount,
         paidAmount: newTotalPaid,
         status: newStatus
       }

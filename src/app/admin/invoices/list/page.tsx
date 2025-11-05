@@ -33,6 +33,7 @@ interface InvoiceSummary {
   status: string
   totalAmount: number
   paidAmount: number
+  outstanding: number
   currency: string
   issueDate: string
   dueDate: string
@@ -92,6 +93,28 @@ const statusMeta: Record<string, { label: string; variant: 'default' | 'secondar
 
 const PAGE_SIZE = 20
 
+const parseAmount = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/[^0-9.-]+/g, '')
+    if (!normalized) {
+      return 0
+    }
+
+    const parsed = Number.parseFloat(normalized)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  if (typeof value === 'bigint') {
+    return Number(value)
+  }
+
+  return 0
+}
+
 const formatCurrency = (amount: number, currency = 'EGP') => {
   try {
     return new Intl.NumberFormat('ar-EG', {
@@ -145,7 +168,7 @@ const calculateDueStatus = (invoice: InvoiceSummary) => {
 }
 
 const createDefaultPaymentForm = (invoice?: InvoiceSummary | null): PaymentFormState => {
-  const remaining = invoice ? Math.max(invoice.totalAmount - invoice.paidAmount, 0) : 0
+  const remaining = invoice ? Math.max(invoice.outstanding, 0) : 0
   return {
     amount: remaining > 0 ? remaining.toFixed(2) : '',
     paymentMethod: '',
@@ -179,6 +202,11 @@ export default function InvoicesListPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>(() => createDefaultPaymentForm())
   const [processingPayment, setProcessingPayment] = useState(false)
+  const [pageTotals, setPageTotals] = useState({
+    totalAmount: 0,
+    totalPaid: 0,
+    outstanding: 0,
+  })
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -211,19 +239,29 @@ export default function InvoicesListPage() {
       }
 
       const invoicesData = payload || {}
-      const normalizedInvoices: InvoiceSummary[] = (invoicesData.invoices || []).map((invoice: any) => ({
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber ?? 'غير محدد',
-        customerName: invoice.customer?.name ?? invoice.customerName ?? 'عميل غير معروف',
-        customerEmail: invoice.customer?.email ?? invoice.customerEmail ?? '',
-        status: invoice.status ?? 'DRAFT',
-        totalAmount: Number(invoice.totalAmount ?? invoice.subtotal ?? 0),
-        paidAmount: Number(invoice.paidAmount ?? 0),
-        currency: invoice.currency ?? 'EGP',
-        issueDate: invoice.issueDate ?? invoice.createdAt ?? new Date().toISOString(),
-        dueDate: invoice.dueDate ?? invoice.issueDate ?? new Date().toISOString(),
-        branchName: invoice.branch?.name ?? invoice.branchName ?? undefined,
-      }))
+      const normalizedInvoices: InvoiceSummary[] = (invoicesData.invoices || []).map((invoice: any) => {
+        const totalAmount = parseAmount(invoice.totalAmount ?? invoice.subtotal ?? 0)
+        const paidAmount = parseAmount(invoice.paidAmount ?? 0)
+        const outstandingRaw = parseAmount(
+          invoice.outstanding ?? Math.max(totalAmount - paidAmount, 0)
+        )
+        const outstanding = Math.max(outstandingRaw, 0)
+
+        return {
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber ?? 'غير محدد',
+          customerName: invoice.customer?.name ?? invoice.customerName ?? 'عميل غير معروف',
+          customerEmail: invoice.customer?.email ?? invoice.customerEmail ?? '',
+          status: invoice.status ?? 'DRAFT',
+          totalAmount,
+          paidAmount,
+          outstanding,
+          currency: invoice.currency ?? 'EGP',
+          issueDate: invoice.issueDate ?? invoice.createdAt ?? new Date().toISOString(),
+          dueDate: invoice.dueDate ?? invoice.issueDate ?? new Date().toISOString(),
+          branchName: invoice.branch?.name ?? invoice.branchName ?? undefined,
+        }
+      })
 
       const paginationInfo = invoicesData.pagination || {}
       const resolvedPage = paginationInfo.page ?? currentPage
@@ -237,6 +275,26 @@ export default function InvoicesListPage() {
         total: paginationInfo.total ?? normalizedInvoices.length,
         limit: resolvedLimit,
       })
+
+      const computedPageTotals = normalizedInvoices.reduce(
+        (acc, invoice) => {
+          acc.totalAmount += invoice.totalAmount
+          acc.totalPaid += invoice.paidAmount
+          acc.outstanding += invoice.outstanding
+          return acc
+        },
+        { totalAmount: 0, totalPaid: 0, outstanding: 0 }
+      )
+
+      const summaryTotals = invoicesData.summary?.page
+        ? {
+            totalAmount: parseAmount(invoicesData.summary.page.totalAmount),
+            totalPaid: parseAmount(invoicesData.summary.page.totalPaid),
+            outstanding: parseAmount(invoicesData.summary.page.outstanding),
+          }
+        : computedPageTotals
+
+      setPageTotals(summaryTotals)
 
       if (resolvedPage !== currentPage) {
         setCurrentPage(resolvedPage)
@@ -253,20 +311,12 @@ export default function InvoicesListPage() {
     fetchInvoices()
   }, [fetchInvoices])
 
-  const totals = useMemo(() => {
-    const totalAmount = invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
-    const totalPaid = invoices.reduce((sum, invoice) => sum + invoice.paidAmount, 0)
-    const outstanding = Math.max(totalAmount - totalPaid, 0)
-
-    return { totalAmount, totalPaid, outstanding }
-  }, [invoices])
-
   const remainingBalance = useMemo(() => {
     if (!selectedInvoice) {
       return 0
     }
 
-    return Math.max(selectedInvoice.totalAmount - selectedInvoice.paidAmount, 0)
+    return Math.max(selectedInvoice.outstanding, 0)
   }, [selectedInvoice])
 
   const handleApplyFilters = () => {
@@ -411,29 +461,29 @@ export default function InvoicesListPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500">إجمالي قيمة الفواتير</CardTitle>
+            <CardTitle className="text-sm text-gray-500">إجمالي قيمة الفواتير (الصفحة الحالية)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{formatCurrency(totals.totalAmount)}</div>
-            <p className="mt-1 text-sm text-gray-500">يشمل جميع الفواتير في النتائج الحالية</p>
+            <div className="text-2xl font-bold text-gray-900">{formatCurrency(pageTotals.totalAmount)}</div>
+            <p className="mt-1 text-sm text-gray-500">يشمل الفواتير المعروضة في الجدول الحالي</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500">المدفوعات المستلمة</CardTitle>
+            <CardTitle className="text-sm text-gray-500">المدفوعات المستلمة (الصفحة الحالية)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(totals.totalPaid)}</div>
-            <p className="mt-1 text-sm text-gray-500">المبلغ الذي تم تحصيله</p>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(pageTotals.totalPaid)}</div>
+            <p className="mt-1 text-sm text-gray-500">المبلغ الذي تم تحصيله من هذه القائمة</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500">الرصيد المستحق</CardTitle>
+            <CardTitle className="text-sm text-gray-500">الرصيد المستحق (الصفحة الحالية)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatCurrency(totals.outstanding)}</div>
-            <p className="mt-1 text-sm text-gray-500">المبلغ المتبقي على العملاء</p>
+            <div className="text-2xl font-bold text-orange-600">{formatCurrency(pageTotals.outstanding)}</div>
+            <p className="mt-1 text-sm text-gray-500">المبلغ المتبقي على الفواتير الظاهرة</p>
           </CardContent>
         </Card>
       </div>
@@ -557,7 +607,7 @@ export default function InvoicesListPage() {
                   {invoices.map((invoice) => {
                     const status = statusMeta[invoice.status] || { label: invoice.status, variant: 'secondary' as const }
                     const dueStatus = calculateDueStatus(invoice)
-                    const remaining = Math.max(invoice.totalAmount - invoice.paidAmount, 0)
+                    const remaining = Math.max(invoice.outstanding, 0)
 
                     return (
                       <TableRow key={invoice.id}>
