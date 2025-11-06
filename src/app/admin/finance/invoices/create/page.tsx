@@ -346,7 +346,7 @@ function CreateInvoiceContent() {
         metadata: {
           ...(item.metadata || {}),
           itemType: 'PART',
-          inventoryItemId,
+          inventoryItemId: inventoryId,
           vehicleId: undefined,
           sourceName: inventoryOption?.name,
           partNumber: inventoryOption?.partNumber,

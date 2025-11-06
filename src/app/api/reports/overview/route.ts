@@ -339,35 +339,37 @@ export async function GET(request: NextRequest) {
       campaignROI = ((campaignRevenue - totalCampaignBudget) / totalCampaignBudget) * 100
     }
 
-    const [inventoryValue, lowStockItems] = await Promise.all([
-      safeExecute(
-        () =>
-          db.inventoryItem.aggregate({
-            where: inventoryWhere,
-            _sum: {
-              totalValue: true,
-            },
-          }),
-        { _sum: { totalValue: 0 } }
-      ),
-      safeExecute(
-        () =>
-          db.inventoryItem.count({
-            where: {
-              ...inventoryWhere,
-              quantity: {
-                lte: 10,
-              },
-            },
-          }),
-        0
-      ),
-    ])
+    const inventoryItemsData = await safeExecute(
+      () =>
+        db.inventoryItem.findMany({
+          where: inventoryWhere,
+          select: {
+            id: true,
+            name: true,
+            partNumber: true,
+            quantity: true,
+            unitPrice: true,
+          },
+        }),
+      [] as Array<{
+        id: string
+        name: string
+        partNumber: string
+        quantity: number
+        unitPrice: number
+      }>
+    )
 
-    const topSellingProducts = await safeExecute(
+    const totalInventoryValue = inventoryItemsData.reduce(
+      (sum, item) => sum + (item.quantity || 0) * (item.unitPrice || 0),
+      0
+    )
+    const lowStockItems = inventoryItemsData.filter(item => (item.quantity || 0) <= 10).length
+
+    const topInvoiceItems = await safeExecute(
       () =>
         db.invoiceItem.groupBy({
-          by: ['vehicleId'],
+          by: ['vehicleId', 'inventoryItemId'],
           where: {
             invoice: {
               ...invoiceWhere,
@@ -380,43 +382,98 @@ export async function GET(request: NextRequest) {
           },
           orderBy: {
             _sum: {
-              quantity: 'desc',
+              totalPrice: 'desc',
             },
           },
           take: 10,
         }),
       [] as Array<{
         vehicleId: string | null
+        inventoryItemId: string | null
         _sum: { quantity: number | null; totalPrice: number | null }
       }>
     )
 
-    const vehicleIds = topSellingProducts.map(item => item.vehicleId)
-    const vehicles = await safeExecute(
-      () =>
-        db.vehicle.findMany({
-          where: {
-            id: {
-              in: vehicleIds,
-            },
-          },
-          select: {
-            id: true,
-            make: true,
-            model: true,
-            year: true,
-          },
-        }),
-      [] as Array<{ id: string; make: string; model: string; year: number }>
-    )
+    const vehicleIds = topInvoiceItems
+      .map(item => item.vehicleId)
+      .filter((id): id is string => Boolean(id))
+    const inventoryIds = topInvoiceItems
+      .map(item => item.inventoryItemId)
+      .filter((id): id is string => Boolean(id))
 
-    const topSellingProductsWithDetails = topSellingProducts.map(item => {
-      const vehicle = vehicles.find(v => v.id === item.vehicleId)
+    const vehicles = vehicleIds.length
+      ? await safeExecute(
+          () =>
+            db.vehicle.findMany({
+              where: {
+                id: {
+                  in: vehicleIds,
+                },
+              },
+              select: {
+                id: true,
+                make: true,
+                model: true,
+                year: true,
+              },
+            }),
+          [] as Array<{ id: string; make: string; model: string; year: number }>
+        )
+      : []
+
+    const inventoryDetails = inventoryIds.length
+      ? await safeExecute(
+          () =>
+            db.inventoryItem.findMany({
+              where: {
+                id: {
+                  in: inventoryIds,
+                },
+              },
+              select: {
+                id: true,
+                name: true,
+                partNumber: true,
+              },
+            }),
+          [] as Array<{ id: string; name: string; partNumber: string }>
+        )
+      : []
+
+    const topSellingProductsWithDetails = topInvoiceItems.map(item => {
+      const quantity = item._sum.quantity || 0
+      const revenue = item._sum.totalPrice || 0
+
+      if (item.vehicleId) {
+        const vehicle = vehicles.find(v => v.id === item.vehicleId)
+        return {
+          id: item.vehicleId,
+          type: 'VEHICLE' as const,
+          name: vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : 'Unknown Vehicle',
+          quantity,
+          revenue,
+        }
+      }
+
+      if (item.inventoryItemId) {
+        const inventoryItem = inventoryDetails.find(detail => detail.id === item.inventoryItemId)
+        return {
+          id: item.inventoryItemId,
+          type: 'PART' as const,
+          name: inventoryItem
+            ? `${inventoryItem.name} (${inventoryItem.partNumber})`
+            : 'Unknown Part',
+          quantity,
+          revenue,
+        }
+      }
+
       return {
-        id: item.vehicleId,
-        name: vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : 'Unknown',
-        quantity: item._sum.quantity || 0,
-        revenue: item._sum.totalPrice || 0,
+        id: 'unassigned',
+        type: 'SERVICE' as const,
+        name: 'خدمة بدون عنصر مرتبط',
+        quantity,
+        revenue,
       }
     })
 
@@ -506,7 +563,7 @@ export async function GET(request: NextRequest) {
       totalCampaigns,
       activeCampaigns,
       campaignROI: Math.round(campaignROI * 100) / 100,
-      inventoryValue: inventoryValue._sum.totalValue || 0,
+      inventoryValue: totalInventoryValue,
       lowStockItems,
       topSellingProducts: topSellingProductsWithDetails,
       topPerformers: topPerformersWithMetrics,

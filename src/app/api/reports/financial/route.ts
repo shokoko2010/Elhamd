@@ -92,11 +92,26 @@ export async function GET(request: NextRequest) {
         monthsToShow = 12
     }
 
-    const where: any = {}
+    const branchFilter = branchId && branchId !== 'all' ? branchId : null
 
-    if (branchId && branchId !== 'all') {
-      where.branchId = branchId
-    }
+    const buildInvoiceWhere = (start: Date, end: Date): Prisma.InvoiceWhereInput => ({
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+      createdAt: {
+        gte: start,
+        lte: end,
+      },
+    })
+
+    const buildTransactionWhere = (
+      start: Date,
+      end: Date
+    ): Prisma.TransactionWhereInput => ({
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+      date: {
+        gte: start,
+        lte: end,
+      },
+    })
 
     // Generate monthly financial metrics
     const financialMetrics = []
@@ -106,13 +121,8 @@ export async function GET(request: NextRequest) {
       const monthStart = startOfMonth(monthDate)
       const monthEnd = endOfMonth(monthDate)
       
-      const monthWhere = {
-        ...where,
-        createdAt: {
-          gte: monthStart,
-          lte: monthEnd
-        }
-      }
+      const invoiceMonthWhere = buildInvoiceWhere(monthStart, monthEnd)
+      const transactionMonthWhere = buildTransactionWhere(monthStart, monthEnd)
 
       const [
         revenueData,
@@ -122,7 +132,7 @@ export async function GET(request: NextRequest) {
           () =>
             db.invoice.aggregate({
               where: {
-                ...monthWhere,
+                ...invoiceMonthWhere,
                 status: 'PAID'
               },
               _sum: {
@@ -135,7 +145,7 @@ export async function GET(request: NextRequest) {
           () =>
             db.transaction.aggregate({
               where: {
-                ...monthWhere,
+                ...transactionMonthWhere,
                 type: 'EXPENSE'
               },
               _sum: {
@@ -159,13 +169,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current period detailed breakdown
-    const currentPeriodWhere = {
-      ...where,
-      createdAt: {
-        gte: startDate,
-        lte: endDate
-      }
-    }
+    const currentInvoiceWhere = buildInvoiceWhere(startDate, endDate)
+    const currentTransactionWhere = buildTransactionWhere(startDate, endDate)
 
     const [
       revenueByCategory,
@@ -179,7 +184,7 @@ export async function GET(request: NextRequest) {
           db.invoice.groupBy({
             by: ['type'],
             where: {
-              ...currentPeriodWhere,
+              ...currentInvoiceWhere,
               status: 'PAID'
             },
             _sum: {
@@ -197,7 +202,7 @@ export async function GET(request: NextRequest) {
           db.transaction.groupBy({
             by: ['category'],
             where: {
-              ...currentPeriodWhere,
+              ...currentTransactionWhere,
               type: 'EXPENSE'
             },
             _sum: {
@@ -214,7 +219,7 @@ export async function GET(request: NextRequest) {
         () =>
           db.invoice.findMany({
             where: {
-              ...currentPeriodWhere,
+              ...currentInvoiceWhere,
               status: 'PAID'
             },
             include: {
@@ -239,16 +244,15 @@ export async function GET(request: NextRequest) {
           const monthStart = startOfMonth(monthDate)
           const monthEnd = endOfMonth(monthDate)
 
+          const invoiceTrendWhere = buildInvoiceWhere(monthStart, monthEnd)
+          const transactionTrendWhere = buildTransactionWhere(monthStart, monthEnd)
+
           const [revenue, expenses] = await Promise.all([
             safeExecute(
               () =>
                 db.invoice.aggregate({
                   where: {
-                    ...where,
-                    createdAt: {
-                      gte: monthStart,
-                      lte: monthEnd
-                    },
+                    ...invoiceTrendWhere,
                     status: 'PAID'
                   },
                   _sum: {
@@ -261,11 +265,7 @@ export async function GET(request: NextRequest) {
               () =>
                 db.transaction.aggregate({
                   where: {
-                    ...where,
-                    createdAt: {
-                      gte: monthStart,
-                      lte: monthEnd
-                    },
+                    ...transactionTrendWhere,
                     type: 'EXPENSE'
                   },
                   _sum: {
