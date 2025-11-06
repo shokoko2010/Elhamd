@@ -30,6 +30,8 @@ import {
   RefreshCw
 } from 'lucide-react'
 
+type ProductType = 'VEHICLE' | 'PART' | 'SERVICE'
+
 interface ReportData {
   totalRevenue: number
   totalExpenses: number
@@ -52,6 +54,7 @@ interface ReportData {
     name: string
     quantity: number
     revenue: number
+    type?: ProductType
   }>
   topPerformers: Array<{
     id: string
@@ -82,6 +85,38 @@ type TabKey = (typeof TAB_KEYS)[number]
 
 const DEFAULT_TAB: TabKey = 'overview'
 
+const EMPTY_REPORT_DATA: ReportData = {
+  totalRevenue: 0,
+  totalExpenses: 0,
+  netProfit: 0,
+  totalCustomers: 0,
+  newCustomers: 0,
+  totalLeads: 0,
+  convertedLeads: 0,
+  conversionRate: 0,
+  totalTickets: 0,
+  resolvedTickets: 0,
+  avgResolutionTime: 0,
+  totalCampaigns: 0,
+  activeCampaigns: 0,
+  campaignROI: 0,
+  inventoryValue: 0,
+  lowStockItems: 0,
+  topSellingProducts: [],
+  topPerformers: [],
+}
+
+const normalizeReportData = (data: Partial<ReportData> | null | undefined): ReportData => ({
+  ...EMPTY_REPORT_DATA,
+  ...data,
+  topSellingProducts: Array.isArray(data?.topSellingProducts)
+    ? (data?.topSellingProducts as ReportData['topSellingProducts'])
+    : [],
+  topPerformers: Array.isArray(data?.topPerformers)
+    ? (data?.topPerformers as ReportData['topPerformers'])
+    : [],
+})
+
 const isValidTab = (value: string | null): value is TabKey => {
   return typeof value === 'string' && TAB_KEYS.includes(value as TabKey)
 }
@@ -95,7 +130,7 @@ export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>(() =>
     isValidTab(tabParam) ? tabParam : DEFAULT_TAB
   )
-  const [reportData, setReportData] = useState<ReportData | null>(null)
+  const [reportData, setReportData] = useState<ReportData>(EMPTY_REPORT_DATA)
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetric[]>([])
   const [customerMetrics, setCustomerMetrics] = useState<CustomerMetric[]>([])
   const [loading, setLoading] = useState(true)
@@ -123,24 +158,33 @@ export default function ReportsPage() {
       const overviewRes = await fetch(`/api/reports/overview?period=${dateRange}&branchId=${branchFilter}`)
       if (overviewRes.ok) {
         const overviewData = await overviewRes.json()
-        setReportData(overviewData)
+        setReportData(normalizeReportData(overviewData))
+      } else {
+        setReportData(EMPTY_REPORT_DATA)
       }
 
       // Fetch financial metrics
       const financialRes = await fetch(`/api/reports/financial?period=${dateRange}&branchId=${branchFilter}`)
       if (financialRes.ok) {
         const financialData = await financialRes.json()
-        setFinancialMetrics(financialData)
+        setFinancialMetrics(Array.isArray(financialData) ? financialData : [])
+      } else {
+        setFinancialMetrics([])
       }
 
       // Fetch customer metrics
       const customerRes = await fetch(`/api/reports/customers?period=${dateRange}&branchId=${branchFilter}`)
       if (customerRes.ok) {
         const customerData = await customerRes.json()
-        setCustomerMetrics(customerData)
+        setCustomerMetrics(Array.isArray(customerData?.metrics) ? customerData.metrics : [])
+      } else {
+        setCustomerMetrics([])
       }
     } catch (error) {
       console.error('Error fetching report data:', error)
+      setReportData(EMPTY_REPORT_DATA)
+      setFinancialMetrics([])
+      setCustomerMetrics([])
     } finally {
       setLoading(false)
     }
@@ -461,7 +505,7 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData?.topPerformers.map((performer) => (
+                  {reportData.topPerformers.map((performer) => (
                     <TableRow key={performer.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -507,7 +551,7 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData?.topSellingProducts.map((product) => (
+                  {reportData.topSellingProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell>{product.quantity}</TableCell>

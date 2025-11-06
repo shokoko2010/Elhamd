@@ -27,16 +27,46 @@ const isSchemaMissingError = (error: unknown) => {
   return error instanceof Error && error.message.toLowerCase().includes('does not exist')
 }
 
+const shouldFallback = (error: unknown) => {
+  if (isSchemaMissingError(error)) {
+    return true
+  }
+
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError ||
+    error instanceof Prisma.PrismaClientRustPanicError ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientValidationError
+  )
+}
+
 const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise<T> => {
   try {
     return await executeWithRetry(operation)
   } catch (error) {
-    if (isSchemaMissingError(error)) {
+    console.error('Customer report query failed, falling back to defaults:', error)
+
+    if (shouldFallback(error)) {
       return fallback
     }
 
     throw error
   }
+}
+
+const fallbackCustomerReport = {
+  metrics: [],
+  segments: [],
+  topCustomers: [],
+  acquisitionSources: [],
+  customerLifetimeValue: [],
+  churnRate: 0,
+  period: {
+    start: new Date(0),
+    end: new Date(0),
+    type: 'month',
+  },
 }
 
 export async function GET(request: NextRequest) {
@@ -417,16 +447,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(customerReport, { headers })
   } catch (error) {
     console.error('Error fetching customer report:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      {
-        status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-        },
-      }
-    )
+    return NextResponse.json(fallbackCustomerReport, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      },
+    })
   }
 }

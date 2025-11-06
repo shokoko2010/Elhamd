@@ -16,16 +16,53 @@ const isSchemaMissingError = (error: unknown) => {
   return error instanceof Error && error.message.toLowerCase().includes('does not exist')
 }
 
+const shouldFallback = (error: unknown) => {
+  if (isSchemaMissingError(error)) {
+    return true
+  }
+
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError ||
+    error instanceof Prisma.PrismaClientRustPanicError ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientValidationError
+  )
+}
+
 const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise<T> => {
   try {
     return await executeWithRetry(operation)
   } catch (error) {
-    if (isSchemaMissingError(error)) {
+    console.error('Overview report query failed, falling back to defaults:', error)
+
+    if (shouldFallback(error)) {
       return fallback
     }
 
     throw error
   }
+}
+
+const fallbackOverviewReport = {
+  totalRevenue: 0,
+  totalExpenses: 0,
+  netProfit: 0,
+  totalCustomers: 0,
+  newCustomers: 0,
+  totalLeads: 0,
+  convertedLeads: 0,
+  conversionRate: 0,
+  totalTickets: 0,
+  resolvedTickets: 0,
+  avgResolutionTime: 0,
+  totalCampaigns: 0,
+  activeCampaigns: 0,
+  campaignROI: 0,
+  inventoryValue: 0,
+  lowStockItems: 0,
+  topSellingProducts: [],
+  topPerformers: [],
 }
 
 export async function GET(request: NextRequest) {
@@ -569,16 +606,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(reportData, { headers })
   } catch (error) {
     console.error('Error fetching overview report:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      {
-        status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-        },
-      }
-    )
+    return NextResponse.json(fallbackOverviewReport, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      },
+    })
   }
 }
