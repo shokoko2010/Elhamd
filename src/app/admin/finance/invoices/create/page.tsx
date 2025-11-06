@@ -756,173 +756,186 @@ function CreateInvoiceContent() {
 
               {/* Items Table */}
               <div className="space-y-4">
-                {items.map((item, index) => (
-                  <div key={item.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">بند #{index + 1}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(item.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    {(() => {
-                      const inventoryOption = item.inventoryItemId
-                        ? inventoryItems.find(option => option.id === item.inventoryItemId)
-                        : undefined
-                      const vehicleOption = item.vehicleId
-                        ? vehicleOptions.find(option => option.id === item.vehicleId)
-                        : undefined
+                {items.map((item, index) => {
+                  const inventoryOption = item.inventoryItemId
+                    ? inventoryItems.find((option) => option.id === item.inventoryItemId)
+                    : undefined
+                  const vehicleOption = item.vehicleId
+                    ? vehicleOptions.find((option) => option.id === item.vehicleId)
+                    : undefined
 
-                      return (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                              <Label className="text-sm">نوع البند</Label>
-                              <Select value={item.itemType} onValueChange={(value) => handleItemTypeChange(item.id, value as InvoiceItem['itemType'])}>
+                  return (
+                    <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">بند #{index + 1}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeItem(item.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <Label className="text-sm">نوع البند</Label>
+                            <Select
+                              value={item.itemType}
+                              onValueChange={(value) =>
+                                handleItemTypeChange(item.id, value as InvoiceItem['itemType'])
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="SERVICE">خدمة</SelectItem>
+                                <SelectItem value="PART">قطعة غيار</SelectItem>
+                                <SelectItem value="VEHICLE">مركبة</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {item.itemType === 'PART' && (
+                            <div className="md:col-span-2">
+                              <Label className="text-sm">اختر الصنف من المخزون</Label>
+                              <Select
+                                value={item.inventoryItemId || ''}
+                                onValueChange={(value) => handleInventorySelection(item.id, value)}
+                              >
                                 <SelectTrigger>
-                                  <SelectValue />
+                                  <SelectValue placeholder="اختر صنف المخزون" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="SERVICE">خدمة</SelectItem>
-                                  <SelectItem value="PART">قطعة غيار</SelectItem>
-                                  <SelectItem value="VEHICLE">مركبة</SelectItem>
+                                  {inventoryItems.map((option) => (
+                                    <SelectItem
+                                      key={option.id}
+                                      value={option.id}
+                                      disabled={option.quantity <= 0}
+                                    >
+                                      {option.name} ({option.partNumber}) - المتوفر: {option.quantity}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
+                              {inventoryOption && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  المتوفر: {inventoryOption.quantity} قطعة
+                                </p>
+                              )}
                             </div>
+                          )}
 
-                            {item.itemType === 'PART' && (
-                              <div className="md:col-span-2">
-                                <Label className="text-sm">اختر الصنف من المخزون</Label>
-                                <Select value={item.inventoryItemId || ''} onValueChange={(value) => handleInventorySelection(item.id, value)}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="اختر صنف المخزون" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {inventoryItems.map(option => (
-                                      <SelectItem key={option.id} value={option.id} disabled={option.quantity <= 0}>
-                                        {option.name} ({option.partNumber}) - المتوفر: {option.quantity}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {inventoryOption && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    المتوفر: {inventoryOption.quantity} قطعة
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                          {item.itemType === 'VEHICLE' && (
+                            <div className="md:col-span-2">
+                              <Label className="text-sm">اختر المركبة</Label>
+                              <Select
+                                value={item.vehicleId || ''}
+                                onValueChange={(value) => handleVehicleSelection(item.id, value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="اختر المركبة" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {vehicleOptions.map((option) => (
+                                    <SelectItem key={option.id} value={option.id}>
+                                      {option.make} {option.model} ({option.stockNumber}) - {option.price.toLocaleString()} ج.م
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {vehicleOption && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  رقم المخزون: {vehicleOption.stockNumber} • سنة الصنع: {vehicleOption.year}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
-                            {item.itemType === 'VEHICLE' && (
-                              <div className="md:col-span-2">
-                                <Label className="text-sm">اختر المركبة</Label>
-                                <Select value={item.vehicleId || ''} onValueChange={(value) => handleVehicleSelection(item.id, value)}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="اختر المركبة" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {vehicleOptions.map(option => (
-                                      <SelectItem key={option.id} value={option.id}>
-                                        {option.make} {option.model} ({option.stockNumber}) - {option.price.toLocaleString()} ج.م
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {vehicleOption && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    رقم المخزون: {vehicleOption.stockNumber} • سنة الصنع: {vehicleOption.year}
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-sm">الوصف</Label>
+                            <Input
+                              value={item.description}
+                              onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                              placeholder="وصف البند"
+                            />
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-sm">الوصف</Label>
+                              <Label className="text-sm">الكمية</Label>
                               <Input
-                                value={item.description}
-                                onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                placeholder="وصف البند"
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                                min="1"
+                                disabled={item.itemType === 'VEHICLE'}
+                              />
+                              {item.itemType === 'PART' && item.inventoryItemId && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  سيتم خصم الكمية المحددة من المخزون عند تأكيد الفاتورة
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label className="text-sm">السعر</Label>
+                              <Input
+                                type="number"
+                                value={item.unitPrice}
+                                onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                                min="0"
+                                step="0.01"
+                                disabled={item.itemType === 'VEHICLE' && !!item.vehicleId}
                               />
                             </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <Label className="text-sm">الكمية</Label>
-                                <Input
-                                  type="number"
-                                  value={item.quantity}
-                                  onChange={(e) => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                                  min="1"
-                                  disabled={item.itemType === 'VEHICLE'}
-                                />
-                                {item.itemType === 'PART' && item.inventoryItemId && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    سيتم خصم الكمية المحددة من المخزون عند تأكيد الفاتورة
-                                  </p>
-                                )}
-                              </div>
-
-                              <div>
-                                <Label className="text-sm">السعر</Label>
-                                <Input
-                                  type="number"
-                                  value={item.unitPrice}
-                                  onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                                  min="0"
-                                  step="0.01"
-                                  disabled={item.itemType === 'VEHICLE' && !!item.vehicleId}
-                                />
-                              </div>
-                            </div>
                           </div>
                         </div>
-                      )
-                    })()}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-sm">ضريبة (%)</Label>
-                        <Select 
-                          value={item.taxRate.toString()} 
-                          onValueChange={(value) => updateItem(item.id, 'taxRate', parseFloat(value))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {taxRates.map((tax) => (
-                              <SelectItem key={tax.id} value={tax.rate.toString()}>
-                                {tax.type} ({tax.rate}%)
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="0">معفى</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
-                      
-                      <div>
-                        <Label className="text-sm">المجموع</Label>
-                        <div className="p-2 bg-gray-50 rounded font-medium">
-                          {(item.totalPrice || 0).toFixed(2)} ج.م
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-sm">ضريبة (%)</Label>
+                          <Select
+                            value={item.taxRate.toString()}
+                            onValueChange={(value) => updateItem(item.id, 'taxRate', parseFloat(value))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {taxRates.map((tax) => (
+                                <SelectItem key={tax.id} value={tax.rate.toString()}>
+                                  {tax.type} ({tax.rate}%)
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="0">معفى</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-sm">الضريبة</Label>
-                        <div className="p-2 bg-gray-50 rounded font-medium">
-                          {(item.taxAmount || 0).toFixed(2)} ج.م
+
+                        <div>
+                          <Label className="text-sm">المجموع</Label>
+                          <div className="p-2 bg-gray-50 rounded font-medium">
+                            {(item.totalPrice || 0).toFixed(2)} ج.م
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-sm">الضريبة</Label>
+                          <div className="p-2 bg-gray-50 rounded font-medium">
+                            {(item.taxAmount || 0).toFixed(2)} ج.م
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 
                 {items.length === 0 && (
                   <div className="text-center py-8 text-gray-500">

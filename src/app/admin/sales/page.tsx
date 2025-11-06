@@ -21,6 +21,19 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
+interface MarketingMetrics {
+  campaignsSent: number
+  emailsSent: number
+  emailsOpened: number
+  emailsClicked: number
+  leadsGenerated: number
+  leadsConverted: number
+  conversionRate: number
+  costPerLead: number
+  costPerAcquisition: number
+  roi: number
+}
+
 interface SalesData {
   totalSales: number
   totalRevenue: number
@@ -32,6 +45,18 @@ interface SalesData {
     customers: number
     conversion: number
   }
+  totalCampaigns: number
+  activeCampaigns: number
+  totalLeads: number
+  qualifiedLeads: number
+  convertedLeads: number
+  totalTargets: number
+  achievedTargets: number
+  revenueGenerated: number
+  marketingMetrics?: MarketingMetrics | null
+  period?: string
+  startDate?: string
+  endDate?: string
 }
 
 interface RecentSale {
@@ -86,6 +111,64 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const defaultMarketingMetrics: MarketingMetrics = {
+    campaignsSent: 0,
+    emailsSent: 0,
+    emailsOpened: 0,
+    emailsClicked: 0,
+    leadsGenerated: 0,
+    leadsConverted: 0,
+    conversionRate: 0,
+    costPerLead: 0,
+    costPerAcquisition: 0,
+    roi: 0
+  }
+
+  const buildDefaultSalesData = (): SalesData => ({
+    totalSales: 0,
+    totalRevenue: 0,
+    newCustomers: 0,
+    conversionRate: 0,
+    monthlyGrowth: {
+      sales: 0,
+      revenue: 0,
+      customers: 0,
+      conversion: 0
+    },
+    totalCampaigns: 0,
+    activeCampaigns: 0,
+    totalLeads: 0,
+    qualifiedLeads: 0,
+    convertedLeads: 0,
+    totalTargets: 0,
+    achievedTargets: 0,
+    revenueGenerated: 0,
+    marketingMetrics: { ...defaultMarketingMetrics },
+    period: 'month',
+    startDate: undefined,
+    endDate: undefined
+  })
+
+  const normalizeSalesData = (data: Partial<SalesData> | null | undefined): SalesData => {
+    const base = buildDefaultSalesData()
+    if (!data) {
+      return base
+    }
+
+    return {
+      ...base,
+      ...data,
+      monthlyGrowth: {
+        ...base.monthlyGrowth,
+        ...(data.monthlyGrowth || {})
+      },
+      marketingMetrics: {
+        ...defaultMarketingMetrics,
+        ...(data.marketingMetrics || {})
+      }
+    }
+  }
+
   useEffect(() => {
     loadSalesData()
   }, [])
@@ -100,36 +183,14 @@ export default function SalesPage() {
         const overviewResponse = await fetch('/api/marketing-sales/stats')
         if (overviewResponse.ok) {
           const overviewData = await overviewResponse.json()
-          setSalesData(overviewData)
+          setSalesData(normalizeSalesData(overviewData))
         } else {
           console.warn('Sales overview API returned error:', overviewResponse.status)
-          setSalesData({
-            totalSales: 0,
-            totalRevenue: 0,
-            newCustomers: 0,
-            conversionRate: 0,
-            monthlyGrowth: {
-              sales: 0,
-              revenue: 0,
-              customers: 0,
-              conversion: 0
-            }
-          })
+          setSalesData(buildDefaultSalesData())
         }
       } catch (error) {
         console.warn('Error loading sales overview:', error)
-        setSalesData({
-          totalSales: 0,
-          totalRevenue: 0,
-          newCustomers: 0,
-          conversionRate: 0,
-          monthlyGrowth: {
-            sales: 0,
-            revenue: 0,
-            customers: 0,
-            conversion: 0
-          }
-        })
+        setSalesData(buildDefaultSalesData())
       }
 
       // Load recent sales (from invoices)
@@ -180,18 +241,7 @@ export default function SalesPage() {
       console.error('Error loading sales data:', error)
       setError('فشل في تحميل بيانات المبيعات')
       // Set default values on error
-      setSalesData({
-        totalSales: 0,
-        totalRevenue: 0,
-        newCustomers: 0,
-        conversionRate: 0,
-        monthlyGrowth: {
-          sales: 0,
-          revenue: 0,
-          customers: 0,
-          conversion: 0
-        }
-      })
+      setSalesData(buildDefaultSalesData())
       setRecentSales([])
       setTopPerformers([])
       setSalesTargets([])
@@ -208,8 +258,26 @@ export default function SalesPage() {
     }).format(amount)
   }
 
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('ar-EG', {
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('ar-EG').format(value || 0)
+  }
+
+  const formatPercentage = (value: number) => {
+    const safeValue = Number.isFinite(value) ? value : 0
+    return `${Math.round(safeValue * 10) / 10}%`
+  }
+
+  const formatDate = (date?: Date | string) => {
+    if (!date) {
+      return 'غير متوفر'
+    }
+
+    const parsed = new Date(date)
+    if (Number.isNaN(parsed.getTime())) {
+      return 'غير متوفر'
+    }
+
+    return parsed.toLocaleDateString('ar-EG', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -318,6 +386,101 @@ export default function SalesPage() {
           </div>
         </div>
 
+        {(() => {
+          const resolved = salesData || buildDefaultSalesData()
+          const marketing = resolved.marketingMetrics || defaultMarketingMetrics
+          const periodRange = resolved.startDate && resolved.endDate
+            ? `${formatDate(resolved.startDate)} - ${formatDate(resolved.endDate)}`
+            : 'غير متوفر'
+          const targetSummary = resolved.totalTargets > 0
+            ? Math.round((resolved.achievedTargets / resolved.totalTargets) * 100)
+            : 0
+
+          return (
+            <div className="grid gap-6 lg:grid-cols-3">
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <CardTitle>ملخص الأداء التسويقي</CardTitle>
+                      <CardDescription>
+                        بيانات المبيعات والتسويق خلال الفترة {periodRange}
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary">الفترة: {resolved.period === 'today' ? 'اليوم' : resolved.period === 'week' ? 'الأسبوع' : resolved.period === 'month' ? 'الشهر' : resolved.period === 'quarter' ? 'الربع' : resolved.period === 'year' ? 'السنة' : resolved.period || 'غير محدد'}</Badge>
+                      <Badge variant="outline">الإيراد من الحملات: {formatCurrency(resolved.revenueGenerated)}</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {[{
+                      label: 'إجمالي الحملات',
+                      value: formatNumber(resolved.totalCampaigns)
+                    }, {
+                      label: 'الحملات النشطة',
+                      value: formatNumber(resolved.activeCampaigns)
+                    }, {
+                      label: 'إجمالي العملاء المحتملين',
+                      value: formatNumber(resolved.totalLeads)
+                    }, {
+                      label: 'العملاء المؤهلون',
+                      value: formatNumber(resolved.qualifiedLeads)
+                    }, {
+                      label: 'العملاء المحولون',
+                      value: formatNumber(resolved.convertedLeads)
+                    }, {
+                      label: 'تحقيق الأهداف',
+                      value: resolved.totalTargets > 0 ? `${targetSummary}% (${formatNumber(resolved.achievedTargets)}/${formatNumber(resolved.totalTargets)})` : 'لا توجد أهداف'
+                    }].map((metric) => (
+                      <div key={metric.label} className="rounded-lg border bg-muted/40 p-4 text-right">
+                        <p className="text-xs text-muted-foreground">{metric.label}</p>
+                        <p className="mt-1 text-lg font-semibold">{metric.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>مؤشرات التسويق</CardTitle>
+                  <CardDescription>
+                    قياس تفاعل العملاء مع الحملات الرقمية
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[{
+                    label: 'البريد الإلكتروني المرسل',
+                    value: formatNumber(marketing.emailsSent)
+                  }, {
+                    label: 'معدل الفتح',
+                    value: formatPercentage(marketing.emailsSent ? (marketing.emailsOpened / marketing.emailsSent) * 100 : 0)
+                  }, {
+                    label: 'معدل النقر',
+                    value: formatPercentage(marketing.emailsSent ? (marketing.emailsClicked / marketing.emailsSent) * 100 : 0)
+                  }, {
+                    label: 'التكلفة لكل عميل محتمل',
+                    value: formatCurrency(marketing.costPerLead)
+                  }, {
+                    label: 'التكلفة لكل اكتساب',
+                    value: formatCurrency(marketing.costPerAcquisition)
+                  }, {
+                    label: 'العائد على الاستثمار',
+                    value: formatPercentage(marketing.roi)
+                  }].map((metric) => (
+                    <div key={metric.label} className="rounded-lg border p-3 text-right">
+                      <p className="text-xs text-muted-foreground">{metric.label}</p>
+                      <p className="mt-1 text-lg font-semibold">{metric.value}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )
+        })()}
+
         {/* Stats Cards */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <Card>
@@ -331,7 +494,7 @@ export default function SalesPage() {
               </div>
               <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.revenue || 0)}`}>
                 {getGrowthIcon(salesData?.monthlyGrowth?.revenue || 0)}
-                {salesData?.monthlyGrowth?.revenue ? Math.abs(salesData.monthlyGrowth.revenue) : 0}% من الشهر الماضي
+                {formatPercentage(salesData?.monthlyGrowth?.revenue || 0)} من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -342,10 +505,10 @@ export default function SalesPage() {
               <Car className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{salesData?.totalSales || 0}</div>
+              <div className="text-2xl font-bold">{(salesData || buildDefaultSalesData()).totalSales}</div>
               <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.sales || 0)}`}>
                 {getGrowthIcon(salesData?.monthlyGrowth?.sales || 0)}
-                {salesData?.monthlyGrowth?.sales ? Math.abs(salesData.monthlyGrowth.sales) : 0}% من الشهر الماضي
+                {formatPercentage(salesData?.monthlyGrowth?.sales || 0)} من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -356,10 +519,10 @@ export default function SalesPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{salesData?.newCustomers || 0}</div>
+              <div className="text-2xl font-bold">{(salesData || buildDefaultSalesData()).newCustomers}</div>
               <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.customers || 0)}`}>
                 {getGrowthIcon(salesData?.monthlyGrowth?.customers || 0)}
-                {salesData?.monthlyGrowth?.customers ? Math.abs(salesData.monthlyGrowth.customers) : 0}% من الشهر الماضي
+                {formatPercentage(salesData?.monthlyGrowth?.customers || 0)} من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -370,10 +533,10 @@ export default function SalesPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{salesData?.conversionRate || 0}%</div>
+              <div className="text-2xl font-bold">{formatPercentage(salesData?.conversionRate || 0)}</div>
               <p className={`text-xs flex items-center gap-1 ${getGrowthColor(salesData?.monthlyGrowth?.conversion || 0)}`}>
                 {getGrowthIcon(salesData?.monthlyGrowth?.conversion || 0)}
-                {salesData?.monthlyGrowth?.conversion ? Math.abs(salesData.monthlyGrowth.conversion) : 0}% من الشهر الماضي
+                {formatPercentage(salesData?.monthlyGrowth?.conversion || 0)} من الشهر الماضي
               </p>
             </CardContent>
           </Card>

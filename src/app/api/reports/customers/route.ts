@@ -16,6 +16,7 @@ import {
   addMonths,
   format,
 } from 'date-fns'
+import { ar } from 'date-fns/locale'
 import { Prisma } from '@prisma/client'
 
 const isSchemaMissingError = (error: unknown) => {
@@ -216,7 +217,7 @@ export async function GET(request: NextRequest) {
       const retention = totalCustomersAtEnd > 0 ? (activeCustomers / totalCustomersAtEnd) * 100 : 0
 
       customerMetrics.push({
-        month: format(monthDate, 'MMM yyyy', { locale: { code: 'ar' } }),
+        month: format(monthDate, 'MMM yyyy', { locale: ar }),
         newCustomers: newCustomersCount,
         totalCustomers: totalCustomersAtEnd,
         retention: Math.round(retention * 100) / 100,

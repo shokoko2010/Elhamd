@@ -5,7 +5,18 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
-import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
+import {
+  startOfDay,
+  endOfDay,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+  format,
+} from 'date-fns'
+import { ar } from 'date-fns/locale'
 import { Prisma } from '@prisma/client'
 
 const isSchemaMissingError = (error: unknown) => {
@@ -161,7 +172,7 @@ export async function GET(request: NextRequest) {
       const profit = revenue - expenses
 
       financialMetrics.push({
-        month: format(monthDate, 'MMM yyyy', { locale: { code: 'ar' } }),
+        month: format(monthDate, 'MMM yyyy', { locale: ar }),
         revenue,
         expenses,
         profit
@@ -277,7 +288,7 @@ export async function GET(request: NextRequest) {
           ])
 
           return {
-            month: format(monthDate, 'MMM yyyy', { locale: { code: 'ar' } }),
+            month: format(monthDate, 'MMM yyyy', { locale: ar }),
             revenue: revenue._sum.totalAmount || 0,
             expenses: expenses._sum.amount || 0
           }
