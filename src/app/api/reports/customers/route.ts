@@ -5,7 +5,17 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
-import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
+import {
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subDays,
+  addMonths,
+  format,
+} from 'date-fns'
 import { Prisma } from '@prisma/client'
 
 const isSchemaMissingError = (error: unknown) => {
@@ -30,20 +40,18 @@ const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise
 
 export async function GET(request: NextRequest) {
   try {
-    // Add CORS headers
     const headers = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    };
+    }
 
-    // Handle OPTIONS request
     if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { status: 200, headers });
+      return new NextResponse(null, { status: 200, headers })
     }
 
     const user = await authenticateProductionUser(request)
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
     }
@@ -92,270 +100,299 @@ export async function GET(request: NextRequest) {
         monthsToShow = 12
     }
 
-    const where: any = {}
+    const branchFilter = branchId && branchId !== 'all' ? branchId : null
+    const customerBranchConditions = branchFilter
+      ? [
+          { user: { branchId: branchFilter } },
+          { invoices: { some: { branchId: branchFilter } } },
+        ]
+      : []
 
-    if (branchId && branchId !== 'all') {
-      where.branchId = branchId
+    const withCustomerBranchFilter = (
+      whereInput: Prisma.CustomerProfileWhereInput
+    ): Prisma.CustomerProfileWhereInput => {
+      if (!customerBranchConditions.length) {
+        return whereInput
+      }
+
+      const existingAnd = Array.isArray(whereInput.AND)
+        ? whereInput.AND
+        : whereInput.AND
+        ? [whereInput.AND]
+        : []
+
+      return {
+        ...whereInput,
+        AND: [
+          ...existingAnd,
+          {
+            OR: customerBranchConditions,
+          },
+        ],
+      }
     }
 
-    // Generate monthly customer metrics
-    const customerMetrics = []
-    
+    const invoiceBranchFilter = branchFilter ? { branchId: branchFilter } : {}
+    const leadBaseWhere: Prisma.LeadWhereInput = {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+
+    const customerMetrics: Array<{
+      month: string
+      newCustomers: number
+      totalCustomers: number
+      retention: number
+    }> = []
+
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = addMonths(startDate, -i)
       const monthStart = startOfMonth(monthDate)
       const monthEnd = endOfMonth(monthDate)
-      
-      const monthWhere = {
-        ...where,
+
+      const monthCustomerWhere = withCustomerBranchFilter({
         createdAt: {
           gte: monthStart,
-          lte: monthEnd
-        }
-      }
+          lte: monthEnd,
+        },
+      })
 
-      const [
-        newCustomers,
-        totalCustomersAtEnd,
-        activeCustomers
-      ] = await Promise.all([
+      const [newCustomersCount, totalCustomersAtEnd, activeCustomers] = await Promise.all([
         safeExecute(
           () =>
             db.customerProfile.count({
-              where: {
-                ...monthWhere
-              }
+              where: monthCustomerWhere,
             }),
           0
         ),
         safeExecute(
           () =>
             db.customerProfile.count({
-              where: {
+              where: withCustomerBranchFilter({
                 createdAt: {
-                  lte: monthEnd
-                }
-              }
+                  lte: monthEnd,
+                },
+              }),
             }),
           0
         ),
         safeExecute(
           () =>
             db.customerProfile.count({
-              where: {
+              where: withCustomerBranchFilter({
                 createdAt: {
-                  lte: monthEnd
+                  lte: monthEnd,
                 },
                 OR: [
                   {
                     invoices: {
                       some: {
                         createdAt: {
-                          gte: subDays(monthEnd, 90) // Active in last 90 days
-                        }
-                      }
-                    }
+                          gte: subDays(monthEnd, 90),
+                        },
+                        ...invoiceBranchFilter,
+                      },
+                    },
                   },
                   {
                     serviceBookings: {
                       some: {
                         createdAt: {
-                          gte: subDays(monthEnd, 90)
-                        }
-                      }
-                    }
-                  }
-                ]
-              }
+                          gte: subDays(monthEnd, 90),
+                        },
+                      },
+                    },
+                  },
+                ],
+              }),
             }),
           0
-        )
+        ),
       ])
 
       const retention = totalCustomersAtEnd > 0 ? (activeCustomers / totalCustomersAtEnd) * 100 : 0
 
       customerMetrics.push({
         month: format(monthDate, 'MMM yyyy', { locale: { code: 'ar' } }),
-        newCustomers,
+        newCustomers: newCustomersCount,
         totalCustomers: totalCustomersAtEnd,
-        retention: Math.round(retention * 100) / 100
+        retention: Math.round(retention * 100) / 100,
       })
     }
 
-    // Get current period detailed breakdown
-    const currentPeriodWhere = {
-      ...where,
+    const currentPeriodCustomerWhere = withCustomerBranchFilter({
       createdAt: {
         gte: startDate,
-        lte: endDate
-      }
-    }
+        lte: endDate,
+      },
+    })
 
     const [
       customerSegments,
       topCustomers,
       customerAcquisition,
       customerLifetimeValue,
-      churnRate
+      churnRate,
     ] = await Promise.all([
-      // Customer segments
       safeExecute(
         () =>
           db.customerProfile.groupBy({
             by: ['segment'],
-            where: {
-              ...where
-            },
+            where: currentPeriodCustomerWhere,
             _count: {
-              _all: true
-            }
+              _all: true,
+            },
           }),
         [] as Array<{ segment: string | null; _count: { _all: number } }>
       ),
-      // Top customers by revenue
       safeExecute(
         () =>
           db.customerProfile.findMany({
-            where: {
-              ...where
-            },
+            where: currentPeriodCustomerWhere,
             include: {
+              user: {
+                select: {
+                  email: true,
+                  phone: true,
+                  name: true,
+                },
+              },
               invoices: {
                 where: {
-                  status: 'PAID'
+                  status: 'PAID',
+                  ...invoiceBranchFilter,
                 },
                 select: {
-                  totalAmount: true
-                }
-              }
+                  totalAmount: true,
+                },
+              },
             },
             orderBy: {
               invoices: {
                 _sum: {
-                  totalAmount: 'desc'
-                }
-              }
+                  totalAmount: 'desc',
+                },
+              },
             },
-            take: 10
+            take: 10,
           }),
-        [] as Array<{ invoices: Array<{ totalAmount: number }> } & { id: string; name: string | null }>
+        [] as Array<{
+          id: string
+          user: { email: string | null; phone: string | null; name: string | null } | null
+          invoices: Array<{ totalAmount: number }>
+        }>
       ),
-      // Customer acquisition sources
       safeExecute(
         () =>
           db.lead.groupBy({
             by: ['source'],
             where: {
-              ...currentPeriodWhere,
-              status: 'CLOSED_WON'
+              ...leadBaseWhere,
+              status: 'CLOSED_WON',
             },
             _count: {
-              _all: true
-            }
+              _all: true,
+            },
           }),
         [] as Array<{ source: string | null; _count: { _all: number } }>
       ),
-      // Customer lifetime value
       safeExecute(
         () =>
           db.customerProfile.findMany({
-            where: {
-              ...where
-            },
+            where: currentPeriodCustomerWhere,
             include: {
               invoices: {
                 where: {
-                  status: 'PAID'
+                  status: 'PAID',
+                  ...invoiceBranchFilter,
                 },
                 select: {
                   totalAmount: true,
-                  createdAt: true
-                }
-              }
-            }
+                  createdAt: true,
+                },
+              },
+            },
           }),
         [] as Array<{
+          id: string
           invoices: Array<{ totalAmount: number; createdAt: Date }>
-        } & { id: string }>
+        }>
       ),
-      // Churn rate calculation
       Promise.all([
-        // Customers at start of period
         safeExecute(
           () =>
             db.customerProfile.count({
-              where: {
+              where: withCustomerBranchFilter({
                 createdAt: {
-                  lte: subDays(startDate, 1)
-                }
-              }
+                  lte: subDays(startDate, 1),
+                },
+              }),
             }),
           0
         ),
-        // Customers who churned in period
         safeExecute(
           () =>
             db.customerProfile.count({
-              where: {
+              where: withCustomerBranchFilter({
                 createdAt: {
-                  lte: subDays(startDate, 1)
+                  lte: subDays(startDate, 1),
                 },
                 AND: [
                   {
                     invoices: {
                       none: {
                         createdAt: {
-                          gte: startDate
-                        }
-                      }
-                    }
+                          gte: startDate,
+                        },
+                        ...invoiceBranchFilter,
+                      },
+                    },
                   },
                   {
                     serviceBookings: {
                       none: {
                         createdAt: {
-                          gte: startDate
-                        }
-                      }
-                    }
-                  }
-                ]
-              }
+                          gte: startDate,
+                        },
+                      },
+                    },
+                  },
+                ],
+              }),
             }),
           0
-        )
-      ])
+        ),
+      ]),
     ])
 
-    // Calculate customer lifetime value
     const customerLifetimeValueData = customerLifetimeValue.map(customer => {
       const totalSpent = customer.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
       const firstPurchase = customer.invoices.length > 0 ? Math.min(...customer.invoices.map(i => new Date(i.createdAt).getTime())) : 0
-      const customerAge = firstPurchase > 0 ? (now.getTime() - firstPurchase) / (1000 * 60 * 60 * 24 * 365) : 0 // in years
-      
+      const customerAge = firstPurchase > 0 ? (now.getTime() - firstPurchase) / (1000 * 60 * 60 * 24 * 365) : 0
+
       return {
         id: customer.id,
-        name: customer.name,
         totalSpent,
         customerAge: Math.round(customerAge * 100) / 100,
-        lifetimeValue: customerAge > 0 ? totalSpent / customerAge : 0
+        lifetimeValue: customerAge > 0 ? totalSpent / customerAge : 0,
       }
     })
 
-    // Calculate churn rate
     const [customersAtStart, churnedCustomers] = churnRate
     const churnRateValue = customersAtStart > 0 ? (churnedCustomers / customersAtStart) * 100 : 0
 
-    // Process top customers with revenue
     const topCustomersWithRevenue = topCustomers.map(customer => {
       const totalRevenue = customer.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
       return {
         id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        phone: customer.phone,
+        name: customer.user?.name,
+        email: customer.user?.email,
+        phone: customer.user?.phone,
         revenue: totalRevenue,
-        invoiceCount: customer.invoices.length
+        invoiceCount: customer.invoices.length,
       }
     })
 
@@ -364,13 +401,15 @@ export async function GET(request: NextRequest) {
       segments: customerSegments,
       topCustomers: topCustomersWithRevenue,
       acquisitionSources: customerAcquisition,
-      customerLifetimeValue: customerLifetimeValueData.sort((a, b) => b.lifetimeValue - a.lifetimeValue).slice(0, 10),
+      customerLifetimeValue: customerLifetimeValueData
+        .sort((a, b) => b.lifetimeValue - a.lifetimeValue)
+        .slice(0, 10),
       churnRate: Math.round(churnRateValue * 100) / 100,
       period: {
         start: startDate,
         end: endDate,
-        type: period
-      }
+        type: period,
+      },
     }
 
     return NextResponse.json(customerReport, { headers })
@@ -378,11 +417,14 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching customer report:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500, headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      }}
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        },
+      }
     )
   }
 }

@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
-import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { Prisma } from '@prisma/client'
 
 const isSchemaMissingError = (error: unknown) => {
@@ -30,20 +30,18 @@ const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise
 
 export async function GET(request: NextRequest) {
   try {
-    // Add CORS headers
     const headers = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    };
+    }
 
-    // Handle OPTIONS request
     if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { status: 200, headers });
+      return new NextResponse(null, { status: 200, headers })
     }
 
     const user = await authenticateProductionUser(request)
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
     }
@@ -85,121 +83,172 @@ export async function GET(request: NextRequest) {
         endDate = endOfMonth(now)
     }
 
-    const where: any = {
-      createdAt: {
-        gte: startDate,
-        lte: endDate
+    const branchFilter = branchId && branchId !== 'all' ? branchId : null
+    const dateRange = {
+      gte: startDate,
+      lte: endDate,
+    }
+
+    const invoiceWhere: Prisma.InvoiceWhereInput = {
+      createdAt: dateRange,
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+
+    const transactionWhere: Prisma.TransactionWhereInput = {
+      createdAt: dateRange,
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+
+    const leadWhere: Prisma.LeadWhereInput = {
+      createdAt: dateRange,
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+
+    const supportTicketWhere: Prisma.SupportTicketWhereInput = {
+      createdAt: dateRange,
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+
+    const marketingCampaignWhere: Prisma.MarketingCampaignWhereInput = {
+      createdAt: dateRange,
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+
+    const inventoryWhere: Prisma.InventoryItemWhereInput = branchFilter
+      ? { branchId: branchFilter }
+      : {}
+
+    const customerBranchConditions = branchFilter
+      ? [
+          { user: { branchId: branchFilter } },
+          { invoices: { some: { branchId: branchFilter } } },
+        ]
+      : []
+
+    const withCustomerBranchFilter = (
+      whereInput: Prisma.CustomerProfileWhereInput
+    ): Prisma.CustomerProfileWhereInput => {
+      if (!customerBranchConditions.length) {
+        return whereInput
+      }
+
+      const existingAnd = Array.isArray(whereInput.AND)
+        ? whereInput.AND
+        : whereInput.AND
+        ? [whereInput.AND]
+        : []
+
+      return {
+        ...whereInput,
+        AND: [
+          ...existingAnd,
+          {
+            OR: customerBranchConditions,
+          },
+        ],
       }
     }
 
-    if (branchId && branchId !== 'all') {
-      where.branchId = branchId
+    const paidInvoiceWhere: Prisma.InvoiceWhereInput = {
+      ...invoiceWhere,
+      status: 'PAID',
     }
 
-    // Fetch financial data
-    const [
-      totalRevenue,
-      totalExpenses,
-      invoicesData
-    ] = await Promise.all([
+    const expenseTransactionWhere = {
+      ...transactionWhere,
+      type: 'EXPENSE',
+    }
+
+    const [totalRevenue, totalExpenses, invoicesData] = await Promise.all([
       safeExecute(
         () =>
           db.invoice.aggregate({
-            where: {
-              ...where,
-              status: 'PAID'
-            },
+            where: paidInvoiceWhere,
             _sum: {
-              totalAmount: true
-            }
+              totalAmount: true,
+            },
           }),
         { _sum: { totalAmount: 0 } }
       ),
       safeExecute(
         () =>
           db.transaction.aggregate({
-            where: {
-              ...where,
-              type: 'EXPENSE'
-            },
+            where: expenseTransactionWhere,
             _sum: {
-              amount: true
-            }
+              amount: true,
+            },
           }),
         { _sum: { amount: 0 } }
       ),
       safeExecute(
         () =>
           db.invoice.findMany({
-            where: {
-              ...where,
-              status: 'PAID'
-            },
+            where: paidInvoiceWhere,
             select: {
               totalAmount: true,
-              createdAt: true
-            }
+              createdAt: true,
+            },
           }),
         [] as Array<{ totalAmount: number | null; createdAt: Date }>
-      )
+      ),
     ])
 
     const revenue = totalRevenue._sum.totalAmount || 0
     const expenses = totalExpenses._sum.amount || 0
     const netProfit = revenue - expenses
 
-    // Fetch customer data
-    const [
-      totalCustomers,
-      newCustomers,
-      leadsData
-    ] = await Promise.all([
-      safeExecute(() => db.customerProfile.count(), 0),
+    const [totalCustomers, newCustomers, leadsData] = await Promise.all([
       safeExecute(
         () =>
           db.customerProfile.count({
-            where: {
+            where: withCustomerBranchFilter({}),
+          }),
+        0
+      ),
+      safeExecute(
+        () =>
+          db.customerProfile.count({
+            where: withCustomerBranchFilter({
               createdAt: {
                 gte: startDate,
-                lte: endDate
-              }
-            }
+                lte: endDate,
+              },
+            }),
           }),
         0
       ),
       safeExecute(
         () =>
           db.lead.findMany({
-            where: {
-              ...where
-            },
+            where: leadWhere,
             select: {
               status: true,
-              estimatedValue: true
-            }
+              estimatedValue: true,
+            },
           }),
         [] as Array<{ status: string; estimatedValue: number | null }>
-      )
+      ),
     ])
 
     const totalLeads = leadsData.length
     const convertedLeads = leadsData.filter(lead => lead.status === 'CLOSED_WON').length
     const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0
 
-    // Fetch customer service data
-    const [
-      totalTickets,
-      resolvedTickets,
-      ticketsData
-    ] = await Promise.all([
-      safeExecute(() => db.supportTicket.count({ where }), 0),
+    const [totalTickets, resolvedTickets, ticketsData] = await Promise.all([
+      safeExecute(
+        () =>
+          db.supportTicket.count({
+            where: supportTicketWhere,
+          }),
+        0
+      ),
       safeExecute(
         () =>
           db.supportTicket.count({
             where: {
-              ...where,
-              status: 'RESOLVED'
-            }
+              ...supportTicketWhere,
+              status: 'RESOLVED',
+            },
           }),
         0
       ),
@@ -207,44 +256,44 @@ export async function GET(request: NextRequest) {
         () =>
           db.supportTicket.findMany({
             where: {
-              ...where,
+              ...supportTicketWhere,
               status: 'RESOLVED',
-              resolvedAt: { not: null }
+              resolvedAt: { not: null },
             },
             select: {
               createdAt: true,
-              resolvedAt: true
-            }
+              resolvedAt: true,
+            },
           }),
         [] as Array<{ createdAt: Date; resolvedAt: Date | null }>
-      )
+      ),
     ])
 
-    // Calculate average resolution time
     let avgResolutionTime = 0
     if (ticketsData.length > 0) {
       const resolutionTimes = ticketsData.map(ticket => {
         const created = new Date(ticket.createdAt).getTime()
         const resolved = new Date(ticket.resolvedAt!).getTime()
-        return (resolved - created) / (1000 * 60 * 60) // Convert to hours
+        return (resolved - created) / (1000 * 60 * 60)
       })
       avgResolutionTime = resolutionTimes.reduce((sum, time) => sum + time, 0) / resolutionTimes.length
     }
 
-    // Fetch marketing data
-    const [
-      totalCampaigns,
-      activeCampaigns,
-      campaignsData
-    ] = await Promise.all([
-      safeExecute(() => db.marketingCampaign.count({ where }), 0),
+    const [totalCampaigns, activeCampaigns, campaignsData] = await Promise.all([
+      safeExecute(
+        () =>
+          db.marketingCampaign.count({
+            where: marketingCampaignWhere,
+          }),
+        0
+      ),
       safeExecute(
         () =>
           db.marketingCampaign.count({
             where: {
-              ...where,
-              status: 'ACTIVE'
-            }
+              ...marketingCampaignWhere,
+              status: 'ACTIVE',
+            },
           }),
         0
       ),
@@ -252,8 +301,8 @@ export async function GET(request: NextRequest) {
         () =>
           db.marketingCampaign.findMany({
             where: {
-              ...where,
-              budget: { not: null }
+              ...marketingCampaignWhere,
+              budget: { not: null },
             },
             select: {
               budget: true,
@@ -261,19 +310,18 @@ export async function GET(request: NextRequest) {
                 select: {
                   id: true,
                   estimatedValue: true,
-                  status: true
-                }
-              }
-            }
+                  status: true,
+                },
+              },
+            },
           }),
         [] as Array<{
           budget: number | null
           leads: Array<{ id: string; estimatedValue: number | null; status: string }>
         }>
-      )
+      ),
     ])
 
-    // Calculate campaign ROI
     let campaignROI = 0
     let totalCampaignBudget = 0
     let campaignRevenue = 0
@@ -291,20 +339,14 @@ export async function GET(request: NextRequest) {
       campaignROI = ((campaignRevenue - totalCampaignBudget) / totalCampaignBudget) * 100
     }
 
-    // Fetch inventory data
-    const [
-      inventoryValue,
-      lowStockItems
-    ] = await Promise.all([
+    const [inventoryValue, lowStockItems] = await Promise.all([
       safeExecute(
         () =>
           db.inventoryItem.aggregate({
-            where: {
-              ...(branchId && branchId !== 'all' && { branchId })
-            },
+            where: inventoryWhere,
             _sum: {
-              totalValue: true
-            }
+              totalValue: true,
+            },
           }),
         { _sum: { totalValue: 0 } }
       ),
@@ -312,37 +354,36 @@ export async function GET(request: NextRequest) {
         () =>
           db.inventoryItem.count({
             where: {
-              ...(branchId && branchId !== 'all' && { branchId }),
+              ...inventoryWhere,
               quantity: {
-                lte: 10 // Low stock threshold
-              }
-            }
+                lte: 10,
+              },
+            },
           }),
         0
-      )
+      ),
     ])
 
-    // Fetch top selling products (from invoices)
     const topSellingProducts = await safeExecute(
       () =>
         db.invoiceItem.groupBy({
           by: ['vehicleId'],
           where: {
             invoice: {
-              ...where,
-              status: 'PAID'
-            }
+              ...invoiceWhere,
+              status: 'PAID',
+            },
           },
           _sum: {
             quantity: true,
-            totalPrice: true
+            totalPrice: true,
           },
           orderBy: {
             _sum: {
-              quantity: 'desc'
-            }
+              quantity: 'desc',
+            },
           },
-          take: 10
+          take: 10,
         }),
       [] as Array<{
         vehicleId: string | null
@@ -350,22 +391,21 @@ export async function GET(request: NextRequest) {
       }>
     )
 
-    // Get vehicle details for top selling products
     const vehicleIds = topSellingProducts.map(item => item.vehicleId)
     const vehicles = await safeExecute(
       () =>
         db.vehicle.findMany({
           where: {
             id: {
-              in: vehicleIds
-            }
+              in: vehicleIds,
+            },
           },
           select: {
             id: true,
             make: true,
             model: true,
-            year: true
-          }
+            year: true,
+          },
         }),
       [] as Array<{ id: string; make: string; model: string; year: number }>
     )
@@ -376,18 +416,18 @@ export async function GET(request: NextRequest) {
         id: item.vehicleId,
         name: vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : 'Unknown',
         quantity: item._sum.quantity || 0,
-        revenue: item._sum.totalPrice || 0
+        revenue: item._sum.totalPrice || 0,
       }
     })
 
-    // Fetch top performers (employees with best performance)
     const topPerformers = await safeExecute(
       () =>
         db.user.findMany({
           where: {
             role: {
-              in: ['SALES', 'MANAGER']
-            }
+              in: ['SALES', 'MANAGER'],
+            },
+            ...(branchFilter ? { branchId: branchFilter } : {}),
           },
           select: {
             id: true,
@@ -395,31 +435,32 @@ export async function GET(request: NextRequest) {
             role: true,
             invoices: {
               where: {
-                ...where,
-                status: 'PAID'
+                ...invoiceWhere,
+                status: 'PAID',
               },
               select: {
-                totalAmount: true
-              }
+                totalAmount: true,
+              },
             },
             assignedTickets: {
               where: {
-                ...where,
-                satisfaction: { not: null }
+                ...supportTicketWhere,
+                status: 'RESOLVED',
+                satisfaction: { not: null },
               },
               select: {
-                satisfaction: true
-              }
-            }
+                satisfaction: true,
+              },
+            },
           },
           orderBy: {
             invoices: {
               _sum: {
-                totalAmount: 'desc'
-              }
-            }
+                totalAmount: 'desc',
+              },
+            },
           },
-          take: 5
+          take: 5,
         }),
       [] as Array<{
         id: string
@@ -431,19 +472,22 @@ export async function GET(request: NextRequest) {
     )
 
     const topPerformersWithMetrics = topPerformers.map(user => {
-      const revenue = user.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
-      const satisfactionRatings = user.assignedTickets.map(ticket => ticket.satisfaction).filter(rating => rating !== null)
-      const avgSatisfaction = satisfactionRatings.length > 0 
-        ? satisfactionRatings.reduce((sum, rating) => sum + rating!, 0) / satisfactionRatings.length 
+      const revenueTotal = user.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
+      const satisfactionRatings = user.assignedTickets
+        .map(ticket => ticket.satisfaction)
+        .filter(rating => rating !== null)
+
+      const avgSatisfaction = satisfactionRatings.length > 0
+        ? satisfactionRatings.reduce((sum, rating) => sum + rating!, 0) / satisfactionRatings.length
         : 0
 
       return {
         id: user.id,
         name: user.name,
         role: user.role,
-        revenue,
+        revenue: revenueTotal,
         customers: user.invoices.length,
-        satisfaction: avgSatisfaction
+        satisfaction: avgSatisfaction,
       }
     })
 
@@ -465,7 +509,7 @@ export async function GET(request: NextRequest) {
       inventoryValue: inventoryValue._sum.totalValue || 0,
       lowStockItems,
       topSellingProducts: topSellingProductsWithDetails,
-      topPerformers: topPerformersWithMetrics
+      topPerformers: topPerformersWithMetrics,
     }
 
     return NextResponse.json(reportData, { headers })
@@ -473,11 +517,14 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching overview report:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500, headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      }}
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        },
+      }
     )
   }
 }
