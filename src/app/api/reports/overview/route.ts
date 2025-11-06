@@ -118,17 +118,10 @@ export async function GET(request: NextRequest) {
       ? { branchId: branchFilter }
       : {}
 
-    const customerBranchConditions = branchFilter
-      ? [
-          { user: { branchId: branchFilter } },
-          { invoices: { some: { branchId: branchFilter } } },
-        ]
-      : []
-
     const withCustomerBranchFilter = (
       whereInput: Prisma.CustomerProfileWhereInput
     ): Prisma.CustomerProfileWhereInput => {
-      if (!customerBranchConditions.length) {
+      if (!branchFilter) {
         return whereInput
       }
 
@@ -143,7 +136,11 @@ export async function GET(request: NextRequest) {
         AND: [
           ...existingAnd,
           {
-            OR: customerBranchConditions,
+            user: {
+              is: {
+                branchId: branchFilter,
+              },
+            },
           },
         ],
       }

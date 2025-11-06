@@ -102,17 +102,11 @@ export async function GET(request: NextRequest) {
     }
 
     const branchFilter = branchId && branchId !== 'all' ? branchId : null
-    const customerBranchConditions = branchFilter
-      ? [
-          { user: { branchId: branchFilter } },
-          { invoices: { some: { branchId: branchFilter } } },
-        ]
-      : []
 
     const withCustomerBranchFilter = (
       whereInput: Prisma.CustomerProfileWhereInput
     ): Prisma.CustomerProfileWhereInput => {
-      if (!customerBranchConditions.length) {
+      if (!branchFilter) {
         return whereInput
       }
 
@@ -127,13 +121,20 @@ export async function GET(request: NextRequest) {
         AND: [
           ...existingAnd,
           {
-            OR: customerBranchConditions,
+            user: {
+              is: {
+                branchId: branchFilter,
+              },
+            },
           },
         ],
       }
     }
 
-    const invoiceBranchFilter = branchFilter ? { branchId: branchFilter } : {}
+    const invoiceBaseWhere: Prisma.InvoiceWhereInput = {
+      status: 'PAID',
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
     const leadBaseWhere: Prisma.LeadWhereInput = {
       createdAt: {
         gte: startDate,
@@ -182,36 +183,21 @@ export async function GET(request: NextRequest) {
         ),
         safeExecute(
           () =>
-            db.customerProfile.count({
-              where: withCustomerBranchFilter({
+            db.invoice.groupBy({
+              by: ['customerId'],
+              where: {
+                ...invoiceBaseWhere,
                 createdAt: {
+                  gte: subDays(monthEnd, 90),
                   lte: monthEnd,
                 },
-                OR: [
-                  {
-                    invoices: {
-                      some: {
-                        createdAt: {
-                          gte: subDays(monthEnd, 90),
-                        },
-                        ...invoiceBranchFilter,
-                      },
-                    },
-                  },
-                  {
-                    serviceBookings: {
-                      some: {
-                        createdAt: {
-                          gte: subDays(monthEnd, 90),
-                        },
-                      },
-                    },
-                  },
-                ],
-              }),
+              },
+              _count: {
+                _all: true,
+              },
             }),
-          0
-        ),
+          [] as Array<{ customerId: string | null; _count: { _all: number } }>
+        ).then(groups => groups.filter(group => group.customerId).length),
       ])
 
       const retention = totalCustomersAtEnd > 0 ? (activeCustomers / totalCustomersAtEnd) * 100 : 0
@@ -233,10 +219,11 @@ export async function GET(request: NextRequest) {
 
     const [
       customerSegments,
-      topCustomers,
+      topCustomerInvoices,
       customerAcquisition,
-      customerLifetimeValue,
-      churnRate,
+      lifetimeAggregates,
+      pastCustomersList,
+      invoicesGroupedAfterStart,
     ] = await Promise.all([
       safeExecute(
         () =>
@@ -251,39 +238,32 @@ export async function GET(request: NextRequest) {
       ),
       safeExecute(
         () =>
-          db.customerProfile.findMany({
-            where: currentPeriodCustomerWhere,
-            include: {
-              user: {
-                select: {
-                  email: true,
-                  phone: true,
-                  name: true,
-                },
-              },
-              invoices: {
-                where: {
-                  status: 'PAID',
-                  ...invoiceBranchFilter,
-                },
-                select: {
-                  totalAmount: true,
-                },
+          db.invoice.groupBy({
+            by: ['customerId'],
+            where: {
+              ...invoiceBaseWhere,
+              createdAt: {
+                gte: startDate,
+                lte: endDate,
               },
             },
+            _sum: {
+              totalAmount: true,
+            },
+            _count: {
+              _all: true,
+            },
             orderBy: {
-              invoices: {
-                _sum: {
-                  totalAmount: 'desc',
-                },
+              _sum: {
+                totalAmount: 'desc',
               },
             },
             take: 10,
           }),
         [] as Array<{
-          id: string
-          user: { email: string | null; phone: string | null; name: string | null } | null
-          invoices: Array<{ totalAmount: number }>
+          customerId: string | null
+          _sum: { totalAmount: number | null }
+          _count: { _all: number }
         }>
       ),
       safeExecute(
@@ -302,100 +282,121 @@ export async function GET(request: NextRequest) {
       ),
       safeExecute(
         () =>
-          db.customerProfile.findMany({
-            where: currentPeriodCustomerWhere,
-            include: {
-              invoices: {
-                where: {
-                  status: 'PAID',
-                  ...invoiceBranchFilter,
-                },
-                select: {
-                  totalAmount: true,
-                  createdAt: true,
-                },
-              },
+          db.invoice.groupBy({
+            by: ['customerId'],
+            where: invoiceBaseWhere,
+            _sum: {
+              totalAmount: true,
+            },
+            _min: {
+              createdAt: true,
             },
           }),
         [] as Array<{
-          id: string
-          invoices: Array<{ totalAmount: number; createdAt: Date }>
+          customerId: string | null
+          _sum: { totalAmount: number | null }
+          _min: { createdAt: Date | null }
         }>
       ),
-      Promise.all([
-        safeExecute(
-          () =>
-            db.customerProfile.count({
-              where: withCustomerBranchFilter({
-                createdAt: {
-                  lte: subDays(startDate, 1),
-                },
-              }),
+      safeExecute(
+        () =>
+          db.customerProfile.findMany({
+            where: withCustomerBranchFilter({
+              createdAt: {
+                lte: subDays(startDate, 1),
+              },
             }),
-          0
-        ),
-        safeExecute(
-          () =>
-            db.customerProfile.count({
-              where: withCustomerBranchFilter({
-                createdAt: {
-                  lte: subDays(startDate, 1),
-                },
-                AND: [
-                  {
-                    invoices: {
-                      none: {
-                        createdAt: {
-                          gte: startDate,
-                        },
-                        ...invoiceBranchFilter,
-                      },
-                    },
-                  },
-                  {
-                    serviceBookings: {
-                      none: {
-                        createdAt: {
-                          gte: startDate,
-                        },
-                      },
-                    },
-                  },
-                ],
-              }),
-            }),
-          0
-        ),
-      ]),
+            select: {
+              userId: true,
+            },
+          }),
+        [] as Array<{ userId: string }>
+      ),
+      safeExecute(
+        () =>
+          db.invoice.groupBy({
+            by: ['customerId'],
+            where: {
+              ...invoiceBaseWhere,
+              createdAt: {
+                gte: startDate,
+                lte: endDate,
+              },
+            },
+            _count: {
+              _all: true,
+            },
+          }),
+        [] as Array<{ customerId: string | null; _count: { _all: number } }>
+      ),
     ])
 
-    const customerLifetimeValueData = customerLifetimeValue.map(customer => {
-      const totalSpent = customer.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
-      const firstPurchase = customer.invoices.length > 0 ? Math.min(...customer.invoices.map(i => new Date(i.createdAt).getTime())) : 0
-      const customerAge = firstPurchase > 0 ? (now.getTime() - firstPurchase) / (1000 * 60 * 60 * 24 * 365) : 0
+    const topCustomerIds = topCustomerInvoices
+      .filter(customer => customer.customerId)
+      .map(customer => customer.customerId!)
 
-      return {
-        id: customer.id,
-        totalSpent,
-        customerAge: Math.round(customerAge * 100) / 100,
-        lifetimeValue: customerAge > 0 ? totalSpent / customerAge : 0,
-      }
-    })
+    const topCustomerUsers = topCustomerIds.length
+      ? await safeExecute(
+          () =>
+            db.user.findMany({
+              where: {
+                id: {
+                  in: topCustomerIds,
+                },
+              },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            }),
+          [] as Array<{ id: string; name: string | null; email: string | null; phone: string | null }>
+        )
+      : []
 
-    const [customersAtStart, churnedCustomers] = churnRate
+    const topCustomerLookup = new Map(topCustomerUsers.map(user => [user.id, user]))
+
+    const topCustomersWithRevenue = topCustomerInvoices
+      .filter(customer => customer.customerId)
+      .map(customer => {
+        const userInfo = topCustomerLookup.get(customer.customerId!)
+        return {
+          id: customer.customerId!,
+          name: userInfo?.name ?? null,
+          email: userInfo?.email ?? null,
+          phone: userInfo?.phone ?? null,
+          revenue: customer._sum.totalAmount ?? 0,
+          invoiceCount: customer._count._all,
+        }
+      })
+
+    const customerLifetimeValueData = lifetimeAggregates
+      .filter(customer => customer.customerId)
+      .map(customer => {
+        const totalSpent = customer._sum.totalAmount ?? 0
+        const firstPurchase = customer._min.createdAt?.getTime() ?? 0
+        const customerAgeYears =
+          firstPurchase > 0 ? (now.getTime() - firstPurchase) / (1000 * 60 * 60 * 24 * 365) : 0
+
+        return {
+          id: customer.customerId!,
+          totalSpent,
+          customerAge: Math.round(customerAgeYears * 100) / 100,
+          lifetimeValue: customerAgeYears > 0 ? totalSpent / customerAgeYears : 0,
+        }
+      })
+
+    const activeCustomerIds = new Set(
+      invoicesGroupedAfterStart
+        .filter(group => group.customerId)
+        .map(group => group.customerId!)
+    )
+    const customersAtStart = pastCustomersList.length
+    const churnedCustomers = pastCustomersList.filter(
+      customer => !activeCustomerIds.has(customer.userId)
+    ).length
     const churnRateValue = customersAtStart > 0 ? (churnedCustomers / customersAtStart) * 100 : 0
-
-    const topCustomersWithRevenue = topCustomers.map(customer => {
-      const totalRevenue = customer.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
-      return {
-        id: customer.id,
-        name: customer.user?.name,
-        email: customer.user?.email,
-        phone: customer.user?.phone,
-        revenue: totalRevenue,
-        invoiceCount: customer.invoices.length,
-      }
-    })
 
     const customerReport = {
       metrics: customerMetrics,
