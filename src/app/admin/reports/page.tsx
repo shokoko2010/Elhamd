@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect, usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -87,7 +87,7 @@ const isValidTab = (value: string | null): value is TabKey => {
 }
 
 export default function ReportsPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -111,18 +111,14 @@ export default function ReportsPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      redirect('/login')
+      router.replace('/login')
     }
-    
-    if (status === 'authenticated') {
-      fetchReportData()
-    }
-  }, [status, dateRange, branchFilter])
+  }, [status, router])
 
-  const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Fetch overview data
       const overviewRes = await fetch(`/api/reports/overview?period=${dateRange}&branchId=${branchFilter}`)
       if (overviewRes.ok) {
@@ -148,7 +144,15 @@ export default function ReportsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [dateRange, branchFilter])
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      return
+    }
+
+    fetchReportData()
+  }, [status, fetchReportData])
 
   const handleTabChange = (value: string) => {
     const nextTab = isValidTab(value) ? value : DEFAULT_TAB
@@ -165,12 +169,16 @@ export default function ReportsPage() {
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
   }
 
-  if (loading) {
+  if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     )
+  }
+
+  if (status === 'unauthenticated') {
+    return null
   }
 
   return (
