@@ -5,8 +5,16 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/simple-production-auth'
-import { UserRole } from '@prisma/client'
+import { InvoicePaymentStatus, InvoiceStatus, UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
+import {
+  normalizeInvoiceItemsFromInput,
+  normalizeInvoiceRecord,
+} from '@/lib/invoice-normalizer'
+import {
+  applyInvoiceSideEffects,
+  extractInvoiceItemLinks,
+} from '@/lib/invoice-fulfillment'
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
@@ -96,42 +104,114 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               email: true,
-              phone: true
-            }
+              phone: true,
+            },
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
           items: true,
           payments: {
             include: {
-              payment: true
-            }
+              payment: true,
+            },
           },
-          taxes: {
-            include: {
-              taxRate: true
-            }
-          }
+          taxes: true,
         },
         orderBy: {
-          issueDate: 'desc'
+          issueDate: 'desc',
         },
         skip,
-        take: limit
+        take: limit,
       }),
-      db.invoice.count({ where })
+      db.invoice.count({ where }),
     ])
 
     const totalPages = Math.ceil(total / limit)
 
+    const serializedInvoices = invoices.map(invoice => {
+      const normalized = normalizeInvoiceRecord({
+        subtotal: invoice.subtotal,
+        taxAmount: invoice.taxAmount,
+        totalAmount: invoice.totalAmount,
+        paidAmount: invoice.paidAmount,
+        items: invoice.items,
+        taxes: invoice.taxes,
+      })
+
+      const paidAmount = normalized.totalAmount - normalized.outstanding
+
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        status: invoice.status,
+        paymentStatus: invoice.paymentStatus,
+        type: invoice.type,
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        subtotal: normalized.subtotal,
+        taxAmount: normalized.taxAmount,
+        totalAmount: normalized.totalAmount,
+        paidAmount,
+        outstanding: normalized.outstanding,
+        currency: invoice.currency,
+        createdAt: invoice.createdAt,
+        updatedAt: invoice.updatedAt,
+        customer: invoice.customer,
+        branch: invoice.branch,
+        items: normalized.items,
+        taxes: normalized.taxes,
+        payments: invoice.payments.map(payment => ({
+          id: payment.id,
+          amount: Number(payment.amount ?? payment.payment?.amount ?? 0),
+          paymentDate:
+            payment.paymentDate instanceof Date
+              ? payment.paymentDate
+              : new Date(payment.paymentDate),
+          paymentMethod: payment.paymentMethod,
+          transactionId: payment.transactionId,
+          notes: payment.notes,
+          payment: payment.payment
+            ? {
+                id: payment.payment.id,
+                amount: payment.payment.amount,
+                paymentMethod: payment.payment.paymentMethod,
+                status: payment.payment.status,
+                transactionId: payment.payment.transactionId,
+                createdAt: payment.payment.createdAt,
+                notes: payment.payment.notes,
+              }
+            : null,
+        })),
+      }
+    })
+
+    const pageTotals = serializedInvoices.reduce(
+      (acc, invoice) => {
+        acc.totalAmount += invoice.totalAmount
+        acc.totalPaid += invoice.paidAmount
+        acc.outstanding += invoice.outstanding
+        return acc
+      },
+      { totalAmount: 0, totalPaid: 0, outstanding: 0 }
+    )
+
     return NextResponse.json({
-      invoices,
+      invoices: serializedInvoices,
       pagination: {
         page,
         limit,
         total,
         totalPages,
         hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+        hasPrev: page > 1,
+      },
+      summary: {
+        page: pageTotals,
+      },
     }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
@@ -195,7 +275,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json()
-    
+
     const {
       customerId,
       type,
@@ -205,7 +285,9 @@ export async function POST(request: NextRequest) {
       notes,
       terms,
       createdBy,
-      branchId
+      branchId,
+      status: requestedStatus,
+      metadata: rawMetadata,
     } = body
 
     // Validate required fields
@@ -335,46 +417,110 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate totals
-    const subtotal = items.reduce((sum: number, item: any) => {
-      return sum + (item.quantity * item.unitPrice)
-    }, 0)
+    // Normalize invoice items and totals
+    const { items: normalizedItems, totals } = normalizeInvoiceItemsFromInput(items)
 
-    // Calculate taxes from database tax rates
-    let taxRates = await db.taxRate.findMany({
-      where: { isActive: true }
-    })
+    const { links, inventoryIds, vehicleIds } = extractInvoiceItemLinks(normalizedItems)
 
-    // Create default VAT rate if none exists
-    if (taxRates.length === 0) {
-      try {
-        const defaultVAT = await db.taxRate.create({
-          data: {
-            name: 'ضريبة القيمة المضافة',
-            type: 'STANDARD',
-            rate: 14.0, // 14% VAT in Egypt
-            description: 'ضريبة القيمة المضافة القياسية في مصر',
-            isActive: true,
-            effectiveFrom: new Date('2020-01-01')
-          }
-        })
-        taxRates = [defaultVAT]
-      } catch (taxError) {
-        console.warn('Warning: Could not create default tax rate:', taxError)
-        // Continue with no tax if tax creation fails
-        taxRates = []
+    const [inventoryRecords, vehicleRecords] = await Promise.all([
+      inventoryIds.length
+        ? db.inventoryItem.findMany({ where: { id: { in: inventoryIds } } })
+        : Promise.resolve([]),
+      vehicleIds.length
+        ? db.vehicle.findMany({ where: { id: { in: vehicleIds } } })
+        : Promise.resolve([]),
+    ])
+
+    const inventoryMap = new Map(inventoryRecords.map((record) => [record.id, record]))
+    const vehicleMap = new Map(vehicleRecords.map((record) => [record.id, record]))
+
+    for (const link of links) {
+      if (link.type === 'PART' && link.inventoryItemId) {
+        const inventoryItem = inventoryMap.get(link.inventoryItemId)
+        if (!inventoryItem) {
+          return NextResponse.json({
+            error: `لم يتم العثور على صنف المخزون المحدد (${link.inventoryItemId})`,
+          }, { status: 400 })
+        }
+
+        const requestedQuantity = Math.max(0, Math.round(link.normalized.quantity))
+        if (requestedQuantity > inventoryItem.quantity) {
+          return NextResponse.json({
+            error: `الكمية المطلوبة للصنف ${inventoryItem.name} تتجاوز المخزون المتاح`,
+            details: {
+              requested: requestedQuantity,
+              available: inventoryItem.quantity,
+            },
+          }, { status: 400 })
+        }
+      }
+
+      if (link.type === 'VEHICLE' && link.vehicleId) {
+        const vehicle = vehicleMap.get(link.vehicleId)
+        if (!vehicle) {
+          return NextResponse.json({
+            error: `لم يتم العثور على المركبة المحددة (${link.vehicleId})`,
+          }, { status: 400 })
+        }
+
+        if (vehicle.status !== 'AVAILABLE') {
+          return NextResponse.json({
+            error: `المركبة ${vehicle.make} ${vehicle.model} غير متاحة حالياً للحجز`,
+            details: { status: vehicle.status },
+          }, { status: 400 })
+        }
       }
     }
 
-    // Calculate total tax amount from all applicable tax rates
-    const totalTaxAmount = taxRates.reduce((sum, taxRate) => {
-      return sum + (subtotal * taxRate.rate / 100)
-    }, 0)
-
-    const totalAmount = subtotal + totalTaxAmount
+    const subtotal = totals.subtotal
+    const totalTaxAmount = totals.taxAmount
+    const totalAmount = totals.totalAmount
 
     // Generate invoice number
     const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+
+    const normalizedStatus = (() => {
+      if (!requestedStatus) {
+        return InvoiceStatus.DRAFT
+      }
+
+      const upper = String(requestedStatus).toUpperCase()
+      if ((Object.keys(InvoiceStatus) as Array<keyof typeof InvoiceStatus>).includes(upper as keyof typeof InvoiceStatus)) {
+        return InvoiceStatus[upper as keyof typeof InvoiceStatus]
+      }
+
+      return InvoiceStatus.DRAFT
+    })()
+
+    const paymentStatus = (() => {
+      if (normalizedStatus === InvoiceStatus.PAID) {
+        return InvoicePaymentStatus.PAID
+      }
+
+      if (normalizedStatus === InvoiceStatus.PARTIALLY_PAID) {
+        return InvoicePaymentStatus.PARTIALLY_PAID
+      }
+
+      return InvoicePaymentStatus.PENDING
+    })()
+
+    const baseMetadata: Record<string, unknown> =
+      rawMetadata && typeof rawMetadata === 'object' && !Array.isArray(rawMetadata)
+        ? (rawMetadata as Record<string, unknown>)
+        : {}
+
+    const shouldAdjustInventory =
+      normalizedStatus === InvoiceStatus.PAID || normalizedStatus === InvoiceStatus.SENT || normalizedStatus === InvoiceStatus.PARTIALLY_PAID
+
+    const existingInventoryAdjusted =
+      typeof baseMetadata['inventoryAdjusted'] === 'boolean'
+        ? (baseMetadata['inventoryAdjusted'] as boolean)
+        : false
+
+    const invoiceMetadata = {
+      ...baseMetadata,
+      inventoryAdjusted: shouldAdjustInventory ? false : existingInventoryAdjusted,
+    }
 
     // Create invoice with transaction
     const invoice = await db.$transaction(async (tx) => {
@@ -384,7 +530,8 @@ export async function POST(request: NextRequest) {
           invoiceNumber,
           customerId,
           type: type || 'SERVICE',
-          status: 'DRAFT',
+          status: normalizedStatus,
+          paymentStatus,
           issueDate: new Date(issueDate),
           dueDate: new Date(dueDate),
           subtotal,
@@ -395,46 +542,48 @@ export async function POST(request: NextRequest) {
           notes,
           terms,
           createdBy: actualUserId,
-          branchId: branchId || user.branchId || null
+          branchId: branchId || user.branchId || null,
+          metadata: invoiceMetadata,
         }
       })
-      
+
       // Create invoice items
       await tx.invoiceItem.createMany({
-        data: items.map((item: any) => ({
+        data: normalizedItems.map(item => ({
           invoiceId: newInvoice.id,
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          totalPrice: item.quantity * item.unitPrice,
-          taxRate: item.taxRate || 0,
-          taxAmount: (item.quantity * item.unitPrice) * (item.taxRate || 0) / 100,
-          metadata: item.metadata || {}
-        }))
+          totalPrice: item.totalPrice,
+          taxRate: item.taxRate,
+          taxAmount: item.taxAmount,
+          inventoryItemId: (() => {
+            const link = links.find(linkItem => linkItem.normalized === item)
+            return link?.type === 'PART' ? link.inventoryItemId ?? null : null
+          })(),
+          vehicleId: (() => {
+            const link = links.find(linkItem => linkItem.normalized === item)
+            return link?.type === 'VEHICLE' ? link.vehicleId ?? null : null
+          })(),
+          metadata: item.metadata ?? {},
+        })),
       })
-      
-      // Create invoice taxes (only if tax rates exist)
-      if (taxRates.length > 0) {
-        try {
-          await tx.invoiceTax.createMany({
-            data: taxRates.map(taxRate => ({
-              invoiceId: newInvoice.id,
-              taxType: taxRate.type as any,
-              rate: taxRate.rate,
-              taxAmount: subtotal * taxRate.rate / 100,
-              description: taxRate.description
-            }))
-          })
-        } catch (taxError) {
-          console.warn('Warning: Could not create invoice taxes:', taxError)
-          // Continue without failing the whole operation
-        }
+
+      if (totals.breakdown.length > 0) {
+        await tx.invoiceTax.createMany({
+          data: totals.breakdown.map(tax => ({
+            invoiceId: newInvoice.id,
+            taxType: tax.taxType,
+            rate: tax.rate,
+            taxAmount: tax.taxAmount,
+            description: tax.description,
+          })),
+        })
       }
       
       return newInvoice
     })
     
-    // Fetch the complete invoice with relations
     const completeInvoice = await db.invoice.findUnique({
       where: { id: invoice.id },
       include: {
@@ -443,19 +592,72 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             email: true,
-            phone: true
-          }
+            phone: true,
+          },
         },
         items: true,
-        taxes: true
-      }
+        taxes: true,
+      },
     })
-    
+
+    if (completeInvoice) {
+      await applyInvoiceSideEffects({
+        invoice: completeInvoice,
+        links,
+        inventoryMap,
+        vehicleMap,
+        totals,
+        adjustInventory: shouldAdjustInventory,
+      })
+    }
+
+    const refreshedInvoice = await db.invoice.findUnique({
+      where: { id: invoice.id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        items: true,
+        taxes: true,
+      },
+    })
+
+    const responseInvoice = refreshedInvoice
+      ? (() => {
+          const normalized = normalizeInvoiceRecord({
+            subtotal: refreshedInvoice.subtotal,
+            taxAmount: refreshedInvoice.taxAmount,
+            totalAmount: refreshedInvoice.totalAmount,
+            paidAmount: refreshedInvoice.paidAmount,
+            items: refreshedInvoice.items,
+            taxes: refreshedInvoice.taxes,
+          })
+
+          const paidAmount = normalized.totalAmount - normalized.outstanding
+
+          return {
+            ...refreshedInvoice,
+            subtotal: normalized.subtotal,
+            taxAmount: normalized.taxAmount,
+            totalAmount: normalized.totalAmount,
+            paidAmount,
+            outstanding: normalized.outstanding,
+            items: normalized.items,
+            taxes: normalized.taxes,
+          }
+        })()
+      : null
+
     return NextResponse.json({
       success: true,
       message: 'Invoice created successfully',
-      invoice: completeInvoice
-    }, { 
+      invoice: responseInvoice,
+    }, {
       status: 201,
       headers: {
         'Access-Control-Allow-Origin': '*',

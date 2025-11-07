@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -122,7 +122,8 @@ const priorityColors = {
 }
 
 export default function MarketingSalesPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('campaigns')
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [leads, setLeads] = useState<Lead[]>([])
@@ -134,15 +135,11 @@ export default function MarketingSalesPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      redirect('/login')
+      router.replace('/login')
     }
-    
-    if (status === 'authenticated') {
-      fetchDashboardData()
-    }
-  }, [status])
+  }, [status, router])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -260,7 +257,15 @@ export default function MarketingSalesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      return
+    }
+
+    fetchDashboardData()
+  }, [status, fetchDashboardData])
 
   const filteredCampaigns = campaigns.filter(campaign => {
     if (!campaign || !campaign.name) return false
@@ -292,12 +297,16 @@ export default function MarketingSalesPage() {
   const safeLeads = Array.isArray(filteredLeads) ? filteredLeads : []
   const safeTargets = Array.isArray(filteredTargets) ? filteredTargets : []
 
-  if (loading) {
+  if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     )
+  }
+
+  if (status === 'unauthenticated') {
+    return null
   }
 
   return (

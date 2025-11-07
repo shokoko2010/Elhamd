@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,11 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
+import {
+  BarChart3,
+  TrendingUp,
+  Users,
+  DollarSign,
   Search,
   Filter,
   Download,
@@ -29,6 +29,8 @@ import {
   LineChart,
   RefreshCw
 } from 'lucide-react'
+
+type ProductType = 'VEHICLE' | 'PART' | 'SERVICE'
 
 interface ReportData {
   totalRevenue: number
@@ -52,6 +54,7 @@ interface ReportData {
     name: string
     quantity: number
     revenue: number
+    type?: ProductType
   }>
   topPerformers: Array<{
     id: string
@@ -77,10 +80,57 @@ interface CustomerMetric {
   retention: number
 }
 
+const TAB_KEYS = ['overview', 'financial', 'customers', 'operations', 'marketing'] as const
+type TabKey = (typeof TAB_KEYS)[number]
+
+const DEFAULT_TAB: TabKey = 'overview'
+
+const EMPTY_REPORT_DATA: ReportData = {
+  totalRevenue: 0,
+  totalExpenses: 0,
+  netProfit: 0,
+  totalCustomers: 0,
+  newCustomers: 0,
+  totalLeads: 0,
+  convertedLeads: 0,
+  conversionRate: 0,
+  totalTickets: 0,
+  resolvedTickets: 0,
+  avgResolutionTime: 0,
+  totalCampaigns: 0,
+  activeCampaigns: 0,
+  campaignROI: 0,
+  inventoryValue: 0,
+  lowStockItems: 0,
+  topSellingProducts: [],
+  topPerformers: [],
+}
+
+const normalizeReportData = (data: Partial<ReportData> | null | undefined): ReportData => ({
+  ...EMPTY_REPORT_DATA,
+  ...data,
+  topSellingProducts: Array.isArray(data?.topSellingProducts)
+    ? (data?.topSellingProducts as ReportData['topSellingProducts'])
+    : [],
+  topPerformers: Array.isArray(data?.topPerformers)
+    ? (data?.topPerformers as ReportData['topPerformers'])
+    : [],
+})
+
+const isValidTab = (value: string | null): value is TabKey => {
+  return typeof value === 'string' && TAB_KEYS.includes(value as TabKey)
+}
+
 export default function ReportsPage() {
-  const { data: session, status } = useSession()
-  const [activeTab, setActiveTab] = useState('overview')
-  const [reportData, setReportData] = useState<ReportData | null>(null)
+  const { status } = useSession()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<TabKey>(() =>
+    isValidTab(tabParam) ? tabParam : DEFAULT_TAB
+  )
+  const [reportData, setReportData] = useState<ReportData>(EMPTY_REPORT_DATA)
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetric[]>([])
   const [customerMetrics, setCustomerMetrics] = useState<CustomerMetric[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,52 +138,91 @@ export default function ReportsPage() {
   const [branchFilter, setBranchFilter] = useState('all')
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      redirect('/login')
+    const nextTab = isValidTab(tabParam) ? tabParam : DEFAULT_TAB
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab)
     }
-    
-    if (status === 'authenticated') {
-      fetchReportData()
-    }
-  }, [status, dateRange, branchFilter])
+  }, [tabParam, activeTab])
 
-  const fetchReportData = async () => {
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/login')
+    }
+  }, [status, router])
+
+  const fetchReportData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Fetch overview data
       const overviewRes = await fetch(`/api/reports/overview?period=${dateRange}&branchId=${branchFilter}`)
       if (overviewRes.ok) {
         const overviewData = await overviewRes.json()
-        setReportData(overviewData)
+        setReportData(normalizeReportData(overviewData))
+      } else {
+        setReportData(EMPTY_REPORT_DATA)
       }
 
       // Fetch financial metrics
       const financialRes = await fetch(`/api/reports/financial?period=${dateRange}&branchId=${branchFilter}`)
       if (financialRes.ok) {
         const financialData = await financialRes.json()
-        setFinancialMetrics(financialData)
+        setFinancialMetrics(Array.isArray(financialData) ? financialData : [])
+      } else {
+        setFinancialMetrics([])
       }
 
       // Fetch customer metrics
       const customerRes = await fetch(`/api/reports/customers?period=${dateRange}&branchId=${branchFilter}`)
       if (customerRes.ok) {
         const customerData = await customerRes.json()
-        setCustomerMetrics(customerData)
+        setCustomerMetrics(Array.isArray(customerData?.metrics) ? customerData.metrics : [])
+      } else {
+        setCustomerMetrics([])
       }
     } catch (error) {
       console.error('Error fetching report data:', error)
+      setReportData(EMPTY_REPORT_DATA)
+      setFinancialMetrics([])
+      setCustomerMetrics([])
     } finally {
       setLoading(false)
     }
+  }, [dateRange, branchFilter])
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      return
+    }
+
+    fetchReportData()
+  }, [status, fetchReportData])
+
+  const handleTabChange = (value: string) => {
+    const nextTab = isValidTab(value) ? value : DEFAULT_TAB
+    setActiveTab(nextTab)
+
+    const params = new URLSearchParams(searchParams.toString())
+    if (nextTab === DEFAULT_TAB) {
+      params.delete('tab')
+    } else {
+      params.set('tab', nextTab)
+    }
+
+    const queryString = params.toString()
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
   }
 
-  if (loading) {
+  if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     )
+  }
+
+  if (status === 'unauthenticated') {
+    return null
   }
 
   return (
@@ -240,7 +329,7 @@ export default function ReportsPage() {
       )}
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
           <TabsTrigger value="financial">مالية</TabsTrigger>
@@ -416,7 +505,7 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData?.topPerformers.map((performer) => (
+                  {reportData.topPerformers.map((performer) => (
                     <TableRow key={performer.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -462,7 +551,7 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData?.topSellingProducts.map((product) => (
+                  {reportData.topSellingProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell>{product.quantity}</TableCell>

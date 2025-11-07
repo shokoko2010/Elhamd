@@ -4,154 +4,80 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { 
-  LayoutDashboard, 
-  Car, 
-  Calendar, 
-  Wrench, 
-  Users, 
-  Settings,
+import type { LucideIcon } from 'lucide-react'
+import {
+  LayoutDashboard,
+  BarChart3,
+  Bell,
+  Building,
+  Calendar,
+  Car,
+  Calculator,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   ChevronUp,
+  CreditCard,
+  Database,
+  DollarSign,
+  FileCheck,
+  FileText,
+  HelpCircle,
+  ImageIcon,
+  Layout,
   LogOut,
   Menu,
-  X,
-  ImageIcon,
-  FileText,
-  TrendingUp,
-  DollarSign,
-  BarChart3,
-  Send,
-  Bell,
+  MessageSquare,
   Package,
-  CreditCard,
-  Calculator,
-  Home,
-  Building,
-  Archive,
+  Phone,
+  Settings,
   Shield,
   ShoppingCart,
-  MessageSquare,
-  Layout,
-  Type,
-  Palette,
-  UserCheck,
-  Search,
-  Download,
-  Upload,
-  Filter,
-  RefreshCw,
-  Plus,
-  Edit,
-  Trash2,
-  Printer,
-  Phone,
-  HelpCircle,
-  Database,
-  Truck,
-  Lock,
-  FileCheck,
-  Award,
   Target,
-  Zap,
-  Server,
-  Monitor,
-  Smartphone,
-  Globe,
-  Cpu,
-  HardDrive,
-  Wifi,
-  Battery,
-  Volume2,
-  Sun,
-  Moon,
-  User,
+  TrendingUp,
+  Truck,
+  Type,
+  UserCheck,
   UserPlus,
-  UserMinus,
-  Key,
-  Eye,
-  EyeOff,
-  Copy,
-  Share2,
-  Paperclip,
-  Image,
-  Video,
-  Music,
-  Camera,
-  Mic,
-  Headphones,
-  Save,
-  Undo,
-  Redo,
-  ZoomIn,
-  ZoomOut,
-  Maximize,
-  Minimize,
-  RotateCw,
-  RotateCcw,
-  Move,
-  Scissors,
-  Clipboard,
-  Inbox,
-  Mail,
-  MapPin,
-  Euro,
-  PoundSterling,
-  Yen,
-  Thermometer,
-  Droplet,
-  Wind,
-  Cloud,
-  CloudRain,
-  CloudSnow,
-  AlertTriangle,
-  XCircle,
-  Info,
-  AtSign,
-  Hash,
-  Activity,
-  Pulse,
-  MoreVertical,
-  MoreHorizontal,
-  PlusCircle,
-  MinusCircle,
-  CheckSquare,
-  Square,
-  Radio,
-  Checkbox,
-  Star
+  Users,
+  Wrench,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useAuth } from '@/hooks/use-auth'
-import { useRouter } from 'next/navigation'
 
-const sidebarItems = [
+type SidebarLink = {
+  title: string
+  href: string
+  icon: LucideIcon
+}
+
+type SidebarSection = {
+  type: 'section'
+  title: string
+  icon: LucideIcon
+  items: SidebarLink[]
+}
+
+type SidebarEntry = SidebarSection | (SidebarLink & { type: 'link' })
+
+const sidebarConfig: SidebarEntry[] = [
   {
+    type: 'link',
     title: 'لوحة التحكم',
     href: '/admin',
     icon: LayoutDashboard,
   },
   {
+    type: 'section',
     title: 'المبيعات والعملاء',
     icon: Users,
-    children: [
-      {
-        title: 'المركبات',
-        href: '/admin/vehicles',
-        icon: Car,
-      },
+    items: [
       {
         title: 'الحجوزات',
         href: '/admin/bookings',
         icon: Calendar,
-      },
-      {
-        title: 'الأفراد',
-        href: '/admin/personnel',
-        icon: Users,
       },
       {
         title: 'العملاء',
@@ -159,30 +85,41 @@ const sidebarItems = [
         icon: UserPlus,
       },
       {
-        title: 'المبيعات',
-        href: '/admin/sales',
-        icon: DollarSign,
-      },
-      {
         title: 'عروض الأسعار',
         href: '/admin/quotations',
         icon: FileCheck,
       },
       {
-        title: 'الفواتير',
-        href: '/admin/invoices',
-        icon: CreditCard,
+        title: 'المبيعات',
+        href: '/admin/sales',
+        icon: DollarSign,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'المخزون والعمليات',
     icon: Package,
-    children: [
+    items: [
       {
         title: 'المخزون',
         href: '/admin/inventory',
         icon: Package,
+      },
+      {
+        title: 'طلبات الشراء',
+        href: '/admin/inventory/purchase-orders',
+        icon: ShoppingCart,
+      },
+      {
+        title: 'المركبات',
+        href: '/admin/vehicles',
+        icon: Car,
+      },
+      {
+        title: 'موديلات السيارات',
+        href: '/admin/models',
+        icon: Car,
       },
       {
         title: 'الصيانة',
@@ -209,17 +146,13 @@ const sidebarItems = [
         href: '/admin/warehouse',
         icon: Building,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'الموارد البشرية',
     icon: UserCheck,
-    children: [
-      {
-        title: 'الموارد البشرية',
-        href: '/admin/hr',
-        icon: Building,
-      },
+    items: [
       {
         title: 'الموظفون',
         href: '/admin/employees',
@@ -243,14 +176,20 @@ const sidebarItems = [
       {
         title: 'تقييم الأداء',
         href: '/admin/performance',
-        icon: Award,
+        icon: FileText,
       },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'المالية والمحاسبة',
     icon: Calculator,
-    children: [
+    items: [
+      {
+        title: 'الفواتير',
+        href: '/admin/invoices/list',
+        icon: CreditCard,
+      },
       {
         title: 'المحاسبة',
         href: '/admin/accounting',
@@ -281,12 +220,13 @@ const sidebarItems = [
         href: '/admin/banking',
         icon: Building,
       },
-    ]
+    ],
   },
   {
-    title: 'العقود والقانون',
+    type: 'section',
+    title: 'العقود والتأمين',
     icon: Shield,
-    children: [
+    items: [
       {
         title: 'العقود',
         href: '/admin/contracts',
@@ -305,50 +245,37 @@ const sidebarItems = [
       {
         title: 'الوثائق',
         href: '/admin/documents',
-        icon: Archive,
+        icon: FileText,
       },
-    ]
+    ],
   },
   {
-    title: 'النظام والإعدادات',
-    icon: Settings,
-    children: [
+    type: 'section',
+    title: 'التقارير والتحليلات',
+    icon: BarChart3,
+    items: [
       {
-        title: 'الصلاحيات',
-        href: '/admin/permissions',
-        icon: Lock,
+        title: 'نظرة عامة',
+        href: '/admin/reports?tab=overview',
+        icon: BarChart3,
       },
       {
-        title: 'المستخدمون',
-        href: '/admin/users',
+        title: 'تقارير العملاء',
+        href: '/admin/reports?tab=customers',
         icon: Users,
       },
       {
-        title: 'الأدوار',
-        href: '/admin/roles',
-        icon: UserCheck,
+        title: 'تقارير مالية',
+        href: '/admin/reports?tab=financial',
+        icon: TrendingUp,
       },
-      {
-        title: 'الإعدادات',
-        href: '/admin/settings',
-        icon: Settings,
-      },
-      {
-        title: 'النسخ الاحتياطي',
-        href: '/admin/backup',
-        icon: Database,
-      },
-      {
-        title: 'السجلات',
-        href: '/admin/logs',
-        icon: FileText,
-      },
-    ]
+    ],
   },
   {
+    type: 'section',
     title: 'التواصل والدعم',
     icon: MessageSquare,
-    children: [
+    items: [
       {
         title: 'الإشعارات',
         href: '/admin/notifications',
@@ -374,47 +301,17 @@ const sidebarItems = [
         href: '/admin/contact',
         icon: Phone,
       },
-    ]
+    ],
   },
   {
-    title: 'الأدوات والبحث',
-    icon: Search,
-    children: [
-      {
-        title: 'بحث',
-        href: '/admin/search',
-        icon: Search,
-      },
-      {
-        title: 'تصفية',
-        href: '/admin/filter',
-        icon: Filter,
-      },
-      {
-        title: 'تصدير',
-        href: '/admin/export',
-        icon: Download,
-      },
-      {
-        title: 'استيراد',
-        href: '/admin/import',
-        icon: Upload,
-      },
-      {
-        title: 'طباعة',
-        href: '/admin/print',
-        icon: Printer,
-      },
-    ]
-  },
-  {
+    type: 'section',
     title: 'إدارة الموقع',
-    icon: Building,
-    children: [
+    icon: Layout,
+    items: [
       {
         title: 'الصفحة الرئيسية',
         href: '/admin/homepage',
-        icon: Home,
+        icon: Layout,
       },
       {
         title: 'الفروع',
@@ -459,110 +356,46 @@ const sidebarItems = [
       {
         title: 'SEO',
         href: '/admin/page-seo',
-        icon: Palette,
+        icon: Type,
       },
-    ]
+    ],
   },
   {
-    title: 'إدارة المركبات',
-    icon: Car,
-    children: [
+    type: 'section',
+    title: 'النظام والإعدادات',
+    icon: Settings,
+    items: [
       {
-        title: 'موديلات السيارات',
-        href: '/admin/models',
-        icon: Car,
-      },
-      {
-        title: 'المركبات',
-        href: '/admin/vehicles',
-        icon: Car,
-      },
-    ]
-  },
-  {
-    title: 'الحجوزات والمواعيد',
-    icon: Calendar,
-    children: [
-      {
-        title: 'المواعيد',
-        href: '/admin/appointments',
-        icon: Calendar,
-      },
-      {
-        title: 'التقويم',
-        href: '/admin/calendar',
-        icon: Calendar,
-      },
-      {
-        title: 'حجوزات الخدمة',
-        href: '/admin/bookings',
-        icon: Wrench,
-      },
-    ]
-  },
-  {
-    title: 'الإدارة المالية',
-    icon: DollarSign,
-    children: [
-      {
-        title: 'النظرة العامة',
-        href: '/admin/finance',
-        icon: DollarSign,
-      },
-      {
-        title: 'الفواتير',
-        href: '/admin/invoices/dashboard',
-        icon: FileText,
-      },
-      {
-        title: 'المدفوعات',
-        href: '/admin/payments',
-        icon: CreditCard,
-      },
-      {
-        title: 'الضرائب',
-        href: '/admin/tax',
-        icon: Calculator,
-      },
-    ]
-  },
-  {
-    title: 'التجارة الإلكترونية',
-    icon: ShoppingCart,
-    children: [
-      {
-        title: 'إدارة المتجر',
-        href: '/admin/commerce',
-        icon: ShoppingCart,
-      },
-    ]
-  },
-  {
-    title: 'التقارير والتحليلات',
-    icon: BarChart3,
-    children: [
-      {
-        title: 'التقارير',
-        href: '/admin/reports',
-        icon: BarChart3,
-      },
-      {
-        title: 'التسويق',
-        href: '/admin/marketing',
-        icon: Send,
-      },
-    ]
-  },
-  {
-    title: 'نظام التأمين',
-    icon: Shield,
-    children: [
-      {
-        title: 'إدارة التأمين',
-        href: '/admin/insurance',
+        title: 'الصلاحيات',
+        href: '/admin/permissions',
         icon: Shield,
       },
-    ]
+      {
+        title: 'المستخدمون',
+        href: '/admin/users',
+        icon: Users,
+      },
+      {
+        title: 'الأدوار',
+        href: '/admin/roles',
+        icon: UserCheck,
+      },
+      {
+        title: 'الإعدادات',
+        href: '/admin/settings',
+        icon: Settings,
+      },
+      {
+        title: 'النسخ الاحتياطي',
+        href: '/admin/backup',
+        icon: Database,
+      },
+      {
+        title: 'السجلات',
+        href: '/admin/logs',
+        icon: FileText,
+      },
+    ],
   },
 ]
 
@@ -572,7 +405,6 @@ export function AdminSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const router = useRouter()
 
   const handleSignOut = async () => {
     await logout()
@@ -587,23 +419,15 @@ export function AdminSidebar() {
   }
 
   const isActive = (href: string) => pathname === href
-  const isParentActive = (children: any[]) => {
-    if (!Array.isArray(children)) return false
-    return children.some(child => child && child.href && isActive(child.href))
-  }
+  const isParentActive = (links: SidebarLink[]) =>
+    links.some(link => isActive(link.href))
 
-  const renderMenuItem = (item: any) => {
-    // Ensure item is valid
-    if (!item || !item.title) return null
-    
-    const hasChildren = item.children && Array.isArray(item.children) && item.children.length > 0
-    const isExpanded = expandedItems.includes(item.title)
-    const active = hasChildren ? isParentActive(item.children) : isActive(item.href)
+  const renderMenuItem = (item: SidebarEntry) => {
+    if (item.type === 'section') {
+      const isExpanded = expandedItems.includes(item.title)
+      const active = isParentActive(item.items)
+      const IconComponent = item.icon || Package
 
-    // Ensure icon is valid
-    const IconComponent = item.icon || Package
-
-    if (hasChildren) {
       return (
         <div key={item.title} className="space-y-1">
           <Button
@@ -612,8 +436,8 @@ export function AdminSidebar() {
             onClick={() => toggleExpanded(item.title)}
             className={cn(
               'w-full justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              active 
-                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
+              active
+                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             )}
           >
@@ -632,10 +456,10 @@ export function AdminSidebar() {
               )
             )}
           </Button>
-          
+
           {(!isCollapsed && isExpanded) && (
             <div className="mr-4 space-y-1">
-              {item.children.map((child: any) => {
+              {item.items.map((child) => {
                 const ChildIconComponent = child.icon || Package
                 return (
                   <Link
@@ -663,6 +487,7 @@ export function AdminSidebar() {
       )
     }
 
+    const IconComponent = item.icon || Package
     return (
       <Link
         key={item.href}
@@ -670,14 +495,14 @@ export function AdminSidebar() {
         onClick={() => setIsMobileOpen(false)}
         className={cn(
           'flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-          active
+          isActive(item.href)
             ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
         )}
       >
         <IconComponent className={cn(
           'h-5 w-5',
-          active ? 'text-blue-700' : 'text-gray-400'
+          isActive(item.href) ? 'text-blue-700' : 'text-gray-400'
         )} />
         {!isCollapsed && <span>{item.title}</span>}
       </Link>
@@ -711,7 +536,7 @@ export function AdminSidebar() {
 
           {/* Mobile Navigation */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {sidebarItems.map((item) => renderMenuItem(item))}
+            {sidebarConfig.map((item) => renderMenuItem(item))}
           </nav>
 
           {/* Mobile User Section */}
@@ -764,7 +589,7 @@ export function AdminSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {sidebarItems.map((item) => renderMenuItem(item))}
+          {sidebarConfig.map((item) => renderMenuItem(item))}
         </nav>
 
         {/* User Section */}

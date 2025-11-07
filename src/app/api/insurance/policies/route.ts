@@ -6,18 +6,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
 
-const authHandler = async (request: NextRequest) => {
-  try {
-    return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MANAGER,] })
-  } catch (error) {
-    return null
-  }
-}
+const authHandler = (request: NextRequest) =>
+  authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER] })
 
 export async function GET(request: NextRequest) {
   const auth = await authHandler(request)
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if ('error' in auth) {
+    return auth.error
   }
   
   try {
@@ -100,8 +95,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await authHandler(request)
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if ('error' in auth) {
+    return auth.error
   }
   
   try {
@@ -180,7 +175,7 @@ export async function POST(request: NextRequest) {
         coverage,
         deductible: parseFloat(deductible) || 0,
         notes,
-        createdBy: auth.id
+        createdBy: auth.user.id
       },
       include: {
         vehicle: {

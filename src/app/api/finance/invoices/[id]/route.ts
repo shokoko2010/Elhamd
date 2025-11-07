@@ -4,6 +4,10 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import {
+  normalizeInvoiceItemsFromInput,
+  normalizeInvoiceRecord,
+} from '@/lib/invoice-normalizer'
 
 export async function GET(
   request: NextRequest,
@@ -53,7 +57,29 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(invoice)
+    const normalized = normalizeInvoiceRecord({
+      subtotal: invoice.subtotal,
+      taxAmount: invoice.taxAmount,
+      totalAmount: invoice.totalAmount,
+      paidAmount: invoice.paidAmount,
+      items: invoice.items,
+      taxes: invoice.taxes,
+    })
+
+    const paidAmount = normalized.totalAmount - normalized.outstanding
+
+    const payload = {
+      ...invoice,
+      subtotal: normalized.subtotal,
+      taxAmount: normalized.taxAmount,
+      totalAmount: normalized.totalAmount,
+      paidAmount,
+      outstanding: normalized.outstanding,
+      items: normalized.items,
+      taxes: normalized.taxes,
+    }
+
+    return NextResponse.json(payload)
   } catch (error) {
     console.error('Error fetching invoice:', error)
     return NextResponse.json(
@@ -113,38 +139,11 @@ export async function PUT(
       }, { status: 404 })
     }
 
-    // Calculate totals
-    const subtotal = items.reduce((sum: number, item: any) => {
-      return sum + (item.quantity * item.unitPrice)
-    }, 0)
+    const { items: normalizedItems, totals } = normalizeInvoiceItemsFromInput(items)
 
-
-    // Calculate taxes from database tax rates
-    let taxRates = await db.taxRate.findMany({
-      where: { isActive: true }
-    })
-
-    // Create default VAT rate if none exists
-    if (taxRates.length === 0) {
-      const defaultVAT = await db.taxRate.create({
-        data: {
-          name: 'ضريبة القيمة المضافة',
-          type: 'STANDARD',
-          rate: 14.0, // 14% VAT in Egypt
-          description: 'ضريبة القيمة المضافة القياسية في مصر',
-          isActive: true,
-          effectiveFrom: new Date('2020-01-01')
-        }
-      })
-      taxRates = [defaultVAT]
-    }
-
-    // Calculate total tax amount from all applicable tax rates
-    const totalTaxAmount = taxRates.reduce((sum, taxRate) => {
-      return sum + (subtotal * taxRate.rate / 100)
-    }, 0)
-
-    const totalAmount = subtotal + totalTaxAmount
+    const subtotal = totals.subtotal
+    const totalTaxAmount = totals.taxAmount
+    const totalAmount = totals.totalAmount
     
     // Update invoice with transaction
     const updatedInvoice = await db.$transaction(async (tx) => {
@@ -208,37 +207,58 @@ export async function PUT(
       
       // Create new items
       await tx.invoiceItem.createMany({
-        data: items.map((item: any) => ({
+        data: normalizedItems.map(item => ({
           invoiceId: id,
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          totalPrice: item.quantity * item.unitPrice,
-          taxRate: item.taxRate || 0,
-          taxAmount: (item.quantity * item.unitPrice) * (item.taxRate || 0) / 100,
-          metadata: item.metadata || {}
-        }))
+          totalPrice: item.totalPrice,
+          taxRate: item.taxRate,
+          taxAmount: item.taxAmount,
+          metadata: item.metadata ?? {},
+        })),
       })
-      
-      // Create new taxes
-      await tx.invoiceTax.createMany({
-        data: taxRates.map(taxRate => ({
-          invoiceId: id,
-          taxType: taxRate.type,
-          rate: taxRate.rate,
-          taxAmount: subtotal * taxRate.rate / 100,
-          description: taxRate.description
-        }))
-      })
+
+      if (totals.breakdown.length > 0) {
+        await tx.invoiceTax.createMany({
+          data: totals.breakdown.map(tax => ({
+            invoiceId: id,
+            taxType: tax.taxType,
+            rate: tax.rate,
+            taxAmount: tax.taxAmount,
+            description: tax.description,
+          })),
+        })
+      }
       
       return invoice
     })
     
 
+    const normalizedInvoice = normalizeInvoiceRecord({
+      subtotal: updatedInvoice.subtotal,
+      taxAmount: updatedInvoice.taxAmount,
+      totalAmount: updatedInvoice.totalAmount,
+      paidAmount: updatedInvoice.paidAmount,
+      items: updatedInvoice.items,
+      taxes: updatedInvoice.taxes,
+    })
+
+    const paidAmount = normalizedInvoice.totalAmount - normalizedInvoice.outstanding
+
     const successResponse = NextResponse.json({
       success: true,
       message: 'Invoice updated successfully',
-      invoice: updatedInvoice
+      invoice: {
+        ...updatedInvoice,
+        subtotal: normalizedInvoice.subtotal,
+        taxAmount: normalizedInvoice.taxAmount,
+        totalAmount: normalizedInvoice.totalAmount,
+        paidAmount,
+        outstanding: normalizedInvoice.outstanding,
+        items: normalizedInvoice.items,
+        taxes: normalizedInvoice.taxes,
+      },
     })
     
     successResponse.headers.set('Access-Control-Allow-Origin', '*')

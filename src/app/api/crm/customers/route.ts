@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/simple-production-auth'
-import { UserRole } from '@prisma/client'
+import { CustomerSegment, LeadSource, UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export async function OPTIONS(request: NextRequest) {
@@ -214,11 +214,31 @@ export async function POST(request: NextRequest) {
       name,
       email,
       phone,
-      segment = 'LEAD',
+      segment = CustomerSegment.LEAD,
       leadSource,
       tags = [],
       notes
     } = body
+
+    const normalizedSegment = (Object.values(CustomerSegment) as string[]).includes(segment)
+      ? (segment as CustomerSegment)
+      : CustomerSegment.CUSTOMER
+
+    let normalizedLeadSource: LeadSource | undefined
+
+    if (typeof leadSource === 'string' && leadSource.trim()) {
+      const cleanedLeadSource = leadSource.trim()
+      const upperCaseVariant = cleanedLeadSource.toUpperCase().replace(/[\s-]+/g, '_')
+      const availableLeadSources = Object.values(LeadSource) as string[]
+
+      if (availableLeadSources.includes(cleanedLeadSource)) {
+        normalizedLeadSource = cleanedLeadSource as LeadSource
+      } else if (availableLeadSources.includes(upperCaseVariant)) {
+        normalizedLeadSource = upperCaseVariant as LeadSource
+      } else {
+        normalizedLeadSource = LeadSource.OTHER
+      }
+    }
 
     // Validate required fields
     if (!email) {
@@ -262,11 +282,11 @@ export async function POST(request: NextRequest) {
         phone,
         role: 'CUSTOMER',
         status: 'active',
-        segment: 'CUSTOMER',
+        segment: normalizedSegment,
         customerProfile: {
           create: {
-            segment: segment as any,
-            leadSource,
+            segment: normalizedSegment,
+            leadSource: normalizedLeadSource,
             preferences: {},
             riskScore: 0,
             satisfactionScore: 0,

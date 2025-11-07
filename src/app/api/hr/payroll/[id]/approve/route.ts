@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    const { id } = params
 
     if (!id) {
       return NextResponse.json({ error: 'Payroll record ID is required' }, { status: 400 })
+    }
+
+    const existing = await db.payrollRecord.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Payroll record not found' }, { status: 404 })
     }
 
     const payrollRecord = await db.payrollRecord.update({

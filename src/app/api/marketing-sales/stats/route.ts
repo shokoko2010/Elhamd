@@ -3,21 +3,78 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
-import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import {
+  startOfDay,
+  endOfDay,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  differenceInCalendarDays,
+} from 'date-fns'
+import type { MarketingMetric } from '@prisma/client'
+
+const defaultMarketingMetrics = {
+  campaignsSent: 0,
+  emailsSent: 0,
+  emailsOpened: 0,
+  emailsClicked: 0,
+  leadsGenerated: 0,
+  leadsConverted: 0,
+  conversionRate: 0,
+  costPerLead: 0,
+  costPerAcquisition: 0,
+  roi: 0,
+}
+
+const roundToOneDecimal = (value: number) => Math.round(value * 10) / 10
+
+const safeExecute = async <T>(
+  operation: () => Promise<T>,
+  fallback: T,
+  label?: string
+): Promise<T> => {
+  try {
+    return await executeWithRetry(operation)
+  } catch (error) {
+    if (label) {
+      console.warn(`${label}:`, error)
+    }
+
+    return fallback
+  }
+}
+
+const calculateGrowth = (current: number, previous: number) => {
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) {
+    return 0
+  }
+
+  if (previous === 0) {
+    if (current === 0) {
+      return 0
+    }
+
+    return roundToOneDecimal(current > 0 ? 100 : -100)
+  }
+
+  return roundToOneDecimal(((current - previous) / previous) * 100)
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // For development, skip authentication temporarily
-    // const user = await getAuthUser()
-    // if (!user) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // }
+    const user = await authenticateProductionUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'month'
-    const branchId = searchParams.get('branchId')
+    const branchParam = searchParams.get('branchId')
+    const branchFilter = branchParam && branchParam !== 'all' ? branchParam : undefined
 
     let startDate: Date
     let endDate: Date
@@ -52,15 +109,29 @@ export async function GET(request: NextRequest) {
         endDate = endOfMonth(now)
     }
 
-    const where: any = {
+    startDate = startOfDay(startDate)
+    endDate = endOfDay(endDate)
+
+    const periodLengthDays = Math.max(differenceInCalendarDays(endDate, startDate) + 1, 1)
+    const previousPeriodEnd = subDays(startDate, 1)
+    const previousPeriodStart = subDays(previousPeriodEnd, periodLengthDays - 1)
+
+    const branchCondition = branchFilter ? { branchId: branchFilter } : {}
+
+    const leadWhere = {
+      ...branchCondition,
       createdAt: {
         gte: startDate,
-        lte: endDate
-      }
+        lte: endDate,
+      },
     }
 
-    if (branchId) {
-      where.branchId = branchId
+    const previousLeadWhere = {
+      ...branchCondition,
+      createdAt: {
+        gte: previousPeriodStart,
+        lte: endOfDay(previousPeriodEnd),
+      },
     }
 
     // Initialize default values
@@ -72,151 +143,324 @@ export async function GET(request: NextRequest) {
     let totalTargets = 0
     let achievedTargets = 0
     let revenueGenerated = 0
+    let totalSales = 0
+    let totalRevenue = 0
+    let newCustomers = 0
+    let previousSales = 0
+    let previousRevenue = 0
+    let previousNewCustomers = 0
+    let previousConversionRate = 0
 
-    try {
-      // Fetch campaigns data
-      [totalCampaigns, activeCampaigns] = await Promise.all([
-        db.marketingCampaign.count({ where }).catch(() => 0),
-        db.marketingCampaign.count({
-          where: {
-            ...where,
-            status: 'ACTIVE'
-          }
-        }).catch(() => 0)
-      ])
-    } catch (error) {
-      console.warn('Error fetching campaigns data:', error)
+    let previousLeads = 0
+    let previousConvertedLeads = 0
+
+    const campaignWindow = {
+      ...branchCondition,
+      OR: [
+        {
+          startDate: { lte: endDate },
+          endDate: { gte: startDate },
+        },
+        {
+          startDate: { gte: startDate, lte: endDate },
+        },
+        {
+          endDate: null,
+        },
+      ],
     }
 
-    try {
-      // Fetch leads data
-      [totalLeads, qualifiedLeads, convertedLeads] = await Promise.all([
-        db.lead.count({ where }).catch(() => 0),
-        db.lead.count({
-          where: {
-            ...where,
-            status: {
-              in: ['QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON']
-            }
-          }
-        }).catch(() => 0),
-        db.lead.count({
-          where: {
-            ...where,
-            status: 'CLOSED_WON'
-          }
-        }).catch(() => 0)
-      ])
-    } catch (error) {
-      console.warn('Error fetching leads data:', error)
-    }
+    ;[totalCampaigns, activeCampaigns] = await Promise.all([
+      safeExecute(
+        () => db.marketingCampaign.count({ where: campaignWindow }),
+        0,
+        'Error fetching campaigns data'
+      ),
+      safeExecute(
+        () =>
+          db.marketingCampaign.count({
+            where: {
+              ...campaignWindow,
+              status: 'ACTIVE',
+            },
+          }),
+        0,
+        'Error fetching active campaigns data'
+      ),
+    ])
+
+    ;[totalLeads, qualifiedLeads, convertedLeads] = await Promise.all([
+      safeExecute(() => db.lead.count({ where: leadWhere }), 0, 'Error fetching leads data'),
+      safeExecute(
+        () =>
+          db.lead.count({
+            where: {
+              ...leadWhere,
+              status: {
+                in: ['QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON'],
+              },
+            },
+          }),
+        0,
+        'Error fetching qualified leads data'
+      ),
+      safeExecute(
+        () =>
+          db.lead.count({
+            where: {
+              ...leadWhere,
+              status: 'CLOSED_WON',
+            },
+          }),
+        0,
+        'Error fetching converted leads data'
+      ),
+    ])
+
+    ;[previousLeads, previousConvertedLeads] = await Promise.all([
+      safeExecute(
+        () => db.lead.count({ where: previousLeadWhere }),
+        0,
+        'Error fetching previous leads data'
+      ),
+      safeExecute(
+        () =>
+          db.lead.count({
+            where: {
+              ...previousLeadWhere,
+              status: 'CLOSED_WON',
+            },
+          }),
+        0,
+        'Error fetching previous converted leads data'
+      ),
+    ])
 
     // Calculate conversion rate
     const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0
+    previousConversionRate = previousLeads > 0 ? (previousConvertedLeads / previousLeads) * 100 : 0
 
-    try {
-      // Fetch targets data
-      [totalTargets, achievedTargets] = await Promise.all([
-        db.salesTarget.count({
-          where: {
-            ...where,
-            OR: [
-              { startDate: { lte: now }, endDate: { gte: now } },
-              { startDate: { lte: now }, endDate: null }
-            ]
-          }
-        }).catch(() => 0),
-        db.salesTarget.count({
-          where: {
-            ...where,
-            status: 'COMPLETED',
-            OR: [
-              { startDate: { lte: now }, endDate: { gte: now } },
-              { startDate: { lte: now }, endDate: null }
-            ]
-          }
-        }).catch(() => 0)
-      ])
-    } catch (error) {
-      console.warn('Error fetching targets data:', error)
+    const invoiceWhere = {
+      ...branchCondition,
+      status: 'PAID' as const,
+      issueDate: {
+        gte: startDate,
+        lte: endDate,
+      },
     }
 
-    try {
-      // Calculate revenue generated (from converted leads and invoices)
-      const revenueData = await Promise.all([
-        // Revenue from converted leads with estimated value
-        db.lead.aggregate({
-          where: {
-            ...where,
-            status: 'CLOSED_WON',
-            estimatedValue: { not: null }
-          },
-          _sum: {
-            estimatedValue: true
-          }
-        }).catch(() => ({ _sum: { estimatedValue: 0 } })),
-        // Revenue from invoices in the period
-        db.invoice.aggregate({
-          where: {
-            ...where,
-            status: 'PAID'
-          },
-          _sum: {
-            totalAmount: true
-          }
-        }).catch(() => ({ _sum: { totalAmount: 0 } }))
-      ])
-
-      const revenueFromLeads = revenueData[0]._sum.estimatedValue || 0
-      const revenueFromInvoices = revenueData[1]._sum.totalAmount || 0
-      revenueGenerated = revenueFromLeads + revenueFromInvoices
-    } catch (error) {
-      console.warn('Error calculating revenue:', error)
+    const previousInvoiceWhere = {
+      ...branchCondition,
+      status: 'PAID' as const,
+      issueDate: {
+        gte: previousPeriodStart,
+        lte: endOfDay(previousPeriodEnd),
+      },
     }
 
-    // Fetch marketing metrics
-    let marketingMetrics = null
-    try {
-      marketingMetrics = await db.marketingMetric.findFirst({
-        where: {
-          date: {
-            gte: startDate,
-            lte: endDate
-          },
-          ...(branchId && { branchId })
-        },
-        orderBy: {
-          date: 'desc'
-        }
-      })
-    } catch (error) {
-      console.warn('Error fetching marketing metrics:', error)
+    const [currentInvoiceMetrics, previousInvoiceMetrics] = await Promise.all([
+      Promise.all([
+        safeExecute(() => db.invoice.count({ where: invoiceWhere }), 0, 'Error counting invoices'),
+        safeExecute(
+          () =>
+            db.invoice.aggregate({
+              where: invoiceWhere,
+              _sum: { totalAmount: true },
+            }),
+          { _sum: { totalAmount: 0 } },
+          'Error aggregating invoice totals'
+        ),
+      ]),
+      Promise.all([
+        safeExecute(
+          () => db.invoice.count({ where: previousInvoiceWhere }),
+          0,
+          'Error counting previous invoices'
+        ),
+        safeExecute(
+          () =>
+            db.invoice.aggregate({
+              where: previousInvoiceWhere,
+              _sum: { totalAmount: true },
+            }),
+          { _sum: { totalAmount: 0 } },
+          'Error aggregating previous invoice totals'
+        ),
+      ]),
+    ])
+
+    totalSales = currentInvoiceMetrics[0]
+    totalRevenue = Number(currentInvoiceMetrics[1]._sum.totalAmount || 0)
+
+    previousSales = previousInvoiceMetrics[0]
+    previousRevenue = Number(previousInvoiceMetrics[1]._sum.totalAmount || 0)
+
+    const customerWhere: any = {
+      ...branchCondition,
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
     }
+
+    if (branchFilter) {
+      customerWhere.user = { branchId: branchFilter }
+    }
+
+    const previousCustomerWhere: any = {
+      ...branchCondition,
+      createdAt: {
+        gte: previousPeriodStart,
+        lte: endOfDay(previousPeriodEnd),
+      },
+    }
+
+    if (branchFilter) {
+      previousCustomerWhere.user = { branchId: branchFilter }
+    }
+
+    ;[newCustomers, previousNewCustomers] = await Promise.all([
+      safeExecute(() => db.customerProfile.count({ where: customerWhere }), 0, 'Error counting new customers'),
+      safeExecute(
+        () => db.customerProfile.count({ where: previousCustomerWhere }),
+        0,
+        'Error counting previous new customers'
+      ),
+    ])
+
+    const targetWindow = {
+      ...branchCondition,
+      OR: [
+        { startDate: { lte: now }, endDate: { gte: now } },
+        { startDate: { lte: now }, endDate: null },
+      ],
+    }
+
+    ;[totalTargets, achievedTargets] = await Promise.all([
+      safeExecute(
+        () => db.salesTarget.count({ where: targetWindow }),
+        0,
+        'Error fetching targets data'
+      ),
+      safeExecute(
+        () =>
+          db.salesTarget.count({
+            where: {
+              ...targetWindow,
+              status: 'COMPLETED',
+            },
+          }),
+        0,
+        'Error fetching achieved targets data'
+      ),
+    ])
+
+    const revenueData = await Promise.all([
+      safeExecute(
+        () =>
+          db.lead.aggregate({
+            where: {
+              ...leadWhere,
+              status: 'CLOSED_WON',
+              estimatedValue: { not: null },
+            },
+            _sum: {
+              estimatedValue: true,
+            },
+          }),
+        { _sum: { estimatedValue: 0 } },
+        'Error aggregating revenue from leads'
+      ),
+      safeExecute(
+        () =>
+          db.invoice.aggregate({
+            where: invoiceWhere,
+            _sum: {
+              totalAmount: true,
+            },
+          }),
+        { _sum: { totalAmount: 0 } },
+        'Error aggregating revenue from invoices'
+      ),
+    ])
+
+    const revenueFromLeads = Number(revenueData[0]._sum.estimatedValue || 0)
+    const revenueFromInvoices = Number(revenueData[1]._sum.totalAmount || 0)
+    revenueGenerated = revenueFromLeads + revenueFromInvoices
+
+    const mapMarketingMetrics = (metrics?: MarketingMetric | null) => ({
+      ...defaultMarketingMetrics,
+      ...(metrics
+        ? {
+            campaignsSent: metrics.campaignsSent,
+            emailsSent: metrics.emailsSent,
+            emailsOpened: metrics.emailsOpened,
+            emailsClicked: metrics.emailsClicked,
+            leadsGenerated: metrics.leadsGenerated,
+            leadsConverted: metrics.leadsConverted,
+            conversionRate: metrics.conversionRate,
+            costPerLead: metrics.costPerLead,
+            costPerAcquisition: metrics.costPerAcquisition,
+            roi: metrics.roi,
+          }
+        : {}),
+    })
+
+    const marketingMetrics = await safeExecute(
+      () =>
+        db.marketingMetric.findFirst({
+          where: {
+            date: {
+              gte: startDate,
+              lte: endDate,
+            },
+            ...(branchFilter && { branchId: branchFilter }),
+          },
+          orderBy: {
+            date: 'desc',
+          },
+        }),
+      null,
+      'Error fetching marketing metrics'
+    )
+
+    const marketingMetricsData = mapMarketingMetrics(marketingMetrics)
 
     const stats = {
+      totalSales,
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      newCustomers,
+      conversionRate: Math.round(conversionRate * 100) / 100,
+      monthlyGrowth: {
+        sales: calculateGrowth(totalSales, previousSales),
+        revenue: calculateGrowth(totalRevenue, previousRevenue),
+        customers: calculateGrowth(newCustomers, previousNewCustomers),
+        conversion: calculateGrowth(conversionRate, previousConversionRate),
+      },
       totalCampaigns,
       activeCampaigns,
       totalLeads,
       qualifiedLeads,
-      conversionRate: Math.round(conversionRate * 100) / 100,
+      convertedLeads,
       totalTargets,
       achievedTargets,
       revenueGenerated: Math.round(revenueGenerated * 100) / 100,
-      marketingMetrics: marketingMetrics || {
-        campaignsSent: 0,
-        emailsSent: 0,
-        emailsOpened: 0,
-        emailsClicked: 0,
-        leadsGenerated: 0,
-        leadsConverted: 0,
-        conversionRate: 0,
-        costPerLead: 0,
-        costPerAcquisition: 0,
-        roi: 0
+      marketingMetrics: marketingMetricsData,
+      marketing: {
+        totalCampaigns,
+        activeCampaigns,
+        totalLeads,
+        qualifiedLeads,
+        convertedLeads,
+        conversionRate: Math.round(conversionRate * 100) / 100,
+        totalTargets,
+        achievedTargets,
+        revenueGenerated: Math.round(revenueGenerated * 100) / 100,
+        marketingMetrics: marketingMetricsData,
       },
       period,
-      startDate,
-      endDate
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
     }
 
     return NextResponse.json(stats)
@@ -224,29 +468,40 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching marketing sales stats:', error)
     // Return default values on error
     return NextResponse.json({
+      totalSales: 0,
+      totalRevenue: 0,
+      newCustomers: 0,
+      conversionRate: 0,
+      monthlyGrowth: {
+        sales: 0,
+        revenue: 0,
+        customers: 0,
+        conversion: 0,
+      },
       totalCampaigns: 0,
       activeCampaigns: 0,
       totalLeads: 0,
       qualifiedLeads: 0,
-      conversionRate: 0,
+      convertedLeads: 0,
       totalTargets: 0,
       achievedTargets: 0,
       revenueGenerated: 0,
-      marketingMetrics: {
-        campaignsSent: 0,
-        emailsSent: 0,
-        emailsOpened: 0,
-        emailsClicked: 0,
-        leadsGenerated: 0,
-        leadsConverted: 0,
+      marketingMetrics: defaultMarketingMetrics,
+      marketing: {
+        totalCampaigns: 0,
+        activeCampaigns: 0,
+        totalLeads: 0,
+        qualifiedLeads: 0,
+        convertedLeads: 0,
         conversionRate: 0,
-        costPerLead: 0,
-        costPerAcquisition: 0,
-        roi: 0
+        totalTargets: 0,
+        achievedTargets: 0,
+        revenueGenerated: 0,
+        marketingMetrics: defaultMarketingMetrics,
       },
       period: 'month',
-      startDate: new Date(),
-      endDate: new Date()
+      startDate: new Date().toISOString(),
+      endDate: new Date().toISOString(),
     })
   }
 }

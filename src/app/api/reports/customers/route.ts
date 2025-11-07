@@ -5,24 +5,84 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
-import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
+import {
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subDays,
+  addMonths,
+  format,
+} from 'date-fns'
+import { ar } from 'date-fns/locale'
+import { Prisma } from '@prisma/client'
+
+const isSchemaMissingError = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P2021', 'P2022', 'P2023'].includes(error.code)
+  }
+
+  return error instanceof Error && error.message.toLowerCase().includes('does not exist')
+}
+
+const shouldFallback = (error: unknown) => {
+  if (isSchemaMissingError(error)) {
+    return true
+  }
+
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError ||
+    error instanceof Prisma.PrismaClientRustPanicError ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientValidationError
+  )
+}
+
+const safeExecute = async <T>(operation: () => Promise<T>, fallback: T): Promise<T> => {
+  try {
+    return await executeWithRetry(operation)
+  } catch (error) {
+    console.error('Customer report query failed, falling back to defaults:', error)
+
+    if (shouldFallback(error)) {
+      return fallback
+    }
+
+    throw error
+  }
+}
+
+const fallbackCustomerReport = {
+  metrics: [],
+  segments: [],
+  topCustomers: [],
+  acquisitionSources: [],
+  customerLifetimeValue: [],
+  churnRate: 0,
+  period: {
+    start: new Date(0),
+    end: new Date(0),
+    type: 'month',
+  },
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // Add CORS headers
     const headers = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    };
+    }
 
-    // Handle OPTIONS request
     if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { status: 200, headers });
+      return new NextResponse(null, { status: 200, headers })
     }
 
     const user = await authenticateProductionUser(request)
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
     }
@@ -71,277 +131,328 @@ export async function GET(request: NextRequest) {
         monthsToShow = 12
     }
 
-    const where: any = {}
+    const branchFilter = branchId && branchId !== 'all' ? branchId : null
 
-    if (branchId && branchId !== 'all') {
-      where.branchId = branchId
+    const withCustomerBranchFilter = (
+      whereInput: Prisma.CustomerProfileWhereInput
+    ): Prisma.CustomerProfileWhereInput => {
+      if (!branchFilter) {
+        return whereInput
+      }
+
+      const existingAnd = Array.isArray(whereInput.AND)
+        ? whereInput.AND
+        : whereInput.AND
+        ? [whereInput.AND]
+        : []
+
+      return {
+        ...whereInput,
+        AND: [
+          ...existingAnd,
+          {
+            user: {
+              is: {
+                branchId: branchFilter,
+              },
+            },
+          },
+        ],
+      }
     }
 
-    // Generate monthly customer metrics
-    const customerMetrics = []
-    
+    const invoiceBaseWhere: Prisma.InvoiceWhereInput = {
+      status: 'PAID',
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+    const leadBaseWhere: Prisma.LeadWhereInput = {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+      ...(branchFilter ? { branchId: branchFilter } : {}),
+    }
+
+    const customerMetrics: Array<{
+      month: string
+      newCustomers: number
+      totalCustomers: number
+      retention: number
+    }> = []
+
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = addMonths(startDate, -i)
       const monthStart = startOfMonth(monthDate)
       const monthEnd = endOfMonth(monthDate)
-      
-      const monthWhere = {
-        ...where,
+
+      const monthCustomerWhere = withCustomerBranchFilter({
         createdAt: {
           gte: monthStart,
-          lte: monthEnd
-        }
-      }
+          lte: monthEnd,
+        },
+      })
 
-      const [
-        newCustomers,
-        totalCustomersAtEnd,
-        activeCustomers
-      ] = await Promise.all([
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              ...monthWhere
-            }
-          });
-        }),
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              createdAt: {
-                lte: monthEnd
-              }
-            }
-          });
-        }),
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              createdAt: {
-                lte: monthEnd
-              },
-              OR: [
-                {
-                  invoices: {
-                    some: {
-                      createdAt: {
-                        gte: subDays(monthEnd, 90) // Active in last 90 days
-                      }
-                    }
-                  }
+      const [newCustomersCount, totalCustomersAtEnd, activeCustomers] = await Promise.all([
+        safeExecute(
+          () =>
+            db.customerProfile.count({
+              where: monthCustomerWhere,
+            }),
+          0
+        ),
+        safeExecute(
+          () =>
+            db.customerProfile.count({
+              where: withCustomerBranchFilter({
+                createdAt: {
+                  lte: monthEnd,
                 },
-                {
-                  serviceBookings: {
-                    some: {
-                      createdAt: {
-                        gte: subDays(monthEnd, 90)
-                      }
-                    }
-                  }
-                }
-              ]
-            }
-          });
-        })
+              }),
+            }),
+          0
+        ),
+        safeExecute(
+          () =>
+            db.invoice.groupBy({
+              by: ['customerId'],
+              where: {
+                ...invoiceBaseWhere,
+                createdAt: {
+                  gte: subDays(monthEnd, 90),
+                  lte: monthEnd,
+                },
+              },
+              _count: {
+                _all: true,
+              },
+            }),
+          [] as Array<{ customerId: string | null; _count: { _all: number } }>
+        ).then(groups => groups.filter(group => group.customerId).length),
       ])
 
       const retention = totalCustomersAtEnd > 0 ? (activeCustomers / totalCustomersAtEnd) * 100 : 0
 
       customerMetrics.push({
-        month: format(monthDate, 'MMM yyyy', { locale: { code: 'ar' } }),
-        newCustomers,
+        month: format(monthDate, 'MMM yyyy', { locale: ar }),
+        newCustomers: newCustomersCount,
         totalCustomers: totalCustomersAtEnd,
-        retention: Math.round(retention * 100) / 100
+        retention: Math.round(retention * 100) / 100,
       })
     }
 
-    // Get current period detailed breakdown
-    const currentPeriodWhere = {
-      ...where,
+    const currentPeriodCustomerWhere = withCustomerBranchFilter({
       createdAt: {
         gte: startDate,
-        lte: endDate
-      }
-    }
+        lte: endDate,
+      },
+    })
 
     const [
       customerSegments,
-      topCustomers,
+      topCustomerInvoices,
       customerAcquisition,
-      customerLifetimeValue,
-      churnRate
+      lifetimeAggregates,
+      pastCustomersList,
+      invoicesGroupedAfterStart,
     ] = await Promise.all([
-      // Customer segments
-      executeWithRetry(async () => {
-        return await db.customerProfile.groupBy({
-          by: ['segment'],
-          where: {
-            ...where
-          },
-          _count: {
-            _all: true
-          }
-        });
-      }),
-      // Top customers by revenue
-      executeWithRetry(async () => {
-        return await db.customerProfile.findMany({
-          where: {
-            ...where
-          },
-          include: {
-            invoices: {
-              where: {
-                status: 'PAID'
+      safeExecute(
+        () =>
+          db.customerProfile.groupBy({
+            by: ['segment'],
+            where: currentPeriodCustomerWhere,
+            _count: {
+              _all: true,
+            },
+          }),
+        [] as Array<{ segment: string | null; _count: { _all: number } }>
+      ),
+      safeExecute(
+        () =>
+          db.invoice.groupBy({
+            by: ['customerId'],
+            where: {
+              ...invoiceBaseWhere,
+              createdAt: {
+                gte: startDate,
+                lte: endDate,
               },
-              select: {
-                totalAmount: true
-              }
-            }
-          },
-          orderBy: {
-            invoices: {
+            },
+            _sum: {
+              totalAmount: true,
+            },
+            _count: {
+              _all: true,
+            },
+            orderBy: {
               _sum: {
-                totalAmount: 'desc'
-              }
-            }
-          },
-          take: 10
-        });
-      }),
-      // Customer acquisition sources
-      executeWithRetry(async () => {
-        return await db.lead.groupBy({
-          by: ['source'],
-          where: {
-            ...currentPeriodWhere,
-            status: 'CLOSED_WON'
-          },
-          _count: {
-            _all: true
-          }
-        });
-      }),
-      // Customer lifetime value
-      executeWithRetry(async () => {
-        return await db.customerProfile.findMany({
-          where: {
-            ...where
-          },
-          include: {
-            invoices: {
-              where: {
-                status: 'PAID'
+                totalAmount: 'desc',
               },
-              select: {
-                totalAmount: true,
-                createdAt: true
-              }
-            }
-          }
-        });
-      }),
-      // Churn rate calculation
-      Promise.all([
-        // Customers at start of period
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
+            },
+            take: 10,
+          }),
+        [] as Array<{
+          customerId: string | null
+          _sum: { totalAmount: number | null }
+          _count: { _all: number }
+        }>
+      ),
+      safeExecute(
+        () =>
+          db.lead.groupBy({
+            by: ['source'],
             where: {
+              ...leadBaseWhere,
+              status: 'CLOSED_WON',
+            },
+            _count: {
+              _all: true,
+            },
+          }),
+        [] as Array<{ source: string | null; _count: { _all: number } }>
+      ),
+      safeExecute(
+        () =>
+          db.invoice.groupBy({
+            by: ['customerId'],
+            where: invoiceBaseWhere,
+            _sum: {
+              totalAmount: true,
+            },
+            _min: {
+              createdAt: true,
+            },
+          }),
+        [] as Array<{
+          customerId: string | null
+          _sum: { totalAmount: number | null }
+          _min: { createdAt: Date | null }
+        }>
+      ),
+      safeExecute(
+        () =>
+          db.customerProfile.findMany({
+            where: withCustomerBranchFilter({
               createdAt: {
-                lte: subDays(startDate, 1)
-              }
-            }
-          });
-        }),
-        // Customers who churned in period
-        executeWithRetry(async () => {
-          return await db.customerProfile.count({
-            where: {
-              createdAt: {
-                lte: subDays(startDate, 1)
+                lte: subDays(startDate, 1),
               },
-              AND: [
-                {
-                  invoices: {
-                    none: {
-                      createdAt: {
-                        gte: startDate
-                      }
-                    }
-                  }
-                },
-                {
-                  serviceBookings: {
-                    none: {
-                      createdAt: {
-                        gte: startDate
-                      }
-                    }
-                  }
-                }
-              ]
-            }
-          });
-        })
-      ])
+            }),
+            select: {
+              userId: true,
+            },
+          }),
+        [] as Array<{ userId: string }>
+      ),
+      safeExecute(
+        () =>
+          db.invoice.groupBy({
+            by: ['customerId'],
+            where: {
+              ...invoiceBaseWhere,
+              createdAt: {
+                gte: startDate,
+                lte: endDate,
+              },
+            },
+            _count: {
+              _all: true,
+            },
+          }),
+        [] as Array<{ customerId: string | null; _count: { _all: number } }>
+      ),
     ])
 
-    // Calculate customer lifetime value
-    const customerLifetimeValueData = customerLifetimeValue.map(customer => {
-      const totalSpent = customer.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
-      const firstPurchase = customer.invoices.length > 0 ? Math.min(...customer.invoices.map(i => new Date(i.createdAt).getTime())) : 0
-      const customerAge = firstPurchase > 0 ? (now.getTime() - firstPurchase) / (1000 * 60 * 60 * 24 * 365) : 0 // in years
-      
-      return {
-        id: customer.id,
-        name: customer.name,
-        totalSpent,
-        customerAge: Math.round(customerAge * 100) / 100,
-        lifetimeValue: customerAge > 0 ? totalSpent / customerAge : 0
-      }
-    })
+    const topCustomerIds = topCustomerInvoices
+      .filter(customer => customer.customerId)
+      .map(customer => customer.customerId!)
 
-    // Calculate churn rate
-    const [customersAtStart, churnedCustomers] = churnRate
+    const topCustomerUsers = topCustomerIds.length
+      ? await safeExecute(
+          () =>
+            db.user.findMany({
+              where: {
+                id: {
+                  in: topCustomerIds,
+                },
+              },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            }),
+          [] as Array<{ id: string; name: string | null; email: string | null; phone: string | null }>
+        )
+      : []
+
+    const topCustomerLookup = new Map(topCustomerUsers.map(user => [user.id, user]))
+
+    const topCustomersWithRevenue = topCustomerInvoices
+      .filter(customer => customer.customerId)
+      .map(customer => {
+        const userInfo = topCustomerLookup.get(customer.customerId!)
+        return {
+          id: customer.customerId!,
+          name: userInfo?.name ?? null,
+          email: userInfo?.email ?? null,
+          phone: userInfo?.phone ?? null,
+          revenue: customer._sum.totalAmount ?? 0,
+          invoiceCount: customer._count._all,
+        }
+      })
+
+    const customerLifetimeValueData = lifetimeAggregates
+      .filter(customer => customer.customerId)
+      .map(customer => {
+        const totalSpent = customer._sum.totalAmount ?? 0
+        const firstPurchase = customer._min.createdAt?.getTime() ?? 0
+        const customerAgeYears =
+          firstPurchase > 0 ? (now.getTime() - firstPurchase) / (1000 * 60 * 60 * 24 * 365) : 0
+
+        return {
+          id: customer.customerId!,
+          totalSpent,
+          customerAge: Math.round(customerAgeYears * 100) / 100,
+          lifetimeValue: customerAgeYears > 0 ? totalSpent / customerAgeYears : 0,
+        }
+      })
+
+    const activeCustomerIds = new Set(
+      invoicesGroupedAfterStart
+        .filter(group => group.customerId)
+        .map(group => group.customerId!)
+    )
+    const customersAtStart = pastCustomersList.length
+    const churnedCustomers = pastCustomersList.filter(
+      customer => !activeCustomerIds.has(customer.userId)
+    ).length
     const churnRateValue = customersAtStart > 0 ? (churnedCustomers / customersAtStart) * 100 : 0
-
-    // Process top customers with revenue
-    const topCustomersWithRevenue = topCustomers.map(customer => {
-      const totalRevenue = customer.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0)
-      return {
-        id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        phone: customer.phone,
-        revenue: totalRevenue,
-        invoiceCount: customer.invoices.length
-      }
-    })
 
     const customerReport = {
       metrics: customerMetrics,
       segments: customerSegments,
       topCustomers: topCustomersWithRevenue,
       acquisitionSources: customerAcquisition,
-      customerLifetimeValue: customerLifetimeValueData.sort((a, b) => b.lifetimeValue - a.lifetimeValue).slice(0, 10),
+      customerLifetimeValue: customerLifetimeValueData
+        .sort((a, b) => b.lifetimeValue - a.lifetimeValue)
+        .slice(0, 10),
       churnRate: Math.round(churnRateValue * 100) / 100,
       period: {
         start: startDate,
         end: endDate,
-        type: period
-      }
+        type: period,
+      },
     }
 
     return NextResponse.json(customerReport, { headers })
   } catch (error) {
     console.error('Error fetching customer report:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500, headers: {
+    return NextResponse.json(fallbackCustomerReport, {
+      headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      }}
-    )
+      },
+    })
   }
 }

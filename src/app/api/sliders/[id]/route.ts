@@ -42,7 +42,10 @@ export async function PUT(
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    if ('error' in auth) {
+      return auth.error
+    }
 
     const body = await request.json()
     const {
@@ -111,7 +114,10 @@ export async function DELETE(
   try {
     const { id } = await context.params
     // Check authentication and authorization
-    await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
+    if ('error' in auth) {
+      return auth.error
+    }
 
     // Check if slider exists
     const existingSlider = await db.slider.findUnique({

@@ -5,18 +5,25 @@ import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { 
-  Truck, 
+import {
+  Truck,
   Phone,
   Mail,
   MapPin,
   Star,
   RefreshCw,
   Plus,
-  Eye,
-  Package
+  Package,
+  Pencil,
+  Trash2
 } from 'lucide-react'
 import Link from 'next/link'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
 
 interface Supplier {
   id: string
@@ -31,10 +38,35 @@ interface Supplier {
   minOrderAmount: number
 }
 
+interface SupplierFormState {
+  name: string
+  contact: string
+  email: string
+  phone: string
+  address: string
+  rating: number
+  leadTime: number
+  minOrderAmount: number
+}
+
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+  const [formState, setFormState] = useState<SupplierFormState>({
+    name: '',
+    contact: '',
+    email: '',
+    phone: '',
+    address: '',
+    rating: 3,
+    leadTime: 7,
+    minOrderAmount: 0
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
 
   useEffect(() => {
     loadSuppliers()
@@ -58,6 +90,109 @@ export default function SuppliersPage() {
       setSuppliers([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setFormState({
+      name: '',
+      contact: '',
+      email: '',
+      phone: '',
+      address: '',
+      rating: 3,
+      leadTime: 7,
+      minOrderAmount: 0
+    })
+    setEditingSupplier(null)
+  }
+
+  const openCreateModal = () => {
+    resetForm()
+    setIsFormOpen(true)
+  }
+
+  const openEditModal = (supplier: Supplier) => {
+    setEditingSupplier(supplier)
+    setFormState({
+      name: supplier.name,
+      contact: supplier.contact,
+      email: supplier.email,
+      phone: supplier.phone,
+      address: supplier.address || '',
+      rating: supplier.rating || 0,
+      leadTime: supplier.leadTime || 0,
+      minOrderAmount: supplier.minOrderAmount || 0
+    })
+    setIsFormOpen(true)
+  }
+
+  const handleFormChange = <K extends keyof SupplierFormState>(key: K, value: SupplierFormState[K]) => {
+    setFormState(prev => ({
+      ...prev,
+      [key]: value
+    }))
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setSubmitting(true)
+
+    try {
+      const payload = {
+        ...formState,
+        rating: Number(formState.rating) || 0,
+        leadTime: Number(formState.leadTime) || 0,
+        minOrderAmount: Number(formState.minOrderAmount) || 0
+      }
+
+      const response = await fetch(
+        editingSupplier ? `/api/inventory/suppliers/${editingSupplier.id}` : '/api/inventory/suppliers',
+        {
+          method: editingSupplier ? 'PATCH' : 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }
+      )
+
+      if (!response.ok) {
+        const message = editingSupplier ? 'فشل في تحديث بيانات المورد' : 'فشل في إضافة المورد'
+        toast.error(message)
+        return
+      }
+
+      toast.success(editingSupplier ? 'تم تحديث المورد بنجاح' : 'تم إضافة المورد بنجاح')
+      setIsFormOpen(false)
+      resetForm()
+      await loadSuppliers()
+    } catch (submitError) {
+      console.error('Error saving supplier:', submitError)
+      toast.error('حدث خطأ أثناء حفظ بيانات المورد')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      const response = await fetch(`/api/inventory/suppliers/${deleteTarget.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        toast.error('فشل في حذف المورد')
+        return
+      }
+
+      toast.success('تم حذف المورد بنجاح')
+      setDeleteTarget(null)
+      await loadSuppliers()
+    } catch (deleteError) {
+      console.error('Error deleting supplier:', deleteError)
+      toast.error('حدث خطأ أثناء حذف المورد')
     }
   }
 
@@ -127,10 +262,14 @@ export default function SuppliersPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">الموردون</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={loadSuppliers}>
               <RefreshCw className="ml-2 h-4 w-4" />
               تحديث
+            </Button>
+            <Button onClick={openCreateModal}>
+              <Plus className="ml-2 h-4 w-4" />
+              إضافة مورد
             </Button>
             <Link href="/admin/inventory">
               <Button variant="outline">
@@ -175,13 +314,30 @@ export default function SuppliersPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span>{supplier.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span>{supplier.phone}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-400" />
+                        <span>{supplier.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-400" />
+                        <span>{supplier.phone}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => openEditModal(supplier)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600"
+                        onClick={() => setDeleteTarget(supplier)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   {supplier.address && (
                     <div className="flex items-center gap-2 text-sm">
@@ -208,6 +364,127 @@ export default function SuppliersPage() {
           </div>
         )}
       </div>
+      <Dialog open={isFormOpen} onOpenChange={(open) => {
+        setIsFormOpen(open)
+        if (!open) {
+          resetForm()
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingSupplier ? 'تعديل المورد' : 'إضافة مورد جديد'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">اسم المورد</Label>
+                <Input
+                  id="name"
+                  required
+                  value={formState.name}
+                  onChange={(event) => handleFormChange('name', event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="contact">اسم جهة الاتصال</Label>
+                <Input
+                  id="contact"
+                  required
+                  value={formState.contact}
+                  onChange={(event) => handleFormChange('contact', event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">البريد الإلكتروني</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={formState.email}
+                  onChange={(event) => handleFormChange('email', event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">رقم الهاتف</Label>
+                <Input
+                  id="phone"
+                  required
+                  value={formState.phone}
+                  onChange={(event) => handleFormChange('phone', event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">العنوان</Label>
+                <Textarea
+                  id="address"
+                  value={formState.address}
+                  onChange={(event) => handleFormChange('address', event.target.value)}
+                  placeholder="العنوان التفصيلي للمورد"
+                />
+              </div>
+              <div className="grid gap-2 md:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="rating">التقييم</Label>
+                  <Input
+                    id="rating"
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={0.5}
+                    value={formState.rating}
+                    onChange={(event) => handleFormChange('rating', Number(event.target.value))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="leadTime">مدة التوريد (أيام)</Label>
+                  <Input
+                    id="leadTime"
+                    type="number"
+                    min={0}
+                    value={formState.leadTime}
+                    onChange={(event) => handleFormChange('leadTime', Number(event.target.value))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="minOrderAmount">الحد الأدنى للطلب</Label>
+                  <Input
+                    id="minOrderAmount"
+                    type="number"
+                    min={0}
+                    value={formState.minOrderAmount}
+                    onChange={(event) => handleFormChange('minOrderAmount', Number(event.target.value))}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+                إلغاء
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'جاري الحفظ...' : editingSupplier ? 'حفظ التعديلات' : 'إضافة المورد'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل أنت متأكد من حذف هذا المورد؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف المورد {deleteTarget?.name} وجميع البيانات المتعلقة به. لا يمكن التراجع عن هذه العملية.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>
+              حذف المورد
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminRoute>
   )
 }

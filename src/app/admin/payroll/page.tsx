@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, AlertCircle, Eye } from 'lucide-react'
+import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, Pencil } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface PayrollRecord {
   id: string
@@ -55,6 +58,15 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'))
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingRecord, setEditingRecord] = useState<PayrollRecord | null>(null)
+  const [editForm, setEditForm] = useState({
+    basicSalary: 0,
+    allowances: 0,
+    deductions: 0,
+    overtime: 0,
+    bonus: 0
+  })
 
   useEffect(() => {
     fetchPayrollData()
@@ -170,7 +182,7 @@ export default function PayrollPage() {
       const response = await fetch(`/api/hr/payroll/${recordId}/pay`, {
         method: 'POST'
       })
-      
+
       if (response.ok) {
         toast.success('تم تحديد سجل الراتب كمدفوع')
         fetchPayrollData()
@@ -210,6 +222,48 @@ export default function PayrollPage() {
       case 'APPROVED': return 'معتمد'
       case 'PAID': return 'مدفوع'
       default: return status
+    }
+  }
+
+  const openEditModal = (record: PayrollRecord) => {
+    setEditingRecord(record)
+    setEditForm({
+      basicSalary: record.basicSalary,
+      allowances: record.allowances,
+      deductions: record.deductions,
+      overtime: record.overtime,
+      bonus: record.bonus
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const handleEditChange = (field: keyof typeof editForm, value: number) => {
+    setEditForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const submitEdit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!editingRecord) return
+
+    try {
+      const response = await fetch(`/api/hr/payroll/${editingRecord.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      })
+
+      if (!response.ok) {
+        toast.error('فشل في تحديث سجل الراتب')
+        return
+      }
+
+      toast.success('تم تحديث سجل الراتب بنجاح')
+      setIsEditModalOpen(false)
+      setEditingRecord(null)
+      await fetchPayrollData()
+    } catch (error) {
+      console.error('Error updating payroll record:', error)
+      toast.error('حدث خطأ أثناء تحديث سجل الراتب')
     }
   }
 
@@ -399,6 +453,13 @@ export default function PayrollPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditModal(record)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         {record.status === 'PENDING' && (
                           <Button
                             variant="outline"
@@ -438,6 +499,79 @@ export default function PayrollPage() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={isEditModalOpen} onOpenChange={(open) => {
+        setIsEditModalOpen(open)
+        if (!open) {
+          setEditingRecord(null)
+        }
+      }}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>تعديل مكونات الراتب</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitEdit} className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="basicSalary">الراتب الأساسي</Label>
+                <Input
+                  id="basicSalary"
+                  type="number"
+                  min={0}
+                  value={editForm.basicSalary}
+                  onChange={(event) => handleEditChange('basicSalary', Number(event.target.value))}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="allowances">البدلات</Label>
+                <Input
+                  id="allowances"
+                  type="number"
+                  min={0}
+                  value={editForm.allowances}
+                  onChange={(event) => handleEditChange('allowances', Number(event.target.value))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="deductions">الخصومات</Label>
+                <Input
+                  id="deductions"
+                  type="number"
+                  min={0}
+                  value={editForm.deductions}
+                  onChange={(event) => handleEditChange('deductions', Number(event.target.value))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="overtime">الساعات الإضافية</Label>
+                <Input
+                  id="overtime"
+                  type="number"
+                  min={0}
+                  value={editForm.overtime}
+                  onChange={(event) => handleEditChange('overtime', Number(event.target.value))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="bonus">المكافآت</Label>
+                <Input
+                  id="bonus"
+                  type="number"
+                  min={0}
+                  value={editForm.bonus}
+                  onChange={(event) => handleEditChange('bonus', Number(event.target.value))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                إلغاء
+              </Button>
+              <Button type="submit">حفظ التعديلات</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

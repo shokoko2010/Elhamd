@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 
-export async function POST(request: NextRequest) {
+interface RouteContext {
+  params: { id: string }
+}
+
+export async function POST(request: NextRequest, { params }: RouteContext) {
   try {
     const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    const id = params?.id
 
     if (!id) {
       return NextResponse.json({ error: 'Leave request ID is required' }, { status: 400 })
@@ -31,6 +34,12 @@ export async function POST(request: NextRequest) {
                 id: true,
                 name: true,
                 email: true
+              }
+            },
+            department: {
+              select: {
+                id: true,
+                name: true
               }
             }
           }

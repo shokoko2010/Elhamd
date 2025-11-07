@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +36,7 @@ import {
   Wrench
 } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 
 interface QuotationItem {
@@ -117,6 +118,9 @@ function QuotationsContent() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateRange, setDateRange] = useState('month')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
 
   // Form state for new quotation
@@ -131,6 +135,26 @@ function QuotationsContent() {
   useEffect(() => {
     fetchQuotationsData()
   }, [dateRange])
+
+  useEffect(() => {
+    if (searchParams.get('mode') === 'create') {
+      setIsCreateModalOpen(true)
+    }
+  }, [searchParams])
+
+  const handleModalOpenChange = (open: boolean) => {
+    setIsCreateModalOpen(open)
+
+    const params = new URLSearchParams(searchParams)
+    if (open) {
+      params.set('mode', 'create')
+    } else {
+      params.delete('mode')
+    }
+
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
 
   const fetchQuotationsData = async () => {
     try {
@@ -189,7 +213,7 @@ function QuotationsContent() {
           title: 'نجاح',
           description: 'تم إنشاء عرض السعر بنجاح'
         })
-        setIsCreateModalOpen(false)
+        handleModalOpenChange(false)
         setNewQuotation({
           customerId: '',
           validUntil: '',
@@ -409,7 +433,7 @@ function QuotationsContent() {
           <p className="text-gray-600 mt-2">إدارة عروض الأسعار والمبيعات والتحويل إلى فواتير</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setIsCreateModalOpen(true)}>
+          <Button onClick={() => handleModalOpenChange(true)}>
             <Plus className="ml-2 h-4 w-4" />
             عرض سعر جديد
           </Button>
@@ -545,7 +569,7 @@ function QuotationsContent() {
                   <CardTitle>عروض الأسعار</CardTitle>
                   <CardDescription>إدارة عروض الأسعار والمتابعة والتحويل إلى فواتير</CardDescription>
                 </div>
-                <Button onClick={() => setIsCreateModalOpen(true)}>
+                <Button onClick={() => handleModalOpenChange(true)}>
                   <Plus className="ml-2 h-4 w-4" />
                   عرض سعر جديد
                 </Button>
@@ -694,7 +718,7 @@ function QuotationsContent() {
       </Tabs>
 
       {/* Create Quotation Modal */}
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+      <Dialog open={isCreateModalOpen} onOpenChange={handleModalOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>إنشاء عرض سعر جديد</DialogTitle>
@@ -849,7 +873,7 @@ function QuotationsContent() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+            <Button variant="outline" onClick={() => handleModalOpenChange(false)}>
               إلغاء
             </Button>
             <Button onClick={handleCreateQuotation}>

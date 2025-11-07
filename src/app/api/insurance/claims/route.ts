@@ -6,20 +6,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
 
-const authHandler = async (request: NextRequest) => {
-  try {
-    return await authorize(request, { roles: [UserRole.ADMIN,UserRole.SUPER_ADMIN,UserRole.MANAGER,] })
-  } catch (error) {
-    return null
-  }
-}
+const authHandler = (request: NextRequest) =>
+  authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MANAGER] })
 
 export async function GET(request: NextRequest) {
   const auth = await authHandler(request)
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if ('error' in auth) {
+    return auth.error
   }
-  
+
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -101,8 +96,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await authHandler(request)
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if ('error' in auth) {
+    return auth.error
   }
   
   try {
@@ -155,7 +150,7 @@ export async function POST(request: NextRequest) {
         incidentDate: new Date(incidentDate),
         incidentLocation,
         estimatedAmount: estimatedAmount ? parseFloat(estimatedAmount) : null,
-        createdBy: auth.id
+        createdBy: auth.user.id
       },
       include: {
         policy: {

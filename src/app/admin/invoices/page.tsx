@@ -8,7 +8,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     // Redirect to the invoices dashboard
-    router.replace('/admin/invoices/dashboard');
+    router.replace('/admin/invoices/list');
   }, [router]);
 
   return (

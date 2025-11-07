@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,14 +9,14 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Settings, 
-  Bell, 
-  Shield, 
-  Database, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  Settings,
+  Bell,
+  Shield,
+  Database,
+  Mail,
+  Phone,
+  MapPin,
   Save,
   RefreshCw
 } from 'lucide-react'
@@ -46,7 +47,15 @@ interface SystemSettings {
   sessionTimeout: number
 }
 
-export default function AdminSettings() {
+export default function AdminSettingsPage() {
+  return (
+    <AdminRoute>
+      <SettingsContent />
+    </AdminRoute>
+  )
+}
+
+function SettingsContent() {
   const [companySettings, setCompanySettings] = useState<CompanySettings>({
     name: 'الحمد للسيارات',
     email: 'info@elhamd-cars.com',
