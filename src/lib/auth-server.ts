@@ -63,11 +63,11 @@ async function resolveAuthUser(request?: NextRequest): Promise<AuthUser | null> 
 
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
-    console.log('🔍 Getting authenticated user...')
+  //   console.log('🔍 Getting authenticated user...')
 
     // For development, return a mock admin user
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 Development mode: Using mock admin user')
+      // console.log('\u{1F9EA} Development mode: Using mock admin user')
       
       const mockUser: AuthUser = {
         id: 'dev-admin-id',
@@ -79,21 +79,21 @@ export async function getAuthUser(): Promise<AuthUser | null> {
         permissions: ['*'] // All permissions
       }
       
-      console.log('✅ Mock auth user created:', mockUser.email, 'Role:', mockUser.role)
+    /// Mock auth user created
       return normalizeAuthUser(mockUser)
     }
 
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      console.log('❌ No session found')
+     //  console.log('❌ No session found')
       return null
     }
 
-    console.log('✅ Session found for user:', session.user.email)
+    // Session found for user
     
     // Get user permissions
     const permissions = await getUserPermissions(session.user.id)
-    console.log('🔑 User permissions:', permissions.length)
+    // User permissions log removed
 
     const authUser: AuthUser = normalizeAuthUser({
       id: session.user.id,
@@ -105,7 +105,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       permissions
     })
 
-    console.log('✅ Auth user created:', authUser.email, 'Role:', authUser.role)
+        // Auth user created log removed
     return authUser
   } catch (error) {
     console.error('❌ Error in getAuthUser:', error)
