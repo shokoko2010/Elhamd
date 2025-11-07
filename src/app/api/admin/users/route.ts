@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
-import { UserRole } from '@prisma/client'
+import { UserRole, Prisma } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
@@ -30,19 +30,26 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const role = searchParams.get('role') || ''
     const isActive = searchParams.get('isActive')
+    const scope = searchParams.get('scope') || ''
+
+    const includeAllRoles = scope === 'all'
 
     const skip = (page - 1) * limit
 
     // Build where clause
-    const where: any = {}
-    
-    // For customers page, only show customers by default
-    if (!role || role === 'all') {
-      where.role = UserRole.CUSTOMER
-    } else if (role !== 'all') {
+    const where: Prisma.UserWhereInput = {}
+
+    if (!includeAllRoles) {
+      // For customers page, only show customers by default
+      if (!role || role === 'all') {
+        where.role = UserRole.CUSTOMER
+      } else if (role !== 'all') {
+        where.role = role as UserRole
+      }
+    } else if (role && role !== 'all') {
       where.role = role as UserRole
     }
-    
+
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -55,7 +62,7 @@ export async function GET(request: NextRequest) {
       where.isActive = isActive === 'true'
     }
 
-    const [users, total] = await Promise.all([
+    const [users, total, metrics] = await Promise.all([
       db.user.findMany({
         where,
         select: {
@@ -86,6 +93,36 @@ export async function GET(request: NextRequest) {
         take: limit
       }),
       db.user.count({ where })
+      ,
+      (async () => {
+        const [
+          totalUsers,
+          activeUsers,
+          inactiveUsers,
+          adminUsers,
+          branchManagers
+        ] = await Promise.all([
+          db.user.count(),
+          db.user.count({ where: { isActive: true } }),
+          db.user.count({ where: { isActive: false } }),
+          db.user.count({
+            where: {
+              role: {
+                in: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
+              }
+            }
+          }),
+          db.user.count({ where: { role: UserRole.BRANCH_MANAGER } })
+        ])
+
+        return {
+          totalUsers,
+          activeUsers,
+          inactiveUsers,
+          adminUsers,
+          branchManagers
+        }
+      })()
     ])
 
     // Calculate additional fields for the frontend
@@ -102,7 +139,8 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         totalPages: Math.ceil(total / limit)
-      }
+      },
+      metrics
     })
   } catch (error) {
     console.error('Error fetching users:', error)

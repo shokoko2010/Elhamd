@@ -1,291 +1,366 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { 
-  Shield, 
-  Users, 
-  Settings, 
-  Plus,
-  Edit,
-  Trash2,
-  Save,
-  RefreshCw,
-  UserPlus,
-  Key,
-  Building,
-  Eye,
-  Check,
-  X
-} from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { LoadingIndicator, ErrorState, EmptyState } from '@/components/ui/LoadingIndicator'
 import { useToast } from '@/hooks/use-toast'
-import { useAuth } from '@/hooks/use-auth'
-import { UserRole, PermissionCategory } from '@prisma/client'
-import { PERMISSIONS, Permission } from '@/lib/permissions'
+import { PermissionCategory, UserRole } from '@prisma/client'
+import {
+  Building,
+  Edit,
+  Key,
+  RefreshCw,
+  Save,
+  Settings,
+  Shield,
+  Users,
+} from 'lucide-react'
 
-interface UserWithPermissions {
+interface PermissionRecord {
+  id: string
+  name: string
+  description?: string | null
+  category: PermissionCategory
+}
+
+interface ApiPermissionEdge {
+  permission: PermissionRecord | null
+}
+
+interface ApiUser {
   id: string
   email: string
-  name?: string
+  name?: string | null
   role: UserRole
-  branchId?: string
-  branchName?: string
-  permissions: Permission[]
+  phone?: string | null
   isActive: boolean
   createdAt: string
+  updatedAt: string
+  branchId?: string | null
+  branchName?: string | null
+  permissions?: ApiPermissionEdge[]
+}
+
+interface Metrics {
+  totalUsers: number
+  activeUsers: number
+  inactiveUsers: number
+  adminUsers: number
+  branchManagers: number
+}
+
+interface UsersResponse {
+  users?: ApiUser[]
+  metrics?: Metrics
 }
 
 interface RoleTemplate {
   id: string
   name: string
-  description?: string
+  description?: string | null
   role: UserRole
-  permissions: Permission[]
-  isSystem: boolean
+  permissions: string[]
   isActive: boolean
+  isSystem: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface RoleTemplatesResponse {
+  templates?: RoleTemplate[]
+}
+
+interface PermissionsResponse {
+  permissions?: PermissionRecord[]
+}
+
+interface UserWithPermissions {
+  id: string
+  email: string
+  name?: string | null
+  role: UserRole
+  branchId?: string | null
+  branchName?: string | null
+  isActive: boolean
+  createdAt: string
+  permissions: string[]
+  permissionDetails: PermissionRecord[]
 }
 
 interface PermissionGroup {
   category: PermissionCategory
-  permissions: Permission[]
+  title: string
   description: string
+  permissions: PermissionRecord[]
 }
+
+const CATEGORY_META: Record<PermissionCategory, { title: string; description: string }> = {
+  [PermissionCategory.USER_MANAGEMENT]: {
+    title: 'إدارة المستخدمين',
+    description: 'التحكم في حسابات المستخدمين، الأدوار، والصلاحيات الفردية',
+  },
+  [PermissionCategory.VEHICLE_MANAGEMENT]: {
+    title: 'إدارة المركبات',
+    description: 'تنظيم المركبات، مواصفاتها، وتتبع توفرها في المخزون',
+  },
+  [PermissionCategory.BOOKING_MANAGEMENT]: {
+    title: 'إدارة الحجوزات',
+    description: 'متابعة الحجوزات، الجداول الزمنية، وحالة الطلبات',
+  },
+  [PermissionCategory.SERVICE_MANAGEMENT]: {
+    title: 'الخدمات والصيانة',
+    description: 'إدارة الخدمات، أوامر الصيانة، وجدولة الفنيين',
+  },
+  [PermissionCategory.INVENTORY_MANAGEMENT]: {
+    title: 'إدارة المخزون',
+    description: 'إدارة المستودعات، الموردين، وقطع الغيار',
+  },
+  [PermissionCategory.FINANCIAL_MANAGEMENT]: {
+    title: 'الشؤون المالية',
+    description: 'الفواتير، المدفوعات، التقارير المالية، وإدارة الضرائب',
+  },
+  [PermissionCategory.REPORTING]: {
+    title: 'التقارير والتحليلات',
+    description: 'إنشاء التقارير، تصدير البيانات، وتحليلات الأداء',
+  },
+  [PermissionCategory.SYSTEM_SETTINGS]: {
+    title: 'إعدادات النظام',
+    description: 'إدارة إعدادات المنصة، النسخ الاحتياطي، وسجلات النظام',
+  },
+  [PermissionCategory.BRANCH_MANAGEMENT]: {
+    title: 'إدارة الفروع',
+    description: 'الإشراف على الفروع، الميزانيات، وفرق العمل المحلية',
+  },
+  [PermissionCategory.CUSTOMER_MANAGEMENT]: {
+    title: 'إدارة العملاء',
+    description: 'ملفات العملاء، التواصل، وتتبع التفاعل مع الشركة',
+  },
+  [PermissionCategory.MARKETING_MANAGEMENT]: {
+    title: 'التسويق والحملات',
+    description: 'إدارة الحملات التسويقية، قنوات التواصل، والنماذج',
+  },
+}
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.SUPER_ADMIN]: 'مسؤول رئيسي',
+  [UserRole.ADMIN]: 'مسؤول نظام',
+  [UserRole.BRANCH_MANAGER]: 'مدير فرع',
+  [UserRole.STAFF]: 'موظف',
+  [UserRole.CUSTOMER]: 'عميل',
+}
+
+const ROLE_BADGE_STYLES: Record<UserRole, string> = {
+  [UserRole.SUPER_ADMIN]: 'bg-red-100 text-red-800',
+  [UserRole.ADMIN]: 'bg-purple-100 text-purple-800',
+  [UserRole.BRANCH_MANAGER]: 'bg-blue-100 text-blue-800',
+  [UserRole.STAFF]: 'bg-green-100 text-green-800',
+  [UserRole.CUSTOMER]: 'bg-gray-100 text-gray-800',
+}
+
+const formatNumber = (value: number | undefined) =>
+  new Intl.NumberFormat('ar-EG').format(value ?? 0)
+
+const formatPermissionLabel = (permission: PermissionRecord) =>
+  permission.description ?? permission.name.replace(/_/g, ' ')
 
 export default function PermissionsPage() {
   return (
     <AdminRoute>
-      <PermissionsContent />
+      <PermissionsDashboard />
     </AdminRoute>
   )
 }
 
-function PermissionsContent() {
-  const { user } = useAuth()
+function PermissionsDashboard() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<UserWithPermissions[]>([])
-  const [roleTemplates, setRoleTemplates] = useState<RoleTemplate[]>([])
-  const [activeTab, setActiveTab] = useState('users')
-  const [selectedUser, setSelectedUser] = useState<UserWithPermissions | null>(null)
-  const [selectedTemplate, setSelectedTemplate] = useState<RoleTemplate | null>(null)
-  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
-  const [isEditTemplateModalOpen, setIsEditTemplateModalOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
-  const [isInitializing, setIsInitializing] = useState(false)
 
-  // Form state for user permissions
-  const [userPermissions, setUserPermissions] = useState<Permission[]>([])
-  
-  // Form state for template permissions
+  const [users, setUsers] = useState<UserWithPermissions[]>([])
+  const [metrics, setMetrics] = useState<Metrics | null>(null)
+  const [roleTemplates, setRoleTemplates] = useState<RoleTemplate[]>([])
+  const [permissionsCatalog, setPermissionsCatalog] = useState<PermissionRecord[]>([])
+
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'users' | 'templates'>('users')
+
+  const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all')
+
+  const [isInitializing, setIsInitializing] = useState(false)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<UserWithPermissions | null>(null)
+  const [userPermissions, setUserPermissions] = useState<string[]>([])
+
+  const [isEditTemplateModalOpen, setIsEditTemplateModalOpen] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<RoleTemplate | null>(null)
   const [templateForm, setTemplateForm] = useState({
     name: '',
     description: '',
     role: UserRole.STAFF,
-    permissions: [] as Permission[]
+    permissions: [] as string[],
   })
 
-  // Permission groups for better organization
-  const permissionGroups: PermissionGroup[] = [
-    {
-      category: PermissionCategory.USER_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_USERS,
-        PERMISSIONS.CREATE_USERS,
-        PERMISSIONS.EDIT_USERS,
-        PERMISSIONS.DELETE_USERS,
-        PERMISSIONS.MANAGE_USER_ROLES,
-        PERMISSIONS.MANAGE_USER_PERMISSIONS
-      ],
-      description: 'إدارة المستخدمين وصلاحياتهم'
+  const fetchData = useCallback(
+    async (options?: { initial?: boolean }) => {
+      const initial = options?.initial ?? false
+      if (initial) {
+        setLoading(true)
+      } else {
+        setRefreshing(true)
+      }
+      setError(null)
+
+      try {
+        const params = new URLSearchParams({
+          scope: 'all',
+          page: '1',
+          limit: '100',
+        })
+
+        const [usersRes, templatesRes, permissionsRes] = await Promise.all([
+          fetch(`/api/admin/users?${params.toString()}`, { cache: 'no-store' }),
+          fetch('/api/admin/role-templates', { cache: 'no-store' }),
+          fetch('/api/admin/permissions?category=all', { cache: 'no-store' }),
+        ])
+
+        if (!usersRes.ok) {
+          throw new Error('Failed to load users')
+        }
+        if (!templatesRes.ok) {
+          throw new Error('Failed to load role templates')
+        }
+        if (!permissionsRes.ok) {
+          throw new Error('Failed to load permissions catalog')
+        }
+
+        const usersPayload = (await usersRes.json()) as UsersResponse
+        const templatesPayload = (await templatesRes.json()) as RoleTemplatesResponse
+        const permissionsPayload = (await permissionsRes.json()) as PermissionsResponse
+
+        const transformedUsers = (usersPayload.users ?? []).map<UserWithPermissions>((user) => {
+          const permissionDetails = (user.permissions ?? [])
+            .map((edge) => edge.permission)
+            .filter((permission): permission is PermissionRecord => Boolean(permission))
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            branchId: user.branchId ?? undefined,
+            branchName: user.branchName ?? undefined,
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+            permissions: permissionDetails.map((permission) => permission.name),
+            permissionDetails,
+          }
+        })
+
+        setUsers(transformedUsers)
+        setMetrics(usersPayload.metrics ?? null)
+        setRoleTemplates(templatesPayload.templates ?? [])
+        setPermissionsCatalog(permissionsPayload.permissions ?? [])
+      } catch (err) {
+        console.error(err)
+        setError('تعذر تحميل بيانات إدارة الصلاحيات. يرجى المحاولة لاحقاً.')
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
     },
-    {
-      category: PermissionCategory.VEHICLE_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_VEHICLES,
-        PERMISSIONS.CREATE_VEHICLES,
-        PERMISSIONS.EDIT_VEHICLES,
-        PERMISSIONS.DELETE_VEHICLES,
-        PERMISSIONS.MANAGE_VEHICLE_INVENTORY
-      ],
-      description: 'إدارة المركبات والمخزون'
-    },
-    {
-      category: PermissionCategory.BOOKING_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_BOOKINGS,
-        PERMISSIONS.CREATE_BOOKINGS,
-        PERMISSIONS.EDIT_BOOKINGS,
-        PERMISSIONS.DELETE_BOOKINGS,
-        PERMISSIONS.MANAGE_BOOKING_STATUS
-      ],
-      description: 'إدارة الحجوزات والمواعيد'
-    },
-    {
-      category: PermissionCategory.SERVICE_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_SERVICES,
-        PERMISSIONS.CREATE_SERVICES,
-        PERMISSIONS.EDIT_SERVICES,
-        PERMISSIONS.DELETE_SERVICES,
-        PERMISSIONS.MANAGE_SERVICE_SCHEDULE
-      ],
-      description: 'إدارة الخدمات والصيانة'
-    },
-    {
-      category: PermissionCategory.INVENTORY_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_INVENTORY,
-        PERMISSIONS.CREATE_INVENTORY_ITEMS,
-        PERMISSIONS.EDIT_INVENTORY_ITEMS,
-        PERMISSIONS.DELETE_INVENTORY_ITEMS,
-        PERMISSIONS.MANAGE_WAREHOUSES,
-        PERMISSIONS.MANAGE_SUPPLIERS,
-        PERMISSIONS.SYNC_VEHICLES_TO_INVENTORY,
-        PERMISSIONS.INITIALIZE_INVENTORY_DATA
-      ],
-      description: 'إدارة المخزون والمستودعات'
-    },
-    {
-      category: PermissionCategory.FINANCIAL_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_FINANCIALS,
-        PERMISSIONS.CREATE_INVOICES,
-        PERMISSIONS.EDIT_INVOICES,
-        PERMISSIONS.DELETE_INVOICES,
-        PERMISSIONS.MANAGE_PAYMENTS,
-        PERMISSIONS.VIEW_REPORTS,
-        PERMISSIONS.EXPORT_FINANCIAL_DATA
-      ],
-      description: 'إدارة الشؤون المالية'
-    },
-    {
-      category: PermissionCategory.BRANCH_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_BRANCHES,
-        PERMISSIONS.CREATE_BRANCHES,
-        PERMISSIONS.EDIT_BRANCHES,
-        PERMISSIONS.DELETE_BRANCHES,
-        PERMISSIONS.MANAGE_BRANCH_STAFF,
-        PERMISSIONS.MANAGE_BRANCH_BUDGET,
-        PERMISSIONS.APPROVE_BRANCH_TRANSFERS
-      ],
-      description: 'إدارة الفروع والعاملين'
-    },
-    {
-      category: PermissionCategory.CUSTOMER_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_CUSTOMERS,
-        PERMISSIONS.CREATE_CUSTOMERS,
-        PERMISSIONS.EDIT_CUSTOMERS,
-        PERMISSIONS.DELETE_CUSTOMERS,
-        PERMISSIONS.MANAGE_CUSTOMER_PROFILES,
-        PERMISSIONS.VIEW_CUSTOMER_HISTORY
-      ],
-      description: 'إدارة العملاء والخدمات'
-    },
-    {
-      category: PermissionCategory.MARKETING_MANAGEMENT,
-      permissions: [
-        PERMISSIONS.VIEW_CAMPAIGNS,
-        PERMISSIONS.CREATE_CAMPAIGNS,
-        PERMISSIONS.EDIT_CAMPAIGNS,
-        PERMISSIONS.DELETE_CAMPAIGNS,
-        PERMISSIONS.MANAGE_EMAIL_TEMPLATES
-      ],
-      description: 'إدارة التسويق والحملات'
-    },
-    {
-      category: PermissionCategory.SYSTEM_SETTINGS,
-      permissions: [
-        PERMISSIONS.VIEW_SYSTEM_SETTINGS,
-        PERMISSIONS.MANAGE_SYSTEM_SETTINGS,
-        PERMISSIONS.MANAGE_ROLES_TEMPLATES,
-        PERMISSIONS.VIEW_SYSTEM_LOGS,
-        PERMISSIONS.MANAGE_BACKUPS
-      ],
-      description: 'إعدادات النظام والصيانة'
-    },
-    {
-      category: PermissionCategory.REPORTING,
-      permissions: [
-        PERMISSIONS.GENERATE_REPORTS,
-        PERMISSIONS.VIEW_ANALYTICS,
-        PERMISSIONS.EXPORT_DATA,
-        PERMISSIONS.MANAGE_DASHBOARDS
-      ],
-      description: 'التقارير والتحليلات'
-    }
-  ]
+    []
+  )
 
   useEffect(() => {
-    fetchPermissionsData()
-  }, [])
+    fetchData({ initial: true })
+  }, [fetchData])
 
-  const fetchPermissionsData = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch users with permissions
-      const usersResponse = await fetch('/api/admin/users/permissions')
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json()
-        setUsers(usersData.users || [])
-      }
+  const permissionGroups = useMemo<PermissionGroup[]>(() => {
+    const groupsMap = new Map<PermissionCategory, PermissionRecord[]>()
 
-      // Fetch role templates
-      const templatesResponse = await fetch('/api/admin/role-templates')
-      if (templatesResponse.ok) {
-        const templatesData = await templatesResponse.json()
-        setRoleTemplates(templatesData.templates || [])
+    permissionsCatalog.forEach((permission) => {
+      const existing = groupsMap.get(permission.category) ?? []
+      groupsMap.set(permission.category, [...existing, permission])
+    })
+
+    return (Object.values(PermissionCategory) as PermissionCategory[]).map((category) => {
+      const meta = CATEGORY_META[category]
+      const permissions = (groupsMap.get(category) ?? []).sort((a, b) => a.name.localeCompare(b.name))
+
+      return {
+        category,
+        title: meta?.title ?? category,
+        description: meta?.description ?? '',
+        permissions,
       }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load permissions data',
-        variant: 'destructive'
-      })
-    } finally {
-      setLoading(false)
+    })
+  }, [permissionsCatalog])
+
+  const aggregatedMetrics = useMemo(() => {
+    return {
+      totalUsers: metrics?.totalUsers ?? users.length,
+      activeUsers: metrics?.activeUsers ?? users.filter((user) => user.isActive).length,
+      admins:
+        metrics?.adminUsers ?? users.filter((user) => user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN).length,
+      branchManagers:
+        metrics?.branchManagers ?? users.filter((user) => user.role === UserRole.BRANCH_MANAGER).length,
+      roleTemplateCount: roleTemplates.length,
+      activeTemplates: roleTemplates.filter((template) => template.isActive).length,
     }
-  }
+  }, [metrics, roleTemplates, users])
+
+  const filteredUsers = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase()
+    return users.filter((user) => {
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter
+      if (!query) {
+        return matchesRole
+      }
+
+      const haystacks = [user.email, user.name ?? '', user.branchName ?? '']
+      const matchesSearch = haystacks.some((value) => value.toLowerCase().includes(query))
+
+      return matchesRole && matchesSearch
+    })
+  }, [users, roleFilter, searchTerm])
+
+  const handleRefresh = () => fetchData()
 
   const handleInitializePermissions = async () => {
     try {
       setIsInitializing(true)
-      
-      const response = await fetch('/api/admin/permissions/initialize', {
-        method: 'POST'
-      })
+      const response = await fetch('/api/admin/permissions/initialize', { method: 'POST' })
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Permissions initialized successfully'
-        })
-        fetchPermissionsData()
-      } else {
-        const error = await response.json()
-        toast({
-          title: 'Error',
-          description: error.error || 'Failed to initialize permissions',
-          variant: 'destructive'
-        })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to initialize permissions' }))
+        throw new Error(payload.error ?? 'Failed to initialize permissions')
       }
-    } catch (error) {
+
+      toast({ title: 'تمت التهيئة', description: 'تمت تهيئة صلاحيات النظام بنجاح.' })
+      fetchData()
+    } catch (err) {
+      console.error(err)
       toast({
-        title: 'Error',
-        description: 'Failed to initialize permissions',
-        variant: 'destructive'
+        title: 'خطأ في التهيئة',
+        description: 'تعذر تهيئة الصلاحيات. يرجى المحاولة لاحقاً.',
+        variant: 'destructive',
       })
     } finally {
       setIsInitializing(false)
@@ -298,11 +373,6 @@ function PermissionsContent() {
     setIsEditUserModalOpen(true)
   }
 
-  const handleManageFinancePermissions = (user: UserWithPermissions) => {
-    // Open finance permissions manager in a new tab or modal
-    window.open(`/admin/users/${user.id}/finance-permissions`, '_blank')
-  }
-
   const handleSaveUserPermissions = async () => {
     if (!selectedUser) return
 
@@ -310,32 +380,26 @@ function PermissionsContent() {
       const response = await fetch(`/api/admin/users/${selectedUser.id}/permissions`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ permissions: userPermissions })
+        body: JSON.stringify({ permissions: userPermissions }),
       })
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'User permissions updated successfully'
-        })
-        setIsEditUserModalOpen(false)
-        setSelectedUser(null)
-        fetchPermissionsData()
-      } else {
-        const error = await response.json()
-        toast({
-          title: 'Error',
-          description: error.error || 'Failed to update user permissions',
-          variant: 'destructive'
-        })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to update user permissions' }))
+        throw new Error(payload.error ?? 'Failed to update user permissions')
       }
-    } catch (error) {
+
+      toast({ title: 'تم التحديث', description: 'تم تحديث صلاحيات المستخدم بنجاح.' })
+      setIsEditUserModalOpen(false)
+      setSelectedUser(null)
+      fetchData()
+    } catch (err) {
+      console.error(err)
       toast({
-        title: 'Error',
-        description: 'Failed to update user permissions',
-        variant: 'destructive'
+        title: 'خطأ',
+        description: 'تعذر تحديث صلاحيات المستخدم.',
+        variant: 'destructive',
       })
     }
   }
@@ -344,9 +408,9 @@ function PermissionsContent() {
     setSelectedTemplate(template)
     setTemplateForm({
       name: template.name,
-      description: template.description || '',
+      description: template.description ?? '',
       role: template.role,
-      permissions: [...template.permissions]
+      permissions: [...template.permissions],
     })
     setIsEditTemplateModalOpen(true)
   }
@@ -358,120 +422,96 @@ function PermissionsContent() {
       const response = await fetch(`/api/admin/role-templates/${selectedTemplate.id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(templateForm)
+        body: JSON.stringify(templateForm),
       })
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Role template updated successfully'
-        })
-        setIsEditTemplateModalOpen(false)
-        setSelectedTemplate(null)
-        fetchPermissionsData()
-      } else {
-        const error = await response.json()
-        toast({
-          title: 'Error',
-          description: error.error || 'Failed to update role template',
-          variant: 'destructive'
-        })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to update role template' }))
+        throw new Error(payload.error ?? 'Failed to update role template')
       }
-    } catch (error) {
+
+      toast({ title: 'تم التحديث', description: 'تم تحديث قالب الدور بنجاح.' })
+      setIsEditTemplateModalOpen(false)
+      setSelectedTemplate(null)
+      fetchData()
+    } catch (err) {
+      console.error(err)
       toast({
-        title: 'Error',
-        description: 'Failed to update role template',
-        variant: 'destructive'
+        title: 'خطأ',
+        description: 'تعذر تحديث قالب الدور.',
+        variant: 'destructive',
       })
     }
   }
 
-  const handlePermissionToggle = (permission: Permission, isChecked: boolean) => {
-    if (isChecked) {
-      setUserPermissions(prev => [...prev, permission])
-    } else {
-      setUserPermissions(prev => prev.filter(p => p !== permission))
-    }
+  const toggleUserPermission = (permission: string, enabled: boolean) => {
+    setUserPermissions((prev) => {
+      if (enabled) {
+        if (prev.includes(permission)) return prev
+        return [...prev, permission]
+      }
+      return prev.filter((value) => value !== permission)
+    })
   }
 
-  const handleTemplatePermissionToggle = (permission: Permission, isChecked: boolean) => {
-    if (isChecked) {
-      setTemplateForm(prev => ({
-        ...prev,
-        permissions: [...prev.permissions, permission]
-      }))
-    } else {
-      setTemplateForm(prev => ({
-        ...prev,
-        permissions: prev.permissions.filter(p => p !== permission)
-      }))
-    }
+  const toggleTemplatePermission = (permission: string, enabled: boolean) => {
+    setTemplateForm((prev) => {
+      const permissions = enabled
+        ? prev.permissions.includes(permission)
+          ? prev.permissions
+          : [...prev.permissions, permission]
+        : prev.permissions.filter((value) => value !== permission)
+
+      return { ...prev, permissions }
+    })
   }
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter
-    
-    return matchesSearch && matchesRole
-  })
+  const formatRoleBadge = (role: UserRole) => ROLE_BADGE_STYLES[role] ?? ROLE_BADGE_STYLES[UserRole.CUSTOMER]
 
-  const getRoleBadgeColor = (role: UserRole) => {
-    const colors = {
-      [UserRole.SUPER_ADMIN]: 'bg-red-100 text-red-800',
-      [UserRole.ADMIN]: 'bg-purple-100 text-purple-800',
-      [UserRole.BRANCH_MANAGER]: 'bg-blue-100 text-blue-800',
-      [UserRole.STAFF]: 'bg-green-100 text-green-800',
-      [UserRole.CUSTOMER]: 'bg-gray-100 text-gray-800'
-    }
-    return colors[role] || colors[UserRole.CUSTOMER]
+  if (loading && users.length === 0 && roleTemplates.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <LoadingIndicator size="lg" text="جاري تحميل بيانات الصلاحيات" />
+      </div>
+    )
   }
 
-  const getRoleLabel = (role: UserRole) => {
-    const labels = {
-      [UserRole.SUPER_ADMIN]: 'مسؤول رئيسي',
-      [UserRole.ADMIN]: 'مسؤول نظام',
-      [UserRole.BRANCH_MANAGER]: 'مدير فرع',
-      [UserRole.STAFF]: 'موظف',
-      [UserRole.CUSTOMER]: 'عميل'
-    }
-    return labels[role] || role
+  if (error && users.length === 0 && roleTemplates.length === 0) {
+    return <ErrorState message={error} onRetry={() => fetchData({ initial: true })} />
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">نظام إدارة الصلاحيات</h1>
-          <p className="text-gray-600 mt-2">إدارة صلاحيات المستخدمين وقوالب الأدوار</p>
+          <p className="text-muted-foreground">
+            الإشراف على صلاحيات المستخدمين، قوالب الأدوار، والوصول إلى إعدادات النظام
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={handleInitializePermissions} 
-            disabled={isInitializing}
-            variant="outline"
-          >
-            <RefreshCw className="ml-2 h-4 w-4" />
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`ml-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            تحديث البيانات
+          </Button>
+          <Button variant="secondary" onClick={handleInitializePermissions} disabled={isInitializing}>
+            <Key className="ml-2 h-4 w-4" />
             {isInitializing ? 'جاري التهيئة...' : 'تهيئة الصلاحيات'}
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {users.filter(u => u.isActive).length} نشط
-            </p>
+            <div className="text-2xl font-bold">{formatNumber(aggregatedMetrics.totalUsers)}</div>
+            <CardDescription>{formatNumber(aggregatedMetrics.activeUsers)} مستخدم نشط</CardDescription>
           </CardContent>
         </Card>
 
@@ -481,186 +521,182 @@ function PermissionsContent() {
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{roleTemplates.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {roleTemplates.filter(t => t.isActive).length} نشط
-            </p>
+            <div className="text-2xl font-bold">{formatNumber(aggregatedMetrics.roleTemplateCount)}</div>
+            <CardDescription>{formatNumber(aggregatedMetrics.activeTemplates)} قالب نشط</CardDescription>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">المسؤولين</CardTitle>
+            <CardTitle className="text-sm font-medium">المسؤولون</CardTitle>
             <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {users.filter(u => u.role === UserRole.ADMIN || u.role === UserRole.SUPER_ADMIN).length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              مسؤولي النظام
-            </p>
+            <div className="text-2xl font-bold">{formatNumber(aggregatedMetrics.admins)}</div>
+            <CardDescription>المسؤولون الإداريون في النظام</CardDescription>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">مديري الفروع</CardTitle>
+            <CardTitle className="text-sm font-medium">مديرو الفروع</CardTitle>
             <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {users.filter(u => u.role === UserRole.BRANCH_MANAGER).length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              مديري الفروع
-            </p>
+            <div className="text-2xl font-bold">{formatNumber(aggregatedMetrics.branchManagers)}</div>
+            <CardDescription>إجمالي مديري الفروع المسجلين</CardDescription>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      {error && (
+        <ErrorState
+          className="border"
+          message={error}
+          onRetry={() => fetchData({ initial: true })}
+          title="تعذر تحديث البيانات"
+        />
+      )}
+
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users">المستخدمين</TabsTrigger>
+          <TabsTrigger value="users">المستخدمون</TabsTrigger>
           <TabsTrigger value="templates">قوالب الأدوار</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
-          {/* Filters */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                المستخدمين والصلاحيات
+                المستخدمون والصلاحيات
               </CardTitle>
-              <CardDescription>
-                إدارة صلاحيات المستخدمين في النظام
-              </CardDescription>
+              <CardDescription>إدارة الصلاحيات الممنوحة لكل مستخدم في النظام</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <Input
-                    placeholder="البحث عن مستخدم..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="فلترة حسب الدور" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">جميع الأدوار</SelectItem>
-                    <SelectItem value={UserRole.SUPER_ADMIN}>مسؤول رئيسي</SelectItem>
-                    <SelectItem value={UserRole.ADMIN}>مسؤول نظام</SelectItem>
-                    <SelectItem value={UserRole.BRANCH_MANAGER}>مدير فرع</SelectItem>
-                    <SelectItem value={UserRole.STAFF}>موظف</SelectItem>
-                    <SelectItem value={UserRole.CUSTOMER}>عميل</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <CardContent className="flex flex-col gap-4 md:flex-row">
+              <Input
+                className="md:flex-1"
+                placeholder="البحث عن مستخدم حسب الاسم أو البريد أو الفرع"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+              <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as 'all' | UserRole)}>
+                <SelectTrigger className="md:w-48">
+                  <SelectValue placeholder="فلترة حسب الدور" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الأدوار</SelectItem>
+                  <SelectItem value={UserRole.SUPER_ADMIN}>{ROLE_LABELS[UserRole.SUPER_ADMIN]}</SelectItem>
+                  <SelectItem value={UserRole.ADMIN}>{ROLE_LABELS[UserRole.ADMIN]}</SelectItem>
+                  <SelectItem value={UserRole.BRANCH_MANAGER}>{ROLE_LABELS[UserRole.BRANCH_MANAGER]}</SelectItem>
+                  <SelectItem value={UserRole.STAFF}>{ROLE_LABELS[UserRole.STAFF]}</SelectItem>
+                  <SelectItem value={UserRole.CUSTOMER}>{ROLE_LABELS[UserRole.CUSTOMER]}</SelectItem>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
 
-          {/* Users List */}
           <Card>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">جاري التحميل...</p>
-                  </div>
+            <CardContent className="space-y-2 p-4">
+              {refreshing && users.length === 0 ? (
+                <div className="flex items-center justify-center py-16">
+                  <LoadingIndicator text="جاري تحديث قائمة المستخدمين" />
                 </div>
+              ) : filteredUsers.length === 0 ? (
+                <EmptyState
+                  title="لا يوجد مستخدمون مطابقون"
+                  message="لم يتم العثور على مستخدمين ضمن معايير البحث المحددة."
+                />
               ) : (
-                <div className="space-y-2">
-                  {filteredUsers.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <Users className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">{user.name || user.email}</h3>
-                          <p className="text-sm text-gray-600">{user.email}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge className={getRoleBadgeColor(user.role)}>
-                              {getRoleLabel(user.role)}
+                filteredUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{user.name || user.email}</h3>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge className={formatRoleBadge(user.role)}>{ROLE_LABELS[user.role]}</Badge>
+                          {user.branchName && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                              <Building className="ml-1 h-3 w-3" />
+                              {user.branchName}
                             </Badge>
-                            {user.branchName && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                                <Building className="w-3 h-3 ml-1" />
-                                {user.branchName}
-                              </Badge>
-                            )}
-                            <Badge variant={user.isActive ? "default" : "secondary"}>
-                              {user.isActive ? 'نشط' : 'غير نشط'}
-                            </Badge>
-                          </div>
+                          )}
+                          <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                            {user.isActive ? 'نشط' : 'غير نشط'}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-sm font-medium">{user.permissions.length} صلاحية</div>
-                          <div className="text-xs text-gray-500">
-                            آخر تحديث: {new Date(user.createdAt).toLocaleDateString('ar-EG')}
-                          </div>
+                    </div>
+                    <div className="flex flex-col items-start gap-2 md:flex-row md:items-center">
+                      <div className="text-right">
+                        <div className="text-sm font-medium">{formatNumber(user.permissions.length)} صلاحية</div>
+                        <div className="text-xs text-muted-foreground">
+                          آخر تحديث: {new Date(user.createdAt).toLocaleDateString('ar-EG')}
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditUser(user)}
-                        >
-                          <Edit className="w-4 h-4 ml-1" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
+                          <Edit className="ml-1 h-4 w-4" />
                           تعديل الصلاحيات
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleManageFinancePermissions(user)}
+                          onClick={() => window.open(`/admin/users/${user.id}/finance-permissions`, '_blank')}
                         >
-                          <Settings className="w-4 h-4 ml-1" />
+                          <Settings className="ml-1 h-4 w-4" />
                           الصلاحيات المالية
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
-          {/* Role Templates */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 قوالب الأدوار
               </CardTitle>
-              <CardDescription>
-                إدارة قوالب الأدوار والصلاحيات الافتراضية
-              </CardDescription>
+              <CardDescription>إدارة الأدوار القياسية وتوزيع الصلاحيات الافتراضية</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                {roleTemplates.map((template) => (
-                  <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-purple-600" />
+            <CardContent className="space-y-4">
+              {refreshing && roleTemplates.length === 0 ? (
+                <div className="flex items-center justify-center py-16">
+                  <LoadingIndicator text="جاري تحميل قوالب الأدوار" />
+                </div>
+              ) : roleTemplates.length === 0 ? (
+                <EmptyState title="لا توجد قوالب أدوار" message="لم يتم إنشاء أي قالب دور حتى الآن." />
+              ) : (
+                roleTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                        <Shield className="h-5 w-5 text-purple-600" />
                       </div>
                       <div>
                         <h3 className="font-semibold">{template.name}</h3>
-                        <p className="text-sm text-gray-600">{template.description}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={getRoleBadgeColor(template.role)}>
-                            {getRoleLabel(template.role)}
-                          </Badge>
-                          <Badge variant={template.isActive ? "default" : "secondary"}>
+                        {template.description && (
+                          <p className="text-sm text-muted-foreground">{template.description}</p>
+                        )}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge className={formatRoleBadge(template.role)}>{ROLE_LABELS[template.role]}</Badge>
+                          <Badge variant={template.isActive ? 'default' : 'secondary'}>
                             {template.isActive ? 'نشط' : 'غير نشط'}
                           </Badge>
                           {template.isSystem && (
@@ -671,12 +707,10 @@ function PermissionsContent() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-start gap-2 md:flex-row md:items-center">
                       <div className="text-right">
-                        <div className="text-sm font-medium">{template.permissions.length} صلاحية</div>
-                        <div className="text-xs text-gray-500">
-                          قالب دور
-                        </div>
+                        <div className="text-sm font-medium">{formatNumber(template.permissions.length)} صلاحية</div>
+                        <div className="text-xs text-muted-foreground">قالب دور مؤسسي</div>
                       </div>
                       <Button
                         variant="outline"
@@ -684,148 +718,150 @@ function PermissionsContent() {
                         onClick={() => handleEditTemplate(template)}
                         disabled={template.isSystem}
                       >
-                        <Edit className="w-4 h-4 ml-1" />
+                        <Edit className="ml-1 h-4 w-4" />
                         تعديل القالب
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Edit User Permissions Modal */}
       <Dialog open={isEditUserModalOpen} onOpenChange={setIsEditUserModalOpen}>
         <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>تعديل صلاحيات المستخدم</DialogTitle>
             <DialogDescription>
-              {selectedUser && `تعديل صلاحيات المستخدم: ${selectedUser.name || selectedUser.email}`}
+              {selectedUser ? `تحديث صلاحيات المستخدم: ${selectedUser.name || selectedUser.email}` : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            {permissionGroups.map((group) => (
-              <Card key={group.category}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{group.description}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+          {permissionGroups.map((group) => (
+            <Card key={group.category} className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">{group.title}</CardTitle>
+                <CardDescription>{group.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {group.permissions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">لا توجد صلاحيات معرفة لهذه الفئة حالياً.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {group.permissions.map((permission) => (
-                      <div key={permission} className="flex items-center space-x-2">
+                      <label key={permission.id} className="flex cursor-pointer items-center gap-2 text-sm">
                         <input
                           type="checkbox"
-                          id={permission}
-                          checked={userPermissions.includes(permission)}
-                          onChange={(e) => handlePermissionToggle(permission, e.target.checked)}
-                          className="rounded border-gray-300"
+                          checked={userPermissions.includes(permission.name)}
+                          onChange={(event) => toggleUserPermission(permission.name, event.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
                         />
-                        <label htmlFor={permission} className="text-sm">
-                          {permission.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </label>
-                      </div>
+                        <span>{formatPermissionLabel(permission)}</span>
+                      </label>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditUserModalOpen(false)}>
               إلغاء
             </Button>
             <Button onClick={handleSaveUserPermissions}>
-              <Save className="w-4 h-4 ml-2" />
+              <Save className="ml-2 h-4 w-4" />
               حفظ الصلاحيات
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Role Template Modal */}
       <Dialog open={isEditTemplateModalOpen} onOpenChange={setIsEditTemplateModalOpen}>
         <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>تعديل قالب الدور</DialogTitle>
-            <DialogDescription>
-              تعديل صلاحيات قالب الدور
-            </DialogDescription>
+            <DialogDescription>تحديث بيانات القالب والصلاحيات المرتبطة به</DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="templateName">اسم القالب</Label>
-                <Input
-                  id="templateName"
-                  value={templateForm.name}
-                  onChange={(e) => setTemplateForm(prev => ({ ...prev, name: e.target.value }))}
-                  disabled={selectedTemplate?.isSystem}
-                />
-              </div>
-              <div>
-                <Label htmlFor="templateRole">الدور</Label>
-                <Select 
-                  value={templateForm.role} 
-                  onValueChange={(value) => setTemplateForm(prev => ({ ...prev, role: value as UserRole }))}
-                  disabled={selectedTemplate?.isSystem}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={UserRole.SUPER_ADMIN}>مسؤول رئيسي</SelectItem>
-                    <SelectItem value={UserRole.ADMIN}>مسؤول نظام</SelectItem>
-                    <SelectItem value={UserRole.BRANCH_MANAGER}>مدير فرع</SelectItem>
-                    <SelectItem value={UserRole.STAFF}>موظف</SelectItem>
-                    <SelectItem value={UserRole.CUSTOMER}>عميل</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="templateDescription">الوصف</Label>
-              <Textarea
-                id="templateDescription"
-                value={templateForm.description}
-                onChange={(e) => setTemplateForm(prev => ({ ...prev, description: e.target.value }))}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="templateName">اسم القالب</Label>
+              <Input
+                id="templateName"
+                value={templateForm.name}
+                onChange={(event) => setTemplateForm((prev) => ({ ...prev, name: event.target.value }))}
                 disabled={selectedTemplate?.isSystem}
               />
             </div>
-            {permissionGroups.map((group) => (
-              <Card key={group.category}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{group.description}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="templateRole">الدور</Label>
+              <Select
+                value={templateForm.role}
+                onValueChange={(value) => setTemplateForm((prev) => ({ ...prev, role: value as UserRole }))}
+                disabled={selectedTemplate?.isSystem}
+              >
+                <SelectTrigger id="templateRole">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UserRole.SUPER_ADMIN}>{ROLE_LABELS[UserRole.SUPER_ADMIN]}</SelectItem>
+                  <SelectItem value={UserRole.ADMIN}>{ROLE_LABELS[UserRole.ADMIN]}</SelectItem>
+                  <SelectItem value={UserRole.BRANCH_MANAGER}>{ROLE_LABELS[UserRole.BRANCH_MANAGER]}</SelectItem>
+                  <SelectItem value={UserRole.STAFF}>{ROLE_LABELS[UserRole.STAFF]}</SelectItem>
+                  <SelectItem value={UserRole.CUSTOMER}>{ROLE_LABELS[UserRole.CUSTOMER]}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="templateDescription">الوصف</Label>
+            <Textarea
+              id="templateDescription"
+              value={templateForm.description}
+              onChange={(event) => setTemplateForm((prev) => ({ ...prev, description: event.target.value }))}
+              disabled={selectedTemplate?.isSystem}
+            />
+          </div>
+
+          {permissionGroups.map((group) => (
+            <Card key={group.category} className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">{group.title}</CardTitle>
+                <CardDescription>{group.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {group.permissions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">لا توجد صلاحيات معرفة لهذه الفئة حالياً.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {group.permissions.map((permission) => (
-                      <div key={permission} className="flex items-center space-x-2">
+                      <label key={permission.id} className="flex cursor-pointer items-center gap-2 text-sm">
                         <input
                           type="checkbox"
-                          id={`template-${permission}`}
-                          checked={templateForm.permissions.includes(permission)}
-                          onChange={(e) => handleTemplatePermissionToggle(permission, e.target.checked)}
+                          checked={templateForm.permissions.includes(permission.name)}
+                          onChange={(event) => toggleTemplatePermission(permission.name, event.target.checked)}
                           disabled={selectedTemplate?.isSystem}
-                          className="rounded border-gray-300"
+                          className="h-4 w-4 rounded border-gray-300"
                         />
-                        <label htmlFor={`template-${permission}`} className="text-sm">
-                          {permission.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </label>
-                      </div>
+                        <span>{formatPermissionLabel(permission)}</span>
+                      </label>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
               إلغاء
             </Button>
             <Button onClick={handleSaveTemplate} disabled={selectedTemplate?.isSystem}>
-              <Save className="w-4 h-4 ml-2" />
+              <Save className="ml-2 h-4 w-4" />
               حفظ القالب
             </Button>
           </DialogFooter>
