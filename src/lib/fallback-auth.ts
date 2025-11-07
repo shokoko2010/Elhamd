@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from './permissions'
+import { getApiUser } from './api-auth'
 
 export interface AuthUser {
   id: string
@@ -12,69 +13,28 @@ export interface AuthUser {
   permissions: string[]
 }
 
-// Fallback authentication when NextAuth session fails
 export async function getAuthUserFallback(request?: Request): Promise<AuthUser | null> {
   try {
-    // Try to get user from Authorization header or cookies
-    let userEmail: string | null = null
-    
-    if (request) {
-      // Try Authorization header
-      const authHeader = request.headers.get('authorization')
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        // In a real app, you'd validate the JWT token here
-        // For now, we'll try to extract email from other means
-      }
-      
-      // Try cookies
-      const cookieHeader = request.headers.get('cookie')
-      if (cookieHeader) {
-        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-          const [key, value] = cookie.trim().split('=')
-          acc[key] = value
-          return acc
-        }, {} as Record<string, string>)
-        
-        // Check if there's a session token or other identifier
-        if (cookies['next-auth.session-token']) {
-          // This is a simplified approach - in production you'd decode the JWT
-          // For now, we'll return null and let the main auth handle it
-          return null
-        }
-      }
-    }
-    
-    // If no email found, return null
-    if (!userEmail) {
+    if (!request) return null
+    const apiUser = await getApiUser(request)
+    if (!apiUser) {
       return null
     }
-    
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { email: userEmail },
+    const user = await db.user.findFirst({
+      where: { id: apiUser.id, isActive: true },
       include: {
         userPermissions: {
-          include: {
-            permission: true
-          }
+          include: { permission: true }
         }
       }
     })
-    
-    if (!user || !user.isActive) {
+    if (!user) {
       return null
     }
-    
-    // Get permissions
     const permissions = user.userPermissions.map(up => up.permission.name)
-    
-    // If no permissions in database, use defaults based on role
-    if (permissions.length === 0) {
-      if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
-        permissions.push(...Object.values(PERMISSIONS))
-      }
+    if (permissions.length === 0 && (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN)) {
+      permissions.push(...Object.values(PERMISSIONS))
     }
-    
     return {
       id: user.id,
       email: user.email,
@@ -90,19 +50,14 @@ export async function getAuthUserFallback(request?: Request): Promise<AuthUser |
   }
 }
 
-// Enhanced getAuthUser with fallback
 export async function getAuthUserWithFallback(request?: Request): Promise<AuthUser | null> {
   try {
-    // Try to get from NextAuth session first
     const { getAuthUser } = await import('./auth-server')
     const user = await getAuthUser()
-    
     if (user) {
       return user
     }
-    
-    // Fallback to direct database check
-    console.log('NextAuth failed, trying fallback authentication')
+    console.warn('NextAuth session unavailable, falling back to token authentication')
     return await getAuthUserFallback(request)
   } catch (error) {
     console.error('Error in enhanced authentication:', error)
