@@ -4,23 +4,34 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { AdminService } from '@/lib/admin-service'
-import { getAuthUser } from '@/lib/auth-server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and authorization
-    const user = await getAuthUser()
-    if (!user) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      include: { permissions: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 401 })
     }
     
     // Check if user has required role or permissions
     const hasAccess = user.role === UserRole.ADMIN || 
                       user.role === UserRole.SUPER_ADMIN ||
                       user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes(PERMISSIONS.VIEW_DASHBOARD)
+                      user.permissions.some(p => p.permission.name === PERMISSIONS.VIEW_DASHBOARD)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -78,7 +89,6 @@ export async function GET(request: NextRequest) {
         })
     }
   } catch (error) {
-    console.error('Error fetching admin dashboard data:', error)
     return NextResponse.json(
       { error: 'فشل في جلب بيانات لوحة التحكم' },
       { status: 500 }

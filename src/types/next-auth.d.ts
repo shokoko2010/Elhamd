@@ -9,7 +9,7 @@ declare module 'next-auth' {
       role: UserRole
       phone?: string | null
       branchId?: string | null
-      permissions?: string[]
+      employee?: any
     }
   }
 
@@ -20,7 +20,7 @@ declare module 'next-auth' {
     role: UserRole
     phone?: string | null
     branchId?: string | null
-    permissions?: string[]
+    employee?: any
   }
 }
 
@@ -29,6 +29,6 @@ declare module 'next-auth/jwt' {
     role: UserRole
     phone?: string | null
     branchId?: string | null
-    permissions?: string[]
+    employee?: any
   }
 }

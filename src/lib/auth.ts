@@ -1,2 +1,2 @@
-// Re-export authOptions from the authOptions file
-export { authOptions } from '@/lib/authOptions'
+// Export secure authentication options
+export { authOptions } from '@/lib/secure-auth'

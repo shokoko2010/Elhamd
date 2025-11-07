@@ -3,16 +3,26 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { PermissionService } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      include: { permissions: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 })
     }
     
     // Check if user has permission to manage role templates
@@ -47,7 +57,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ templates: templatesWithPermissions })
   } catch (error) {
-    console.error('Error fetching role templates:', error)
     return NextResponse.json(
       { error: 'Failed to fetch role templates' },
       { status: 500 }
@@ -57,10 +66,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
+    const session = await getServerSession(authOptions)
     
-    if (!user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      include: { permissions: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 })
     }
     
     const { name, description, role, permissions } = await request.json()
@@ -119,7 +137,6 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error creating role template:', error)
     return NextResponse.json(
       { error: 'Failed to create role template' },
       { status: 500 }
