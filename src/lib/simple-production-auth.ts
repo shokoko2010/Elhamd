@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
+import { getApiUser } from '@/lib/api-auth'
 
 export interface SimpleAuthUser {
   id: string
@@ -13,88 +14,48 @@ export interface SimpleAuthUser {
   permissions: string[]
 }
 
-// Simple authentication that always returns the admin user
+/**
+ * Securely authenticate a user in production. Decode the request via
+ * bearer token or NextAuth session using `getApiUser`, then load the
+ * corresponding user and their permissions. If the user has no explicit
+ * permissions and is an admin, grant all permissions defined in
+ * `PERMISSIONS`. Returns null if authentication fails.
+ */
 export async function getSimpleAuthUser(request?: NextRequest): Promise<SimpleAuthUser | null> {
   try {
-    console.log('🔐 Simple Auth: Starting authentication...')
-    
-    // For production, always return the admin user
-    const adminUser = await db.user.findUnique({
-      where: { email: 'admin@elhamdimport.online' },
+    const apiUser = request ? await getApiUser(request) : null
+    if (!apiUser) {
+      return null
+    }
+    const user = await db.user.findFirst({
+      where: { id: apiUser.id, isActive: true },
       include: {
         permissions: {
-          include: {
-            permission: true
-          }
+          include: { permission: true }
         }
       }
     })
-    
-    if (adminUser && adminUser.isActive) {
-      const userPermissions = adminUser.permissions.map(up => up.permission.name)
-      
-      // If no permissions in database, give all permissions to admin
-      if (userPermissions.length === 0) {
-        userPermissions.push(...Object.values(PERMISSIONS))
-      }
-      
-      console.log('✅ Simple Auth: Admin user authenticated successfully')
-      
-      return {
-        id: adminUser.id,
-        email: adminUser.email,
-        name: adminUser.name,
-        role: adminUser.role,
-        phone: adminUser.phone,
-        branchId: adminUser.branchId,
-        permissions: userPermissions
-      }
+    if (!user) {
+      return null
     }
-    
-    // Fallback to any admin user
-    const anyAdmin = await db.user.findFirst({
-      where: {
-        role: {
-          in: ['ADMIN', 'SUPER_ADMIN']
-        },
-        isActive: true
-      },
-      include: {
-        permissions: {
-          include: {
-            permission: true
-          }
-        }
-      }
-    })
-    
-    if (anyAdmin) {
-      const userPermissions = anyAdmin.permissions.map(up => up.permission.name)
-      if (userPermissions.length === 0) {
-        userPermissions.push(...Object.values(PERMISSIONS))
-      }
-      
-      console.log('✅ Simple Auth: Fallback admin user authenticated')
-      
-      return {
-        id: anyAdmin.id,
-        email: anyAdmin.email,
-        name: anyAdmin.name,
-        role: anyAdmin.role,
-        phone: anyAdmin.phone,
-        branchId: anyAdmin.branchId,
-        permissions: userPermissions
-      }
+    const userPermissions = user.permissions.map(up => up.permission.name)
+    if (userPermissions.length === 0 && (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN)) {
+      userPermissions.push(...Object.values(PERMISSIONS))
     }
-    
-    console.log('❌ Simple Auth: No admin user found')
-    return null
-    
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      phone: user.phone,
+      branchId: user.branchId,
+      permissions: userPermissions
+    }
   } catch (error) {
-    console.error('💥 Simple Auth: Error:', error)
+    console.error('simple-production-auth error:', error)
     return null
   }
 }
 
-// Export as authenticateProductionUser for compatibility
+// Alias for backwards compatibility
 export const authenticateProductionUser = getSimpleAuthUser
