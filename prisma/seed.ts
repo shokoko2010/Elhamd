@@ -1158,7 +1158,6 @@ async function main() {
   console.log('- Payroll Records: Sample data')
   console.log('- Sliders: 4')
   console.log('- All emails updated to use @elhamdimport.online domain')
-
   
   // Import and run additional seed scripts
   console.log('\n🔄 Running additional seed scripts...')
