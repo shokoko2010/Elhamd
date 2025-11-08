@@ -1,5 +1,6 @@
 // server.ts - Next.js Standalone + Socket.IO
 import { setupSocket } from '@/lib/socket';
+import { initializeBackupScheduler } from '@/lib/backup-scheduler';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import next from 'next';
@@ -55,6 +56,8 @@ async function createCustomServer() {
     });
 
     setupSocket(io);
+
+    await initializeBackupScheduler();
 
     // Start the server
     server.listen(Number(currentPort), hostname, () => {
