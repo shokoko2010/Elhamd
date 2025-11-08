@@ -4,15 +4,14 @@ import { authOptions } from '@/lib/authOptions'
 import { UserRole } from '@prisma/client'
 import { getUserPermissions } from '@/lib/simple-permissions'
 import { PermissionService } from '@/lib/permissions'
-import {
-  authenticateProductionUser as simpleAuthenticateProductionUser,
-  type SimpleAuthUser
-} from '@/lib/simple-production-auth'
 
 export { authOptions }
 export { UserRole as PrismaUserRole }
 export { UserRole }
-export { simpleAuthenticateProductionUser as authenticateProductionUser }
+
+export async function authenticateProductionUser(_request?: NextRequest): Promise<AuthUser | null> {
+  return resolveAuthUser()
+}
 
 export interface AuthorizeOptions {
   roles?: UserRole[]
@@ -33,7 +32,7 @@ export interface AuthUser {
   permissions: string[]
 }
 
-function normalizeAuthUser(user: AuthUser | SimpleAuthUser): AuthUser {
+function normalizeAuthUser(user: AuthUser): AuthUser {
   const permissions = Array.isArray(user.permissions) ? user.permissions : []
 
   return {
@@ -47,15 +46,10 @@ function normalizeAuthUser(user: AuthUser | SimpleAuthUser): AuthUser {
   }
 }
 
-async function resolveAuthUser(request?: NextRequest): Promise<AuthUser | null> {
+async function resolveAuthUser(): Promise<AuthUser | null> {
   const sessionUser = await getAuthUser()
   if (sessionUser) {
     return normalizeAuthUser(sessionUser)
-  }
-
-  const fallbackUser = await simpleAuthenticateProductionUser(request)
-  if (fallbackUser) {
-    return normalizeAuthUser(fallbackUser)
   }
 
   return null
@@ -63,38 +57,13 @@ async function resolveAuthUser(request?: NextRequest): Promise<AuthUser | null> 
 
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
-    console.log('🔍 Getting authenticated user...')
-
-    // For development, return a mock admin user
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 Development mode: Using mock admin user')
-      
-      const mockUser: AuthUser = {
-        id: 'dev-admin-id',
-        email: 'admin@elhamdimport.online',
-        name: 'Development Admin',
-        role: UserRole.SUPER_ADMIN,
-        phone: '01234567890',
-        branchId: null,
-        permissions: ['*'] // All permissions
-      }
-      
-      console.log('✅ Mock auth user created:', mockUser.email, 'Role:', mockUser.role)
-      return normalizeAuthUser(mockUser)
-    }
-
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      console.log('❌ No session found')
       return null
     }
 
-    console.log('✅ Session found for user:', session.user.email)
-    
     // Get user permissions
     const permissions = await getUserPermissions(session.user.id)
-    console.log('🔑 User permissions:', permissions.length)
-
     const authUser: AuthUser = normalizeAuthUser({
       id: session.user.id,
       email: session.user.email!,
@@ -104,8 +73,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       branchId: session.user.branchId,
       permissions
     })
-
-    console.log('✅ Auth user created:', authUser.email, 'Role:', authUser.role)
     return authUser
   } catch (error) {
     console.error('❌ Error in getAuthUser:', error)
@@ -159,7 +126,7 @@ export async function authorize(
   options: AuthorizeOptions = {}
 ): Promise<AuthorizeResult> {
   try {
-    const user = await resolveAuthUser(request)
+    const user = await resolveAuthUser()
 
     if (!user) {
       return {

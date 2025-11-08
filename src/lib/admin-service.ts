@@ -105,30 +105,52 @@ export class AdminService {
     })
 
     // Booking stats
-    const [todayBookings, pendingBookings, testDriveBookings, serviceBookings, completedBookings, cancelledBookings] = await Promise.all([
+    const [
+      testDrivesToday,
+      serviceToday,
+      pendingTestDrives,
+      pendingServices,
+      totalTestDriveBookings,
+      totalServiceBookings,
+      completedTestDrives,
+      completedServices,
+      cancelledTestDrives,
+      cancelledServices
+    ] = await Promise.all([
       db.testDriveBooking.count({
         where: { date: { gte: startOfToday, lte: endOfToday } }
-      }) + db.serviceBooking.count({
+      }),
+      db.serviceBooking.count({
         where: { date: { gte: startOfToday, lte: endOfToday } }
       }),
       db.testDriveBooking.count({
         where: { status: BookingStatus.PENDING }
-      }) + db.serviceBooking.count({
+      }),
+      db.serviceBooking.count({
         where: { status: BookingStatus.PENDING }
       }),
       db.testDriveBooking.count(),
       db.serviceBooking.count(),
       db.testDriveBooking.count({
         where: { status: BookingStatus.COMPLETED }
-      }) + db.serviceBooking.count({
+      }),
+      db.serviceBooking.count({
         where: { status: BookingStatus.COMPLETED }
       }),
       db.testDriveBooking.count({
         where: { status: BookingStatus.CANCELLED }
-      }) + db.serviceBooking.count({
+      }),
+      db.serviceBooking.count({
         where: { status: BookingStatus.CANCELLED }
       })
     ])
+
+    const todayBookings = testDrivesToday + serviceToday
+    const pendingBookings = pendingTestDrives + pendingServices
+    const testDriveBookings = totalTestDriveBookings
+    const serviceBookings = totalServiceBookings
+    const completedBookings = completedTestDrives + completedServices
+    const cancelledBookings = cancelledTestDrives + cancelledServices
 
     // Revenue stats
     const monthlyRevenue = await db.serviceBooking.aggregate({

@@ -1,6 +1,18 @@
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { UserRole } from '@prisma/client'
 
+const resolvedSecret = (() => {
+  if (process.env.NEXTAUTH_SECRET) {
+    return process.env.NEXTAUTH_SECRET
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('NEXTAUTH_SECRET must be defined in production environments')
+  }
+
+  return 'development-only-secret'
+})()
+
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -63,11 +75,10 @@ export const authOptions = {
     maxAge: 24 * 60 * 60, // 24 hours
     updateAge: 60 * 60, // 1 hour
   },
-  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key-for-development',
+  secret: resolvedSecret,
   // Use the correct URL configuration
   url: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   trustHost: true,
-  debug: process.env.NODE_ENV === 'development',
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

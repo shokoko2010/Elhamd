@@ -3,13 +3,30 @@ import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { UserRole } from '@prisma/client'
 import { PermissionService } from '@/lib/permissions'
+import { getAuthUser } from '@/lib/auth-server'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== Creating default admin user ===')
-    
-    // Check if admin already exists
-    const existingAdmin = await db.user.findFirst({
+    const setupToken = process.env.INITIAL_ADMIN_TOKEN
+
+    if (!setupToken) {
+      console.error('INITIAL_ADMIN_TOKEN is not configured')
+      return NextResponse.json({
+        success: false,
+        error: 'Server configuration error'
+      }, { status: 500 })
+    }
+
+    const providedToken = request.headers.get('x-setup-token') || null
+
+    if (!providedToken || providedToken !== setupToken) {
+      return NextResponse.json({
+        success: false,
+        error: 'Unauthorized'
+      }, { status: 403 })
+    }
+
+    const existingAdmin = await db.user.count({
       where: {
         role: {
           in: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
@@ -17,25 +34,38 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    if (existingAdmin) {
+    if (existingAdmin > 0) {
       return NextResponse.json({
         success: false,
-        message: 'Admin user already exists',
-        admin: {
-          email: existingAdmin.email,
-          role: existingAdmin.role
-        }
-      })
+        error: 'Admin user already exists'
+      }, { status: 409 })
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash('admin123', 12)
+    const body = await request.json().catch(() => ({}))
+    const email = typeof body.email === 'string' ? body.email.toLowerCase() : null
+    const password = typeof body.password === 'string' ? body.password : null
+    const name = typeof body.name === 'string' ? body.name : 'Default Admin'
 
-    // Create admin user
+    if (!email || !password) {
+      return NextResponse.json({
+        success: false,
+        error: 'Email and password are required'
+      }, { status: 400 })
+    }
+
+    if (password.length < 12) {
+      return NextResponse.json({
+        success: false,
+        error: 'Password must be at least 12 characters long'
+      }, { status: 400 })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12)
+
     const admin = await db.user.create({
       data: {
-        email: 'admin@elhamd.com',
-        name: 'Default Admin',
+        email,
+        name,
         password: hashedPassword,
         role: UserRole.SUPER_ADMIN,
         isActive: true,
@@ -43,13 +73,9 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    console.log('Admin user created:', admin.email)
-
-    // Initialize permissions and role templates
     try {
       await PermissionService.initializeDefaultPermissions()
       await PermissionService.initializeRoleTemplates()
-      console.log('Permissions and role templates initialized')
     } catch (error) {
       console.error('Error initializing permissions:', error)
     }
@@ -61,12 +87,8 @@ export async function POST(request: NextRequest) {
         email: admin.email,
         name: admin.name,
         role: admin.role
-      },
-      loginCredentials: {
-        email: 'admin@elhamd.com',
-        password: 'admin123'
       }
-    })
+    }, { status: 201 })
   } catch (error) {
     console.error('Error creating admin user:', error)
     return NextResponse.json({
@@ -78,6 +100,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getAuthUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    if (user.role !== UserRole.SUPER_ADMIN) {
+      const hasPermission = await PermissionService.hasPermission(user.id, 'view_users')
+      if (!hasPermission) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+    }
+
     const admins = await db.user.findMany({
       where: {
         role: {

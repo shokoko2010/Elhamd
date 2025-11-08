@@ -1,41 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSimpleAuthUser, UserRole } from '@/lib/simple-production-auth'
+import { authenticateProductionUser } from '@/lib/auth-server'
+import { PERMISSIONS } from '@/lib/permissions'
+import { UserRole } from '@prisma/client'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
-// Simple auth function
-async function getAuthUser(request: NextRequest) {
-  try {
-    const user = await getSimpleAuthUser(request);
-    if (user) {
-      return user;
-    }
-  } catch (error) {
-    console.log('⚠️ Auth failed:', error);
-  }
-  
-  // Fallback: Check for API key
-  const apiKey = request.headers.get('x-api-key');
-  if (apiKey === 'vercel-media-upload-key') {
-    const user = await getSimpleAuthUser(request);
-    if (user) {
-      return user;
-    }
-  }
-  
-  throw new Error('Authentication required');
-}
-
 export async function GET(request: NextRequest) {
   try {
-    // Try to authenticate, but allow public access for media listing
-    let user = null;
-    try {
-      user = await getSimpleAuthUser(request);
-    } catch (authError) {
-      // Continue without authentication for public access
-      console.log('⚠️ No authentication, proceeding with public access');
+    const user = await authenticateProductionUser(request)
+    if (!user) {
+      console.log('⚠️ No authentication, proceeding with public access')
     }
     
     const { searchParams } = new URL(request.url)
@@ -125,18 +100,27 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔄 Starting file upload process...')
     
-    // Authenticate user for upload with fallback
-    let user = null;
-    try {
-      user = await getAuthUser(request);
-      console.log('✅ User authenticated:', user.email);
-    } catch (authError) {
-      console.error('❌ Authentication failed:', authError);
-      return NextResponse.json({ 
-        error: 'Authentication required for file upload' 
-      }, { status: 401 });
+    const user = await authenticateProductionUser(request)
+    if (!user) {
+      return NextResponse.json({
+        error: 'Authentication required for file upload'
+      }, { status: 401 })
     }
-    
+
+    const allowedRoles = new Set<UserRole>([
+      UserRole.SUPER_ADMIN,
+      UserRole.ADMIN,
+      UserRole.BRANCH_MANAGER
+    ])
+    const hasPermission = user.permissions.includes('*') ||
+      user.permissions.includes(PERMISSIONS.MANAGE_SYSTEM_SETTINGS)
+
+    if (!allowedRoles.has(user.role) && !hasPermission) {
+      return NextResponse.json({
+        error: 'Insufficient permissions to upload files'
+      }, { status: 403 })
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     const options = JSON.parse(formData.get('options') as string || '{}')
@@ -262,12 +246,21 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Authenticate user with fallback
-    let user = null;
-    try {
-      user = await getSimpleAuthUser(request);
-    } catch (authError) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    const user = await authenticateProductionUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const allowedRoles = new Set<UserRole>([
+      UserRole.SUPER_ADMIN,
+      UserRole.ADMIN,
+      UserRole.BRANCH_MANAGER
+    ])
+    const hasPermission = user.permissions.includes('*') ||
+      user.permissions.includes(PERMISSIONS.MANAGE_SYSTEM_SETTINGS)
+
+    if (!allowedRoles.has(user.role) && !hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
     
     const { searchParams } = new URL(request.url)
@@ -316,12 +309,21 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Authenticate user with fallback
-    let user = null;
-    try {
-      user = await getSimpleAuthUser(request);
-    } catch (authError) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    const user = await authenticateProductionUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const allowedRoles = new Set<UserRole>([
+      UserRole.SUPER_ADMIN,
+      UserRole.ADMIN,
+      UserRole.BRANCH_MANAGER
+    ])
+    const hasPermission = user.permissions.includes('*') ||
+      user.permissions.includes(PERMISSIONS.MANAGE_SYSTEM_SETTINGS)
+
+    if (!allowedRoles.has(user.role) && !hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
     
     const { searchParams } = new URL(request.url)
