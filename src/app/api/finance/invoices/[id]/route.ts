@@ -4,10 +4,14 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { authenticateProductionUser } from '@/lib/auth-server'
+import { PERMISSIONS } from '@/lib/permissions'
+import { PerformancePeriod, UserRole } from '@prisma/client'
 import {
   normalizeInvoiceItemsFromInput,
   normalizeInvoiceRecord,
 } from '@/lib/invoice-normalizer'
+import { updateEmployeePerformanceMetrics } from '@/lib/performance-metric-sync'
 
 export async function GET(
   request: NextRequest,
@@ -25,6 +29,25 @@ export async function GET(
             name: true,
             email: true,
             phone: true
+          }
+        },
+        createdByEmployee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            department: {
+              select: { name: true }
+            },
+            position: {
+              select: { title: true }
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
           }
         },
         items: true,
@@ -75,8 +98,28 @@ export async function GET(
       totalAmount: normalized.totalAmount,
       paidAmount,
       outstanding: normalized.outstanding,
+      createdBy: invoice.createdBy,
+      creator: invoice.createdByEmployee
+        ? {
+            employeeId: invoice.createdByEmployee.id,
+            employeeNumber: invoice.createdByEmployee.employeeNumber,
+            department: invoice.createdByEmployee.department?.name ?? null,
+            position: invoice.createdByEmployee.position?.title ?? null,
+            user: invoice.createdByEmployee.user
+              ? {
+                  id: invoice.createdByEmployee.user.id,
+                  name: invoice.createdByEmployee.user.name,
+                  email: invoice.createdByEmployee.user.email,
+                }
+              : null,
+          }
+        : null,
       items: normalized.items,
       taxes: normalized.taxes,
+      deletedAt: invoice.deletedAt,
+      deletedBy: invoice.deletedBy,
+      deletedReason: invoice.deletedReason,
+      isDeleted: invoice.isDeleted,
     }
 
     return NextResponse.json(payload)
@@ -131,12 +174,19 @@ export async function PUT(
       where: { id },
       include: { payments: true }
     })
-    
+
     if (!existingInvoice) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Invoice not found',
         code: 'INVOICE_NOT_FOUND'
       }, { status: 404 })
+    }
+
+    if (existingInvoice.isDeleted) {
+      return NextResponse.json({
+        error: 'Invoice has been archived and cannot be modified',
+        code: 'INVOICE_ARCHIVED'
+      }, { status: 400 })
     }
 
     const { items: normalizedItems, totals } = normalizeInvoiceItemsFromInput(items)
@@ -180,6 +230,25 @@ export async function PUT(
               name: true,
               email: true,
               phone: true
+            }
+          },
+          createdByEmployee: {
+            select: {
+              id: true,
+              employeeNumber: true,
+              department: {
+                select: { name: true }
+              },
+              position: {
+                select: { title: true }
+              },
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                }
+              }
             }
           },
           items: true,
@@ -246,6 +315,14 @@ export async function PUT(
 
     const paidAmount = normalizedInvoice.totalAmount - normalizedInvoice.outstanding
 
+    if (updatedInvoice.createdByEmployeeId) {
+      await updateEmployeePerformanceMetrics({
+        employeeId: updatedInvoice.createdByEmployeeId,
+        periodType: PerformancePeriod.MONTHLY,
+        referenceDate: updatedInvoice.issueDate,
+      })
+    }
+
     const successResponse = NextResponse.json({
       success: true,
       message: 'Invoice updated successfully',
@@ -258,6 +335,22 @@ export async function PUT(
         outstanding: normalizedInvoice.outstanding,
         items: normalizedInvoice.items,
         taxes: normalizedInvoice.taxes,
+        createdBy: updatedInvoice.createdBy,
+        creator: updatedInvoice.createdByEmployee
+          ? {
+              employeeId: updatedInvoice.createdByEmployee.id,
+              employeeNumber: updatedInvoice.createdByEmployee.employeeNumber,
+              department: updatedInvoice.createdByEmployee.department?.name ?? null,
+              position: updatedInvoice.createdByEmployee.position?.title ?? null,
+              user: updatedInvoice.createdByEmployee.user
+                ? {
+                    id: updatedInvoice.createdByEmployee.user.id,
+                    name: updatedInvoice.createdByEmployee.user.name,
+                    email: updatedInvoice.createdByEmployee.user.email,
+                  }
+                : null,
+            }
+          : null,
       },
     })
     
@@ -336,36 +429,116 @@ export async function DELETE(
 ) {
   try {
     const { id } = await context.params
-    // Check if invoice can be deleted (only draft invoices)
+    const applyCorsHeaders = (response: NextResponse) => {
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+      return response
+    }
+    const user = await authenticateProductionUser(request)
+
+    if (!user) {
+      return applyCorsHeaders(NextResponse.json(
+        { error: 'غير مصرح لك - يرجى تسجيل الدخول', code: 'AUTH_REQUIRED' },
+        { status: 401 }
+      ))
+    }
+
+    const hasDeletePermission =
+      user.permissions.includes('*') ||
+      user.permissions.includes(PERMISSIONS.DELETE_INVOICES)
+
+    const hasRoleAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.BRANCH_MANAGER ||
+      user.role === UserRole.ACCOUNTANT
+
+    if (!hasDeletePermission && !hasRoleAccess) {
+      return applyCorsHeaders(NextResponse.json(
+        { error: 'غير مصرح لك - صلاحيات غير كافية', code: 'FORBIDDEN' },
+        { status: 403 }
+      ))
+    }
+
+    let deleteReason: string | null = null
+
+    const contentType = request.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      const body = await request.json().catch(() => null)
+      if (body && typeof body.reason === 'string') {
+        const trimmed = body.reason.trim()
+        if (trimmed.length > 0) {
+          deleteReason = trimmed.slice(0, 500)
+        }
+      }
+    }
+
     const invoice = await db.invoice.findUnique({
       where: { id },
-      select: { status: true }
+      select: {
+        id: true,
+        status: true,
+        isDeleted: true,
+        invoiceNumber: true,
+        issueDate: true,
+        createdByEmployeeId: true,
+      },
     })
 
     if (!invoice) {
-      return NextResponse.json(
-        { error: 'Invoice not found' },
+      return applyCorsHeaders(NextResponse.json(
+        { error: 'Invoice not found', code: 'INVOICE_NOT_FOUND' },
         { status: 404 }
-      )
+      ))
     }
 
-    if (invoice.status !== 'DRAFT') {
-      return NextResponse.json(
-        { error: 'Only draft invoices can be deleted' },
-        { status: 400 }
-      )
+    if (invoice.isDeleted) {
+      return applyCorsHeaders(NextResponse.json(
+        { error: 'Invoice already archived', code: 'INVOICE_ALREADY_ARCHIVED' },
+        { status: 409 }
+      ))
     }
 
-    await db.invoice.delete({
-      where: { id }
+    const archivedInvoice = await db.invoice.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: user.id,
+        deletedReason: deleteReason,
+      },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        deletedAt: true,
+        deletedBy: true,
+        deletedReason: true,
+        status: true,
+      },
     })
 
-    return NextResponse.json({ success: true })
+    if (invoice.createdByEmployeeId) {
+      await updateEmployeePerformanceMetrics({
+        employeeId: invoice.createdByEmployeeId,
+        periodType: PerformancePeriod.MONTHLY,
+        referenceDate: invoice.issueDate,
+      })
+    }
+
+    return applyCorsHeaders(NextResponse.json({
+      success: true,
+      invoice: archivedInvoice,
+    }))
   } catch (error) {
     console.error('Error deleting invoice:', error)
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to delete invoice' },
       { status: 500 }
     )
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+    return response
   }
 }

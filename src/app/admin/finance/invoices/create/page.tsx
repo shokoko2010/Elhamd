@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Customer {
   id: string
@@ -119,6 +120,7 @@ function CreateInvoiceContent() {
   })
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   useEffect(() => {
     fetchInitialData()
@@ -490,7 +492,6 @@ function CreateInvoiceContent() {
         dueDate,
         notes,
         terms,
-        createdBy: 'admin', // This should come from the authenticated user
         status
       }
 

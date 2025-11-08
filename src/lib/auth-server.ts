@@ -141,7 +141,8 @@ export async function authorize(
     }
 
     if (options.permissions?.length) {
-      const hasWildcard = user.permissions.includes('*')
+      const hasWildcard =
+        user.role === UserRole.SUPER_ADMIN || user.permissions.includes('*')
       const missingPermissions = options.permissions.filter(permission =>
         !hasWildcard && !user.permissions.includes(permission)
       )

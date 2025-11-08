@@ -88,7 +88,10 @@ export async function GET(
     }
 
     // Check if user has permission to manage user permissions
-    if (!authUser.permissions.includes(PERMISSIONS.MANAGE_USER_PERMISSIONS)) {
+    if (
+      authUser.role !== 'SUPER_ADMIN' &&
+      !authUser.permissions.includes(PERMISSIONS.MANAGE_USER_PERMISSIONS)
+    ) {
       return NextResponse.json({
         error: 'صلاحية غير كافية لإدارة صلاحيات المستخدمين',
         code: 'INSUFFICIENT_PERMISSIONS'
@@ -182,7 +185,10 @@ export async function POST(
     }
 
     // Check if user has permission to manage user permissions
-    if (!authUser.permissions.includes(PERMISSIONS.MANAGE_USER_PERMISSIONS)) {
+    if (
+      authUser.role !== 'SUPER_ADMIN' &&
+      !authUser.permissions.includes(PERMISSIONS.MANAGE_USER_PERMISSIONS)
+    ) {
       return NextResponse.json({
         error: 'صلاحية غير كافية لإدارة صلاحيات المستخدمين',
         code: 'INSUFFICIENT_PERMISSIONS'

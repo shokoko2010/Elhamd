@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { LoadingIndicator, ErrorState, EmptyState } from '@/components/ui/LoadingIndicator'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/use-auth'
 import { PermissionCategory, UserRole } from '@prisma/client'
 import {
   Building,
@@ -189,6 +190,11 @@ export default function PermissionsPage() {
 
 function PermissionsDashboard() {
   const { toast } = useToast()
+  const { user, canManageRoleTemplates } = useAuth()
+
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN
+  const allowSystemTemplateEditing = isSuperAdmin
+  const allowRoleTemplateManagement = isSuperAdmin || canManageRoleTemplates()
 
   const [users, setUsers] = useState<UserWithPermissions[]>([])
   const [metrics, setMetrics] = useState<Metrics | null>(null)
@@ -216,6 +222,7 @@ function PermissionsDashboard() {
     role: UserRole.STAFF,
     permissions: [] as string[],
   })
+  const isSystemTemplateLocked = Boolean(selectedTemplate?.isSystem && !allowSystemTemplateEditing)
 
   const fetchData = useCallback(
     async (options?: { initial?: boolean }) => {
@@ -712,15 +719,17 @@ function PermissionsDashboard() {
                         <div className="text-sm font-medium">{formatNumber(template.permissions.length)} صلاحية</div>
                         <div className="text-xs text-muted-foreground">قالب دور مؤسسي</div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditTemplate(template)}
-                        disabled={template.isSystem}
-                      >
-                        <Edit className="ml-1 h-4 w-4" />
-                        تعديل القالب
-                      </Button>
+                      {allowRoleTemplateManagement && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditTemplate(template)}
+                          disabled={template.isSystem && !allowSystemTemplateEditing}
+                        >
+                          <Edit className="ml-1 h-4 w-4" />
+                          تعديل القالب
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -793,7 +802,7 @@ function PermissionsDashboard() {
                 id="templateName"
                 value={templateForm.name}
                 onChange={(event) => setTemplateForm((prev) => ({ ...prev, name: event.target.value }))}
-                disabled={selectedTemplate?.isSystem}
+                disabled={isSystemTemplateLocked}
               />
             </div>
             <div className="space-y-2">
@@ -801,7 +810,7 @@ function PermissionsDashboard() {
               <Select
                 value={templateForm.role}
                 onValueChange={(value) => setTemplateForm((prev) => ({ ...prev, role: value as UserRole }))}
-                disabled={selectedTemplate?.isSystem}
+                disabled={isSystemTemplateLocked}
               >
                 <SelectTrigger id="templateRole">
                   <SelectValue />
@@ -823,7 +832,7 @@ function PermissionsDashboard() {
               id="templateDescription"
               value={templateForm.description}
               onChange={(event) => setTemplateForm((prev) => ({ ...prev, description: event.target.value }))}
-              disabled={selectedTemplate?.isSystem}
+              disabled={isSystemTemplateLocked}
             />
           </div>
 
@@ -844,7 +853,7 @@ function PermissionsDashboard() {
                           type="checkbox"
                           checked={templateForm.permissions.includes(permission.name)}
                           onChange={(event) => toggleTemplatePermission(permission.name, event.target.checked)}
-                          disabled={selectedTemplate?.isSystem}
+                          disabled={isSystemTemplateLocked}
                           className="h-4 w-4 rounded border-gray-300"
                         />
                         <span>{formatPermissionLabel(permission)}</span>
@@ -860,7 +869,7 @@ function PermissionsDashboard() {
             <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
               إلغاء
             </Button>
-            <Button onClick={handleSaveTemplate} disabled={selectedTemplate?.isSystem}>
+            <Button onClick={handleSaveTemplate} disabled={isSystemTemplateLocked}>
               <Save className="ml-2 h-4 w-4" />
               حفظ القالب
             </Button>

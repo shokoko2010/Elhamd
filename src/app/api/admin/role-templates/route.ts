@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         name,
         description,
         role,
-        permissions: JSON.stringify(permissions),
+        permissions,
         isSystem: false
       }
     })

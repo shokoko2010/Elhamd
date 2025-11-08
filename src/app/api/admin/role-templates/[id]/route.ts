@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       }
     }
 
-    // Check if template exists and is not a system template
+    // Check if template exists and ensure system templates are only editable by SUPER_ADMIN
     const template = await db.roleTemplate.findUnique({
       where: { id: templateId }
     })
@@ -41,7 +41,9 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 })
     }
 
-    if (template.isSystem) {
+    const isSuperAdmin = user.role === 'SUPER_ADMIN'
+
+    if (template.isSystem && !isSuperAdmin) {
       return NextResponse.json({ error: 'Cannot modify system templates' }, { status: 403 })
     }
 
@@ -57,7 +59,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
         name,
         description,
         role,
-        permissions: JSON.stringify(permissions)
+        permissions
       }
     })
 
@@ -131,7 +133,9 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 })
     }
 
-    if (template.isSystem) {
+    const isSuperAdmin = user.role === 'SUPER_ADMIN'
+
+    if (template.isSystem && !isSuperAdmin) {
       return NextResponse.json({ error: 'Cannot delete system templates' }, { status: 403 })
     }
 

@@ -23,6 +23,7 @@ import {
   Plus,
   RefreshCcw,
   Search,
+  Trash2,
 } from 'lucide-react'
 
 interface InvoiceSummary {
@@ -38,6 +39,22 @@ interface InvoiceSummary {
   issueDate: string
   dueDate: string
   branchName?: string
+  isDeleted?: boolean
+  deletedAt?: string | null
+  deletedBy?: string | null
+  deletedReason?: string | null
+  createdBy?: string | null
+  creator?: {
+    employeeId: string
+    employeeNumber?: string | null
+    department?: string | null
+    position?: string | null
+    user?: {
+      id: string
+      name: string | null
+      email: string
+    } | null
+  } | null
 }
 
 interface PaginationState {
@@ -140,6 +157,29 @@ const formatDate = (value: string) => {
   })
 }
 
+const formatCreatorName = (invoice: Pick<InvoiceSummary, 'createdBy' | 'creator'>) => {
+  if (invoice.creator?.user?.name) {
+    return invoice.creator.user.email
+      ? `${invoice.creator.user.name} (${invoice.creator.user.email})`
+      : invoice.creator.user.name
+  }
+
+  if (invoice.creator?.employeeNumber) {
+    return `الموظف رقم ${invoice.creator.employeeNumber}`
+  }
+
+  return invoice.createdBy ?? 'غير محدد'
+}
+
+const formatCreatorDetails = (invoice: Pick<InvoiceSummary, 'creator'>) => {
+  if (!invoice.creator) {
+    return null
+  }
+
+  const parts = [invoice.creator.position, invoice.creator.department].filter(Boolean)
+  return parts.length ? parts.join(' • ') : null
+}
+
 const calculateDueStatus = (invoice: InvoiceSummary) => {
   const dueDate = new Date(invoice.dueDate)
   if (Number.isNaN(dueDate.getTime())) {
@@ -207,6 +247,11 @@ export default function InvoicesListPage() {
     totalPaid: 0,
     outstanding: 0,
   })
+  const [viewMode, setViewMode] = useState<'active' | 'deleted'>('active')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [invoiceToDelete, setInvoiceToDelete] = useState<InvoiceSummary | null>(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deletingInvoice, setDeletingInvoice] = useState(false)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -228,6 +273,8 @@ export default function InvoicesListPage() {
       if (appliedFilters.customerId.trim()) {
         params.set('customerId', appliedFilters.customerId.trim())
       }
+
+      params.set('lifecycle', viewMode)
 
       const queryString = params.toString()
       const response = await fetch(`/api/finance/invoices${queryString ? `?${queryString}` : ''}`)
@@ -260,6 +307,12 @@ export default function InvoicesListPage() {
           issueDate: invoice.issueDate ?? invoice.createdAt ?? new Date().toISOString(),
           dueDate: invoice.dueDate ?? invoice.issueDate ?? new Date().toISOString(),
           branchName: invoice.branch?.name ?? invoice.branchName ?? undefined,
+          isDeleted: Boolean(invoice.isDeleted),
+          deletedAt: invoice.deletedAt ?? null,
+          deletedBy: invoice.deletedBy ?? null,
+          deletedReason: invoice.deletedReason ?? null,
+          createdBy: invoice.createdBy ?? null,
+          creator: invoice.creator ?? null,
         }
       })
 
@@ -305,7 +358,7 @@ export default function InvoicesListPage() {
     } finally {
       setLoading(false)
     }
-  }, [appliedFilters, currentPage])
+  }, [appliedFilters, currentPage, viewMode])
 
   useEffect(() => {
     fetchInvoices()
@@ -328,6 +381,76 @@ export default function InvoicesListPage() {
     setFilters(initialFilters)
     setCurrentPage(1)
     setAppliedFilters(initialFilters)
+  }
+
+  const handleViewModeChange = (mode: 'active' | 'deleted') => {
+    if (mode === viewMode) {
+      return
+    }
+
+    setViewMode(mode)
+    setCurrentPage(1)
+  }
+
+  const openDeleteDialog = (invoice: InvoiceSummary) => {
+    setInvoiceToDelete(invoice)
+    setDeleteReason('')
+    setDeleteDialogOpen(true)
+  }
+
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false)
+    setInvoiceToDelete(null)
+    setDeleteReason('')
+  }
+
+  const handleDeleteInvoice = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!invoiceToDelete) {
+      return
+    }
+
+    setDeletingInvoice(true)
+
+    try {
+      const response = await fetch(`/api/finance/invoices/${invoiceToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: deleteReason.trim() || undefined }),
+      })
+
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        const message = payload?.error || 'تعذر حذف الفاتورة'
+        throw new Error(message)
+      }
+
+      toast({
+        title: 'تمت العملية بنجاح',
+        description: `تم نقل الفاتورة ${invoiceToDelete.invoiceNumber} إلى قسم المحذوفات.`,
+      })
+
+      closeDeleteDialog()
+
+      if (viewMode === 'active') {
+        setInvoices((previous) => previous.filter((invoice) => invoice.id !== invoiceToDelete.id))
+      }
+
+      fetchInvoices()
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : 'تعذر حذف الفاتورة'
+      toast({
+        title: 'خطأ',
+        description: message,
+        variant: 'destructive',
+      })
+    } finally {
+      setDeletingInvoice(false)
+    }
   }
 
   const handlePageChange = (page: number) => {
@@ -554,6 +677,22 @@ export default function InvoicesListPage() {
               </Button>
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <Button
+              variant={viewMode === 'active' ? 'default' : 'outline'}
+              onClick={() => handleViewModeChange('active')}
+              disabled={loading && viewMode === 'active'}
+            >
+              الفواتير النشطة
+            </Button>
+            <Button
+              variant={viewMode === 'deleted' ? 'default' : 'outline'}
+              onClick={() => handleViewModeChange('deleted')}
+              disabled={loading && viewMode === 'deleted'}
+            >
+              الفواتير المحذوفة
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -598,6 +737,7 @@ export default function InvoicesListPage() {
                     <TableHead className="text-right">رقم الفاتورة</TableHead>
                     <TableHead className="text-right">العميل</TableHead>
                     <TableHead className="text-right">التواريخ</TableHead>
+                    <TableHead className="text-right">الموظف المسؤول</TableHead>
                     <TableHead className="text-right">المبالغ</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
                     <TableHead className="text-right">الإجراءات</TableHead>
@@ -605,7 +745,10 @@ export default function InvoicesListPage() {
                 </TableHeader>
                 <TableBody>
                   {invoices.map((invoice) => {
-                    const status = statusMeta[invoice.status] || { label: invoice.status, variant: 'secondary' as const }
+                    const isDeleted = Boolean(invoice.isDeleted)
+                    const status = isDeleted
+                      ? { label: 'محذوفة', variant: 'destructive' as const }
+                      : statusMeta[invoice.status] || { label: invoice.status, variant: 'secondary' as const }
                     const dueStatus = calculateDueStatus(invoice)
                     const remaining = Math.max(invoice.outstanding, 0)
 
@@ -626,11 +769,22 @@ export default function InvoicesListPage() {
                           <div className={`text-xs ${dueStatus.className}`}>{dueStatus.label}</div>
                         </TableCell>
                         <TableCell className="text-right">
+                          <div className="font-medium text-gray-900">{formatCreatorName(invoice)}</div>
+                          {formatCreatorDetails(invoice) && (
+                            <div className="text-xs text-gray-500">{formatCreatorDetails(invoice)}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
                           <div className="font-medium text-gray-900">{formatCurrency(invoice.totalAmount, invoice.currency)}</div>
                           <div className="text-xs text-gray-500">المتبقي: {formatCurrency(remaining, invoice.currency)}</div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge variant={status.variant}>{status.label}</Badge>
+                          {isDeleted && invoice.deletedAt && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              حذف في {formatDate(invoice.deletedAt)}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
@@ -639,29 +793,45 @@ export default function InvoicesListPage() {
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button variant="ghost" size="icon" asChild aria-label="تعديل الفاتورة">
-                              <Link href={`/admin/finance/invoices/${invoice.id}/edit`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="تسجيل دفعة"
-                              onClick={() => openPaymentModal(invoice)}
-                            >
-                              <CreditCard className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              asChild
-                              aria-label="تحميل الفاتورة"
-                            >
-                              <Link href={`/api/finance/invoices/${invoice.id}/download`} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                            {!isDeleted && (
+                              <>
+                                <Button variant="ghost" size="icon" asChild aria-label="تعديل الفاتورة">
+                                  <Link href={`/admin/finance/invoices/${invoice.id}/edit`}>
+                                    <Edit className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="تسجيل دفعة"
+                                  onClick={() => openPaymentModal(invoice)}
+                                >
+                                  <CreditCard className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  asChild
+                                  aria-label="تحميل الفاتورة"
+                                >
+                                  <Link
+                                    href={`/api/finance/invoices/${invoice.id}/download`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="حذف الفاتورة"
+                                  onClick={() => openDeleteDialog(invoice)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -783,6 +953,54 @@ export default function InvoicesListPage() {
                   <CreditCard className="ml-2 h-4 w-4" />
                 )}
                 تسجيل الدفعة
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDeleteDialog()
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>حذف الفاتورة</DialogTitle>
+            <DialogDescription>
+              سيتم نقل الفاتورة إلى قسم المحذوفات مع الاحتفاظ بجميع بياناتها للرجوع إليها لاحقاً.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleDeleteInvoice} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="delete-reason" className="text-right">سبب الحذف (اختياري)</Label>
+              <Textarea
+                id="delete-reason"
+                placeholder="اكتب سبب الحذف لتوثيق القرار"
+                value={deleteReason}
+                onChange={(event) => setDeleteReason(event.target.value)}
+                maxLength={500}
+              />
+              <p className="text-xs text-gray-500 text-right">
+                لن يتم حذف الفاتورة نهائياً ويمكن الوصول إليها من خلال قسم الفواتير المحذوفة.
+              </p>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button type="button" variant="outline" onClick={closeDeleteDialog} disabled={deletingInvoice}>
+                إلغاء
+              </Button>
+              <Button type="submit" variant="destructive" disabled={deletingInvoice}>
+                {deletingInvoice ? (
+                  <>
+                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    جاري الحذف...
+                  </>
+                ) : (
+                  'تأكيد الحذف'
+                )}
               </Button>
             </DialogFooter>
           </form>

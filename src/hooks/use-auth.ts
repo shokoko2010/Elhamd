@@ -194,24 +194,52 @@ export function useAuth() {
     return user ? roles.includes(user.role) : false
   }
 
-  const hasPermission = (permission: Permission): boolean => {
-    if (!user || !user.permissions || !Array.isArray(user.permissions)) {
+  const userHasWildcard = (): boolean => {
+    if (!user || !Array.isArray(user?.permissions)) {
       return false
     }
+    return user.permissions.includes('*')
+  }
+
+  const isSuperAdminRole = (): boolean => user?.role === UserRole.SUPER_ADMIN
+
+  const hasPermission = (permission: Permission): boolean => {
+    if (!permission) {
+      return false
+    }
+
+    if (!user || !Array.isArray(user.permissions)) {
+      return false
+    }
+
+    if (isSuperAdminRole() || userHasWildcard()) {
+      return true
+    }
+
     return user.permissions.includes(permission)
   }
 
   const hasAnyPermission = (permissions: Permission[]): boolean => {
-    if (!user || !user.permissions || !Array.isArray(user.permissions) || !Array.isArray(permissions)) {
+    if (!user || !Array.isArray(user.permissions) || !Array.isArray(permissions) || permissions.length === 0) {
       return false
     }
+
+    if (isSuperAdminRole() || userHasWildcard()) {
+      return true
+    }
+
     return permissions.some(permission => user.permissions.includes(permission))
   }
 
   const hasAllPermissions = (permissions: Permission[]): boolean => {
-    if (!user || !user.permissions || !Array.isArray(user.permissions) || !Array.isArray(permissions)) {
+    if (!user || !Array.isArray(user.permissions) || !Array.isArray(permissions) || permissions.length === 0) {
       return false
     }
+
+    if (isSuperAdminRole() || userHasWildcard()) {
+      return true
+    }
+
     return permissions.every(permission => user.permissions.includes(permission))
   }
 

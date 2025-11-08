@@ -642,7 +642,7 @@ async function updateTataVehicles() {
           make: 'Tata',
           model: vehicleData.title,
           year: 2024,
-          price: 150000, // سعر افتراضي بالريال السعودي
+          price: 150000, // سعر افتراضي بالجنيه المصري
           stockNumber: `TATA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           vin: `TATA${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
           description: vehicleData.description,
@@ -657,7 +657,7 @@ async function updateTataVehicles() {
             create: {
               basePrice: 150000,
               totalPrice: 150000,
-              currency: 'SAR'
+              currency: 'EGP'
             }
           }
         }
