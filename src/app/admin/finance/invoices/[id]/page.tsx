@@ -456,7 +456,7 @@ function InvoiceDetailsContent() {
               isDeleted: true,
               deletedAt: archived.deletedAt ?? new Date().toISOString(),
               deletedBy: archived.deletedBy ?? previous.deletedBy,
-              deletedReason: archived.deletedReason ?? reason || previous.deletedReason,
+              deletedReason: archived.deletedReason ?? (reason || previous.deletedReason),
             }
           })
         } else {
