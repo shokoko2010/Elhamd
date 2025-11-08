@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -8,29 +8,53 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
-import { 
-  Car, 
-  Calendar, 
-  Phone, 
-  Mail, 
-  Fuel, 
-  Settings, 
-  Gauge, 
-  Users, 
-  Shield, 
+import {
+  Car,
+  Calendar,
+  Phone,
+  Fuel,
+  Settings,
+  Gauge,
+  Shield,
   Heart,
   Share2,
   MapPin,
   DollarSign,
-  Wrench
+  Wrench,
+  AlertCircle
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { format } from 'date-fns'
+
+interface VehicleImage {
+  id: string
+  imageUrl: string
+  altText?: string | null
+  isPrimary: boolean
+  order?: number | null
+}
+
+interface VehicleSpecification {
+  id: string
+  key: string
+  label: string
+  value: string
+  category: string
+}
+
+interface VehiclePricing {
+  basePrice: number
+  totalPrice: number
+  discountPrice: number | null
+  discountPercentage: number | null
+  taxes: number
+  fees: number
+  currency: string
+  hasDiscount: boolean
+  discountExpires: string | null
+}
 
 interface Vehicle {
   id: string
@@ -39,99 +63,149 @@ interface Vehicle {
   year: number
   price: number
   stockNumber: string
-  vin?: string
+  vin?: string | null
   category: string
   fuelType: string
   transmission: string
-  mileage?: number
-  color: string
-  description: string
+  mileage?: number | null
+  color?: string | null
+  description?: string | null
   status: string
   featured: boolean
-  images: { imageUrl: string; isPrimary: boolean; altText?: string }[]
-  specifications?: {
-    engine: string
-    horsepower: number
-    torque: number
-    acceleration: string
-    topSpeed: string
-    fuelEfficiency: string
-    seatingCapacity: number
-    driveType: string
-  }
+  images: VehicleImage[]
+  specifications?: VehicleSpecification[]
+  pricing?: VehiclePricing | null
   features?: string[]
+  highlights?: string[]
+}
+
+const FALLBACK_IMAGE: VehicleImage = {
+  id: 'placeholder',
+  imageUrl: '/placeholder-car.jpg',
+  altText: 'صورة مركبة غير متوفرة',
+  isPrimary: true,
+  order: 0
+}
+
+const STATUS_BADGE_CLASSES: Record<string, string> = {
+  AVAILABLE: 'bg-green-500',
+  RESERVED: 'bg-yellow-500',
+  SOLD: 'bg-red-500'
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  AVAILABLE: 'متاحة',
+  RESERVED: 'محجوزة',
+  SOLD: 'مباعة'
 }
 
 export default function VehicleDetailsPage() {
-  const params = useParams()
+  const params = useParams<{ id: string }>()
   const router = useRouter()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [showContactDialog, setShowContactDialog] = useState(false)
 
-  useEffect(() => {
-    // Mock data - will be replaced with API call
-    const mockVehicle: Vehicle = {
-      id: params.id as string,
-      make: 'Tata',
-      model: 'Nexon',
-      year: 2024,
-      price: 850000,
-      stockNumber: 'TN2024001',
-      vin: 'MAT625487K1L5B4321',
-      category: 'SUV',
-      fuelType: 'PETROL',
-      transmission: 'AUTOMATIC',
-      mileage: 0,
-      color: 'White',
-      description: 'The Tata Nexon is a premium compact SUV that combines style, performance, and safety. With its bold design, advanced features, and comfortable interior, the Nexon is perfect for both city driving and weekend adventures. This vehicle comes equipped with the latest safety technology, including dual airbags, ABS with EBD, and a robust body structure.',
-      status: 'AVAILABLE',
-      featured: true,
-      images: [
-        { imageUrl: '/uploads/vehicles/1/nexon-front-new.jpg', isPrimary: true, altText: 'Tata Nexon Front View' },
-        { imageUrl: '/uploads/vehicles/1/nexon-side-new.jpg', isPrimary: false, altText: 'Tata Nexon Side View' },
-        { imageUrl: '/uploads/vehicles/1/nexon-front-new.jpg', isPrimary: false, altText: 'Tata Nexon Interior' },
-        { imageUrl: '/uploads/vehicles/1/nexon-side-new.jpg', isPrimary: false, altText: 'Tata Nexon Rear View' },
-        { imageUrl: '/uploads/vehicles/1/nexon-front-new.jpg', isPrimary: false, altText: 'Tata Nexon Dashboard' }
-      ],
-      specifications: {
-        engine: '1.2L Turbocharged Revotron',
-        horsepower: 110,
-        torque: 170,
-        acceleration: '0-100 km/h in 11.5s',
-        topSpeed: '180 km/h',
-        fuelEfficiency: '17.57 km/l',
-        seatingCapacity: 5,
-        driveType: 'FWD'
-      },
-      features: [
-        'Touchscreen Infotainment System',
-        'Automatic Climate Control',
-        'Rear Parking Camera',
-        'Tyre Pressure Monitoring System',
-        'Rain Sensing Wipers',
-        'Auto Headlamps',
-        'Cruise Control',
-        'Connected Car Technology',
-        'Leather Seat Upholstery',
-        'Panoramic Sunroof',
-        'Wireless Charging',
-        'Multi-drive Modes'
-      ]
-    }
-    
-    // Simulate API call
-    setTimeout(() => {
-      setVehicle(mockVehicle)
-      setLoading(false)
-    }, 1000)
-  }, [params.id])
+  const vehicleIdentifier = params?.id
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-EG', {
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadVehicleDetails(identifier: string) {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetch(`/api/public/vehicles/${encodeURIComponent(identifier)}`, {
+          signal: controller.signal
+        })
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('المركبة المطلوبة غير متاحة حالياً. يرجى استعراض المركبات المتاحة أو التواصل مع فريق المبيعات.')
+          } else {
+            setError('فشل في تحميل بيانات المركبة. حاول مرة أخرى لاحقاً أو قم بتحديث الصفحة.')
+          }
+          setVehicle(null)
+          return
+        }
+
+        const data = await response.json()
+        const received: Vehicle | null = data?.vehicle ?? null
+
+        if (!received) {
+          setError('المركبة المطلوبة غير متاحة حالياً.')
+          setVehicle(null)
+          return
+        }
+
+        const normalizedImages = received.images && received.images.length > 0 ? received.images : [FALLBACK_IMAGE]
+        const combinedFeatures = [
+          ...(received.features ?? []),
+          ...(received.highlights ?? [])
+        ].filter(Boolean)
+
+        setVehicle({
+          ...received,
+          images: normalizedImages,
+          features: combinedFeatures.length > 0 ? Array.from(new Set(combinedFeatures)) : undefined
+        })
+        setSelectedImageIndex(0)
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') {
+          return
+        }
+
+        console.error('Error loading vehicle details:', err)
+        setError('حدث خطأ غير متوقع أثناء تحميل بيانات المركبة. يرجى المحاولة مرة أخرى لاحقاً.')
+        setVehicle(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (vehicleIdentifier) {
+      loadVehicleDetails(vehicleIdentifier)
+    } else {
+      setLoading(false)
+      setVehicle(null)
+      setError('لم يتم تحديد المركبة المطلوبة.')
+    }
+
+    return () => controller.abort()
+  }, [vehicleIdentifier])
+
+  const featureList = useMemo(() => {
+    if (!vehicle) {
+      return [] as string[]
+    }
+
+    if (vehicle.features && vehicle.features.length > 0) {
+      return vehicle.features
+    }
+
+    if (vehicle.specifications && vehicle.specifications.length > 0) {
+      return vehicle.specifications.slice(0, 6).map((spec) => `${spec.label}: ${spec.value}`)
+    }
+
+    return [] as string[]
+  }, [vehicle])
+
+  const specificationList = vehicle?.specifications ?? []
+  const priceToDisplay = vehicle?.pricing?.totalPrice ?? vehicle?.price ?? 0
+  const currencyToDisplay = vehicle?.pricing?.currency ?? 'EGP'
+  const statusClass = vehicle ? STATUS_BADGE_CLASSES[vehicle.status] ?? 'bg-blue-600' : 'bg-blue-600'
+  const statusLabel = vehicle ? STATUS_LABELS[vehicle.status] ?? vehicle.status : ''
+  const imageCount = vehicle?.images?.length ?? 0
+  const safeImageIndex = imageCount > 0 ? Math.min(selectedImageIndex, imageCount - 1) : 0
+  const currentImage = vehicle && imageCount > 0 ? vehicle.images[safeImageIndex] : FALLBACK_IMAGE
+
+  const formatPrice = (price: number, currency: string) => {
+    return new Intl.NumberFormat('ar-EG', {
       style: 'currency',
-      currency: 'EGP',
+      currency,
       minimumFractionDigits: 0
     }).format(price)
   }
@@ -141,7 +215,25 @@ export default function VehicleDetailsPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading vehicle details...</p>
+          <p className="text-gray-600">جاري تحميل بيانات المركبة...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">تعذر تحميل بيانات المركبة</h1>
+          <p className="text-gray-600 leading-relaxed">{error}</p>
+          <div className="mt-6 flex flex-wrap gap-3 justify-center">
+            <Button onClick={() => router.back()}>العودة</Button>
+            <Button variant="outline" onClick={() => router.push('/vehicles')}>
+              استعرض جميع المركبات
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -152,37 +244,32 @@ export default function VehicleDetailsPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Car className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Vehicle Not Found</h1>
-          <p className="text-gray-600 mb-4">The vehicle you're looking for doesn't exist.</p>
-          <Button onClick={() => router.push('/vehicles')}>
-            Back to Vehicles
-          </Button>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">المركبة غير متاحة</h1>
+          <p className="text-gray-600 mb-4">المركبة التي تبحث عنها غير موجودة أو تم إزالتها.</p>
+          <Button onClick={() => router.push('/vehicles')}>عودة إلى قائمة المركبات</Button>
         </div>
       </div>
     )
   }
 
+  const seatingInfo = specificationList.find((spec) => /مقعد|seat/i.test(spec.label))?.value
+  const engineInfo = specificationList.find((spec) => /المحرك|engine/i.test(spec.label))?.value
+  const safetyInfo = specificationList.find((spec) => /أمان|safety/i.test(spec.label))?.value
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
-          <nav className="flex items-center space-x-2 text-sm">
-            <button 
-              onClick={() => router.push('/')}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              Home
+          <nav className="flex items-center space-x-2 space-x-reverse text-sm">
+            <button onClick={() => router.push('/')} className="text-blue-600 hover:text-blue-800">
+              الرئيسية
             </button>
             <span className="text-gray-400">/</span>
-            <button 
-              onClick={() => router.push('/vehicles')}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              Vehicles
+            <button onClick={() => router.push('/vehicles')} className="text-blue-600 hover:text-blue-800">
+              المركبات
             </button>
             <span className="text-gray-400">/</span>
-            <span className="text-gray-900">
+            <span className="text-gray-900 font-medium">
               {vehicle.make} {vehicle.model} {vehicle.year}
             </span>
           </nav>
@@ -191,227 +278,231 @@ export default function VehicleDetailsPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Image Gallery */}
           <div>
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="aspect-video bg-gray-200 relative">
                 <Image
-                  src={vehicle.images[selectedImageIndex]?.imageUrl || '/uploads/vehicles/1/nexon-front-new.jpg'}
-                  alt={vehicle.images[selectedImageIndex]?.altText || `${vehicle.make} ${vehicle.model}`}
+                  key={currentImage.id}
+                  src={currentImage.imageUrl}
+                  alt={currentImage.altText || `${vehicle.make} ${vehicle.model}`}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 50vw"
-                  priority={true}
+                  priority
                 />
-                <Badge className={`absolute top-4 left-4 z-10 ${
-                  vehicle.status === 'AVAILABLE' ? 'bg-green-500' : 
-                  vehicle.status === 'SOLD' ? 'bg-red-500' : 'bg-yellow-500'
-                }`}>
-                  {vehicle.status}
-                </Badge>
+                <Badge className={`absolute top-4 left-4 z-10 ${statusClass}`}>{statusLabel}</Badge>
               </div>
-              
-              {/* Thumbnail Gallery */}
-              <div className="p-4">
-                <div className="grid grid-cols-5 gap-2">
-                  {vehicle.images.map((image, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedImageIndex(index)}
-                      className={`aspect-video bg-gray-200 rounded overflow-hidden border-2 transition-colors relative ${
-                        selectedImageIndex === index ? 'border-blue-500' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <Image
-                        src={image.imageUrl}
-                        alt={image.altText || `${vehicle.make} ${vehicle.model} thumbnail ${index + 1}`}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 20vw, 10vw"
-                      />
-                    </button>
-                  ))}
+
+              {vehicle.images.length > 1 && (
+                <div className="p-4">
+                  <div className="grid grid-cols-5 gap-2">
+                    {vehicle.images.map((image, index) => (
+                      <button
+                        key={image.id}
+                        onClick={() => setSelectedImageIndex(index)}
+                        className={`aspect-video bg-gray-100 rounded overflow-hidden border-2 transition-colors relative ${
+                          selectedImageIndex === index ? 'border-blue-500' : 'border-transparent hover:border-gray-300'
+                        }`}
+                      >
+                        <Image
+                          src={image.imageUrl}
+                          alt={image.altText || `${vehicle.make} ${vehicle.model} - صورة ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 20vw, 10vw"
+                        />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Vehicle Information */}
           <div>
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex justify-between items-start mb-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {vehicle.make} {vehicle.model}
                   </h1>
-                  <p className="text-lg text-gray-600 mb-4">{vehicle.year}</p>
-                  <div className="flex items-center gap-2 mb-4">
+                  <p className="text-lg text-gray-600">موديل {vehicle.year}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
                     <Badge variant="outline">{vehicle.category}</Badge>
                     <Badge variant="secondary">{vehicle.fuelType}</Badge>
                     <Badge variant="secondary">{vehicle.transmission}</Badge>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-900 mb-2">
-                    {formatPrice(vehicle.price)}
+                  <div className="text-3xl font-bold text-blue-900">
+                    {formatPrice(priceToDisplay, currencyToDisplay)}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    Stock #{vehicle.stockNumber}
-                  </div>
+                  <div className="text-sm text-gray-600">رقم المخزون: {vehicle.stockNumber}</div>
+                  {vehicle.pricing?.discountPrice && vehicle.pricing.discountPrice < priceToDisplay && (
+                    <div className="text-sm text-green-600 mt-1">
+                      سعر بعد الخصم: {formatPrice(vehicle.pricing.discountPrice, currencyToDisplay)}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <p className="text-gray-700 mb-6">{vehicle.description}</p>
+              {vehicle.description && (
+                <p className="text-gray-700 leading-relaxed mt-6 mb-6">{vehicle.description}</p>
+              )}
 
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="flex items-center gap-2">
                   <Fuel className="h-5 w-5 text-gray-400" />
                   <div>
-                    <div className="text-sm text-gray-600">Fuel Type</div>
+                    <div className="text-sm text-gray-600">نوع الوقود</div>
                     <div className="font-medium">{vehicle.fuelType}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Settings className="h-5 w-5 text-gray-400" />
                   <div>
-                    <div className="text-sm text-gray-600">Transmission</div>
+                    <div className="text-sm text-gray-600">ناقل الحركة</div>
                     <div className="font-medium">{vehicle.transmission}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Gauge className="h-5 w-5 text-gray-400" />
                   <div>
-                    <div className="text-sm text-gray-600">Mileage</div>
-                    <div className="font-medium">{vehicle.mileage || 0} km</div>
+                    <div className="text-sm text-gray-600">العداد</div>
+                    <div className="font-medium">{vehicle.mileage ?? 0} كم</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-gray-400" />
                   <div>
-                    <div className="text-sm text-gray-600">Color</div>
-                    <div className="font-medium">{vehicle.color}</div>
+                    <div className="text-sm text-gray-600">اللون</div>
+                    <div className="font-medium">{vehicle.color ?? 'غير محدد'}</div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Link href="/test-drive">
-                  <Button size="lg" className="flex-1">
-                    <Calendar className="mr-2 h-5 w-5" />
-                    Book Test Drive
+              <div className="flex flex-wrap gap-3">
+                <Link href={`/test-drive?vehicle=${vehicle.id}`}>
+                  <Button size="lg" className="flex-1 min-w-[160px]">
+                    <Calendar className="ml-2 h-5 w-5" />
+                    حجز تجربة قيادة
                   </Button>
                 </Link>
                 <Link href="/maintenance">
-                  <Button size="lg" variant="outline" className="flex-1">
-                    <Wrench className="mr-2 h-5 w-5" />
-                    Service Center
+                  <Button size="lg" variant="outline" className="flex-1 min-w-[160px]">
+                    <Wrench className="ml-2 h-5 w-5" />
+                    مركز الخدمة
                   </Button>
                 </Link>
                 <Link href="/financing">
-                  <Button size="lg" variant="outline" className="flex-1">
-                    <DollarSign className="mr-2 h-5 w-5" />
-                    Financing Options
+                  <Button size="lg" variant="outline" className="flex-1 min-w-[160px]">
+                    <DollarSign className="ml-2 h-5 w-5" />
+                    خيارات التمويل
                   </Button>
                 </Link>
 
                 <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
                   <DialogTrigger asChild>
-                    <Button size="lg" variant="outline" className="flex-1">
-                      <Phone className="mr-2 h-5 w-5" />
-                      Contact Sales
+                    <Button size="lg" variant="outline" className="flex-1 min-w-[160px]">
+                      <Phone className="ml-2 h-5 w-5" />
+                      تواصل مع المبيعات
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Contact Sales</DialogTitle>
+                      <DialogTitle>طلب معلومات عن المركبة</DialogTitle>
                       <DialogDescription>
-                        Get more information about {vehicle.make} {vehicle.model}
+                        أرسل لنا استفسارك بخصوص {vehicle.make} {vehicle.model}
                       </DialogDescription>
                     </DialogHeader>
                     <ContactForm vehicle={vehicle} onSuccess={() => setShowContactDialog(false)} />
                   </DialogContent>
                 </Dialog>
 
-                <Button size="lg" variant="outline">
-                  <Heart className="mr-2 h-5 w-5" />
+                <Button size="lg" variant="outline" className="min-w-[56px]">
+                  <Heart className="h-5 w-5" />
                 </Button>
 
-                <Button size="lg" variant="outline">
-                  <Share2 className="mr-2 h-5 w-5" />
+                <Button size="lg" variant="outline" className="min-w-[56px]">
+                  <Share2 className="h-5 w-5" />
                 </Button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Vehicle Details Tabs */}
         <div className="mt-8">
           <Tabs defaultValue="specifications" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="specifications">Specifications</TabsTrigger>
-              <TabsTrigger value="features">Features</TabsTrigger>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="specifications">المواصفات الفنية</TabsTrigger>
+              <TabsTrigger value="features">المزايا</TabsTrigger>
+              <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="specifications" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Technical Specifications</CardTitle>
+                  <CardTitle>المواصفات التفصيلية</CardTitle>
+                  <CardDescription>تعرف على أهم المواصفات الفنية للمركبة</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {vehicle.specifications && Object.entries(vehicle.specifications).map(([key, value]) => (
-                      <div key={key} className="flex justify-between py-2 border-b">
-                        <span className="font-medium capitalize">
-                          {key.replace(/([A-Z])/g, ' $1').trim()}
-                        </span>
-                        <span className="text-gray-600">{value}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {specificationList.length === 0 ? (
+                    <p className="text-gray-500">لا تتوفر مواصفات تفصيلية لهذه المركبة حالياً.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {specificationList.map((spec) => (
+                        <div key={spec.id} className="flex justify-between py-2 border-b border-gray-100">
+                          <span className="font-medium text-gray-700">{spec.label}</span>
+                          <span className="text-gray-600 text-left max-w-[60%]">{spec.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="features" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Vehicle Features</CardTitle>
+                  <CardTitle>المزايا والتجهيزات</CardTitle>
+                  <CardDescription>أبرز ما يميز هذه المركبة عن غيرها</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {vehicle.features?.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                        <Shield className="h-5 w-5 text-blue-600" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {featureList.length === 0 ? (
+                    <p className="text-gray-500">سيتم تحديث المزايا قريباً. يرجى التواصل مع المبيعات لمعرفة التفاصيل.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {featureList.map((feature, index) => (
+                        <div key={`${feature}-${index}`} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                          <Shield className="h-5 w-5 text-blue-600" />
+                          <span className="text-sm text-gray-700">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="overview" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Vehicle Overview</CardTitle>
+                  <CardTitle>نظرة شاملة</CardTitle>
+                  <CardDescription>ملخص سريع لأبرز مميزات المركبة</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose max-w-none">
-                    <p className="text-gray-700 mb-4">
-                      The {vehicle.make} {vehicle.model} {vehicle.year} represents the perfect blend of style, performance, and value. 
-                      This {vehicle.category.toLowerCase()} is designed to meet the needs of modern drivers with its advanced features, 
-                      comfortable interior, and impressive fuel efficiency.
+                  <div className="prose prose-lg max-w-none text-right">
+                    <p className="text-gray-700 mb-4 leading-relaxed">
+                      تجمع {vehicle.make} {vehicle.model} {vehicle.year} بين الأداء القوي والتقنيات الحديثة والتصميم العملي الذي يناسب
+                      طرق وشوارع مصر. صُممت هذه المركبة لتقدم تجربة قيادة مريحة وآمنة مع تكاليف تشغيل اقتصادية.
                     </p>
-                    <p className="text-gray-700 mb-4">
-                      Key highlights include:
-                    </p>
-                    <ul className="list-disc pl-6 space-y-2">
-                      <li>Advanced safety features with multiple airbags</li>
-                      <li>Modern infotainment system with connectivity</li>
-                      <li>Comfortable seating for {vehicle.specifications?.seatingCapacity} passengers</li>
-                      <li>Efficient {vehicle.fuelType.toLowerCase()} engine</li>
-                      <li>Stylish exterior design with premium finish</li>
+                    <p className="text-gray-700 mb-4">أهم النقاط:</p>
+                    <ul className="list-disc space-y-2 pr-6 text-gray-700">
+                      <li>{engineInfo || 'محرك موثوق يوفر توازناً مثالياً بين القوة والكفاءة.'}</li>
+                      <li>{safetyInfo || 'أنظمة أمان متطورة تضمن رحلة مطمئنة لجميع الركاب.'}</li>
+                      <li>{seatingInfo || 'مقصورة رحبة ومريحة تلبي احتياجات العائلة والعمل.'}</li>
+                      <li>خدمة ما بعد البيع متميزة ودعم فني معتمد من تاتا موتورز.</li>
                     </ul>
                   </div>
                 </CardContent>
@@ -434,53 +525,56 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    console.log('Contact form:', formData)
+    console.log('Contact form submission:', formData, 'for vehicle:', vehicle.id)
     onSuccess()
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 text-right">
       <div>
-        <Label htmlFor="name">Full Name</Label>
+        <Label htmlFor="name">الاسم الكامل</Label>
         <Input
           id="name"
           value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
+          onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
           required
+          placeholder="أدخل اسمك"
         />
       </div>
       <div>
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">البريد الإلكتروني</Label>
         <Input
           id="email"
           type="email"
           value={formData.email}
-          onChange={(e) => setFormData({...formData, email: e.target.value})}
+          onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
           required
+          placeholder="name@example.com"
         />
       </div>
       <div>
-        <Label htmlFor="phone">Phone</Label>
+        <Label htmlFor="phone">رقم الهاتف</Label>
         <Input
           id="phone"
           value={formData.phone}
-          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+          onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
           required
+          placeholder="مثال: 01012345678"
         />
       </div>
       <div>
-        <Label htmlFor="message">Message</Label>
+        <Label htmlFor="message">الرسالة</Label>
         <Textarea
           id="message"
           value={formData.message}
-          onChange={(e) => setFormData({...formData, message: e.target.value})}
-          placeholder="I'm interested in learning more about this vehicle..."
+          onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+          placeholder={`أرغب في معرفة المزيد عن ${vehicle.make} ${vehicle.model}...`}
           required
+          className="min-h-[120px]"
         />
       </div>
       <Button type="submit" className="w-full">
-        Send Message
+        إرسال الرسالة
       </Button>
     </form>
   )
