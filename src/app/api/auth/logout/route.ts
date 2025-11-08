@@ -4,9 +4,19 @@ import { getToken } from 'next-auth/jwt'
 export async function POST(request: NextRequest) {
   try {
     // Get the token to check if user is logged in
-    const token = await getToken({ 
-      req: request, 
-      secret: process.env.NEXTAUTH_SECRET || 'your-secret-key' 
+    const secret = process.env.NEXTAUTH_SECRET
+
+    if (!secret) {
+      console.error('NEXTAUTH_SECRET is not configured')
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
+    const token = await getToken({
+      req: request,
+      secret
     })
 
     if (!token) {

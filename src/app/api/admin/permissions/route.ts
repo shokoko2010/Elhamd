@@ -5,9 +5,24 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { PermissionCategory } from '@prisma/client'
+import { getAuthUser } from '@/lib/auth-server'
+import { PermissionService } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getAuthUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    if (user.role !== 'SUPER_ADMIN') {
+      const hasPermission = await PermissionService.hasPermission(user.id, 'manage_system_settings')
+      if (!hasPermission) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+    }
+
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category') || ''
 
@@ -36,8 +51,35 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getAuthUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    if (user.role !== 'SUPER_ADMIN') {
+      const hasPermission = await PermissionService.hasPermission(user.id, 'manage_system_settings')
+      if (!hasPermission) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+    }
+
     const body = await request.json()
     const { name, description, category } = body
+
+    if (!name || typeof name !== 'string') {
+      return NextResponse.json(
+        { error: 'اسم الصلاحية مطلوب' },
+        { status: 400 }
+      )
+    }
+
+    if (!category || typeof category !== 'string') {
+      return NextResponse.json(
+        { error: 'فئة الصلاحية مطلوبة' },
+        { status: 400 }
+      )
+    }
 
     // Check if permission already exists
     const existingPermission = await db.permission.findUnique({

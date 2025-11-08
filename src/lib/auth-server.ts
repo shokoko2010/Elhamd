@@ -4,15 +4,14 @@ import { authOptions } from '@/lib/authOptions'
 import { UserRole } from '@prisma/client'
 import { getUserPermissions } from '@/lib/simple-permissions'
 import { PermissionService } from '@/lib/permissions'
-import {
-  authenticateProductionUser as simpleAuthenticateProductionUser,
-  type SimpleAuthUser
-} from '@/lib/simple-production-auth'
 
 export { authOptions }
 export { UserRole as PrismaUserRole }
 export { UserRole }
-export { simpleAuthenticateProductionUser as authenticateProductionUser }
+
+export async function authenticateProductionUser(_request?: NextRequest): Promise<AuthUser | null> {
+  return resolveAuthUser()
+}
 
 export interface AuthorizeOptions {
   roles?: UserRole[]
@@ -33,7 +32,7 @@ export interface AuthUser {
   permissions: string[]
 }
 
-function normalizeAuthUser(user: AuthUser | SimpleAuthUser): AuthUser {
+function normalizeAuthUser(user: AuthUser): AuthUser {
   const permissions = Array.isArray(user.permissions) ? user.permissions : []
 
   return {
@@ -47,15 +46,10 @@ function normalizeAuthUser(user: AuthUser | SimpleAuthUser): AuthUser {
   }
 }
 
-async function resolveAuthUser(request?: NextRequest): Promise<AuthUser | null> {
+async function resolveAuthUser(): Promise<AuthUser | null> {
   const sessionUser = await getAuthUser()
   if (sessionUser) {
     return normalizeAuthUser(sessionUser)
-  }
-
-  const fallbackUser = await simpleAuthenticateProductionUser(request)
-  if (fallbackUser) {
-    return normalizeAuthUser(fallbackUser)
   }
 
   return null
@@ -159,7 +153,7 @@ export async function authorize(
   options: AuthorizeOptions = {}
 ): Promise<AuthorizeResult> {
   try {
-    const user = await resolveAuthUser(request)
+    const user = await resolveAuthUser()
 
     if (!user) {
       return {
