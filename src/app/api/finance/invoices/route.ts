@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const status = searchParams.get('status')
+    const lifecycle = (searchParams.get('lifecycle') || 'active').toLowerCase()
     const customerId = searchParams.get('customerId')
     const search = searchParams.get('search')
 
@@ -80,6 +81,12 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: any = {}
+
+    if (lifecycle === 'deleted') {
+      where.isDeleted = true
+    } else if (lifecycle !== 'all') {
+      where.isDeleted = false
+    }
     
     if (status) {
       where.status = status
@@ -98,6 +105,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Get invoices with pagination
+    const orderBy = lifecycle === 'deleted'
+      ? [
+          { deletedAt: 'desc' as const },
+          { issueDate: 'desc' as const },
+        ]
+      : [
+          { issueDate: 'desc' as const },
+          { createdAt: 'desc' as const },
+        ]
+
     const [invoices, total] = await Promise.all([
       db.invoice.findMany({
         where,
@@ -124,9 +141,7 @@ export async function GET(request: NextRequest) {
           },
           taxes: true,
         },
-        orderBy: {
-          issueDate: 'desc',
-        },
+        orderBy,
         skip,
         take: limit,
       }),
@@ -163,6 +178,10 @@ export async function GET(request: NextRequest) {
         currency: invoice.currency,
         createdAt: invoice.createdAt,
         updatedAt: invoice.updatedAt,
+        deletedAt: invoice.deletedAt,
+        deletedBy: invoice.deletedBy,
+        deletedReason: invoice.deletedReason,
+        isDeleted: invoice.isDeleted,
         customer: invoice.customer,
         branch: invoice.branch,
         items: normalized.items,

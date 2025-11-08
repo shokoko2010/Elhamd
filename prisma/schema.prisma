@@ -1116,6 +1116,10 @@ model Invoice {
   paidAt                   DateTime?
   lastPaymentAt            DateTime?
   cancelledAt              DateTime?
+  deletedAt                DateTime?
+  deletedBy                String?
+  deletedReason            String?
+  isDeleted                Boolean               @default(false)
   metadata                 Json?
   convertedFromQuotationId String?
   createdAt                DateTime             @default(now())

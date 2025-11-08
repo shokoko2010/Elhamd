@@ -64,6 +64,10 @@ interface Invoice {
   createdAt: string
   updatedAt: string
   createdBy: string
+  isDeleted?: boolean
+  deletedAt?: string | null
+  deletedBy?: string | null
+  deletedReason?: string | null
 }
 
 interface InvoiceItem {
@@ -411,28 +415,73 @@ function InvoiceDetailsContent() {
   }
 
   const deleteInvoice = async () => {
-    if (!confirm('هل أنت متأكد من حذف هذه الفاتورة؟')) {
+    if (!invoice) {
       return
     }
 
+    const confirmed = window.confirm('سيتم نقل الفاتورة إلى قسم المحذوفات مع الاحتفاظ ببياناتها. هل تريد المتابعة؟')
+    if (!confirmed) {
+      return
+    }
+
+    const optionalReason = window.prompt('يمكنك إدخال سبب للحذف (اختياري):', '') ?? ''
+    const reason = optionalReason.trim()
+
     try {
       const response = await fetch(`/api/finance/invoices/${invoiceId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: reason || undefined })
       })
-      
+
+      const payload = await response.json().catch(() => null)
+
       if (response.ok) {
+        const archived = payload?.invoice
         toast({
-          title: 'نجاح',
-          description: 'تم حذف الفاتورة بنجاح'
+          title: 'تم النقل إلى الأرشيف',
+          description: 'أصبحت الفاتورة ضمن قسم المحذوفات ويمكن الرجوع إليها لاحقاً.',
         })
-        router.push('/admin/finance')
-      } else {
-        throw new Error('Failed to delete invoice')
+
+        if (archived) {
+          setInvoice((previous) => {
+            if (!previous) {
+              return previous
+            }
+
+            return {
+              ...previous,
+              isDeleted: true,
+              deletedAt: archived.deletedAt ?? new Date().toISOString(),
+              deletedBy: archived.deletedBy ?? previous.deletedBy,
+              deletedReason: archived.deletedReason ?? reason || previous.deletedReason,
+            }
+          })
+        } else {
+          fetchInvoice()
+        }
+
+        return
       }
+
+      if (payload?.code === 'INVOICE_ALREADY_ARCHIVED') {
+        toast({
+          title: 'تنبيه',
+          description: 'الفاتورة موجودة بالفعل في الأرشيف.',
+        })
+        fetchInvoice()
+        return
+      }
+
+      const message = payload?.error || 'تعذر نقل الفاتورة إلى الأرشيف'
+      throw new Error(message)
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'فشل في نقل الفاتورة إلى الأرشيف'
       toast({
         title: 'خطأ',
-        description: 'فشل في حذف الفاتورة',
+        description: message,
         variant: 'destructive'
       })
     }
@@ -603,6 +652,21 @@ function InvoiceDetailsContent() {
           <div>
             <h1 className="text-3xl font-bold">تفاصيل الفاتورة</h1>
             <p className="text-gray-600 mt-2">فاتورة رقم {invoice.invoiceNumber}</p>
+            {invoice.isDeleted && (
+              <div className="mt-2 flex flex-col gap-1">
+                <Badge variant="destructive" className="w-max">فاتورة محذوفة (مؤرشفة)</Badge>
+                {invoice.deletedAt && (
+                  <span className="text-xs text-gray-500">
+                    تم الأرشفة في {new Date(invoice.deletedAt).toLocaleString('ar-EG')}
+                  </span>
+                )}
+                {invoice.deletedReason && (
+                  <span className="text-xs text-gray-500">
+                    السبب: {invoice.deletedReason}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -614,19 +678,21 @@ function InvoiceDetailsContent() {
             <Printer className="ml-2 h-4 w-4" />
             طباعة
           </Button>
-          {invoice.status === 'DRAFT' && (
+          {invoice.status === 'DRAFT' && !invoice.isDeleted && (
             <Button onClick={sendInvoice}>
               <Mail className="ml-2 h-4 w-4" />
               إرسال
             </Button>
           )}
-          <Link href={`/admin/finance/invoices/${invoice.id}/edit`}>
-            <Button variant="outline">
-              <Edit className="ml-2 h-4 w-4" />
-              تعديل
-            </Button>
-          </Link>
-          {invoice.status === 'DRAFT' && (
+          {!invoice.isDeleted && (
+            <Link href={`/admin/finance/invoices/${invoice.id}/edit`}>
+              <Button variant="outline">
+                <Edit className="ml-2 h-4 w-4" />
+                تعديل
+              </Button>
+            </Link>
+          )}
+          {!invoice.isDeleted && (
             <Button variant="destructive" onClick={deleteInvoice}>
               <Trash2 className="ml-2 h-4 w-4" />
               حذف
