@@ -57,38 +57,13 @@ async function resolveAuthUser(): Promise<AuthUser | null> {
 
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
-    console.log('🔍 Getting authenticated user...')
-
-    // For development, return a mock admin user
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 Development mode: Using mock admin user')
-      
-      const mockUser: AuthUser = {
-        id: 'dev-admin-id',
-        email: 'admin@elhamdimport.online',
-        name: 'Development Admin',
-        role: UserRole.SUPER_ADMIN,
-        phone: '01234567890',
-        branchId: null,
-        permissions: ['*'] // All permissions
-      }
-      
-      console.log('✅ Mock auth user created:', mockUser.email, 'Role:', mockUser.role)
-      return normalizeAuthUser(mockUser)
-    }
-
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      console.log('❌ No session found')
       return null
     }
 
-    console.log('✅ Session found for user:', session.user.email)
-    
     // Get user permissions
     const permissions = await getUserPermissions(session.user.id)
-    console.log('🔑 User permissions:', permissions.length)
-
     const authUser: AuthUser = normalizeAuthUser({
       id: session.user.id,
       email: session.user.email!,
@@ -98,8 +73,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       branchId: session.user.branchId,
       permissions
     })
-
-    console.log('✅ Auth user created:', authUser.email, 'Role:', authUser.role)
     return authUser
   } catch (error) {
     console.error('❌ Error in getAuthUser:', error)
