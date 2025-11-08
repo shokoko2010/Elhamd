@@ -222,6 +222,7 @@ function PermissionsDashboard() {
     role: UserRole.STAFF,
     permissions: [] as string[],
   })
+  const isSystemTemplateLocked = Boolean(selectedTemplate?.isSystem && !allowSystemTemplateEditing)
 
   const fetchData = useCallback(
     async (options?: { initial?: boolean }) => {
@@ -801,7 +802,7 @@ function PermissionsDashboard() {
                 id="templateName"
                 value={templateForm.name}
                 onChange={(event) => setTemplateForm((prev) => ({ ...prev, name: event.target.value }))}
-                disabled={selectedTemplate?.isSystem}
+                disabled={isSystemTemplateLocked}
               />
             </div>
             <div className="space-y-2">
@@ -809,7 +810,7 @@ function PermissionsDashboard() {
               <Select
                 value={templateForm.role}
                 onValueChange={(value) => setTemplateForm((prev) => ({ ...prev, role: value as UserRole }))}
-                disabled={selectedTemplate?.isSystem}
+                disabled={isSystemTemplateLocked}
               >
                 <SelectTrigger id="templateRole">
                   <SelectValue />
@@ -831,7 +832,7 @@ function PermissionsDashboard() {
               id="templateDescription"
               value={templateForm.description}
               onChange={(event) => setTemplateForm((prev) => ({ ...prev, description: event.target.value }))}
-              disabled={selectedTemplate?.isSystem}
+              disabled={isSystemTemplateLocked}
             />
           </div>
 
@@ -852,7 +853,7 @@ function PermissionsDashboard() {
                           type="checkbox"
                           checked={templateForm.permissions.includes(permission.name)}
                           onChange={(event) => toggleTemplatePermission(permission.name, event.target.checked)}
-                          disabled={selectedTemplate?.isSystem}
+                          disabled={isSystemTemplateLocked}
                           className="h-4 w-4 rounded border-gray-300"
                         />
                         <span>{formatPermissionLabel(permission)}</span>
@@ -868,7 +869,7 @@ function PermissionsDashboard() {
             <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
               إلغاء
             </Button>
-            <Button onClick={handleSaveTemplate} disabled={selectedTemplate?.isSystem}>
+            <Button onClick={handleSaveTemplate} disabled={isSystemTemplateLocked}>
               <Save className="ml-2 h-4 w-4" />
               حفظ القالب
             </Button>

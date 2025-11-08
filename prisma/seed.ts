@@ -1,6 +1,7 @@
 // prisma/merged-seed-clean.ts
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { PermissionService } from '../src/lib/permissions'
 
 const prisma = new PrismaClient()
 
@@ -207,145 +208,26 @@ async function main() {
   })
   console.log('✓ contactInfo created')
 
-  // 8. Permissions
-  const permissions = [
-    { name: 'vehicles.view', description: 'عرض المركبات', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'vehicles.create', description: 'إنشاء مركبات', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'vehicles.edit', description: 'تعديل المركبات', category: 'VEHICLE_MANAGEMENT' },
-    { name: 'vehicles.delete', description: 'حذف المركبات', category: 'VEHICLE_MANAGEMENT' },
+  // 8 & 9. Permissions and role templates (synchronised with application definitions)
+  console.log('⏳ initializing permission catalog and role templates...')
+  await PermissionService.initializeRoleTemplates()
+  console.log('✓ permission catalog synchronized')
 
-    { name: 'bookings.view', description: 'عرض الحجوزات', category: 'BOOKING_MANAGEMENT' },
-    { name: 'bookings.create', description: 'إنشاء حجوزات', category: 'BOOKING_MANAGEMENT' },
-    { name: 'bookings.edit', description: 'تعديل الحجوزات', category: 'BOOKING_MANAGEMENT' },
-    { name: 'bookings.delete', description: 'حذف الحجوزات', category: 'BOOKING_MANAGEMENT' },
-
-    { name: 'users.view', description: 'عرض المستخدمين', category: 'USER_MANAGEMENT' },
-    { name: 'users.create', description: 'إنشاء مستخدمين', category: 'USER_MANAGEMENT' },
-    { name: 'users.edit', description: 'تعديل المستخدمين', category: 'USER_MANAGEMENT' },
-    { name: 'users.delete', description: 'حذف المستخدمين', category: 'USER_MANAGEMENT' },
-
-    { name: 'branches.view', description: 'عرض الفروع', category: 'BRANCH_MANAGEMENT' },
-    { name: 'branches.create', description: 'إنشاء فروع', category: 'BRANCH_MANAGEMENT' },
-    { name: 'branches.edit', description: 'تعديل الفروع', category: 'BRANCH_MANAGEMENT' },
-    { name: 'branches.delete', description: 'حذف الفروع', category: 'BRANCH_MANAGEMENT' },
-
-    { name: 'inventory.view', description: 'عرض المخزون', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'inventory.create', description: 'إنشاء أصناف مخزون', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'inventory.edit', description: 'تعديل المخزون', category: 'INVENTORY_MANAGEMENT' },
-    { name: 'inventory.delete', description: 'حذف المخزون', category: 'INVENTORY_MANAGEMENT' },
-
-    { name: 'financial.view', description: 'عرض التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'financial.create', description: 'إنشاء تقارير مالية', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'financial.edit', description: 'تعديل التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
-    { name: 'financial.delete', description: 'حذف التقارير المالية', category: 'FINANCIAL_MANAGEMENT' },
-
-    { name: 'crm.view', description: 'عرض علاقات العملاء', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'crm.create', description: 'إنشاء سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'crm.edit', description: 'تعديل سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
-    { name: 'crm.delete', description: 'حذف سجلات CRM', category: 'CUSTOMER_MANAGEMENT' },
-
-    { name: 'admin.dashboard', description: 'لوحة التحكم', category: 'SYSTEM_SETTINGS' },
-    { name: 'admin.settings', description: 'الإعدادات', category: 'SYSTEM_SETTINGS' },
-    { name: 'admin.reports', description: 'التقارير', category: 'REPORTING' },
-    { name: 'admin.logs', description: 'سجلات النظام', category: 'SYSTEM_SETTINGS' }
-  ]
-
-  const createdPermissions = await Promise.all(permissions.map(p => prisma.permission.create({ data: p })))
-  console.log('✓ permissions created')
-
-  // 9. Role Templates
-  const roleTemplates = [
-    {
-      name: 'Super Admin',
-      description: 'المدير العام',
-      role: 'SUPER_ADMIN',
-      permissions: createdPermissions.map(p => p.name),
-      isSystem: true
-    },
-    {
-      name: 'Admin',
-      description: 'مدير',
-      role: 'ADMIN',
-      permissions: createdPermissions.filter(p => !p.name.includes('delete')).map(p => p.name),
-      isSystem: true
-    },
-    {
-      name: 'Branch Manager',
-      description: 'مدير فرع',
-      role: 'BRANCH_MANAGER',
-      permissions: [
-        'vehicles.view', 'vehicles.create', 'vehicles.edit',
-        'bookings.view', 'bookings.create', 'bookings.edit',
-        'users.view', 'users.create', 'users.edit',
-        'inventory.view', 'inventory.create', 'inventory.edit',
-        'financial.view', 'crm.view', 'crm.create', 'crm.edit',
-        'admin.dashboard', 'admin.reports'
-      ],
-      isSystem: true
-    },
-    {
-      name: 'Sales Manager',
-      description: 'مدير مبيعات',
-      role: 'STAFF',
-      permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'users.view', 'crm.view', 'crm.create', 'crm.edit',
-        'admin.dashboard', 'admin.reports'
-      ],
-      isSystem: true
-    },
-    {
-      name: 'Service Manager',
-      description: 'مدير خدمة',
-      role: 'STAFF',
-      permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'inventory.view', 'inventory.create', 'inventory.edit',
-        'admin.dashboard', 'admin.reports'
-      ],
-      isSystem: true
-    },
-    {
-      name: 'Sales Employee',
-      description: 'موظف مبيعات',
-      role: 'STAFF',
-      permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'crm.view', 'crm.create', 'crm.edit'
-      ],
-      isSystem: true
-    },
-    {
-      name: 'Service Employee',
-      description: 'موظف خدمة',
-      role: 'STAFF',
-      permissions: [
-        'vehicles.view', 'bookings.view', 'bookings.create', 'bookings.edit',
-        'inventory.view'
-      ],
-      isSystem: true
-    },
-    {
-      name: 'Customer',
-      description: 'عميل',
-      role: 'CUSTOMER',
-      permissions: ['vehicles.view', 'bookings.view', 'bookings.create'],
-      isSystem: true
+  const roleTemplates = await prisma.roleTemplate.findMany({
+    where: {
+      role: {
+        in: ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'STAFF', 'CUSTOMER']
+      }
     }
-  ]
+  })
 
-  const createdRoles = []
-  for (const role of roleTemplates) {
-    try {
-      const r = await prisma.roleTemplate.create({ data: role })
-      createdRoles.push(r)
-    } catch (err) {
-      // ignore duplicates
-      const existing = await prisma.roleTemplate.findFirst({ where: { name: role.name } })
-      if (existing) createdRoles.push(existing)
+  const roleTemplateMap = new Map(roleTemplates.map(template => [template.role, template]))
+
+  for (const role of ['SUPER_ADMIN', 'ADMIN', 'BRANCH_MANAGER', 'STAFF', 'CUSTOMER'] as const) {
+    if (!roleTemplateMap.get(role)) {
+      throw new Error(`Missing role template for ${role}`)
     }
   }
-  console.log('✓ roleTemplates created')
 
   // 10. Main Branch
   const mainBranch = await prisma.branch.create({
@@ -377,10 +259,10 @@ async function main() {
   console.log('✓ main branch created')
 
   // 11. Users
-  const superAdminRole = createdRoles.find(r => r.role === 'SUPER_ADMIN')
-  const branchManagerRole = createdRoles.find(r => r.role === 'BRANCH_MANAGER')
-  const staffRole = createdRoles.find(r => r.role === 'STAFF')
-  const customerRole = createdRoles.find(r => r.role === 'CUSTOMER')
+  const superAdminRole = roleTemplateMap.get('SUPER_ADMIN')
+  const branchManagerRole = roleTemplateMap.get('BRANCH_MANAGER')
+  const staffRole = roleTemplateMap.get('STAFF')
+  const customerRole = roleTemplateMap.get('CUSTOMER')
 
   const users = [
     {
