@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   User,
   Calendar,
@@ -23,12 +25,17 @@ import {
   FileText,
   Settings,
   Bell,
-  LogOut
+  LogOut,
+  Car,
+  Package,
+  Plus,
+  Trash2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { useAuth } from '@/hooks/use-auth'
 import { signOut } from 'next-auth/react'
+import { useToast } from '@/hooks/use-toast'
 
 interface EmployeeProfile {
   id: string
@@ -81,15 +88,94 @@ interface PayrollRecord {
   status: 'PENDING' | 'PROCESSED' | 'APPROVED' | 'PAID' | 'CANCELLED'
 }
 
+interface EmployeeInvoiceItem {
+  description: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+}
+
+interface EmployeeInvoice {
+  id: string
+  orderId?: string
+  customerName: string
+  customerEmail: string
+  subtotal: number
+  tax: number
+  total: number
+  status: string
+  issueDate: string
+  dueDate: string
+  paidDate?: string
+  items: EmployeeInvoiceItem[]
+}
+
+interface VehicleInventoryItem {
+  id: string
+  make: string
+  model: string
+  year: number
+  price: number
+  type: string
+  status: string
+  mileage?: number | null
+  fuelType?: string | null
+  transmission?: string | null
+  description?: string
+  images?: string[]
+  features?: string[]
+  stockNumber?: string
+  vin?: string | null
+  category?: string
+  color?: string | null
+}
+
+interface PartInventoryItem {
+  id: string
+  name: string
+  partNumber: string
+  category: string
+  quantity: number
+  unitPrice: number
+  status: string
+  supplier: string
+  location: string
+  warehouse: string
+  minStockLevel: number
+  maxStockLevel: number
+  leadTime: number
+  updatedAt: string
+}
+
+type InvoiceDraftSource = 'CUSTOM' | 'PART' | 'VEHICLE'
+
+interface InvoiceDraftItem extends EmployeeInvoiceItem {
+  id: string
+  sourceType: InvoiceDraftSource
+  sourceId?: string
+}
+
+const getDefaultDueDate = () => {
+  const dueDate = new Date()
+  dueDate.setDate(dueDate.getDate() + 7)
+  return dueDate.toISOString().split('T')[0]
+}
+
 export default function EmployeeDashboard() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [employeeProfile, setEmployeeProfile] = useState<EmployeeProfile | null>(null)
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([])
+  const [invoices, setInvoices] = useState<EmployeeInvoice[]>([])
+  const [carsInventory, setCarsInventory] = useState<VehicleInventoryItem[]>([])
+  const [partsInventory, setPartsInventory] = useState<PartInventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('profile')
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
   const [isLeaveRequestOpen, setIsLeaveRequestOpen] = useState(false)
+  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false)
+  const [invoiceSubmitting, setInvoiceSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     phone: '',
     emergencyContactName: '',
@@ -103,6 +189,29 @@ export default function EmployeeDashboard() {
     endDate: '',
     reason: ''
   })
+  const [invoiceForm, setInvoiceForm] = useState({
+    customerName: '',
+    customerEmail: '',
+    orderId: '',
+    taxRate: '14',
+    dueDate: getDefaultDueDate()
+  })
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceDraftItem[]>([])
+  const [newItemType, setNewItemType] = useState<InvoiceDraftSource>('CUSTOM')
+  const [newItemSelection, setNewItemSelection] = useState('')
+  const [newItemDescription, setNewItemDescription] = useState('')
+  const [newItemQuantity, setNewItemQuantity] = useState(1)
+  const [newItemUnitPrice, setNewItemUnitPrice] = useState(0)
+
+  const createItemId = () =>
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
+
+  const invoiceSubtotal = invoiceItems.reduce((sum, item) => sum + item.totalPrice, 0)
+  const taxRate = Number(invoiceForm.taxRate) || 0
+  const invoiceTaxAmount = invoiceSubtotal * (taxRate / 100)
+  const invoiceTotal = invoiceSubtotal + invoiceTaxAmount
 
   const handleLogout = () => {
     void signOut({ callbackUrl: '/login' })
@@ -110,16 +219,30 @@ export default function EmployeeDashboard() {
 
   useEffect(() => {
     if (user) {
-      fetchEmployeeData()
+      void fetchEmployeeData(true)
     }
   }, [user])
 
-  const fetchEmployeeData = async () => {
+  const fetchEmployeeData = async (showSpinner = false) => {
     try {
-      const [profileRes, leavesRes, payrollRes] = await Promise.all([
+      if (showSpinner) {
+        setLoading(true)
+      }
+
+      const [
+        profileRes,
+        leavesRes,
+        payrollRes,
+        invoicesRes,
+        carsRes,
+        partsRes
+      ] = await Promise.all([
         fetch('/api/employee/profile'),
         fetch('/api/employee/leave-requests'),
-        fetch('/api/employee/payroll')
+        fetch('/api/employee/payroll'),
+        fetch('/api/employee/invoices'),
+        fetch('/api/employee/cars?limit=100&status=AVAILABLE'),
+        fetch('/api/employee/inventory/parts?limit=100')
       ])
 
       if (profileRes.ok) {
@@ -132,21 +255,50 @@ export default function EmployeeDashboard() {
           emergencyContactRelationship: profileData.emergencyContact?.relationship || '',
           notes: profileData.notes || ''
         })
+      } else {
+        setEmployeeProfile(null)
       }
 
       if (leavesRes.ok) {
         const leavesData = await leavesRes.json()
         setLeaveRequests(leavesData)
+      } else {
+        setLeaveRequests([])
       }
 
       if (payrollRes.ok) {
         const payrollData = await payrollRes.json()
         setPayrollRecords(payrollData)
+      } else {
+        setPayrollRecords([])
+      }
+
+      if (invoicesRes.ok) {
+        const invoicesData = await invoicesRes.json()
+        setInvoices(Array.isArray(invoicesData) ? invoicesData : [])
+      } else {
+        setInvoices([])
+      }
+
+      if (carsRes.ok) {
+        const carsData = await carsRes.json()
+        setCarsInventory(Array.isArray(carsData) ? carsData : [])
+      } else {
+        setCarsInventory([])
+      }
+
+      if (partsRes.ok) {
+        const partsData = await partsRes.json()
+        setPartsInventory(Array.isArray(partsData?.items) ? partsData.items : [])
+      } else {
+        setPartsInventory([])
       }
     } catch (error) {
       console.error('Error fetching employee data:', error)
     } finally {
-      setLoading(false)
+      if (showSpinner) {
+        setLoading(false)
+      }
     }
   }
 
@@ -156,18 +308,28 @@ export default function EmployeeDashboard() {
       case 'APPROVED':
       case 'PAID':
       case 'COMPLETED':
+      case 'IN_STOCK':
+      case 'AVAILABLE':
         return 'bg-green-100 text-green-800'
       case 'PENDING':
       case 'PROCESSED':
+      case 'MAINTENANCE':
         return 'bg-yellow-100 text-yellow-800'
       case 'INACTIVE':
       case 'REJECTED':
       case 'CANCELLED':
+      case 'OUT_OF_STOCK':
+      case 'SOLD':
         return 'bg-red-100 text-red-800'
       case 'ON_LEAVE':
       case 'SUSPENDED':
+      case 'RESERVED':
         return 'bg-blue-100 text-blue-800'
       case 'TERMINATED':
+        return 'bg-gray-100 text-gray-800'
+      case 'LOW_STOCK':
+        return 'bg-orange-100 text-orange-800'
+      case 'DRAFT':
         return 'bg-gray-100 text-gray-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -188,6 +350,15 @@ export default function EmployeeDashboard() {
       case 'COMPLETED': return 'مكتمل'
       case 'PROCESSED': return 'تمت معالجته'
       case 'PAID': return 'مدفوع'
+      case 'DRAFT': return 'مسودة'
+      case 'IN_STOCK': return 'متوفر'
+      case 'LOW_STOCK': return 'مخزون منخفض'
+      case 'OUT_OF_STOCK': return 'غير متوفر'
+      case 'OVERDUE': return 'متأخر'
+      case 'AVAILABLE': return 'متاح'
+      case 'SOLD': return 'مباع'
+      case 'RESERVED': return 'محجوز'
+      case 'MAINTENANCE': return 'قيد الصيانة'
       default: return status
     }
   }
@@ -216,7 +387,7 @@ export default function EmployeeDashboard() {
       })
 
       if (response.ok) {
-        fetchEmployeeData()
+        void fetchEmployeeData()
         setIsEditProfileOpen(false)
       }
     } catch (error) {
@@ -235,7 +406,7 @@ export default function EmployeeDashboard() {
       })
 
       if (response.ok) {
-        fetchEmployeeData()
+        void fetchEmployeeData()
         setIsLeaveRequestOpen(false)
         setLeaveFormData({
           leaveType: '',
@@ -246,6 +417,272 @@ export default function EmployeeDashboard() {
       }
     } catch (error) {
       console.error('Error creating leave request:', error)
+    }
+  }
+
+  const resetInvoiceForm = () => {
+    setInvoiceForm({
+      customerName: '',
+      customerEmail: '',
+      orderId: '',
+      taxRate: '14',
+      dueDate: getDefaultDueDate()
+    })
+    setInvoiceItems([])
+    setNewItemType('CUSTOM')
+    setNewItemSelection('')
+    setNewItemDescription('')
+    setNewItemQuantity(1)
+    setNewItemUnitPrice(0)
+    setInvoiceSubmitting(false)
+  }
+
+  const handleInvoiceDialogChange = (open: boolean) => {
+    setIsInvoiceDialogOpen(open)
+    if (!open) {
+      resetInvoiceForm()
+    }
+  }
+
+  const handleNewItemTypeChange = (value: InvoiceDraftSource) => {
+    setNewItemType(value)
+    setNewItemSelection('')
+    setNewItemDescription('')
+    setNewItemQuantity(1)
+    setNewItemUnitPrice(0)
+  }
+
+  const handleNewItemSelection = (value: string) => {
+    setNewItemSelection(value)
+
+    if (newItemType === 'PART') {
+      const selectedPart = partsInventory.find((part) => part.id === value)
+      if (selectedPart) {
+        setNewItemDescription(`${selectedPart.name} (${selectedPart.partNumber})`)
+        setNewItemUnitPrice(selectedPart.unitPrice)
+        if (newItemQuantity <= 0) {
+          setNewItemQuantity(1)
+        }
+      }
+    } else if (newItemType === 'VEHICLE') {
+      const selectedCar = carsInventory.find((car) => car.id === value)
+      if (selectedCar) {
+        setNewItemDescription(`${selectedCar.make} ${selectedCar.model} ${selectedCar.year}`)
+        setNewItemUnitPrice(selectedCar.price)
+        setNewItemQuantity(1)
+      }
+    }
+  }
+
+  const handleInvoiceItemChange = (id: string, field: 'quantity' | 'unitPrice', value: number) => {
+    const safeValue = Number.isFinite(value) ? value : 0
+    const normalizedValue = field === 'quantity' ? Math.max(1, Math.floor(safeValue || 0)) : Math.max(0, safeValue)
+
+    setInvoiceItems((items) =>
+      items.map((item) => {
+        if (item.id !== id) {
+          return item
+        }
+
+        const updatedQuantity = field === 'quantity' ? normalizedValue : item.quantity
+        const updatedUnitPrice = field === 'unitPrice' ? normalizedValue : item.unitPrice
+
+        return {
+          ...item,
+          quantity: updatedQuantity,
+          unitPrice: updatedUnitPrice,
+          totalPrice: updatedQuantity * updatedUnitPrice
+        }
+      })
+    )
+  }
+
+  const handleRemoveInvoiceItem = (id: string) => {
+    setInvoiceItems((items) => items.filter((item) => item.id !== id))
+  }
+
+  const handleAddInvoiceItem = () => {
+    let description = newItemDescription.trim()
+    let unitPrice = Number.isFinite(newItemUnitPrice) ? newItemUnitPrice : 0
+    let sourceId: string | undefined
+
+    if (newItemType === 'PART') {
+      if (!newItemSelection) {
+        toast({
+          title: 'حدد قطعة الغيار',
+          description: 'يرجى اختيار قطعة الغيار التي ترغب في إضافتها.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const selectedPart = partsInventory.find((part) => part.id === newItemSelection)
+      if (!selectedPart) {
+        toast({
+          title: 'العنصر غير متوفر',
+          description: 'لم يتم العثور على قطعة الغيار المختارة في المخزون.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      description = `${selectedPart.name} (${selectedPart.partNumber})`
+      unitPrice = selectedPart.unitPrice
+      sourceId = selectedPart.id
+    } else if (newItemType === 'VEHICLE') {
+      if (!newItemSelection) {
+        toast({
+          title: 'حدد المركبة',
+          description: 'يرجى اختيار المركبة التي ترغب في إضافتها إلى الفاتورة.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const selectedCar = carsInventory.find((car) => car.id === newItemSelection)
+      if (!selectedCar) {
+        toast({
+          title: 'المركبة غير متاحة',
+          description: 'المركبة المختارة غير متوفرة حالياً في المخزون.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      description = `${selectedCar.make} ${selectedCar.model} ${selectedCar.year}`
+      unitPrice = selectedCar.price
+      sourceId = selectedCar.id
+    } else {
+      if (!description) {
+        toast({
+          title: 'أدخل وصف العنصر',
+          description: 'يجب إدخال وصف واضح للعنصر أو الخدمة.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      if (unitPrice <= 0) {
+        toast({
+          title: 'السعر غير صالح',
+          description: 'يرجى إدخال سعر أكبر من صفر.',
+          variant: 'destructive'
+        })
+        return
+      }
+    }
+
+    const quantityBase = Number.isFinite(newItemQuantity) ? newItemQuantity : 1
+    const quantity = Math.max(1, Math.floor(quantityBase))
+    const id = createItemId()
+
+    setInvoiceItems((items) => [
+      ...items,
+      {
+        id,
+        description,
+        quantity,
+        unitPrice,
+        totalPrice: quantity * unitPrice,
+        sourceType: newItemType,
+        sourceId
+      }
+    ])
+
+    if (newItemType === 'CUSTOM') {
+      setNewItemDescription('')
+      setNewItemUnitPrice(0)
+    }
+
+    setNewItemSelection('')
+    setNewItemQuantity(1)
+  }
+
+  const handleCreateInvoice = async () => {
+    if (!invoiceForm.customerName.trim() || !invoiceForm.customerEmail.trim()) {
+      toast({
+        title: 'بيانات العميل مطلوبة',
+        description: 'يرجى إدخال اسم العميل وبريده الإلكتروني قبل إنشاء الفاتورة.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!invoiceForm.dueDate) {
+      toast({
+        title: 'تاريخ الاستحقاق مطلوب',
+        description: 'يرجى تحديد تاريخ استحقاق الفاتورة.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (invoiceItems.length === 0) {
+      toast({
+        title: 'أضف عناصر الفاتورة',
+        description: 'يجب إضافة عنصر واحد على الأقل قبل حفظ الفاتورة.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const normalizedItems = invoiceItems.map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.quantity * item.unitPrice
+    }))
+
+    const payload: Record<string, unknown> = {
+      customerName: invoiceForm.customerName.trim(),
+      customerEmail: invoiceForm.customerEmail.trim(),
+      items: normalizedItems,
+      tax: Math.max(0, Number(invoiceForm.taxRate) || 0),
+      dueDate: invoiceForm.dueDate
+    }
+
+    if (invoiceForm.orderId.trim()) {
+      payload.orderId = invoiceForm.orderId.trim()
+    }
+
+    try {
+      setInvoiceSubmitting(true)
+      const response = await fetch('/api/employee/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'فشل إنشاء الفاتورة' }))
+        toast({
+          title: 'تعذر إنشاء الفاتورة',
+          description: error?.error || 'حدث خطأ غير متوقع أثناء حفظ الفاتورة.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      toast({
+        title: 'تم إنشاء الفاتورة',
+        description: 'تم حفظ الفاتورة بنجاح ويمكنك متابعتها من القائمة.',
+        variant: 'default'
+      })
+
+      resetInvoiceForm()
+      setIsInvoiceDialogOpen(false)
+      await fetchEmployeeData()
+    } catch (error) {
+      console.error('Error creating invoice:', error)
+      toast({
+        title: 'تعذر إنشاء الفاتورة',
+        description: 'حدث خطأ أثناء إنشاء الفاتورة. حاول مرة أخرى.',
+        variant: 'destructive'
+      })
+    } finally {
+      setInvoiceSubmitting(false)
     }
   }
 
@@ -365,6 +802,8 @@ export default function EmployeeDashboard() {
           <TabsTrigger value="profile">الملف الشخصي</TabsTrigger>
           <TabsTrigger value="leaves">الإجازات</TabsTrigger>
           <TabsTrigger value="payroll">الرواتب</TabsTrigger>
+          <TabsTrigger value="invoices">الفواتير</TabsTrigger>
+          <TabsTrigger value="inventory">المخزون</TabsTrigger>
           <TabsTrigger value="documents">المستندات</TabsTrigger>
         </TabsList>
 
@@ -694,6 +1133,365 @@ export default function EmployeeDashboard() {
                   ))
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="invoices" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle>الفواتير</CardTitle>
+                <CardDescription>إنشاء الفواتير للعملاء وتتبع حالتها اليومية</CardDescription>
+              </div>
+              <Dialog open={isInvoiceDialogOpen} onOpenChange={handleInvoiceDialogChange}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 ml-2" />
+                    فاتورة جديدة
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>إنشاء فاتورة جديدة</DialogTitle>
+                    <DialogDescription>
+                      قم بإدخال بيانات العميل وإضافة العناصر أو الخدمات المطلوب تحصيلها.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="invoiceCustomerName">اسم العميل</Label>
+                        <Input
+                          id="invoiceCustomerName"
+                          value={invoiceForm.customerName}
+                          onChange={(e) => setInvoiceForm({ ...invoiceForm, customerName: e.target.value })}
+                          placeholder="أدخل اسم العميل"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="invoiceCustomerEmail">البريد الإلكتروني</Label>
+                        <Input
+                          id="invoiceCustomerEmail"
+                          type="email"
+                          value={invoiceForm.customerEmail}
+                          onChange={(e) => setInvoiceForm({ ...invoiceForm, customerEmail: e.target.value })}
+                          placeholder="example@email.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="invoiceOrderId">رقم الطلب (اختياري)</Label>
+                        <Input
+                          id="invoiceOrderId"
+                          value={invoiceForm.orderId}
+                          onChange={(e) => setInvoiceForm({ ...invoiceForm, orderId: e.target.value })}
+                          placeholder="إن وجد"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="invoiceTax">نسبة الضريبة (%)</Label>
+                        <Input
+                          id="invoiceTax"
+                          type="number"
+                          min={0}
+                          value={invoiceForm.taxRate}
+                          onChange={(e) => setInvoiceForm({ ...invoiceForm, taxRate: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="invoiceDueDate">تاريخ الاستحقاق</Label>
+                        <Input
+                          id="invoiceDueDate"
+                          type="date"
+                          value={invoiceForm.dueDate}
+                          onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-base font-semibold">عناصر الفاتورة</h4>
+                        <div className="text-sm text-muted-foreground">
+                          الإجمالي الحالي: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTotal)}
+                        </div>
+                      </div>
+
+                      <div className="border rounded-lg">
+                        {invoiceItems.length === 0 ? (
+                          <p className="text-center text-muted-foreground py-6">لم يتم إضافة أي عناصر حتى الآن</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>الوصف</TableHead>
+                                <TableHead className="w-24 text-center">الكمية</TableHead>
+                                <TableHead className="w-32 text-center">السعر للوحدة</TableHead>
+                                <TableHead className="w-32 text-right">الإجمالي</TableHead>
+                                <TableHead className="w-12 text-right"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {invoiceItems.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell className="font-medium">{item.description}</TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={item.quantity}
+                                      onChange={(e) => handleInvoiceItemChange(item.id, 'quantity', Number(e.target.value))}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={item.unitPrice}
+                                      onChange={(e) => handleInvoiceItemChange(item.id, 'unitPrice', Number(e.target.value))}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(item.quantity * item.unitPrice)}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveInvoiceItem(item.id)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-5">
+                        <div className="space-y-2">
+                          <Label>نوع العنصر</Label>
+                          <Select value={newItemType} onValueChange={(value) => handleNewItemTypeChange(value as InvoiceDraftSource)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="اختر نوع العنصر" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="CUSTOM">خدمة أو عنصر مخصص</SelectItem>
+                              <SelectItem value="PART">قطعة غيار من المخزون</SelectItem>
+                              <SelectItem value="VEHICLE">مركبة</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>تفاصيل العنصر</Label>
+                          {newItemType === 'CUSTOM' ? (
+                            <Input
+                              value={newItemDescription}
+                              onChange={(e) => setNewItemDescription(e.target.value)}
+                              placeholder="أدخل وصف العنصر أو الخدمة"
+                            />
+                          ) : (
+                            <Select value={newItemSelection} onValueChange={handleNewItemSelection}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={newItemType === 'PART' ? 'اختر قطعة الغيار' : 'اختر المركبة'} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {newItemType === 'PART'
+                                  ? partsInventory.slice(0, 50).map((part) => (
+                                      <SelectItem key={part.id} value={part.id}>
+                                        {part.name} • {part.partNumber}
+                                      </SelectItem>
+                                    ))
+                                  : carsInventory.slice(0, 50).map((car) => (
+                                      <SelectItem key={car.id} value={car.id}>
+                                        {car.make} {car.model} {car.year}
+                                      </SelectItem>
+                                    ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>الكمية</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={newItemQuantity}
+                            onChange={(e) => {
+                              const value = Number(e.target.value)
+                              setNewItemQuantity(Number.isNaN(value) ? 0 : value)
+                            }}
+                            disabled={newItemType === 'VEHICLE'}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>سعر الوحدة</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={newItemUnitPrice}
+                            onChange={(e) => {
+                              const value = Number(e.target.value)
+                              setNewItemUnitPrice(Number.isNaN(value) ? 0 : value)
+                            }}
+                            disabled={newItemType !== 'CUSTOM'}
+                          />
+                        </div>
+                        <div className="md:col-span-5 flex justify-end">
+                          <Button type="button" variant="secondary" onClick={handleAddInvoiceItem}>
+                            <Plus className="h-4 w-4 ml-2" />
+                            إضافة العنصر
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-between">
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>الإجمالي الفرعي: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceSubtotal)}</p>
+                          <p>
+                            الضريبة ({taxRate}%): {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTaxAmount)}
+                          </p>
+                        </div>
+                        <div className="text-lg font-semibold">
+                          المبلغ المستحق: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTotal)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => handleInvoiceDialogChange(false)}>
+                        إلغاء
+                      </Button>
+                      <Button onClick={handleCreateInvoice} disabled={invoiceSubmitting}>
+                        {invoiceSubmitting ? 'جارٍ الحفظ...' : 'حفظ الفاتورة'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {invoices.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">لم يتم إصدار أي فواتير حتى الآن</p>
+              ) : (
+                <div className="space-y-3">
+                  {invoices.map((invoice) => {
+                    const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null
+                    const dueDate = invoice.dueDate ? new Date(invoice.dueDate) : null
+                    const issueDateText = issueDate && !Number.isNaN(issueDate.getTime())
+                      ? format(issueDate, 'dd/MM/yyyy', { locale: ar })
+                      : 'غير متوفر'
+                    const dueDateText = dueDate && !Number.isNaN(dueDate.getTime())
+                      ? format(dueDate, 'dd/MM/yyyy', { locale: ar })
+                      : 'غير محدد'
+
+                    return (
+                      <div key={invoice.id} className="flex flex-col gap-2 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-1">
+                          <h4 className="font-semibold">فاتورة #{invoice.id.slice(0, 8)}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {invoice.customerName} • {invoice.customerEmail}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            صادرة في {issueDateText} • مستحقة في {dueDateText}
+                          </p>
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <p className="text-lg font-semibold">
+                            {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoice.total)}
+                          </p>
+                          <Badge className={getStatusColor(invoice.status.toUpperCase())}>
+                            {getStatusText(invoice.status.toUpperCase())}
+                          </Badge>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="inventory" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>مخزون السيارات المتاحة</CardTitle>
+              <CardDescription>نظرة سريعة على المركبات الجاهزة للبيع أو التسليم</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {carsInventory.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">لا توجد سيارات متاحة حالياً في المخزون</p>
+              ) : (
+                <div className="space-y-3">
+                  {carsInventory.slice(0, 8).map((car) => (
+                    <div key={car.id} className="flex flex-col gap-2 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Car className="h-5 w-5 text-muted-foreground" />
+                          <h4 className="font-semibold">{car.make} {car.model} {car.year}</h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground">رقم المخزون: {car.stockNumber || 'غير متوفر'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          السعر: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(car.price)}
+                        </p>
+                      </div>
+                      <div className="space-y-2 text-right">
+                        <Badge className={getStatusColor(car.status.toUpperCase())}>
+                          {getStatusText(car.status.toUpperCase())}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground">ناقل الحركة: {car.transmission || 'غير محدد'}</p>
+                        <p className="text-xs text-muted-foreground">نوع الوقود: {car.fuelType || 'غير محدد'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>مخزون قطع الغيار</CardTitle>
+              <CardDescription>تتبع سريع لمستويات المخزون والقطع منخفضة الكمية</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {partsInventory.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">لا توجد بيانات متاحة لقطع الغيار</p>
+              ) : (
+                <div className="space-y-3">
+                  {partsInventory.slice(0, 10).map((part) => (
+                    <div key={part.id} className="flex flex-col gap-2 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Package className="h-5 w-5 text-muted-foreground" />
+                          <h4 className="font-semibold">{part.name}</h4>
+                        </div>
+                        <p className="text-sm text-muted-foreground">رقم القطعة: {part.partNumber}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {part.location || 'غير محدد'} • {part.warehouse || 'غير محدد'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">المورد: {part.supplier || 'غير معروف'}</p>
+                      </div>
+                      <div className="space-y-2 text-right">
+                        <Badge className={getStatusColor(part.status.toUpperCase())}>
+                          {getStatusText(part.status.toUpperCase())}
+                        </Badge>
+                        <p className={`text-xs ${part.quantity <= part.minStockLevel ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                          الكمية المتاحة: {part.quantity} (الحد الأدنى {part.minStockLevel})
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          السعر: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(part.unitPrice)}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
+                          <Clock className="h-3.5 w-3.5" />
+                          زمن التوريد: {part.leadTime} يوم
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
