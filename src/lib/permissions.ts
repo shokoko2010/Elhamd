@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { UserRole as PrismaUserRole, PermissionCategory } from '@prisma/client'
+import { UserRole as PrismaUserRole, PermissionCategory, Prisma } from '@prisma/client'
 
 // Define UserRole enum locally to match Prisma enum
 export enum UserRole {
@@ -440,22 +440,53 @@ export class PermissionService {
 
   static async initializeRoleTemplates() {
     const roles = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.BRANCH_MANAGER, UserRole.STAFF, UserRole.CUSTOMER]
-    
+
+    await this.initializeDefaultPermissions()
+
+    const permissionRecords = await db.permission.findMany({
+      select: { id: true, name: true }
+    })
+    const permissionLookup = new Map(permissionRecords.map(record => [record.name, record.id]))
+
     for (const role of roles) {
-      const permissions = DEFAULT_ROLE_PERMISSIONS[role]
+      const permissions = Array.from(new Set(DEFAULT_ROLE_PERMISSIONS[role] ?? []))
       const templateName = `${role}_TEMPLATE`
-      
-      await db.roleTemplate.upsert({
+      const jsonPermissions = permissions as unknown as Prisma.JsonArray
+
+      const template = await db.roleTemplate.upsert({
         where: { name: templateName },
-        update: {},
+        update: {
+          description: `Default permissions for ${role} role`,
+          role,
+          permissions: jsonPermissions,
+          isSystem: true,
+          isActive: true
+        },
         create: {
           name: templateName,
           description: `Default permissions for ${role} role`,
           role,
-          permissions: JSON.stringify(permissions),
-          isSystem: true
+          permissions: jsonPermissions,
+          isSystem: true,
+          isActive: true
         }
       })
+
+      const permissionIds = permissions
+        .map(permissionName => permissionLookup.get(permissionName))
+        .filter((value): value is string => Boolean(value))
+
+      await db.roleTemplatePermission.deleteMany({ where: { templateId: template.id } })
+
+      if (permissionIds.length > 0) {
+        await db.roleTemplatePermission.createMany({
+          data: permissionIds.map(permissionId => ({
+            templateId: template.id,
+            permissionId
+          })),
+          skipDuplicates: true
+        })
+      }
     }
   }
 

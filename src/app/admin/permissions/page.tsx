@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { LoadingIndicator, ErrorState, EmptyState } from '@/components/ui/LoadingIndicator'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/use-auth'
 import { PermissionCategory, UserRole } from '@prisma/client'
 import {
   Building,
@@ -189,6 +190,11 @@ export default function PermissionsPage() {
 
 function PermissionsDashboard() {
   const { toast } = useToast()
+  const { user, canManageRoleTemplates } = useAuth()
+
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN
+  const allowSystemTemplateEditing = isSuperAdmin
+  const allowRoleTemplateManagement = isSuperAdmin || canManageRoleTemplates()
 
   const [users, setUsers] = useState<UserWithPermissions[]>([])
   const [metrics, setMetrics] = useState<Metrics | null>(null)
@@ -712,15 +718,17 @@ function PermissionsDashboard() {
                         <div className="text-sm font-medium">{formatNumber(template.permissions.length)} صلاحية</div>
                         <div className="text-xs text-muted-foreground">قالب دور مؤسسي</div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditTemplate(template)}
-                        disabled={template.isSystem}
-                      >
-                        <Edit className="ml-1 h-4 w-4" />
-                        تعديل القالب
-                      </Button>
+                      {allowRoleTemplateManagement && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditTemplate(template)}
+                          disabled={template.isSystem && !allowSystemTemplateEditing}
+                        >
+                          <Edit className="ml-1 h-4 w-4" />
+                          تعديل القالب
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))

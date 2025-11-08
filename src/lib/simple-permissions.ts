@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { PERMISSIONS } from './permissions'
 
 export async function getUserPermissions(userId: string): Promise<string[]> {
   try {
@@ -25,40 +26,43 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
     let rolePermissions: string[] = []
     if (user.roleTemplate?.permissions) {
       try {
-        const parsedPermissions = typeof user.roleTemplate.permissions === 'string' 
-          ? JSON.parse(user.roleTemplate.permissions) 
+        const rawPermissions = typeof user.roleTemplate.permissions === 'string'
+          ? JSON.parse(user.roleTemplate.permissions)
           : user.roleTemplate.permissions
-        
-        const permissionRecords = await db.permission.findMany({
-          where: { id: { in: parsedPermissions } },
-          select: { name: true }
-        })
-        
-        rolePermissions = permissionRecords.map(p => p.name)
+
+        const normalized = Array.isArray(rawPermissions)
+          ? rawPermissions.filter((value): value is string => typeof value === 'string')
+          : []
+
+        if (normalized.length > 0) {
+          const permissionRecords = await db.permission.findMany({
+            where: {
+              OR: [
+                { id: { in: normalized } },
+                { name: { in: normalized } },
+              ],
+            },
+            select: { name: true },
+          })
+
+          rolePermissions = permissionRecords.map((record) => record.name)
+        }
       } catch (error) {
         console.error('Error parsing role permissions:', error)
       }
     }
 
-    // If no permissions found, give default permissions based on role
-    if (userPermissions.length === 0 && rolePermissions.length === 0) {
-      switch (user.role) {
-        case 'SUPER_ADMIN':
-        case 'ADMIN':
-          return ['*'] // All permissions
-        case 'BRANCH_MANAGER':
-          return ['VIEW_EMPLOYEES', 'MANAGE_EMPLOYEES', 'VIEW_PAYROLL', 'MANAGE_PAYROLL']
-        case 'STAFF':
-          return ['VIEW_EMPLOYEES']
-        default:
-          return []
+    const combinedPermissions = new Set([...userPermissions, ...rolePermissions])
+
+    if (combinedPermissions.size === 0) {
+      if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+        return Object.values(PERMISSIONS)
       }
+
+      return []
     }
 
-    // Combine and deduplicate permissions
-    const allPermissions = [...new Set([...userPermissions, ...rolePermissions])]
-
-    return allPermissions
+    return Array.from(combinedPermissions)
   } catch (error) {
     console.error('❌ Error getting user permissions:', error)
     return []
