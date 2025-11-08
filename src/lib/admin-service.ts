@@ -105,39 +105,30 @@ export class AdminService {
     })
 
     // Booking stats
-    const [todayTestDriveBookings, todayServiceBookings, pendingTestDriveBookings, pendingServiceBookings, testDriveBookings, serviceBookings, completedTestDriveBookings, completedServiceBookings, cancelledTestDriveBookings, cancelledServiceBookings] = await Promise.all([
+    const [todayBookings, pendingBookings, testDriveBookings, serviceBookings, completedBookings, cancelledBookings] = await Promise.all([
       db.testDriveBooking.count({
         where: { date: { gte: startOfToday, lte: endOfToday } }
-      }),
-      db.serviceBooking.count({
+      }) + db.serviceBooking.count({
         where: { date: { gte: startOfToday, lte: endOfToday } }
       }),
       db.testDriveBooking.count({
         where: { status: BookingStatus.PENDING }
-      }),
-      db.serviceBooking.count({
+      }) + db.serviceBooking.count({
         where: { status: BookingStatus.PENDING }
       }),
       db.testDriveBooking.count(),
       db.serviceBooking.count(),
       db.testDriveBooking.count({
         where: { status: BookingStatus.COMPLETED }
-      }),
-      db.serviceBooking.count({
+      }) + db.serviceBooking.count({
         where: { status: BookingStatus.COMPLETED }
       }),
       db.testDriveBooking.count({
         where: { status: BookingStatus.CANCELLED }
-      }),
-      db.serviceBooking.count({
+      }) + db.serviceBooking.count({
         where: { status: BookingStatus.CANCELLED }
       })
     ])
-
-    const todayBookings = todayTestDriveBookings + todayServiceBookings
-    const pendingBookings = pendingTestDriveBookings + pendingServiceBookings
-    const completedBookings = completedTestDriveBookings + completedServiceBookings
-    const cancelledBookings = cancelledTestDriveBookings + cancelledServiceBookings
 
     // Revenue stats
     const monthlyRevenue = await db.serviceBooking.aggregate({
@@ -390,7 +381,7 @@ export class AdminService {
   }
 
   async getSystemHealth() {
-    const [totalUsers, activeUsers, testDriveBookingsCount, serviceBookingsCount, pendingNotifications] = await Promise.all([
+    const [totalUsers, activeUsers, totalBookings, pendingNotifications] = await Promise.all([
       db.user.count(),
       db.user.count({
         where: {
@@ -398,14 +389,11 @@ export class AdminService {
           lastLoginAt: { gte: subDays(new Date(), 30) }
         }
       }),
-      db.testDriveBooking.count(),
-      db.serviceBooking.count(),
+      db.testDriveBooking.count() + db.serviceBooking.count(),
       db.notification.count({
         where: { status: 'PENDING' }
       })
     ])
-
-    const totalBookings = testDriveBookingsCount + serviceBookingsCount
 
     return {
       totalUsers,
@@ -417,11 +405,10 @@ export class AdminService {
   }
 
   async getQuickActions() {
-    const [pendingTestDriveBookings, pendingServiceBookings, lowStockVehicles, overduePayments] = await Promise.all([
+    const [pendingBookings, lowStockVehicles, overduePayments] = await Promise.all([
       db.testDriveBooking.count({
         where: { status: BookingStatus.PENDING }
-      }),
-      db.serviceBooking.count({
+      }) + db.serviceBooking.count({
         where: { status: BookingStatus.PENDING }
       }),
       db.vehicle.count({
@@ -434,8 +421,6 @@ export class AdminService {
         }
       })
     ])
-
-    const pendingBookings = pendingTestDriveBookings + pendingServiceBookings
 
     return {
       pendingBookings,

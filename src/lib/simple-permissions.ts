@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 
 export async function getUserPermissions(userId: string): Promise<string[]> {
   try {
+    console.log('🔍 Getting permissions for user:', userId)
+    
     const user = await db.user.findUnique({
       where: { id: userId },
       include: {
@@ -15,11 +17,15 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
     })
 
     if (!user) {
+      console.log('❌ User not found')
       return []
     }
 
+    console.log('✅ User found:', user.email, 'Role:', user.role)
+
     // Get permissions from user permissions
     const userPermissions = user.permissions.map(p => p.permission.name)
+    console.log('🔑 User permissions:', userPermissions)
 
     // Get permissions from role template if exists
     let rolePermissions: string[] = []
@@ -35,25 +41,23 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
         })
         
         rolePermissions = permissionRecords.map(p => p.name)
+        console.log('🔑 Role permissions:', rolePermissions)
       } catch (error) {
-        // Silently handle parsing errors
+        console.error('Error parsing role permissions:', error)
       }
     }
 
     // If no permissions found, give default permissions based on role
     if (userPermissions.length === 0 && rolePermissions.length === 0) {
+      console.log('🔑 Using default permissions for role:', user.role)
       switch (user.role) {
         case 'SUPER_ADMIN':
-          return ['*'] // All permissions for super admin only
         case 'ADMIN':
-          return [
-            'view_dashboard', 'manage_users', 'view_permissions', 
-            'manage_permissions', 'view_vehicles', 'manage_vehicles'
-          ]
+          return ['*'] // All permissions
         case 'BRANCH_MANAGER':
-          return ['view_employees', 'manage_employees', 'view_payroll', 'manage_branch']
+          return ['VIEW_EMPLOYEES', 'MANAGE_EMPLOYEES', 'VIEW_PAYROLL', 'MANAGE_PAYROLL']
         case 'STAFF':
-          return ['view_vehicles', 'view_customers']
+          return ['VIEW_EMPLOYEES']
         default:
           return []
       }
@@ -61,10 +65,11 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
 
     // Combine and deduplicate permissions
     const allPermissions = [...new Set([...userPermissions, ...rolePermissions])]
+    console.log('🔑 Final permissions:', allPermissions)
     
     return allPermissions
   } catch (error) {
-    // Return empty permissions on error instead of logging sensitive data
+    console.error('❌ Error getting user permissions:', error)
     return []
   }
 }

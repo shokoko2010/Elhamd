@@ -43,7 +43,6 @@ import {
   Upload,
   RefreshCw
 } from 'lucide-react'
-import { LogoutButton } from '@/components/auth/LogoutButton'
 
 interface DashboardStats {
   totalVehicles: number
@@ -334,12 +333,9 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto">
       {/* Page Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">مرحباً بك في لوحة التحكم</h1>
-          <p className="text-gray-600">إدارة شركة الحمد للسيارات - نظرة عامة على الأداء</p>
-        </div>
-        <LogoutButton variant="outline" />
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">مرحباً بك في لوحة التحكم</h1>
+        <p className="text-gray-600">إدارة شركة الحمد للسيارات - نظرة عامة على الأداء</p>
       </div>
 
       {/* Stats Cards */}

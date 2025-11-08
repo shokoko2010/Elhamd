@@ -27,7 +27,6 @@ import {
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { useAuth } from '@/hooks/use-auth'
-import { LogoutButton } from '@/components/auth/LogoutButton'
 
 interface EmployeeProfile {
   id: string
@@ -279,7 +278,6 @@ export default function EmployeeDashboard() {
             <Settings className="h-4 w-4 ml-2" />
             الإعدادات
           </Button>
-          <LogoutButton variant="outline" size="sm" showText={false} className="ml-2" />
         </div>
       </div>
 
