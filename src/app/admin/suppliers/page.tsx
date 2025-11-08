@@ -68,6 +68,13 @@ export default function SuppliersPage() {
   const [submitting, setSubmitting] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('ar-EG', {
+      style: 'currency',
+      currency: 'EGP',
+      minimumFractionDigits: 0
+    }).format(amount)
+
   useEffect(() => {
     loadSuppliers()
   }, [])
@@ -355,7 +362,7 @@ export default function SuppliersPage() {
                   </div>
                   {supplier.minOrderAmount > 0 && (
                     <div className="text-sm text-gray-600">
-                      الحد الأدنى للطلب: {supplier.minOrderAmount.toLocaleString()} ريال
+                      الحد الأدنى للطلب: {formatCurrency(supplier.minOrderAmount)}
                     </div>
                   )}
                 </CardContent>
@@ -446,7 +453,7 @@ export default function SuppliersPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="minOrderAmount">الحد الأدنى للطلب</Label>
+                  <Label htmlFor="minOrderAmount">الحد الأدنى للطلب (جنيه مصري)</Label>
                   <Input
                     id="minOrderAmount"
                     type="number"

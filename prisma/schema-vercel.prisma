@@ -215,7 +215,7 @@ model VehiclePricing {
   taxes              Float     @default(0)
   fees               Float     @default(0)
   totalPrice         Float
-  currency           String    @default("SAR")
+  currency           String    @default("EGP")
   hasDiscount        Boolean   @default(false)
   discountExpires    DateTime?
   createdAt          DateTime  @default(now())

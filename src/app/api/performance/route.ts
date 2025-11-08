@@ -59,10 +59,10 @@ const isSchemaMissingError = (error: unknown) => {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const filter = resolvePeriodFilter(searchParams.get('period'))
+  const { searchParams } = new URL(request.url)
+  const filter = resolvePeriodFilter(searchParams.get('period'))
 
+  try {
     let performanceMetrics: any[] = []
     let schemaMissing = false
 
@@ -139,10 +139,15 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching performance data:', error)
-    return NextResponse.json(
-      { error: 'حدث خطأ أثناء جلب بيانات تقييم الأداء' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      success: true,
+      data: [],
+      period: filter.label,
+      periodType: filter.periodType,
+      count: 0,
+      warning: 'performance-metrics-error',
+      error: 'حدث خطأ أثناء جلب بيانات تقييم الأداء'
+    })
   }
 }
 
