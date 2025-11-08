@@ -2,95 +2,129 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { UserRole } from '@prisma/client'
+import { EmployeeStatus, Prisma, UserRole } from '@prisma/client'
+import { z } from 'zod'
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'غير مصرح بالوصول' },
-        { status: 401 }
-      )
-    }
+type EmergencyContact = {
+  name?: string
+  phone?: string
+  relationship?: string
+}
 
-    // Check if user has employee role or higher
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      include: {
-        employee: {
-          include: {
-            branch: true
-          }
+function normalizeEmergencyContact(value: unknown): EmergencyContact | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined
+  }
+
+  const record = value as Record<string, unknown>
+
+  const name = typeof record.name === 'string' ? record.name : undefined
+  const phone = typeof record.phone === 'string' ? record.phone : undefined
+  const relationship = typeof record.relationship === 'string' ? record.relationship : undefined
+
+  if (!name && !phone && !relationship) {
+    return undefined
+  }
+
+  return { name, phone, relationship }
+}
+
+function deriveEmployeeNumber(userId: string): string {
+  return `USR-${userId.slice(0, 8).toUpperCase()}`
+}
+
+const allowedRoles: UserRole[] = [
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.BRANCH_MANAGER,
+  UserRole.STAFF
+]
+
+const updateProfileSchema = z
+  .object({
+    phone: z.string().max(32).optional(),
+    emergencyContactName: z.string().max(120).optional(),
+    emergencyContactPhone: z.string().max(32).optional(),
+    emergencyContactRelationship: z.string().max(120).optional(),
+    notes: z.string().max(1000).optional()
+  })
+  .strict()
+
+async function fetchUserWithEmployee(userId?: string | null, email?: string | null) {
+  if (!userId && !email) {
+    return null
+  }
+
+  const where = userId
+    ? { id: userId }
+    : { email: email ?? undefined }
+
+  return db.user.findFirst({
+    where,
+    include: {
+      employee: {
+        include: {
+          branch: { select: { id: true, name: true } },
+          department: { select: { name: true } },
+          position: { select: { name: true } }
         }
       }
-    })
+    }
+  })
+}
 
-    if (!user || !['STAFF', 'BRANCH_MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
-      return NextResponse.json(
-        { error: 'غير مصرح بالوصول' },
-        { status: 403 }
-      )
+type UserWithEmployee = NonNullable<Awaited<ReturnType<typeof fetchUserWithEmployee>>>
+
+function buildProfilePayload(user: UserWithEmployee) {
+  const employee = user.employee
+  const emergencyContact = normalizeEmergencyContact(employee?.emergencyContact ?? undefined)
+
+  return {
+    id: employee?.id ?? user.id,
+    employeeNumber: employee?.employeeNumber ?? deriveEmployeeNumber(user.id),
+    user: {
+      id: user.id,
+      name: user.name ?? 'موظف',
+      email: user.email,
+      phone: user.phone ?? '',
+      avatar: null as string | null
+    },
+    department: employee?.department?.name ?? 'غير محدد',
+    position: employee?.position?.name ?? user.role,
+    hireDate: (employee?.hireDate ?? user.createdAt).toISOString(),
+    salary: employee?.salary ?? 0,
+    status: employee?.status ?? EmployeeStatus.ACTIVE,
+    branch: employee?.branch
+      ? { id: employee.branch.id, name: employee.branch.name }
+      : undefined,
+    emergencyContact,
+    notes: employee?.notes ?? undefined
+  }
+}
+
+export async function GET(_request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 })
     }
 
-    // If no employee record exists, create one for staff/branch managers
-    let employeeProfile = user.employee
-    if (!employeeProfile && ['STAFF', 'BRANCH_MANAGER'].includes(user.role)) {
-      employeeProfile = await db.employee.create({
-        data: {
-          userId: user.id,
-          employeeNumber: `EMP${Date.now()}`,
-          department: user.role === 'BRANCH_MANAGER' ? 'الإدارة' : 'المبيعات',
-          position: user.role === 'BRANCH_MANAGER' ? 'مدير الفرع' : 'موظف',
-          hireDate: new Date(),
-          salary: 0, // Will be set by admin
-          status: 'ACTIVE',
-          branchId: user.branchId || null
-        },
-        include: {
-          branch: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              avatar: true
-            }
-          }
-        }
-      })
-    } else if (employeeProfile) {
-      // Refresh employee data with user info
-      employeeProfile = await db.employee.findUnique({
-        where: { userId: user.id },
-        include: {
-          branch: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              avatar: true
-            }
-          }
-        }
-      })
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'صلاحيات غير كافية' }, { status: 403 })
     }
 
-    if (!employeeProfile) {
-      return NextResponse.json(
-        { error: 'بيانات الموظف غير متاحة' },
-        { status: 404 }
-      )
+    const user = await fetchUserWithEmployee(session.user.id, session.user.email)
+
+    if (!user) {
+      return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 })
     }
 
-    return NextResponse.json(employeeProfile)
+    return NextResponse.json(buildProfilePayload(user))
   } catch (error) {
+    console.error('Error fetching employee profile:', error)
     return NextResponse.json(
-      { error: 'فشل في جلب بيانات الموظف' },
+      { error: 'حدث خطأ أثناء جلب بيانات الموظف' },
       { status: 500 }
     )
   }
@@ -99,64 +133,174 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'غير مصرح بالوصول' }, { status: 401 })
+    }
+
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'صلاحيات غير كافية' }, { status: 403 })
+    }
+
+    const rawBody = await request.json().catch(() => null)
+
+    if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
+      return NextResponse.json({ error: 'بيانات غير صالحة' }, { status: 400 })
+    }
+
+    const parsedResult = updateProfileSchema.safeParse(rawBody)
+
+    if (!parsedResult.success) {
       return NextResponse.json(
-        { error: 'غير مصرح بالوصول' },
-        { status: 401 }
+        { error: 'بيانات غير صالحة', details: parsedResult.error.flatten() },
+        { status: 400 }
       )
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      include: { employee: true }
-    })
+    const data = parsedResult.data
+    const providedKeys = new Set(Object.keys(rawBody))
 
-    if (!user || !user.employee) {
-      return NextResponse.json(
-        { error: 'بيانات الموظف غير متاحة' },
-        { status: 404 }
-      )
-    }
-
-    const body = await request.json()
-    const { phone, emergencyContactName, emergencyContactPhone, emergencyContactRelationship, notes } = body
-
-    // Update user phone
-    await db.user.update({
-      where: { id: user.id },
-      data: { phone }
-    })
-
-    // Update employee profile
-    const updatedEmployee = await db.employee.update({
-      where: { id: user.employee.id },
-      data: {
-        emergencyContact: emergencyContactName ? {
-          name: emergencyContactName,
-          phone: emergencyContactPhone,
-          relationship: emergencyContactRelationship
-        } : undefined,
-        notes
-      },
-      include: {
-        branch: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            avatar: true
-          }
-        }
+    const sanitizeField = (key: keyof typeof data) => {
+      if (!providedKeys.has(key)) {
+        return undefined
       }
-    })
 
-    return NextResponse.json(updatedEmployee)
+      const value = data[key]
+      if (typeof value !== 'string') {
+        return null
+      }
+
+      const trimmed = value.trim()
+      return trimmed.length > 0 ? trimmed : null
+    }
+
+    const phoneValue = sanitizeField('phone')
+    const emergencyName = sanitizeField('emergencyContactName')
+    const emergencyPhone = sanitizeField('emergencyContactPhone')
+    const emergencyRelationship = sanitizeField('emergencyContactRelationship')
+    const notesValue = sanitizeField('notes')
+
+    const shouldUpdateEmployee =
+      emergencyName !== undefined ||
+      emergencyPhone !== undefined ||
+      emergencyRelationship !== undefined ||
+      notesValue !== undefined
+
+    if (phoneValue === undefined && !shouldUpdateEmployee) {
+      return NextResponse.json({ error: 'لا توجد بيانات لتحديثها' }, { status: 400 })
+    }
+
+    const user = await fetchUserWithEmployee(session.user.id, session.user.email)
+
+    if (!user) {
+      return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 })
+    }
+
+    const operations: Promise<unknown>[] = []
+
+    if (phoneValue !== undefined) {
+      operations.push(
+        db.user.update({
+          where: { id: user.id },
+          data: { phone: phoneValue }
+        })
+      )
+    }
+
+    if (shouldUpdateEmployee) {
+      let emergencyContactUpdate:
+        | Prisma.NullableJsonNullValueInput
+        | Prisma.InputJsonValue
+        | undefined
+      if (
+        emergencyName === undefined &&
+        emergencyPhone === undefined &&
+        emergencyRelationship === undefined
+      ) {
+        emergencyContactUpdate = undefined
+      } else if (
+        (emergencyName === null || emergencyName === undefined) &&
+        (emergencyPhone === null || emergencyPhone === undefined) &&
+        (emergencyRelationship === null || emergencyRelationship === undefined)
+      ) {
+        emergencyContactUpdate = Prisma.JsonNull
+      } else {
+        const contactPayload: Record<string, string> = {}
+        if (emergencyName) {
+          contactPayload.name = emergencyName
+        }
+        if (emergencyPhone) {
+          contactPayload.phone = emergencyPhone
+        }
+        if (emergencyRelationship) {
+          contactPayload.relationship = emergencyRelationship
+        }
+        emergencyContactUpdate = contactPayload
+      }
+
+      const notesUpdate = notesValue !== undefined ? notesValue : undefined
+
+      if (user.employee) {
+        const employeeData: Record<string, unknown> = {}
+
+        if (emergencyContactUpdate !== undefined) {
+          employeeData.emergencyContact = emergencyContactUpdate
+        }
+
+        if (notesUpdate !== undefined) {
+          employeeData.notes = notesUpdate
+        }
+
+        if (Object.keys(employeeData).length > 0) {
+          operations.push(
+            db.employee.update({
+              where: { userId: user.id },
+              data: employeeData
+            })
+          )
+        }
+      } else {
+        const employeeData: Record<string, unknown> = {
+          userId: user.id,
+          employeeNumber: deriveEmployeeNumber(user.id),
+          hireDate: user.createdAt,
+          salary: 0,
+          status: EmployeeStatus.ACTIVE
+        }
+
+        if (user.branchId) {
+          employeeData.branch = { connect: { id: user.branchId } }
+        }
+
+        if (emergencyContactUpdate !== undefined) {
+          employeeData.emergencyContact = emergencyContactUpdate
+        }
+
+        if (notesUpdate !== undefined) {
+          employeeData.notes = notesUpdate
+        }
+
+        operations.push(db.employee.create({ data: employeeData }))
+      }
+    }
+
+    if (operations.length === 0) {
+      return NextResponse.json(buildProfilePayload(user))
+    }
+
+    await db.$transaction(operations)
+
+    const refreshedUser = await fetchUserWithEmployee(user.id, user.email)
+
+    if (!refreshedUser) {
+      return NextResponse.json({ error: 'حدث خطأ بعد تحديث البيانات' }, { status: 500 })
+    }
+
+    return NextResponse.json(buildProfilePayload(refreshedUser))
   } catch (error) {
+    console.error('Error updating employee profile:', error)
     return NextResponse.json(
-      { error: 'فشل في تحديث بيانات الموظف' },
+      { error: 'حدث خطأ أثناء تحديث بيانات الموظف' },
       { status: 500 }
     )
   }

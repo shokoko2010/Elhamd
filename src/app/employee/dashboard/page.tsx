@@ -10,24 +10,25 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { 
-  User, 
-  Calendar, 
-  DollarSign, 
-  Award, 
-  Phone, 
-  Mail, 
-  MapPin, 
+import {
+  User,
+  Calendar,
+  DollarSign,
+  Award,
+  Phone,
+  Mail,
+  MapPin,
   Building,
   Clock,
   FileText,
   Settings,
-  Bell
+  Bell,
+  LogOut
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
 import { useAuth } from '@/hooks/use-auth'
-import { LogoutButton } from '@/components/auth/LogoutButton'
+import { signOut } from 'next-auth/react'
 
 interface EmployeeProfile {
   id: string
@@ -37,7 +38,7 @@ interface EmployeeProfile {
     name: string
     email: string
     phone?: string
-    avatar?: string
+    avatar?: string | null
   }
   department: string
   position: string
@@ -102,6 +103,10 @@ export default function EmployeeDashboard() {
     endDate: '',
     reason: ''
   })
+
+  const handleLogout = () => {
+    void signOut({ callbackUrl: '/login' })
+  }
 
   useEffect(() => {
     if (user) {
@@ -279,7 +284,10 @@ export default function EmployeeDashboard() {
             <Settings className="h-4 w-4 ml-2" />
             الإعدادات
           </Button>
-          <LogoutButton variant="outline" size="sm" showText={false} className="ml-2" />
+          <Button variant="destructive" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 ml-2" />
+            تسجيل الخروج
+          </Button>
         </div>
       </div>
 

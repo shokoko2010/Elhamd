@@ -36,7 +36,7 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
         
         rolePermissions = permissionRecords.map(p => p.name)
       } catch (error) {
-        // Silently handle parsing errors
+        console.error('Error parsing role permissions:', error)
       }
     }
 
@@ -44,16 +44,12 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
     if (userPermissions.length === 0 && rolePermissions.length === 0) {
       switch (user.role) {
         case 'SUPER_ADMIN':
-          return ['*'] // All permissions for super admin only
         case 'ADMIN':
-          return [
-            'view_dashboard', 'manage_users', 'view_permissions', 
-            'manage_permissions', 'view_vehicles', 'manage_vehicles'
-          ]
+          return ['*'] // All permissions
         case 'BRANCH_MANAGER':
-          return ['view_employees', 'manage_employees', 'view_payroll', 'manage_branch']
+          return ['VIEW_EMPLOYEES', 'MANAGE_EMPLOYEES', 'VIEW_PAYROLL', 'MANAGE_PAYROLL']
         case 'STAFF':
-          return ['view_vehicles', 'view_customers']
+          return ['VIEW_EMPLOYEES']
         default:
           return []
       }
@@ -61,10 +57,10 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
 
     // Combine and deduplicate permissions
     const allPermissions = [...new Set([...userPermissions, ...rolePermissions])]
-    
+
     return allPermissions
   } catch (error) {
-    // Return empty permissions on error instead of logging sensitive data
+    console.error('❌ Error getting user permissions:', error)
     return []
   }
 }

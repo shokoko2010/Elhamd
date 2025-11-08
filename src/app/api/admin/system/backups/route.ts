@@ -1,10 +1,17 @@
+import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getAuthUser } from '@/lib/auth-server'
+import { getAuthUser, type AuthUser } from '@/lib/auth-server'
 import { PERMISSIONS, PermissionService } from '@/lib/permissions'
 import { Prisma } from '@prisma/client'
-import { randomUUID } from 'crypto'
 import { subDays, subHours } from 'date-fns'
+import {
+  getBackupStorageUsage,
+  loadBackupSettings,
+  performBackup,
+  updateAutomaticBackupSettings
+} from '@/lib/backup-service'
+import { refreshBackupScheduler } from '@/lib/backup-scheduler'
 
 type RangeOption = '7d' | '30d' | '90d' | '24h'
 
@@ -61,48 +68,34 @@ const extractStatus = (details: unknown): string => {
   return 'SUCCESS'
 }
 
-const normalizeSchedule = (settings: unknown): { enabled: boolean; schedule: string } => {
-  if (!settings || typeof settings !== 'object') {
-    return { enabled: false, schedule: '02:00' }
+type AccessResult = { error: NextResponse } | { user: AuthUser }
+
+async function requireBackupAccess(): Promise<AccessResult> {
+  const user = await getAuthUser()
+
+  if (!user) {
+    return { error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }) }
   }
 
-  const data = settings as Record<string, unknown>
+  if (user.role !== 'SUPER_ADMIN') {
+    const hasAccess = await PermissionService.hasAnyPermission(user.id, [
+      PERMISSIONS.MANAGE_BACKUPS,
+      PERMISSIONS.MANAGE_SYSTEM_SETTINGS,
+      PERMISSIONS.VIEW_SYSTEM_LOGS
+    ])
 
-  if (typeof data.autoBackup === 'object' && data.autoBackup !== null) {
-    const nested = data.autoBackup as Record<string, unknown>
-    return {
-      enabled: Boolean(nested.enabled ?? nested.isEnabled),
-      schedule: typeof nested.schedule === 'string' && nested.schedule.length > 0 ? nested.schedule : '02:00'
+    if (!hasAccess) {
+      return { error: NextResponse.json({ error: 'Access denied' }, { status: 403 }) }
     }
   }
 
-  return {
-    enabled: Boolean(data.autoBackupEnabled),
-    schedule: typeof data.autoBackupSchedule === 'string' && data.autoBackupSchedule.length > 0
-      ? data.autoBackupSchedule
-      : '02:00'
-  }
+  return { user }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
-
-    if (user.role !== 'SUPER_ADMIN') {
-      const hasAccess = await PermissionService.hasAnyPermission(user.id, [
-        PERMISSIONS.MANAGE_BACKUPS,
-        PERMISSIONS.MANAGE_SYSTEM_SETTINGS,
-        PERMISSIONS.VIEW_SYSTEM_LOGS
-      ])
-
-      if (!hasAccess) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-      }
-    }
+    const access = await requireBackupAccess()
+    if ('error' in access) return access.error
 
     const url = new URL(request.url)
     const range = (url.searchParams.get('range') as RangeOption) || '30d'
@@ -119,7 +112,7 @@ export async function GET(request: NextRequest) {
       createdAt: { gte: since }
     }
 
-    const [backups, totalBackups, siteSettings] = await Promise.all([
+    const [activityLogs, totalBackups] = await Promise.all([
       db.activityLog.findMany({
         where,
         include: {
@@ -134,40 +127,31 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         take: limit * 2
       }),
-      db.activityLog.count({ where }),
-      db.siteSettings.findFirst({
-        where: { isActive: true },
-        select: {
-          performanceSettings: true
-        }
-      })
+      db.activityLog.count({ where })
     ])
 
-    const recentBackups = backups.slice(0, limit)
-    const totalSizeBytes = backups.reduce((sum, log) => sum + extractSizeBytes(log.details), 0)
+    const context = await loadBackupSettings()
+    const storage = await getBackupStorageUsage(context)
 
-    const performanceSettings = siteSettings?.performanceSettings as Record<string, unknown> | undefined
-    const schedule = normalizeSchedule(performanceSettings)
-    const storageUsage = (performanceSettings?.backup as Record<string, unknown> | undefined) ?? {}
-
-    const usedBytes = typeof storageUsage.usedBytes === 'number' ? storageUsage.usedBytes : totalSizeBytes
-    const capacityBytes = typeof storageUsage.capacityBytes === 'number'
-      ? storageUsage.capacityBytes
-      : 100 * 1024 * 1024 * 1024 // 100 GB default
-
-    const lastBackup = recentBackups[0]
+    const recentBackups = activityLogs.slice(0, limit)
+    const totalSizeBytes = activityLogs.reduce((sum, log) => sum + extractSizeBytes(log.details), 0)
+    const lastLog = recentBackups[0]
 
     return NextResponse.json({
       stats: {
         totalBackups,
         totalSizeBytes,
-        lastBackupAt: lastBackup ? lastBackup.createdAt.toISOString() : null,
-        autoBackupEnabled: schedule.enabled,
-        autoBackupSchedule: schedule.schedule
+        lastBackupAt: context.backup.lastRunAt || (lastLog ? lastLog.createdAt.toISOString() : null),
+        lastBackupStatus: context.backup.lastStatus ?? extractStatus(lastLog?.details),
+        lastBackupError: context.backup.lastError ?? null,
+        autoBackupEnabled: context.backup.enabled,
+        autoBackupSchedule: context.backup.schedule,
+        autoBackupRetentionDays: context.backup.retentionDays,
+        nextAutoBackupAt: context.backup.nextRunAt
       },
       storage: {
-        usedBytes,
-        capacityBytes
+        usedBytes: storage.usedBytes,
+        capacityBytes: storage.capacityBytes
       },
       backups: recentBackups.map((log) => ({
         id: log.id,
@@ -197,86 +181,95 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
-
-    if (user.role !== 'SUPER_ADMIN') {
-      const hasAccess = await PermissionService.hasAnyPermission(user.id, [
-        PERMISSIONS.MANAGE_BACKUPS,
-        PERMISSIONS.MANAGE_SYSTEM_SETTINGS
-      ])
-
-      if (!hasAccess) {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-      }
-    }
+    const access = await requireBackupAccess()
+    if ('error' in access) return access.error
 
     let body: Record<string, unknown> = {}
-
     try {
       body = await request.json()
-    } catch (error) {
+    } catch {
       body = {}
     }
+
     const note = typeof body.note === 'string' ? body.note : undefined
-    const sizeBytes = typeof body.sizeBytes === 'number' ? Math.max(0, body.sizeBytes) : 0
 
-    const ipAddress = request.headers.get('x-forwarded-for') || request.ip || undefined
-    const userAgent = request.headers.get('user-agent') || undefined
-
-    const record = await db.activityLog.create({
-      data: {
-        id: randomUUID(),
-        action: 'MANUAL_BACKUP_TRIGGERED',
-        entityType: 'BACKUP',
-        entityId: randomUUID(),
-        userId: user.id,
-        ipAddress,
-        userAgent,
-        details: {
-          status: 'SUCCESS',
-          initiatedBy: 'admin_portal',
-          note,
-          sizeBytes
-        }
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
+    const backup = await performBackup({
+      source: 'manual',
+      triggeredBy: { id: access.user.id, name: access.user.name ?? null, email: access.user.email ?? null },
+      note
     })
+
+    await refreshBackupScheduler()
 
     return NextResponse.json(
       {
         backup: {
-          id: record.id,
-          createdAt: record.createdAt.toISOString(),
-          status: extractStatus(record.details),
-          sizeBytes: extractSizeBytes(record.details),
-          triggeredBy: record.user
-            ? {
-                id: record.user.id,
-                name: record.user.name,
-                email: record.user.email
-              }
-            : null,
-          metadata: record.details
+          id: backup.backupId,
+          createdAt: backup.createdAt.toISOString(),
+          status: 'SUCCESS',
+          sizeBytes: backup.sizeBytes,
+          fileName: backup.fileName,
+          filePath: path.relative(process.cwd(), backup.filePath),
+          triggeredBy: backup.triggeredBy
         }
       },
       { status: 201 }
     )
   } catch (error) {
-    console.error('Error creating backup record:', error)
+    console.error('Error creating backup:', error)
     return NextResponse.json(
       { error: 'Failed to create backup record' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const access = await requireBackupAccess()
+    if ('error' in access) return access.error
+
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid request payload' }, { status: 400 })
+    }
+
+    const context = await loadBackupSettings()
+
+    const enabled = typeof body.enabled === 'boolean' ? body.enabled : context.backup.enabled
+    const schedule = typeof body.schedule === 'string' ? body.schedule : context.backup.schedule
+    const retentionInput = Number(body.retentionDays)
+    const retentionDays = Number.isFinite(retentionInput) ? retentionInput : context.backup.retentionDays
+    const capacityInput = Number(body.capacityBytes)
+    const capacityBytes = Number.isFinite(capacityInput) && capacityInput > 0 ? capacityInput : context.backup.capacityBytes
+
+    const updated = await updateAutomaticBackupSettings({
+      enabled,
+      schedule,
+      retentionDays,
+      capacityBytes
+    })
+
+    await refreshBackupScheduler()
+
+    return NextResponse.json({
+      settings: {
+        enabled: updated.enabled,
+        schedule: updated.schedule,
+        retentionDays: updated.retentionDays,
+        capacityBytes: updated.capacityBytes,
+        nextRunAt: updated.nextRunAt,
+        lastRunAt: updated.lastRunAt,
+        lastStatus: updated.lastStatus,
+        lastError: updated.lastError ?? null
+      }
+    })
+  } catch (error) {
+    console.error('Error updating automatic backup settings:', error)
+    return NextResponse.json(
+      { error: 'Failed to update backup settings' },
       { status: 500 }
     )
   }

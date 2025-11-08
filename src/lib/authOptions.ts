@@ -1,34 +1,42 @@
-import { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import { db } from "@/lib/db"
-import bcrypt from "bcryptjs"
-import { UserRole } from "@prisma/client"
+import CredentialsProvider from 'next-auth/providers/credentials'
+import { UserRole } from '@prisma/client'
 
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(db),
+const resolvedSecret = (() => {
+  if (process.env.NEXTAUTH_SECRET) {
+    return process.env.NEXTAUTH_SECRET
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('NEXTAUTH_SECRET must be defined in production environments')
+  }
+
+  return 'development-only-secret'
+})()
+
+export const authOptions = {
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: 'credentials',
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
+        const { db } = await import('@/lib/db')
+        const bcrypt = await import('bcryptjs')
+        const { getUserPermissions } = await import('@/lib/simple-permissions')
+
         const user = await db.user.findUnique({
           where: {
             email: credentials.email
-          },
-          include: {
-            employee: true
           }
         })
 
-        if (!user || !user.password) {
+        if (!user || !user.isActive || !user.password) {
           return null
         }
 
@@ -41,10 +49,8 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Check if user is active
-        if (!user.isActive) {
-          throw new Error("Account is deactivated")
-        }
+        // Get user permissions
+        const permissions = await getUserPermissions(user.id)
 
         // Update last login
         await db.user.update({
@@ -57,27 +63,29 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
-          branchId: user.branchId,
           phone: user.phone,
-          image: user.image,
-          employee: user.employee
+          branchId: user.branchId,
+          permissions
         }
       }
     })
   ],
   session: {
-    strategy: "jwt",
+    strategy: 'jwt' as const,
     maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60, // 1 hour
   },
-  jwt: {
-    maxAge: 24 * 60 * 60, // 24 hours
-  },
+  secret: resolvedSecret,
+  // Use the correct URL configuration
+  url: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+  trustHost: true,
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role
+        token.phone = user.phone
         token.branchId = user.branchId
-        token.employee = user.employee
+        token.permissions = user.permissions
       }
       return token
     },
@@ -85,16 +93,50 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         session.user.id = token.sub!
         session.user.role = token.role as UserRole
-        session.user.branchId = token.branchId as string | undefined
-        session.user.employee = token.employee as any
+        session.user.phone = token.phone as string
+        session.user.branchId = token.branchId as string
+        session.user.permissions = token.permissions as string[]
       }
       return session
     }
   },
   pages: {
-    signIn: "/login",
-    error: "/login",
+    signIn: '/login',
+    signUp: '/register'
   },
-  secret: process.env.NEXTAUTH_SECRET,
-  useSecureCookies: process.env.NODE_ENV === "production",
+  useSecureCookies: process.env.NODE_ENV === 'production',
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+        // Remove domain to avoid cross-domain issues
+      }
+    },
+    callbackUrl: {
+      name: '__Secure-next-auth.callback-url',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+        // Remove domain to avoid cross-domain issues
+      }
+    },
+    csrfToken: {
+      name: '__Host-next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
+  debug: process.env.NODE_ENV === 'development'
 }

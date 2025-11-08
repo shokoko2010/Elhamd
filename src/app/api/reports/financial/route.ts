@@ -5,6 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateProductionUser, executeWithRetry } from '@/lib/auth-server'
 import { db } from '@/lib/db'
+import { PERMISSIONS } from '@/lib/permissions'
 import {
   startOfDay,
   endOfDay,
@@ -54,9 +55,19 @@ export async function GET(request: NextRequest) {
     }
 
     const user = await authenticateProductionUser(request)
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
+    }
+
+    const hasWildcard = user.permissions.includes('*')
+    if (
+      user.role !== 'SUPER_ADMIN' &&
+      user.role !== 'ADMIN' &&
+      !hasWildcard &&
+      !user.permissions.includes(PERMISSIONS.VIEW_FINANCIAL_REPORTS)
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers })
     }
 
     const { searchParams } = new URL(request.url)

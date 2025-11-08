@@ -1,17 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { UserRole } from '@prisma/client'
 import { PermissionService } from '@/lib/permissions'
+import { getAuthUser } from '@/lib/auth-server'
 
-// This endpoint should only be accessible during initial setup
-// or by existing super admins with additional security
 export async function POST(request: NextRequest) {
   try {
-    // Check if any admin already exists
-    const existingAdmin = await db.user.findFirst({
+    const setupToken = process.env.INITIAL_ADMIN_TOKEN
+
+    if (!setupToken) {
+      console.error('INITIAL_ADMIN_TOKEN is not configured')
+      return NextResponse.json({
+        success: false,
+        error: 'Server configuration error'
+      }, { status: 500 })
+    }
+
+    const providedToken = request.headers.get('x-setup-token') || null
+
+    if (!providedToken || providedToken !== setupToken) {
+      return NextResponse.json({
+        success: false,
+        error: 'Unauthorized'
+      }, { status: 403 })
+    }
+
+    const existingAdmin = await db.user.count({
       where: {
         role: {
           in: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
@@ -19,152 +34,83 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    if (existingAdmin) {
-      // If admin exists, require authentication and super admin role
-      const session = await getServerSession(authOptions)
-      
-      if (!session?.user?.id) {
-        return NextResponse.json(
-          { error: 'غير مصرح بالوصول' },
-          { status: 401 }
-        )
-      }
-
-      // Check if current user is super admin
-      const currentUser = await db.user.findUnique({
-        where: { id: session.user.id }
-      })
-
-      if (!currentUser || currentUser.role !== UserRole.SUPER_ADMIN) {
-        return NextResponse.json(
-          { error: 'فقط المشرفين الرئيسيين يمكنهم إنشاء مشرفين جدد' },
-          { status: 403 }
-        )
-      }
-
-      // Additional security: Check if user has manage_permissions
-      const hasPermission = await PermissionService.hasPermission(
-        session.user.id,
-        'manage_permissions'
-      )
-
-      if (!hasPermission) {
-        return NextResponse.json(
-          { error: 'ليس لديك الصلاحيات المطلوبة' },
-          { status: 403 }
-        )
-      }
+    if (existingAdmin > 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Admin user already exists'
+      }, { status: 409 })
     }
 
-    const body = await request.json()
-    const { email, name, password, role = UserRole.ADMIN, setupToken } = body
+    const body = await request.json().catch(() => ({}))
+    const email = typeof body.email === 'string' ? body.email.toLowerCase() : null
+    const password = typeof body.password === 'string' ? body.password : null
+    const name = typeof body.name === 'string' ? body.name : 'Default Admin'
 
-    // Additional security for initial setup
-    if (!existingAdmin && !setupToken) {
-      return NextResponse.json(
-        { error: 'مفتاح الإعداد مطلوب لإنشاء أول مشرف' },
-        { status: 400 }
-      )
+    if (!email || !password) {
+      return NextResponse.json({
+        success: false,
+        error: 'Email and password are required'
+      }, { status: 400 })
     }
 
-    // Validate setup token for initial setup
-    if (!existingAdmin && setupToken !== process.env.SETUP_TOKEN) {
-      return NextResponse.json(
-        { error: 'مفتاح الإعداد غير صحيح' },
-        { status: 401 }
-      )
+    if (password.length < 12) {
+      return NextResponse.json({
+        success: false,
+        error: 'Password must be at least 12 characters long'
+      }, { status: 400 })
     }
 
-    // Validate input
-    if (!email || !name || !password) {
-      return NextResponse.json(
-        { error: 'جميع الحقول مطلوبة' },
-        { status: 400 }
-      )
-    }
-
-    // Strong password validation
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' },
-        { status: 400 }
-      )
-    }
-
-    // Check if user already exists
-    const existingUser = await db.user.findUnique({
-      where: { email }
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'المستخدم موجود بالفعل' },
-        { status: 400 }
-      )
-    }
-
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create admin user
     const admin = await db.user.create({
       data: {
         email,
         name,
         password: hashedPassword,
-        role,
+        role: UserRole.SUPER_ADMIN,
         isActive: true,
         emailVerified: true
       }
     })
 
-    // Initialize permissions and role templates if not already done
     try {
       await PermissionService.initializeDefaultPermissions()
       await PermissionService.initializeRoleTemplates()
     } catch (error) {
-      // Silently handle initialization errors
+      console.error('Error initializing permissions:', error)
     }
 
     return NextResponse.json({
       success: true,
-      message: 'تم إنشاء المستخدم الإداري بنجاح',
+      message: 'Default admin user created successfully',
       admin: {
-        id: admin.id,
         email: admin.email,
         name: admin.name,
         role: admin.role
       }
-    })
+    }, { status: 201 })
   } catch (error) {
+    console.error('Error creating admin user:', error)
     return NextResponse.json({
       success: false,
-      error: 'فشل في إنشاء المستخدم الإداري'
+      error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'غير مصرح بالوصول' },
-        { status: 401 }
-      )
+    const user = await getAuthUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    // Check if user is admin or super admin
-    const currentUser = await db.user.findUnique({
-      where: { id: session.user.id }
-    })
-
-    if (!currentUser || !['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
-      return NextResponse.json(
-        { error: 'غير مصرح بالوصول' },
-        { status: 403 }
-      )
+    if (user.role !== UserRole.SUPER_ADMIN) {
+      const hasPermission = await PermissionService.hasPermission(user.id, 'view_users')
+      if (!hasPermission) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
     }
 
     const admins = await db.user.findMany({
@@ -188,8 +134,9 @@ export async function GET(request: NextRequest) {
       count: admins.length
     })
   } catch (error) {
+    console.error('Error fetching admins:', error)
     return NextResponse.json({
-      error: 'فشل في جلب قائمة المشرفين'
+      error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }

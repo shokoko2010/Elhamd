@@ -4,7 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { authenticateProductionUser } from '@/lib/simple-production-auth'
+import { authenticateProductionUser } from '@/lib/auth-server'
 import { CustomerSegment, LeadSource, UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -42,11 +42,14 @@ export async function GET(request: NextRequest) {
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.role === UserRole.ACCOUNTANT ||
-                      user.permissions.includes(PERMISSIONS.VIEW_CUSTOMERS)
+    const hasWildcard = user.permissions.includes('*')
+    const hasAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.BRANCH_MANAGER ||
+      user.role === UserRole.ACCOUNTANT ||
+      hasWildcard ||
+      user.permissions.includes(PERMISSIONS.VIEW_CUSTOMERS)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { 
@@ -192,11 +195,14 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.role === UserRole.ACCOUNTANT ||
-                      user.permissions.includes(PERMISSIONS.CREATE_CUSTOMERS)
+    const hasCreatePermission = user.permissions.includes('*') ||
+      user.permissions.includes(PERMISSIONS.CREATE_CUSTOMERS)
+    const hasAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.BRANCH_MANAGER ||
+      user.role === UserRole.ACCOUNTANT ||
+      hasCreatePermission
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { 

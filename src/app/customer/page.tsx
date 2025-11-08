@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  LayoutDashboard, 
-  Car, 
-  Calendar, 
-  Wrench, 
+import {
+  LayoutDashboard,
+  Car,
+  Calendar,
+  Wrench,
   User,
   Settings,
   Bell,
@@ -22,11 +22,13 @@ import {
   Phone,
   Mail,
   Eye,
-  Edit
+  Edit,
+  LogOut
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
+import { signOut } from 'next-auth/react'
 
 interface CustomerBooking {
   id: string
@@ -80,6 +82,10 @@ function DashboardContent() {
   const [bookings, setBookings] = useState<CustomerBooking[]>([])
   const [vehicles, setVehicles] = useState<CustomerVehicle[]>([])
   const [profile, setProfile] = useState<CustomerProfile | null>(null)
+
+  const handleLogout = () => {
+    void signOut({ callbackUrl: '/login' })
+  }
 
   useEffect(() => {
     fetchCustomerData()
@@ -172,6 +178,10 @@ function DashboardContent() {
               <Button variant="outline" size="sm">
                 <Settings className="w-4 h-4 ml-2" />
                 الإعدادات
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 ml-2" />
+                تسجيل الخروج
               </Button>
             </div>
           </div>

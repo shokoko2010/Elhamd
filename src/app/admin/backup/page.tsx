@@ -7,8 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { LoadingIndicator, ErrorState, EmptyState } from '@/components/ui/LoadingIndicator'
-import { Database, Download, Upload, Clock, RefreshCw, Play } from 'lucide-react'
+import { Database, Download, Upload, Clock, RefreshCw, Play, CalendarClock, AlertTriangle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ar } from 'date-fns/locale'
 
@@ -31,8 +33,12 @@ interface BackupStats {
   totalBackups: number
   totalSizeBytes: number
   lastBackupAt: string | null
+  lastBackupStatus?: string | null
+  lastBackupError?: string | null
   autoBackupEnabled: boolean
   autoBackupSchedule: string
+  autoBackupRetentionDays: number
+  nextAutoBackupAt: string | null
 }
 
 interface BackupStorage {
@@ -51,6 +57,23 @@ const RANGE_OPTIONS = [
   { label: 'آخر 7 أيام', value: '7d' },
   { label: 'آخر 30 يوماً', value: '30d' },
   { label: 'آخر 90 يوماً', value: '90d' },
+]
+
+const AUTO_SCHEDULE_OPTIONS = [
+  { label: '02:00 فجراً', value: '02:00' },
+  { label: '04:00 فجراً', value: '04:00' },
+  { label: '06:00 صباحاً', value: '06:00' },
+  { label: '12:00 ظهراً', value: '12:00' },
+  { label: '18:00 مساءً', value: '18:00' },
+  { label: '23:00 مساءً', value: '23:00' },
+]
+
+const RETENTION_OPTIONS = [
+  { label: '7 أيام', value: '7' },
+  { label: '14 يوماً', value: '14' },
+  { label: '30 يوماً', value: '30' },
+  { label: '60 يوماً', value: '60' },
+  { label: '90 يوماً', value: '90' },
 ]
 
 function formatBytes(bytes: number) {
@@ -79,6 +102,18 @@ function formatDate(value?: string | null) {
   }
 }
 
+function resolveStatusBadge(status?: string | null) {
+  if (!status) return null
+  const normalized = status.toUpperCase()
+  if (normalized === 'FAILED') {
+    return { label: 'فشل', variant: 'destructive' as const, className: undefined }
+  }
+  if (normalized === 'SUCCESS') {
+    return { label: 'ناجح', variant: 'default' as const, className: 'bg-green-500 hover:bg-green-600' }
+  }
+  return { label: normalized, variant: 'secondary' as const, className: undefined }
+}
+
 function BackupDashboard() {
   const [range, setRange] = useState('30d')
   const [data, setData] = useState<BackupResponse | null>(null)
@@ -86,6 +121,7 @@ function BackupDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [updatingAuto, setUpdatingAuto] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -138,6 +174,54 @@ function BackupDashboard() {
     }
   }, [fetchData])
 
+  const updateAutoSettings = useCallback(
+    async (payload: Partial<{ enabled: boolean; schedule: string; retentionDays: number }>) => {
+      setUpdatingAuto(true)
+      setError(null)
+      try {
+        const response = await fetch('/api/admin/system/backups', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+
+        if (!response.ok) {
+          throw new Error('فشل تحديث الإعدادات')
+        }
+
+        await fetchData()
+      } catch (err) {
+        console.error(err)
+        setError('تعذر تحديث إعدادات النسخ التلقائي. يرجى المحاولة مرة أخرى.')
+      } finally {
+        setUpdatingAuto(false)
+      }
+    },
+    [fetchData]
+  )
+
+  const handleToggleAutoBackup = useCallback(
+    (checked: boolean) => {
+      updateAutoSettings({ enabled: checked })
+    },
+    [updateAutoSettings]
+  )
+
+  const handleScheduleChange = useCallback(
+    (value: string) => {
+      updateAutoSettings({ schedule: value })
+    },
+    [updateAutoSettings]
+  )
+
+  const handleRetentionChange = useCallback(
+    (value: string) => {
+      const numeric = Number(value)
+      updateAutoSettings({ retentionDays: Number.isNaN(numeric) ? undefined : numeric })
+    },
+    [updateAutoSettings]
+  )
+
   const stats = data?.stats
   const storage = data?.storage
   const backups = data?.backups ?? []
@@ -153,6 +237,33 @@ function BackupDashboard() {
       capacityLabel: formatBytes(storage.capacityBytes),
     }
   }, [storage])
+
+  const scheduleOptions = useMemo(() => {
+    if (!stats?.autoBackupSchedule) {
+      return AUTO_SCHEDULE_OPTIONS
+    }
+    if (AUTO_SCHEDULE_OPTIONS.some((option) => option.value === stats.autoBackupSchedule)) {
+      return AUTO_SCHEDULE_OPTIONS
+    }
+    return [...AUTO_SCHEDULE_OPTIONS, { label: stats.autoBackupSchedule, value: stats.autoBackupSchedule }]
+  }, [stats?.autoBackupSchedule])
+
+  const retentionOptions = useMemo(() => {
+    if (!stats?.autoBackupRetentionDays) {
+      return RETENTION_OPTIONS
+    }
+    if (RETENTION_OPTIONS.some((option) => Number(option.value) === stats.autoBackupRetentionDays)) {
+      return RETENTION_OPTIONS
+    }
+    return [...RETENTION_OPTIONS, { label: `${stats.autoBackupRetentionDays} يوم`, value: String(stats.autoBackupRetentionDays) }]
+  }, [stats?.autoBackupRetentionDays])
+
+  const nextRunLabel = useMemo(() => {
+    if (!stats?.nextAutoBackupAt) return 'غير مجدول'
+    return formatDate(stats.nextAutoBackupAt)
+  }, [stats?.nextAutoBackupAt])
+
+  const lastStatusBadge = useMemo(() => resolveStatusBadge(stats?.lastBackupStatus ?? null), [stats?.lastBackupStatus])
 
   if (loading && !data) {
     return (
@@ -200,53 +311,150 @@ function BackupDashboard() {
       </div>
 
       {stats && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">آخر نسخة احتياطية</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.lastBackupAt ? formatDate(stats.lastBackupAt) : 'لا توجد نسخ حديثة'}</div>
-              <CardDescription>حالة النظام</CardDescription>
-            </CardContent>
-          </Card>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">آخر نسخة احتياطية</CardTitle>
+                <Database className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-2xl font-bold">{stats.lastBackupAt ? formatDate(stats.lastBackupAt) : 'لا توجد نسخ حديثة'}</div>
+                  {lastStatusBadge && (
+                    <Badge variant={lastStatusBadge.variant} className={lastStatusBadge.className}>
+                      {lastStatusBadge.label}
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription>حالة النظام</CardDescription>
+                {stats.lastBackupStatus?.toUpperCase() === 'FAILED' && stats.lastBackupError && (
+                  <p className="mt-2 flex items-center gap-2 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>{stats.lastBackupError}</span>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">عدد النسخ</CardTitle>
+                <Download className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{new Intl.NumberFormat('ar-EG').format(stats.totalBackups)}</div>
+                <CardDescription>خلال الفترة المحددة</CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">إجمالي الحجم</CardTitle>
+                <Upload className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatBytes(stats.totalSizeBytes)}</div>
+                <CardDescription>البيانات المؤرشفة في الفترة المختارة</CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">النسخ التلقائي</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.autoBackupEnabled ? 'مفعل' : 'متوقف'}</div>
+                <CardDescription>
+                  {stats.autoBackupEnabled
+                    ? `التالي: ${nextRunLabel}`
+                    : 'النسخ التلقائي غير مفعل'}
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </div>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">عدد النسخ</CardTitle>
-              <Download className="h-4 w-4 text-muted-foreground" />
+            <CardHeader>
+              <CardTitle>إعدادات النسخ التلقائي</CardTitle>
+              <CardDescription>تخصيص الجدول الزمني ومدة الاحتفاظ بالنسخ الاحتياطية</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{new Intl.NumberFormat('ar-EG').format(stats.totalBackups)}</div>
-              <CardDescription>خلال الفترة المحددة</CardDescription>
-            </CardContent>
-          </Card>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="auto-backup-toggle"
+                    checked={stats.autoBackupEnabled}
+                    onCheckedChange={handleToggleAutoBackup}
+                    disabled={updatingAuto}
+                  />
+                  <Label htmlFor="auto-backup-toggle" className="text-base font-medium">
+                    تشغيل النسخ التلقائي اليومي
+                  </Label>
+                  {updatingAuto && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
+                <Badge variant={stats.autoBackupEnabled ? 'default' : 'secondary'} className={stats.autoBackupEnabled ? 'bg-green-500 hover:bg-green-600' : undefined}>
+                  {stats.autoBackupEnabled ? 'مفعل' : 'متوقف'}
+                </Badge>
+              </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">إجمالي الحجم</CardTitle>
-              <Upload className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatBytes(stats.totalSizeBytes)}</div>
-              <CardDescription>البيانات المؤرشفة</CardDescription>
-            </CardContent>
-          </Card>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="auto-backup-time">موعد التنفيذ</Label>
+                  <Select
+                    value={stats.autoBackupSchedule}
+                    onValueChange={handleScheduleChange}
+                    disabled={!stats.autoBackupEnabled || updatingAuto}
+                  >
+                    <SelectTrigger id="auto-backup-time">
+                      <SelectValue placeholder="اختر الوقت" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {scheduleOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">النسخ التلقائي</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.autoBackupEnabled ? 'مفعل' : 'متوقف'}</div>
-              <CardDescription>
-                {stats.autoBackupEnabled ? `يوميًا الساعة ${stats.autoBackupSchedule}` : 'النسخ التلقائي غير مفعل'}
-              </CardDescription>
+                <div className="space-y-2">
+                  <Label htmlFor="auto-backup-retention">مدة الاحتفاظ</Label>
+                  <Select
+                    value={String(stats.autoBackupRetentionDays)}
+                    onValueChange={handleRetentionChange}
+                    disabled={!stats.autoBackupEnabled || updatingAuto}
+                  >
+                    <SelectTrigger id="auto-backup-retention">
+                      <SelectValue placeholder="اختر المدة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {retentionOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>النسخة القادمة</Label>
+                  <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                    <CalendarClock className="h-4 w-4" />
+                    <span>{stats.autoBackupEnabled ? nextRunLabel : 'لن يتم إنشاء نسخة تلقائية'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                سيتم الاحتفاظ بالنسخ الاحتياطية لمدة {stats.autoBackupRetentionDays} يوم قبل حذفها تلقائياً للحفاظ على المساحة المتاحة.
+              </p>
             </CardContent>
           </Card>
-        </div>
+        </>
       )}
 
       {storage && (
