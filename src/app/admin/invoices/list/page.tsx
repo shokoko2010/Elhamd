@@ -43,6 +43,18 @@ interface InvoiceSummary {
   deletedAt?: string | null
   deletedBy?: string | null
   deletedReason?: string | null
+  createdBy?: string | null
+  creator?: {
+    employeeId: string
+    employeeNumber?: string | null
+    department?: string | null
+    position?: string | null
+    user?: {
+      id: string
+      name: string | null
+      email: string
+    } | null
+  } | null
 }
 
 interface PaginationState {
@@ -143,6 +155,29 @@ const formatDate = (value: string) => {
     month: 'short',
     day: 'numeric',
   })
+}
+
+const formatCreatorName = (invoice: Pick<InvoiceSummary, 'createdBy' | 'creator'>) => {
+  if (invoice.creator?.user?.name) {
+    return invoice.creator.user.email
+      ? `${invoice.creator.user.name} (${invoice.creator.user.email})`
+      : invoice.creator.user.name
+  }
+
+  if (invoice.creator?.employeeNumber) {
+    return `الموظف رقم ${invoice.creator.employeeNumber}`
+  }
+
+  return invoice.createdBy ?? 'غير محدد'
+}
+
+const formatCreatorDetails = (invoice: Pick<InvoiceSummary, 'creator'>) => {
+  if (!invoice.creator) {
+    return null
+  }
+
+  const parts = [invoice.creator.position, invoice.creator.department].filter(Boolean)
+  return parts.length ? parts.join(' • ') : null
 }
 
 const calculateDueStatus = (invoice: InvoiceSummary) => {
@@ -276,6 +311,8 @@ export default function InvoicesListPage() {
           deletedAt: invoice.deletedAt ?? null,
           deletedBy: invoice.deletedBy ?? null,
           deletedReason: invoice.deletedReason ?? null,
+          createdBy: invoice.createdBy ?? null,
+          creator: invoice.creator ?? null,
         }
       })
 
@@ -700,6 +737,7 @@ export default function InvoicesListPage() {
                     <TableHead className="text-right">رقم الفاتورة</TableHead>
                     <TableHead className="text-right">العميل</TableHead>
                     <TableHead className="text-right">التواريخ</TableHead>
+                    <TableHead className="text-right">الموظف المسؤول</TableHead>
                     <TableHead className="text-right">المبالغ</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
                     <TableHead className="text-right">الإجراءات</TableHead>
@@ -729,6 +767,12 @@ export default function InvoicesListPage() {
                         <TableCell className="text-right">
                           <div className="font-medium text-gray-900">{formatDate(invoice.issueDate)}</div>
                           <div className={`text-xs ${dueStatus.className}`}>{dueStatus.label}</div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="font-medium text-gray-900">{formatCreatorName(invoice)}</div>
+                          {formatCreatorDetails(invoice) && (
+                            <div className="text-xs text-gray-500">{formatCreatorDetails(invoice)}</div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="font-medium text-gray-900">{formatCurrency(invoice.totalAmount, invoice.currency)}</div>

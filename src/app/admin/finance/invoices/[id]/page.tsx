@@ -63,7 +63,18 @@ interface Invoice {
   terms?: string
   createdAt: string
   updatedAt: string
-  createdBy: string
+  createdBy?: string | null
+  creator?: {
+    employeeId: string
+    employeeNumber?: string | null
+    department?: string | null
+    position?: string | null
+    user?: {
+      id: string
+      name: string | null
+      email: string
+    } | null
+  } | null
   isDeleted?: boolean
   deletedAt?: string | null
   deletedBy?: string | null
@@ -128,6 +139,36 @@ function InvoiceDetailsContent() {
     referenceNumber: '',
     paymentDate: new Date().toISOString().split('T')[0]
   })
+
+  const formatCreatorLabel = () => {
+    if (!invoice) {
+      return 'غير محدد'
+    }
+
+    if (invoice.creator?.user?.name) {
+      return invoice.creator.user.email
+        ? `${invoice.creator.user.name} (${invoice.creator.user.email})`
+        : invoice.creator.user.name
+    }
+
+    if (invoice.creator?.employeeNumber) {
+      return `الموظف رقم ${invoice.creator.employeeNumber}`
+    }
+
+    return invoice.createdBy ?? 'غير محدد'
+  }
+
+  const formatCreatorMeta = () => {
+    if (!invoice?.creator) {
+      return null
+    }
+
+    const parts = [invoice.creator.position, invoice.creator.department].filter(Boolean)
+    return parts.length ? parts.join(' • ') : null
+  }
+
+  const creatorLabel = formatCreatorLabel()
+  const creatorMeta = formatCreatorMeta()
 
   useEffect(() => {
     if (invoiceId) {
@@ -846,7 +887,10 @@ function InvoiceDetailsContent() {
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">أنشئ بواسطة</p>
-                          <p className="font-medium">{invoice.createdBy}</p>
+                          <p className="font-medium">{creatorLabel}</p>
+                          {creatorMeta && (
+                            <p className="text-xs text-gray-500">{creatorMeta}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1044,7 +1088,7 @@ function InvoiceDetailsContent() {
                       <div>
                         <p className="font-medium">إنشاء الفاتورة</p>
                         <p className="text-sm text-gray-600">
-                          {formatDate(invoice.createdAt)} - بواسطة {invoice.createdBy}
+                          {formatDate(invoice.createdAt)} - بواسطة {creatorLabel}
                         </p>
                       </div>
                     </div>

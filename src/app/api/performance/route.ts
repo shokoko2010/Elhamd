@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { PerformancePeriod, Prisma } from '@prisma/client'
+import { updateEmployeePerformanceMetrics } from '@/lib/performance-metric-sync'
 
 const PERIOD_TYPES: PerformancePeriod[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']
 
@@ -63,72 +64,46 @@ export async function GET(request: NextRequest) {
   const filter = resolvePeriodFilter(searchParams.get('period'))
 
   try {
-    let performanceMetrics: any[] = []
-    let schemaMissing = false
+    const employees = await db.employee.findMany({ select: { id: true } })
 
-    try {
-      performanceMetrics = await db.performanceMetric.findMany({
-        where: {
-          ...(filter.periodType ? { period: filter.periodType } : {}),
-          ...(filter.createdAtRange ? { createdAt: filter.createdAtRange } : {}),
-        },
-        include: {
-          employee: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              },
-              department: {
-                select: {
-                  id: true,
-                  name: true
-                }
-              },
-              position: {
-                select: {
-                  id: true,
-                  title: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: {
-          overallScore: 'desc'
-        }
-      })
-    } catch (error) {
-      if (isSchemaMissingError(error)) {
-        schemaMissing = true
-      } else {
-        throw error
-      }
-    }
-
-    if (schemaMissing) {
+    if (employees.length === 0) {
       return NextResponse.json({
         success: true,
         data: [],
         period: filter.label,
         periodType: filter.periodType,
         count: 0,
-        warning: 'performance-metrics-unavailable'
       })
     }
 
-    const normalizedMetrics = performanceMetrics.map((metric) => ({
-      ...metric,
-      period: filter.label,
-      employee: {
-        ...metric.employee,
-        department: metric.employee?.department?.name ?? 'غير محدد',
-        position: metric.employee?.position?.title ?? 'غير محدد',
-      },
-    }))
+    const metricsResults = await Promise.all(
+      employees.map((employee) =>
+        updateEmployeePerformanceMetrics({
+          employeeId: employee.id,
+          periodType: filter.periodType ?? PerformancePeriod.MONTHLY,
+          periodLabel: filter.label,
+          rangeOverride: filter.createdAtRange
+            ? { start: filter.createdAtRange.gte, end: filter.createdAtRange.lt }
+            : undefined,
+        }),
+      ),
+    )
+
+    const normalizedMetrics = metricsResults
+      .filter((result): result is NonNullable<typeof result> => Boolean(result))
+      .map((result) => ({
+        ...result.record,
+        period: filter.label,
+        employee: {
+          ...result.record.employee,
+          department: result.record.employee?.department?.name ?? 'غير محدد',
+          position: result.record.employee?.position?.title ?? 'غير محدد',
+        },
+        attendanceSummary: result.metadata.attendance,
+        invoiceSummary: result.metadata.invoices,
+        conversionSummary: result.metadata.conversions,
+        scoringSummary: result.metadata.scoring,
+      }))
 
     return NextResponse.json({
       success: true,
@@ -163,79 +138,27 @@ export async function POST(request: NextRequest) {
       ? (bodyPeriodType as PerformancePeriod)
       : filter.periodType ?? 'MONTHLY'
 
-    const createdAt = filter.createdAtRange?.gte ?? new Date()
+    const employees = await db.employee.findMany({ select: { id: true } })
 
-    const employees = await db.employee.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        department: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        position: {
-          select: {
-            id: true,
-            title: true
-          }
-        }
-      }
-    })
-
-    // Create sample performance metrics for each employee
-    for (const employee of employees) {
-      await db.performanceMetric.upsert({
-        where: {
-          employeeId_period: {
-            employeeId: employee.id,
-            period: periodType
-          }
-        },
-        update: {
-          bookingsHandled: Math.floor(Math.random() * 50) + 10,
-          averageHandlingTime: Math.random() * 30 + 15,
-          customerRating: 3 + Math.random() * 2,
-          conversionRate: Math.random() * 40 + 10,
-          revenueGenerated: Math.random() * 50000 + 10000,
-          tasksCompleted: Math.floor(Math.random() * 30) + 20,
-          customerSatisfaction: 80 + Math.random() * 20,
-          responseTime: Math.random() * 60 + 5,
-          followUpRate: Math.random() * 30 + 60,
-          upsellSuccess: Math.random() * 25 + 5,
-          overallScore: 70 + Math.random() * 30,
-          notes: 'تقييم أداء تلقائي'
-        },
-        create: {
+    const metricsResults = await Promise.all(
+      employees.map((employee) =>
+        updateEmployeePerformanceMetrics({
           employeeId: employee.id,
-          period: periodType,
-          bookingsHandled: Math.floor(Math.random() * 50) + 10,
-          averageHandlingTime: Math.random() * 30 + 15,
-          customerRating: 3 + Math.random() * 2,
-          conversionRate: Math.random() * 40 + 10,
-          revenueGenerated: Math.random() * 50000 + 10000,
-          tasksCompleted: Math.floor(Math.random() * 30) + 20,
-          customerSatisfaction: 80 + Math.random() * 20,
-          responseTime: Math.random() * 60 + 5,
-          followUpRate: Math.random() * 30 + 60,
-          upsellSuccess: Math.random() * 25 + 5,
-          overallScore: 70 + Math.random() * 30,
-          notes: 'تقييم أداء تلقائي',
-          createdAt,
-        }
-      })
-    }
+          periodType,
+          periodLabel: filter.label,
+          rangeOverride: filter.createdAtRange
+            ? { start: filter.createdAtRange.gte, end: filter.createdAtRange.lt }
+            : undefined,
+        }),
+      ),
+    )
+
+    const createdCount = metricsResults.filter(Boolean).length
 
     return NextResponse.json({
       success: true,
-      message: 'تم إنشاء بيانات تقييم الأداء بنجاح',
-      metricsCount: employees.length,
+      message: 'تم تحديث بيانات تقييم الأداء بناءً على النشاط الفعلي',
+      metricsCount: createdCount,
       period: filter.label,
       periodType,
     })

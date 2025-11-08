@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/auth-server'
-import { InvoicePaymentStatus, InvoiceStatus, UserRole } from '@prisma/client'
+import { InvoicePaymentStatus, InvoiceStatus, PerformancePeriod, UserRole } from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 import {
   normalizeInvoiceItemsFromInput,
@@ -15,6 +15,7 @@ import {
   applyInvoiceSideEffects,
   extractInvoiceItemLinks,
 } from '@/lib/invoice-fulfillment'
+import { updateEmployeePerformanceMetrics } from '@/lib/performance-metric-sync'
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
@@ -133,6 +134,25 @@ export async function GET(request: NextRequest) {
               name: true,
             },
           },
+          createdByEmployee: {
+            select: {
+              id: true,
+              employeeNumber: true,
+              department: {
+                select: { name: true },
+              },
+              position: {
+                select: { title: true },
+              },
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
           items: true,
           payments: {
             include: {
@@ -178,6 +198,22 @@ export async function GET(request: NextRequest) {
         currency: invoice.currency,
         createdAt: invoice.createdAt,
         updatedAt: invoice.updatedAt,
+        createdBy: invoice.createdBy,
+        creator: invoice.createdByEmployee
+          ? {
+              employeeId: invoice.createdByEmployee.id,
+              employeeNumber: invoice.createdByEmployee.employeeNumber,
+              department: invoice.createdByEmployee.department?.name ?? null,
+              position: invoice.createdByEmployee.position?.title ?? null,
+              user: invoice.createdByEmployee.user
+                ? {
+                    id: invoice.createdByEmployee.user.id,
+                    name: invoice.createdByEmployee.user.name,
+                    email: invoice.createdByEmployee.user.email,
+                  }
+                : null,
+            }
+          : null,
         deletedAt: invoice.deletedAt,
         deletedBy: invoice.deletedBy,
         deletedReason: invoice.deletedReason,
@@ -309,26 +345,24 @@ export async function POST(request: NextRequest) {
       dueDate,
       notes,
       terms,
-      createdBy,
       branchId,
       status: requestedStatus,
       metadata: rawMetadata,
     } = body
 
     // Validate required fields
-    if (!customerId || !items || !items.length || !issueDate || !dueDate || !createdBy) {
+    if (!customerId || !items || !items.length || !issueDate || !dueDate) {
       return NextResponse.json(
-        { 
+        {
           error: 'Missing required fields',
           details: {
             customerId: !!customerId,
             items: !!items && items.length > 0,
             issueDate: !!issueDate,
             dueDate: !!dueDate,
-            createdBy: !!createdBy
           }
         },
-        { 
+        {
           status: 400,
           headers: {
             'Access-Control-Allow-Origin': '*',
@@ -339,54 +373,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user exists (accept either ID or email)
-    let existingUser = null;
-    
-    // First try to find by ID
-    existingUser = await db.user.findUnique({
-      where: { id: createdBy }
-    });
-    
-    // If not found, try to find by email
-    if (!existingUser) {
-      existingUser = await db.user.findUnique({
-        where: { email: createdBy }
-      });
-    }
-    
-    // If still not found, try common admin values
-    if (!existingUser && (createdBy === 'admin' || createdBy === 'system')) {
-      // Find any admin or super_admin user
-      existingUser = await db.user.findFirst({
-        where: {
-          role: {
-            in: ['ADMIN', 'SUPER_ADMIN']
-          },
-          isActive: true
-        }
-      });
-    }
+    const creator = await db.user.findUnique({
+      where: { id: user.id },
+      select: { id: true },
+    })
 
-    if (!existingUser) {
+    if (!creator) {
       return NextResponse.json(
-        { 
-          error: 'User not found',
-          details: `No user found with identifier: ${createdBy}`,
-          suggestion: 'Please provide a valid user ID or email'
+        {
+          error: 'لم يتم العثور على حساب المستخدم المنشئ للفاتورة',
         },
-        { 
+        {
           status: 400,
           headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-          }
-        }
+          },
+        },
       )
     }
 
-    // Use the found user's ID
-    const actualUserId = existingUser.id;
+    const actualUserId = creator.id
+
+    const employeeRecord = await db.employee.findUnique({
+      where: { userId: actualUserId },
+      select: { id: true },
+    })
 
     // Check if customer exists
     const existingCustomer = await db.user.findUnique({
@@ -567,6 +580,7 @@ export async function POST(request: NextRequest) {
           notes,
           terms,
           createdBy: actualUserId,
+          createdByEmployeeId: employeeRecord?.id ?? null,
           branchId: branchId || user.branchId || null,
           metadata: invoiceMetadata,
         }
@@ -620,6 +634,25 @@ export async function POST(request: NextRequest) {
             phone: true,
           },
         },
+        createdByEmployee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            department: {
+              select: { name: true },
+            },
+            position: {
+              select: { title: true },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
         items: true,
         taxes: true,
       },
@@ -636,6 +669,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    if (employeeRecord?.id) {
+      await updateEmployeePerformanceMetrics({
+        employeeId: employeeRecord.id,
+        periodType: PerformancePeriod.MONTHLY,
+        referenceDate: invoice.issueDate,
+      })
+    }
+
     const refreshedInvoice = await db.invoice.findUnique({
       where: { id: invoice.id },
       include: {
@@ -645,6 +686,25 @@ export async function POST(request: NextRequest) {
             name: true,
             email: true,
             phone: true,
+          },
+        },
+        createdByEmployee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            department: {
+              select: { name: true },
+            },
+            position: {
+              select: { title: true },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
         },
         items: true,
@@ -674,6 +734,22 @@ export async function POST(request: NextRequest) {
             outstanding: normalized.outstanding,
             items: normalized.items,
             taxes: normalized.taxes,
+            createdBy: refreshedInvoice.createdBy,
+            creator: refreshedInvoice.createdByEmployee
+              ? {
+                  employeeId: refreshedInvoice.createdByEmployee.id,
+                  employeeNumber: refreshedInvoice.createdByEmployee.employeeNumber,
+                  department: refreshedInvoice.createdByEmployee.department?.name ?? null,
+                  position: refreshedInvoice.createdByEmployee.position?.title ?? null,
+                  user: refreshedInvoice.createdByEmployee.user
+                    ? {
+                        id: refreshedInvoice.createdByEmployee.user.id,
+                        name: refreshedInvoice.createdByEmployee.user.name,
+                        email: refreshedInvoice.createdByEmployee.user.email,
+                      }
+                    : null,
+                }
+              : null,
           }
         })()
       : null

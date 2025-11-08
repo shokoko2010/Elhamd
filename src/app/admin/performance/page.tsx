@@ -31,6 +31,35 @@ interface PerformanceMetric {
   upsellSuccess: number
   overallScore: number
   notes?: string
+  attendanceSummary?: {
+    presentDays: number
+    lateDays: number
+    absentDays: number
+    excusedDays: number
+    attendanceScore: number
+    trackedDays: number
+  }
+  invoiceSummary?: {
+    created: number
+    paid: number
+    partiallyPaid: number
+    draft: number
+    revenue: number
+    collected: number
+    outstanding: number
+    averageValue: number
+  }
+  conversionSummary?: {
+    conversionRate: number
+    followUpRate: number
+  }
+  scoringSummary?: {
+    attendanceScore: number
+    invoiceVolumeScore: number
+    revenueScore: number
+    paymentScore: number
+    overallScore: number
+  }
 }
 
 interface PerformanceStats {

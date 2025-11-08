@@ -6,11 +6,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/auth-server'
 import { PERMISSIONS } from '@/lib/permissions'
-import { UserRole } from '@prisma/client'
+import { PerformancePeriod, UserRole } from '@prisma/client'
 import {
   normalizeInvoiceItemsFromInput,
   normalizeInvoiceRecord,
 } from '@/lib/invoice-normalizer'
+import { updateEmployeePerformanceMetrics } from '@/lib/performance-metric-sync'
 
 export async function GET(
   request: NextRequest,
@@ -28,6 +29,25 @@ export async function GET(
             name: true,
             email: true,
             phone: true
+          }
+        },
+        createdByEmployee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            department: {
+              select: { name: true }
+            },
+            position: {
+              select: { title: true }
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
           }
         },
         items: true,
@@ -78,6 +98,22 @@ export async function GET(
       totalAmount: normalized.totalAmount,
       paidAmount,
       outstanding: normalized.outstanding,
+      createdBy: invoice.createdBy,
+      creator: invoice.createdByEmployee
+        ? {
+            employeeId: invoice.createdByEmployee.id,
+            employeeNumber: invoice.createdByEmployee.employeeNumber,
+            department: invoice.createdByEmployee.department?.name ?? null,
+            position: invoice.createdByEmployee.position?.title ?? null,
+            user: invoice.createdByEmployee.user
+              ? {
+                  id: invoice.createdByEmployee.user.id,
+                  name: invoice.createdByEmployee.user.name,
+                  email: invoice.createdByEmployee.user.email,
+                }
+              : null,
+          }
+        : null,
       items: normalized.items,
       taxes: normalized.taxes,
       deletedAt: invoice.deletedAt,
@@ -196,6 +232,25 @@ export async function PUT(
               phone: true
             }
           },
+          createdByEmployee: {
+            select: {
+              id: true,
+              employeeNumber: true,
+              department: {
+                select: { name: true }
+              },
+              position: {
+                select: { title: true }
+              },
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                }
+              }
+            }
+          },
           items: true,
           taxes: true,
           payments: {
@@ -260,6 +315,14 @@ export async function PUT(
 
     const paidAmount = normalizedInvoice.totalAmount - normalizedInvoice.outstanding
 
+    if (updatedInvoice.createdByEmployeeId) {
+      await updateEmployeePerformanceMetrics({
+        employeeId: updatedInvoice.createdByEmployeeId,
+        periodType: PerformancePeriod.MONTHLY,
+        referenceDate: updatedInvoice.issueDate,
+      })
+    }
+
     const successResponse = NextResponse.json({
       success: true,
       message: 'Invoice updated successfully',
@@ -272,6 +335,22 @@ export async function PUT(
         outstanding: normalizedInvoice.outstanding,
         items: normalizedInvoice.items,
         taxes: normalizedInvoice.taxes,
+        createdBy: updatedInvoice.createdBy,
+        creator: updatedInvoice.createdByEmployee
+          ? {
+              employeeId: updatedInvoice.createdByEmployee.id,
+              employeeNumber: updatedInvoice.createdByEmployee.employeeNumber,
+              department: updatedInvoice.createdByEmployee.department?.name ?? null,
+              position: updatedInvoice.createdByEmployee.position?.title ?? null,
+              user: updatedInvoice.createdByEmployee.user
+                ? {
+                    id: updatedInvoice.createdByEmployee.user.id,
+                    name: updatedInvoice.createdByEmployee.user.name,
+                    email: updatedInvoice.createdByEmployee.user.email,
+                  }
+                : null,
+            }
+          : null,
       },
     })
     
@@ -402,6 +481,8 @@ export async function DELETE(
         status: true,
         isDeleted: true,
         invoiceNumber: true,
+        issueDate: true,
+        createdByEmployeeId: true,
       },
     })
 
@@ -436,6 +517,14 @@ export async function DELETE(
         status: true,
       },
     })
+
+    if (invoice.createdByEmployeeId) {
+      await updateEmployeePerformanceMetrics({
+        employeeId: invoice.createdByEmployeeId,
+        periodType: PerformancePeriod.MONTHLY,
+        referenceDate: invoice.issueDate,
+      })
+    }
 
     return applyCorsHeaders(NextResponse.json({
       success: true,

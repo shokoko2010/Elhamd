@@ -65,6 +65,28 @@ interface PerformanceMetric {
   notes?: string
   createdAt: string
   updatedAt: string
+  attendanceSummary?: {
+    attendanceScore: number
+    presentDays: number
+    lateDays: number
+    absentDays: number
+    excusedDays: number
+    trackedDays: number
+  }
+  invoiceSummary?: {
+    created: number
+    paid: number
+    partiallyPaid: number
+    draft: number
+    revenue: number
+    collected: number
+    outstanding: number
+    averageValue: number
+  }
+  conversionSummary?: {
+    conversionRate: number
+    followUpRate: number
+  }
 }
 
 interface PerformanceStats {

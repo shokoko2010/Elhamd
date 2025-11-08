@@ -533,6 +533,7 @@ model PerformanceMetric {
   id                   String            @id @default(cuid())
   employeeId           String
   period               PerformancePeriod
+  periodLabel          String            @default("CURRENT")
   bookingsHandled      Int
   averageHandlingTime  Float
   customerRating       Float
@@ -543,12 +544,14 @@ model PerformanceMetric {
   responseTime         Float
   followUpRate         Float
   upsellSuccess        Float
+  overallScore         Float            @default(0)
+  metricsMetadata      Json?
   notes                String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   employee             Employee          @relation(fields: [employeeId], references: [id])
 
-  @@unique([employeeId, period])
+  @@unique([employeeId, period, periodLabel])
   @@map("performance_metrics")
 }
 
@@ -1110,6 +1113,7 @@ model Invoice {
   notes                    String?
   terms                    String?
   createdBy                String
+  createdByEmployeeId      String?
   approvedBy               String?
   approvedAt               DateTime?
   sentAt                   DateTime?
@@ -1129,6 +1133,7 @@ model Invoice {
   taxes                    InvoiceTax[]
   branch                   Branch?              @relation(fields: [branchId], references: [id])
   customer                 User                 @relation(fields: [customerId], references: [id])
+  createdByEmployee        Employee?            @relation("EmployeeCreatedInvoices", fields: [createdByEmployeeId], references: [id])
   vehicle                  Vehicle?             @relation("VehicleInvoices", fields: [vehicleId], references: [id])
   convertedFromQuotation   Quotation?           @relation("QuotationInvoice")
   transactions             Transaction[]
@@ -2127,6 +2132,7 @@ model Employee {
   attendanceRecords         AttendanceRecord[]
   performanceReviews        PerformanceReview[]
   trainingRecords           TrainingRecord[]
+  createdInvoices           Invoice[]           @relation("EmployeeCreatedInvoices")
 
   @@index([employeeNumber])
   @@index([departmentId])
