@@ -51,6 +51,86 @@ interface SliderItem {
   badgeColor?: string
 }
 
+const arabicDayLabels: Record<string, string> = {
+  Saturday: 'السبت',
+  Sunday: 'الأحد',
+  Monday: 'الإثنين',
+  Tuesday: 'الثلاثاء',
+  Wednesday: 'الأربعاء',
+  Thursday: 'الخميس',
+  Friday: 'الجمعة'
+}
+
+const normalizeContactInfo = (data: any) => {
+  if (!data) {
+    return null
+  }
+
+  const workingHoursRaw = data.workingHours ?? {}
+  const workingHoursObject = Array.isArray(workingHoursRaw)
+    ? workingHoursRaw.reduce((acc: Record<string, string>, entry: any) => {
+        if (entry?.day && entry?.hours) {
+          acc[entry.day] = entry.hours
+        }
+        return acc
+      }, {})
+    : typeof workingHoursRaw === 'object' && workingHoursRaw !== null
+      ? workingHoursRaw
+      : {}
+
+  const resolveValue = (key: string) => {
+    const direct = workingHoursObject[key]
+    if (typeof direct === 'string' && direct.trim()) {
+      return direct
+    }
+
+    const capitalized = key.charAt(0).toUpperCase() + key.slice(1)
+    const fallback = workingHoursObject[capitalized]
+    if (typeof fallback === 'string' && fallback.trim()) {
+      return fallback
+    }
+
+    return undefined
+  }
+
+  const weekdayKeys = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']
+  const weekdaySegments = weekdayKeys
+    .map((day) => {
+      const value = resolveValue(day)
+      return value ? `${arabicDayLabels[day]}: ${value}` : null
+    })
+    .filter(Boolean) as string[]
+
+  const weekdaysLine =
+    resolveValue('weekdays') ?? resolveValue('Weekdays') ?? (weekdaySegments.length ? weekdaySegments.join(' • ') : null)
+
+  const fridayValue = resolveValue('friday') ?? resolveValue('Friday')
+  const saturdayValue = resolveValue('saturday') ?? resolveValue('Saturday')
+
+  return {
+    headquarters: {
+      address: data.address ?? 'القاهرة، مصر',
+      phone: data.primaryPhone ?? data.secondaryPhone ?? 'غير متوفر',
+      email: data.primaryEmail ?? data.secondaryEmail ?? 'غير متوفر'
+    },
+    contactNumbers: {
+      primary: data.primaryPhone ?? null,
+      secondary: data.secondaryPhone ?? null
+    },
+    workingHours: {
+      weekdays: weekdaysLine ?? 'السبت - الخميس: 9:00 ص - 5:00 م',
+      friday: fridayValue ? `الجمعة: ${fridayValue}` : 'الجمعة: مغلق',
+      saturday: saturdayValue ? `السبت: ${saturdayValue}` : undefined
+    },
+    emergency: data.emergency ?? null,
+    socialMedia: data.socialMedia ?? {},
+    headquartersGeo:
+      typeof data.mapLat === 'number' && typeof data.mapLng === 'number'
+        ? { lat: data.mapLat, lng: data.mapLng }
+        : null
+  }
+}
+
 export default function Home() {
   const deviceInfo = useDeviceInfo()
   const [featuredVehicles, setFeaturedVehicles] = useState<Vehicle[]>([])
@@ -165,7 +245,7 @@ export default function Home() {
         const contactResponse = await fetch('/api/contact-info')
         if (contactResponse.ok) {
           const contactData = await contactResponse.json()
-          setContactInfo(contactData)
+          setContactInfo(normalizeContactInfo(contactData))
         }
 
         // Fetch sliders
