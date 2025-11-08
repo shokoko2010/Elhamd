@@ -52,6 +52,43 @@ export interface BackupResult {
   triggeredBy: { id: string; name?: string | null; email?: string | null } | null
 }
 
+type BackupActor = { id: string; name?: string | null; email?: string | null }
+
+async function resolveBackupActor(triggeredBy?: BackupActor | null): Promise<BackupActor | null> {
+  if (triggeredBy?.id) {
+    return {
+      id: triggeredBy.id,
+      name: triggeredBy.name ?? null,
+      email: triggeredBy.email ?? null
+    }
+  }
+
+  const privilegedUser = await db.user.findFirst({
+    where: {
+      role: { in: ['SUPER_ADMIN', 'ADMIN'] },
+      isActive: true
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, name: true, email: true }
+  })
+
+  if (privilegedUser) {
+    return privilegedUser
+  }
+
+  const anyUser = await db.user.findFirst({
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, name: true, email: true }
+  })
+
+  if (anyUser) {
+    return anyUser
+  }
+
+  console.warn('No users found to attribute backup activity logs to; proceeding without logging the activity record.')
+  return null
+}
+
 function ensureScheduleValue(schedule: string | null | undefined): string {
   if (typeof schedule !== 'string') {
     return DEFAULT_SCHEDULE
@@ -310,37 +347,46 @@ async function applyRetention(retentionDays: number): Promise<void> {
   }
 }
 
-export async function performBackup(options: { source: BackupSource; triggeredBy?: { id: string; name?: string | null; email?: string | null } | null; note?: string | null })
+export async function performBackup(options: { source: BackupSource; triggeredBy?: BackupActor | null; note?: string | null })
   : Promise<BackupResult> {
   const startedAt = new Date()
   const context = await loadBackupSettings()
   const retentionDays = context.backup.retentionDays
 
   try {
+    const actor = await resolveBackupActor(options.triggeredBy)
     const snapshot = await exportDatabaseSnapshot()
     await applyRetention(retentionDays)
     const storage = await getBackupStorageUsage(context)
 
-    const activity = await db.activityLog.create({
-      data: {
-        id: randomUUID(),
-        action: options.source === 'automatic' ? 'AUTO_BACKUP_COMPLETED' : 'MANUAL_BACKUP_COMPLETED',
-        entityType: 'BACKUP',
-        entityId: randomUUID(),
-        userId: options.triggeredBy?.id ?? null,
-        details: {
-          status: 'SUCCESS',
-          source: options.source,
-          note: options.note ?? null,
-          fileName: snapshot.fileName,
-          filePath: path.relative(process.cwd(), snapshot.finalFile),
-          sizeBytes: snapshot.sizeBytes,
-          retentionDays,
-          startedAt: startedAt.toISOString(),
-          completedAt: new Date().toISOString()
+    const logId = randomUUID()
+    const logDetails = {
+      status: 'SUCCESS',
+      source: options.source,
+      note: options.note ?? null,
+      fileName: snapshot.fileName,
+      filePath: path.relative(process.cwd(), snapshot.finalFile),
+      sizeBytes: snapshot.sizeBytes,
+      retentionDays,
+      startedAt: startedAt.toISOString(),
+      completedAt: new Date().toISOString()
+    }
+
+    let activityCreatedAt = new Date()
+
+    if (actor) {
+      const activity = await db.activityLog.create({
+        data: {
+          id: logId,
+          action: options.source === 'automatic' ? 'AUTO_BACKUP_COMPLETED' : 'MANUAL_BACKUP_COMPLETED',
+          entityType: 'BACKUP',
+          entityId: randomUUID(),
+          userId: actor.id,
+          details: logDetails
         }
-      }
-    })
+      })
+      activityCreatedAt = activity.createdAt
+    }
 
     const nextRun = context.backup.enabled
       ? computeNextRunDate(context.backup.schedule)
@@ -348,7 +394,7 @@ export async function performBackup(options: { source: BackupSource; triggeredBy
 
     await saveBackupSettings(
       {
-        lastRunAt: activity.createdAt.toISOString(),
+        lastRunAt: activityCreatedAt.toISOString(),
         lastRunSource: options.source,
         lastStatus: 'SUCCESS',
         lastFilePath: path.relative(process.cwd(), snapshot.finalFile),
@@ -360,38 +406,47 @@ export async function performBackup(options: { source: BackupSource; triggeredBy
     )
 
     return {
-      backupId: activity.id,
+      backupId: logId,
       fileName: snapshot.fileName,
       filePath: snapshot.finalFile,
       sizeBytes: snapshot.sizeBytes,
-      createdAt: activity.createdAt,
+      createdAt: activityCreatedAt,
       usedBytes: storage.usedBytes,
-      triggeredBy: options.triggeredBy ?? null
+      triggeredBy: actor
     }
   } catch (error) {
     console.error('Backup process failed:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
 
-    const activity = await db.activityLog.create({
-      data: {
-        id: randomUUID(),
-        action: options.source === 'automatic' ? 'AUTO_BACKUP_FAILED' : 'MANUAL_BACKUP_FAILED',
-        entityType: 'BACKUP',
-        entityId: randomUUID(),
-        userId: options.triggeredBy?.id ?? null,
-        details: {
-          status: 'FAILED',
-          source: options.source,
-          note: options.note ?? null,
-          error: message,
-          startedAt: startedAt.toISOString()
+    const actor = await resolveBackupActor(options.triggeredBy)
+    const logId = randomUUID()
+    const logDetails = {
+      status: 'FAILED',
+      source: options.source,
+      note: options.note ?? null,
+      error: message,
+      startedAt: startedAt.toISOString()
+    }
+
+    let activityCreatedAt = new Date()
+
+    if (actor) {
+      const activity = await db.activityLog.create({
+        data: {
+          id: logId,
+          action: options.source === 'automatic' ? 'AUTO_BACKUP_FAILED' : 'MANUAL_BACKUP_FAILED',
+          entityType: 'BACKUP',
+          entityId: randomUUID(),
+          userId: actor.id,
+          details: logDetails
         }
-      }
-    })
+      })
+      activityCreatedAt = activity.createdAt
+    }
 
     await saveBackupSettings(
       {
-        lastRunAt: activity.createdAt.toISOString(),
+        lastRunAt: activityCreatedAt.toISOString(),
         lastRunSource: options.source,
         lastStatus: 'FAILED',
         lastError: message
