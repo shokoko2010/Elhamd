@@ -75,6 +75,134 @@ async function fetchUserWithEmployee(userId?: string | null, email?: string | nu
 
 type UserWithEmployee = NonNullable<Awaited<ReturnType<typeof fetchUserWithEmployee>>>
 
+async function resolveDepartmentAndPosition(user: UserWithEmployee) {
+  const roleMapping: Array<{ matcher: (user: UserWithEmployee) => boolean; department: string; position?: string }> = [
+    {
+      matcher: (candidate) =>
+        candidate.role === UserRole.SUPER_ADMIN || candidate.role === UserRole.ADMIN,
+      department: 'الإدارة العليا',
+      position: 'المدير العام'
+    },
+    {
+      matcher: (candidate) => candidate.role === UserRole.BRANCH_MANAGER,
+      department: 'الإدارة العليا',
+      position: 'مدير الفرع'
+    },
+    {
+      matcher: (candidate) =>
+        candidate.role === UserRole.STAFF &&
+        typeof candidate.email === 'string' &&
+        candidate.email.toLowerCase().includes('service'),
+      department: 'الخدمة الفنية',
+      position: 'فني أول'
+    },
+    {
+      matcher: (candidate) =>
+        candidate.role === UserRole.STAFF &&
+        typeof candidate.email === 'string' &&
+        candidate.email.toLowerCase().includes('sales'),
+      department: 'المبيعات',
+      position: 'مندوب مبيعات'
+    }
+  ]
+
+  const matched = roleMapping.find((entry) => entry.matcher(user))
+  const departmentName = matched?.department ?? 'المبيعات'
+  const preferredPosition = matched?.position
+
+  const department = await db.department.findFirst({
+    where: { name: departmentName },
+    include: {
+      positions: {
+        where: preferredPosition ? { title: preferredPosition } : undefined,
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, title: true }
+      }
+    }
+  })
+
+  let departmentId = department?.id ?? null
+  let positionId = department?.positions?.[0]?.id ?? null
+
+  if (!positionId && departmentId) {
+    const fallbackPosition = await db.position.findFirst({
+      where: { departmentId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true }
+    })
+
+    positionId = fallbackPosition?.id ?? null
+  }
+
+  if (!departmentId) {
+    const fallbackDepartment = await db.department.findFirst({
+      orderBy: { createdAt: 'asc' },
+      include: {
+        positions: { orderBy: { createdAt: 'asc' }, select: { id: true } }
+      }
+    })
+
+    departmentId = fallbackDepartment?.id ?? null
+    positionId = positionId ?? fallbackDepartment?.positions?.[0]?.id ?? null
+  }
+
+  return { departmentId: departmentId ?? undefined, positionId: positionId ?? undefined }
+}
+
+function resolveBaselineSalary(role: UserRole, email?: string | null) {
+  if (role === UserRole.SUPER_ADMIN) {
+    return 25000
+  }
+
+  if (role === UserRole.ADMIN || role === UserRole.BRANCH_MANAGER) {
+    return 18000
+  }
+
+  if (email?.toLowerCase().includes('manager')) {
+    return 15000
+  }
+
+  return 8000
+}
+
+async function ensureEmployeeRecord(user: UserWithEmployee) {
+  if (user.employee) {
+    return user
+  }
+
+  const branchId = user.branchId
+    ?? (await db.branch.findFirst({ orderBy: { createdAt: 'asc' }, select: { id: true } }))?.id
+
+  const { departmentId, positionId } = await resolveDepartmentAndPosition(user)
+
+  try {
+    await db.employee.create({
+      data: {
+        userId: user.id,
+        employeeNumber: deriveEmployeeNumber(user.id),
+        hireDate: user.createdAt,
+        salary: resolveBaselineSalary(user.role, user.email),
+        status: EmployeeStatus.ACTIVE,
+        branchId: branchId ?? undefined,
+        departmentId,
+        positionId
+      }
+    })
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      // Another request created the record; ignore the violation
+    } else {
+      throw error
+    }
+  }
+
+  const refreshed = await fetchUserWithEmployee(user.id, user.email)
+  return refreshed ?? user
+}
+
 function buildProfilePayload(user: UserWithEmployee) {
   const employee = user.employee
   const emergencyContact = normalizeEmergencyContact(employee?.emergencyContact ?? undefined)
@@ -114,10 +242,14 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'صلاحيات غير كافية' }, { status: 403 })
     }
 
-    const user = await fetchUserWithEmployee(session.user.id, session.user.email)
+    let user = await fetchUserWithEmployee(session.user.id, session.user.email)
 
     if (!user) {
       return NextResponse.json({ error: 'المستخدم غير موجود' }, { status: 404 })
+    }
+
+    if (!user.employee && allowedRoles.includes(user.role)) {
+      user = await ensureEmployeeRecord(user)
     }
 
     return NextResponse.json(buildProfilePayload(user))

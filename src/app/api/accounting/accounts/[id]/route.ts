@@ -1,21 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/authOptions'
+import { UserRole } from '@prisma/client'
 
-const prisma = new PrismaClient()
+import { getAuthUser } from '@/lib/auth-server'
+import { db } from '@/lib/db'
+
+const VIEW_PERMISSIONS = [
+  'view_financials',
+  'view_financial_overview',
+  'view_financial_reports',
+  'view_reports'
+]
+
+const MANAGE_PERMISSIONS = [
+  'manage_financials',
+  'export_financial_data',
+  'access_finance_dashboard'
+]
+
+function hasAnyPermission(user: Awaited<ReturnType<typeof getAuthUser>>, permissions: string[]) {
+  if (!user) {
+    return false
+  }
+
+  if (user.role === UserRole.SUPER_ADMIN || user.permissions.includes('*')) {
+    return true
+  }
+
+  return permissions.some((permission) => user.permissions.includes(permission))
+}
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const user = await getAuthUser()
+
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const account = await prisma.chartOfAccount.findUnique({
+    if (!hasAnyPermission(user, VIEW_PERMISSIONS)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const account = await db.chartOfAccount.findUnique({
       where: { id: params.id },
       include: {
         items: {
@@ -58,9 +87,14 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const user = await getAuthUser()
+
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!hasAnyPermission(user, [...VIEW_PERMISSIONS, ...MANAGE_PERMISSIONS])) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -74,7 +108,7 @@ export async function PUT(
     } = body
 
     // Check if account exists
-    const existingAccount = await prisma.chartOfAccount.findUnique({
+    const existingAccount = await db.chartOfAccount.findUnique({
       where: { id: params.id }
     })
 
@@ -87,7 +121,7 @@ export async function PUT(
 
     // Check if new code conflicts with existing account
     if (code && code !== existingAccount.code) {
-      const codeConflict = await prisma.chartOfAccount.findUnique({
+      const codeConflict = await db.chartOfAccount.findUnique({
         where: { code }
       })
 
@@ -99,7 +133,7 @@ export async function PUT(
       }
     }
 
-    const account = await prisma.chartOfAccount.update({
+    const account = await db.chartOfAccount.update({
       where: { id: params.id },
       data: {
         ...(code && { code }),
@@ -125,17 +159,22 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const user = await getAuthUser()
+
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (!hasAnyPermission(user, MANAGE_PERMISSIONS)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
     // Check if account has any journal entry items
-    const itemsCount = await prisma.journalEntryItem.count({
+    const itemsCount = await db.journalEntryItem.count({
       where: { accountId: params.id }
     })
 
@@ -149,7 +188,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.chartOfAccount.delete({
+    await db.chartOfAccount.delete({
       where: { id: params.id }
     })
 
