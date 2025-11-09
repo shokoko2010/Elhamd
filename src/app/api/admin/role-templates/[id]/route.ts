@@ -12,7 +12,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     const { id } = await context.params
     const user = await getAuthUser()
     const templateId = id
-    const { name, description, role, permissions } = await request.json()
+    const { name, description, role, permissions, isActive } = await request.json()
 
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
@@ -53,42 +53,54 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     // Update template
-    const updatedTemplate = await db.roleTemplate.update({
-      where: { id: templateId },
-      data: {
-        name,
-        description,
-        role,
-        permissions
-      }
-    })
-
-    // Remove existing permissions
-    await db.roleTemplatePermission.deleteMany({
-      where: { templateId }
-    })
-
-    // Add new permissions
-    for (const permissionName of permissions) {
-      const permission = await db.permission.findUnique({
-        where: { name: permissionName }
+    const updatedTemplate = await db.$transaction(async (tx) => {
+      const nextTemplate = await tx.roleTemplate.update({
+        where: { id: templateId },
+        data: {
+          name,
+          description,
+          role,
+          permissions,
+          isActive: typeof isActive === 'boolean' ? isActive : template.isActive
+        }
       })
 
-      if (permission) {
-        await db.roleTemplatePermission.create({
-          data: {
-            templateId: templateId,
-            permissionId: permission.id
-          }
-        })
-      }
-    }
+      await tx.roleTemplatePermission.deleteMany({
+        where: { templateId }
+      })
 
-    return NextResponse.json({ 
+      if (permissions.length > 0) {
+        const permissionRecords = await tx.permission.findMany({
+          where: { name: { in: permissions } },
+          select: { id: true }
+        })
+
+        if (permissionRecords.length > 0) {
+          await tx.roleTemplatePermission.createMany({
+            data: permissionRecords.map((record) => ({
+              templateId,
+              permissionId: record.id
+            })),
+            skipDuplicates: true
+          })
+        }
+      }
+
+      return nextTemplate
+    })
+
+    return NextResponse.json({
       message: 'Role template updated successfully',
       template: {
-        ...updatedTemplate,
-        permissions
+        id: updatedTemplate.id,
+        name: updatedTemplate.name,
+        description: updatedTemplate.description,
+        role: updatedTemplate.role,
+        permissions,
+        isActive: updatedTemplate.isActive,
+        isSystem: updatedTemplate.isSystem,
+        createdAt: updatedTemplate.createdAt,
+        updatedAt: updatedTemplate.updatedAt
       }
     })
   } catch (error) {
@@ -139,14 +151,14 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Cannot delete system templates' }, { status: 403 })
     }
 
-    // Delete template permissions first
-    await db.roleTemplatePermission.deleteMany({
-      where: { templateId }
-    })
+    await db.$transaction(async (tx) => {
+      await tx.roleTemplatePermission.deleteMany({
+        where: { templateId }
+      })
 
-    // Delete template
-    await db.roleTemplate.delete({
-      where: { id: templateId }
+      await tx.roleTemplate.delete({
+        where: { id: templateId }
+      })
     })
 
     return NextResponse.json({ message: 'Role template deleted successfully' })

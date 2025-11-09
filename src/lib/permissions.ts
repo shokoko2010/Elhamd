@@ -561,6 +561,34 @@ export const DEFAULT_ROLE_PERMISSIONS = {
 
 // Permission service class
 export class PermissionService {
+  private static coercePermissionList(value: unknown): Permission[] {
+    if (!value) {
+      return []
+    }
+
+    if (Array.isArray(value)) {
+      return value
+        .map((entry) => (typeof entry === 'string' ? entry : undefined))
+        .filter((permission): permission is Permission => Boolean(permission))
+    }
+
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        return this.coercePermissionList(parsed)
+      } catch (error) {
+        return []
+      }
+    }
+
+    if (typeof value === 'object') {
+      const values = Object.values(value as Record<string, unknown>)
+      return this.coercePermissionList(values)
+    }
+
+    return []
+  }
+
   static async initializeDefaultPermissions() {
     const permissions = Object.values(PERMISSIONS)
 
@@ -644,7 +672,13 @@ export class PermissionService {
               permission: true
             }
           },
-          roleTemplate: true,
+          roleTemplate: {
+            include: {
+              roleTemplatePermissions: {
+                include: { permission: true }
+              }
+            }
+          },
           branchPermissions: true
         }
       })
@@ -661,70 +695,29 @@ export class PermissionService {
       }
 
       // Start with role template permissions
-      if (user.roleTemplate?.permissions) {
-        try {
-          // Check if permissions are already stored as an array or as JSON string
-          let templatePermissions: string[] = []
-          if (typeof user.roleTemplate.permissions === 'string') {
-            templatePermissions = JSON.parse(user.roleTemplate.permissions)
-          } else if (Array.isArray(user.roleTemplate.permissions)) {
-            templatePermissions = user.roleTemplate.permissions
-          }
-          
-          // Convert permission IDs to Permission names
-          const permissionNames = await db.permission.findMany({
-            where: { id: { in: templatePermissions } },
-            select: { name: true }
-          })
-          
-          const templatePerms = permissionNames.map(p => p.name as Permission)
-          permissions = [...permissions, ...templatePerms]
-        } catch (error) {
-          // Error parsing role template permissions - use default permissions
-          if (user.role === UserRole.ACCOUNTANT) {
-            permissions = [
-              PERMISSIONS.VIEW_INVOICES,
-              PERMISSIONS.CREATE_INVOICES,
-              PERMISSIONS.EDIT_INVOICES,
-              PERMISSIONS.DELETE_INVOICES,
-              PERMISSIONS.VIEW_QUOTATIONS,
-              PERMISSIONS.CREATE_QUOTATIONS,
-              PERMISSIONS.EDIT_QUOTATIONS,
-              PERMISSIONS.DELETE_QUOTATIONS,
-              PERMISSIONS.VIEW_PAYMENTS,
-              PERMISSIONS.CREATE_PAYMENTS,
-              PERMISSIONS.EDIT_PAYMENTS,
-              PERMISSIONS.VIEW_FINANCIAL_REPORTS
-            ]
-          } else if (user.role === UserRole.BRANCH_MANAGER) {
-            permissions = [
-              PERMISSIONS.MANAGE_VEHICLE_INVENTORY,
-              PERMISSIONS.VIEW_VEHICLES,
-              PERMISSIONS.EDIT_VEHICLES,
-              PERMISSIONS.CREATE_VEHICLES,
-              PERMISSIONS.VIEW_INVOICES,
-              PERMISSIONS.CREATE_INVOICES,
-              PERMISSIONS.EDIT_INVOICES
-            ]
-          } else if (user.role === UserRole.STAFF) {
-            permissions = [
-              PERMISSIONS.VIEW_VEHICLES,
-              PERMISSIONS.EDIT_VEHICLES,
-              PERMISSIONS.VIEW_INVOICES
-            ]
-          }
-        }
+      if (user.roleTemplate) {
+        const templatePermissionsFromRelation = user.roleTemplate.roleTemplatePermissions?.map(
+          (edge) => edge.permission?.name as Permission | undefined
+        )
+        const relationPermissions = (templatePermissionsFromRelation ?? []).filter(
+          (permission): permission is Permission => Boolean(permission)
+        )
+
+        const storedPermissions = this.coercePermissionList(user.roleTemplate.permissions)
+
+        const combinedTemplatePermissions = new Set<Permission>([
+          ...relationPermissions,
+          ...storedPermissions
+        ])
+
+        permissions = [...permissions, ...combinedTemplatePermissions]
       }
 
       // Add custom permissions if they exist
-      if (user.customPermissions) {
-        try {
-          const customPermissions = JSON.parse(user.customPermissions)
-          permissions = [...permissions, ...customPermissions]
-        } catch (error) {
-          // Error parsing custom permissions
-        }
-      }
+      permissions = [
+        ...permissions,
+        ...this.coercePermissionList(user.customPermissions)
+      ]
 
       // Add individual user permissions
       const userPermissions = user.permissions.map(up => up.permission.name as Permission)
@@ -821,21 +814,95 @@ export class PermissionService {
     })
 
     // Add new permissions
-    for (const permissionName of permissions) {
-      const permission = await db.permission.findUnique({
-        where: { name: permissionName }
+    const permissionRecords = await db.permission.findMany({
+      where: { name: { in: permissions } },
+      select: { id: true }
+    })
+
+    if (permissionRecords.length === 0) {
+      return
+    }
+
+    await db.userPermission.createMany({
+      data: permissionRecords.map((permission) => ({
+        userId,
+        permissionId: permission.id,
+        grantedBy
+      })),
+      skipDuplicates: true
+    })
+  }
+
+  static async applyTemplateToUser(
+    userId: string,
+    templateId: string,
+    options?: {
+      grantedBy?: string
+      additionalPermissions?: Permission[]
+      preserveManualPermissions?: boolean
+    }
+  ) {
+    const template = await db.roleTemplate.findUnique({
+      where: { id: templateId },
+      include: {
+        roleTemplatePermissions: {
+          include: { permission: true }
+        }
+      }
+    })
+
+    if (!template) {
+      throw new Error('Role template not found')
+    }
+
+    const templatePermissions = template.roleTemplatePermissions
+      .map((edge) => edge.permission?.name as Permission | undefined)
+      .filter((permission): permission is Permission => Boolean(permission))
+
+    const manualPermissions = options?.preserveManualPermissions
+      ? await this.getUserPermissions(userId)
+      : []
+
+    const mergedManualPermissions = new Set<Permission>([...manualPermissions])
+
+    for (const permission of options?.additionalPermissions ?? []) {
+      mergedManualPermissions.add(permission)
+    }
+
+    const manualOnlyPermissions = Array.from(mergedManualPermissions).filter(
+      (permission) => !templatePermissions.includes(permission)
+    )
+
+    await db.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          role: template.role as PrismaUserRole,
+          roleTemplateId: template.id,
+          updatedAt: new Date()
+        }
       })
 
-      if (permission) {
-        await db.userPermission.create({
-          data: {
-            userId,
-            permissionId: permission.id,
-            grantedBy
-          }
+      await tx.userPermission.deleteMany({ where: { userId } })
+
+      if (manualOnlyPermissions.length > 0) {
+        const permissionRecords = await tx.permission.findMany({
+          where: { name: { in: manualOnlyPermissions } },
+          select: { id: true }
         })
+
+        if (permissionRecords.length > 0) {
+          await tx.userPermission.createMany({
+            data: permissionRecords.map((record) => ({
+              userId,
+              permissionId: record.id,
+              grantedBy: options?.grantedBy
+            })),
+            skipDuplicates: true
+          })
+        }
       }
-    }
+    })
   }
 
   static async setBranchPermissions(userId: string, branchId: string, permissions: Permission[], grantedBy?: string) {

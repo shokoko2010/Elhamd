@@ -3,10 +3,11 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
 import { UserRole, Prisma } from '@prisma/client'
-import { PERMISSIONS } from '@/lib/permissions'
+import { PERMISSIONS, Permission, PermissionService } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,6 +76,16 @@ export async function GET(request: NextRequest) {
           lastLoginAt: true,
           createdAt: true,
           updatedAt: true,
+          roleTemplateId: true,
+          roleTemplate: {
+            select: {
+              id: true,
+              name: true,
+              role: true,
+              isActive: true,
+              isSystem: true
+            }
+          },
           _count: {
             select: {
               testDriveBookings: true,
@@ -168,7 +179,66 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
     const body = await request.json()
-    const { email, name, role, phone, permissions } = body
+    const {
+      email,
+      name,
+      role,
+      phone,
+      password,
+      permissions = [],
+      roleTemplateId,
+      applyRoleTemplate = false,
+      preserveManualPermissions = false
+    } = body as {
+      email?: string
+      name?: string
+      role?: UserRole
+      phone?: string
+      password?: string
+      permissions?: Permission[]
+      roleTemplateId?: string | null
+      applyRoleTemplate?: boolean
+      preserveManualPermissions?: boolean
+    }
+
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: 'البريد الإلكتروني مطلوب' }, { status: 400 })
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      return NextResponse.json({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, { status: 400 })
+    }
+
+    let resolvedRole: UserRole = UserRole.CUSTOMER
+
+    if (role) {
+      if (!(Object.values(UserRole) as string[]).includes(role)) {
+        return NextResponse.json({ error: 'دور غير صالح' }, { status: 400 })
+      }
+      resolvedRole = role
+    }
+
+    let templateRole: UserRole | null = null
+
+    if (roleTemplateId) {
+      const template = await db.roleTemplate.findUnique({
+        where: { id: roleTemplateId },
+        select: { id: true, role: true, isActive: true }
+      })
+
+      if (!template) {
+        return NextResponse.json({ error: 'قالب الدور غير موجود' }, { status: 404 })
+      }
+
+      if (!template.isActive && user.role !== UserRole.SUPER_ADMIN) {
+        return NextResponse.json({ error: 'القالب غير مفعل' }, { status: 400 })
+      }
+
+      templateRole = template.role
+      if (!role) {
+        resolvedRole = template.role
+      }
+    }
 
     // Check if user already exists
     const existingUser = await db.user.findUnique({
@@ -182,13 +252,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create user
-    const newUser = await db.user.create({
+    const hashedPassword = await bcrypt.hash(password, 12)
+    const manualPermissions = Array.isArray(permissions)
+      ? Array.from(new Set(permissions))
+      : []
+
+    const createdUser = await db.user.create({
       data: {
         email,
         name,
-        role: role || UserRole.CUSTOMER,
-        phone
+        role: resolvedRole,
+        phone,
+        password: hashedPassword,
+        roleTemplateId: roleTemplateId ?? undefined
       },
       select: {
         id: true,
@@ -197,21 +273,52 @@ export async function POST(request: NextRequest) {
         role: true,
         phone: true,
         isActive: true,
+        roleTemplateId: true,
         createdAt: true
       }
     })
 
-    // Add permissions if provided
-    if (permissions && permissions.length > 0) {
-      await db.userPermission.createMany({
-        data: permissions.map((permissionId: string) => ({
-          userId: newUser.id,
-          permissionId
-        }))
+    if (applyRoleTemplate && roleTemplateId) {
+      await PermissionService.applyTemplateToUser(createdUser.id, roleTemplateId, {
+        grantedBy: user.id,
+        additionalPermissions: manualPermissions,
+        preserveManualPermissions
+      })
+    } else if (manualPermissions.length > 0) {
+      await PermissionService.setUserPermissions(createdUser.id, manualPermissions, user.id)
+    }
+
+    if (!applyRoleTemplate && roleTemplateId && templateRole && resolvedRole !== templateRole) {
+      await db.user.update({
+        where: { id: createdUser.id },
+        data: { role: templateRole }
       })
     }
 
-    return NextResponse.json({ user: newUser }, { status: 201 })
+    const userWithRelations = await db.user.findUnique({
+      where: { id: createdUser.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        roleTemplateId: true,
+        roleTemplate: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            isSystem: true,
+            isActive: true
+          }
+        }
+      }
+    })
+
+    return NextResponse.json({ user: userWithRelations }, { status: 201 })
   } catch (error) {
     console.error('Error creating user:', error)
     return NextResponse.json(

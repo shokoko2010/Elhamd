@@ -5,6 +5,8 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
+import { PermissionService, Permission } from '@/lib/permissions'
+import { Prisma } from '@prisma/client'
 
 export async function GET(
   request: NextRequest,
@@ -25,6 +27,15 @@ export async function GET(
         permissions: {
           include: {
             permission: true
+          }
+        },
+        roleTemplate: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            isSystem: true,
+            isActive: true
           }
         },
         _count: {
@@ -67,7 +78,29 @@ export async function PUT(
     }
     
     const body = await request.json()
-    const { email, name, role, phone, isActive, permissions } = body
+    const {
+      email,
+      name,
+      role,
+      phone,
+      isActive,
+      permissions,
+      roleTemplateId,
+      applyRoleTemplate,
+      preserveManualPermissions,
+      additionalPermissions
+    } = body as {
+      email?: string
+      name?: string
+      role?: UserRole
+      phone?: string
+      isActive?: boolean
+      permissions?: Permission[]
+      roleTemplateId?: string | null
+      applyRoleTemplate?: boolean
+      preserveManualPermissions?: boolean
+      additionalPermissions?: Permission[]
+    }
 
     // Check if user exists
     const existingUser = await db.user.findUnique({
@@ -99,15 +132,67 @@ export async function PUT(
     }
 
     // Update user
-    const updatedUser = await db.user.update({
+    const templateToApply = roleTemplateId
+      ? await db.roleTemplate.findUnique({
+          where: { id: roleTemplateId },
+          select: { id: true, role: true, isActive: true }
+        })
+      : null
+
+    if (roleTemplateId && !templateToApply) {
+      return NextResponse.json(
+        { error: 'قالب الدور غير موجود' },
+        { status: 404 }
+      )
+    }
+
+    const data: Prisma.UserUpdateInput = {
+      email: email ?? existingUser.email,
+      name: name ?? existingUser.name,
+      role: role ?? existingUser.role,
+      phone: phone ?? existingUser.phone,
+      isActive: typeof isActive === 'boolean' ? isActive : existingUser.isActive
+    }
+
+    if (roleTemplateId !== undefined) {
+      if (roleTemplateId === null) {
+        data.roleTemplate = { disconnect: true }
+      } else {
+        data.roleTemplate = { connect: { id: roleTemplateId } }
+        if (!role && templateToApply) {
+          data.role = templateToApply.role
+        }
+      }
+    }
+
+    await db.user.update({
       where: { id },
-      data: {
-        email,
-        name,
-        role,
-        phone,
-        isActive
-      },
+      data
+    })
+
+    if (applyRoleTemplate && templateToApply) {
+      await PermissionService.applyTemplateToUser(id, templateToApply.id, {
+        grantedBy: auth.user?.id,
+        additionalPermissions: Array.isArray(additionalPermissions)
+          ? additionalPermissions
+          : Array.isArray(permissions)
+            ? permissions
+            : [],
+        preserveManualPermissions: Boolean(preserveManualPermissions)
+      })
+    } else if (permissions !== undefined) {
+      await PermissionService.setUserPermissions(id, permissions ?? [], auth.user?.id)
+    }
+
+    if (!applyRoleTemplate && templateToApply && !role) {
+      await db.user.update({
+        where: { id },
+        data: { role: templateToApply.role }
+      })
+    }
+
+    const refreshed = await db.user.findUnique({
+      where: { id },
       select: {
         id: true,
         email: true,
@@ -115,29 +200,21 @@ export async function PUT(
         role: true,
         phone: true,
         isActive: true,
-        updatedAt: true
+        updatedAt: true,
+        roleTemplateId: true,
+        roleTemplate: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            isSystem: true,
+            isActive: true
+          }
+        }
       }
     })
 
-    // Update permissions if provided
-    if (permissions !== undefined) {
-      // Remove existing permissions
-      await db.userPermission.deleteMany({
-        where: { userId: id }
-      })
-
-      // Add new permissions
-      if (permissions.length > 0) {
-        await db.userPermission.createMany({
-          data: permissions.map((permissionId: string) => ({
-            userId: id,
-            permissionId
-          }))
-        })
-      }
-    }
-
-    return NextResponse.json({ user: updatedUser })
+    return NextResponse.json({ user: refreshed })
   } catch (error) {
     console.error('Error updating user:', error)
     return NextResponse.json(
