@@ -119,6 +119,7 @@ export default function AccountingPage() {
     normalBalance: 'DEBIT' as ChartOfAccount['normalBalance'],
     isActive: true
   })
+  const [editingAccount, setEditingAccount] = useState<ChartOfAccount | null>(null)
 
   const [entryDialogOpen, setEntryDialogOpen] = useState(false)
   const [entrySubmitting, setEntrySubmitting] = useState(false)
@@ -318,6 +319,7 @@ export default function AccountingPage() {
       isActive: true
     })
     setAccountError(null)
+    setEditingAccount(null)
   }
 
   const resetEntryForm = () => {
@@ -334,6 +336,25 @@ export default function AccountingPage() {
     setEntryError(null)
   }
 
+  const handleOpenCreateAccount = () => {
+    resetAccountForm()
+    setAccountDialogOpen(true)
+  }
+
+  const handleEditAccount = (account: ChartOfAccount) => {
+    setEditingAccount(account)
+    setAccountForm({
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      parentId: account.parentId ?? null,
+      normalBalance: account.normalBalance,
+      isActive: account.isActive
+    })
+    setAccountError(null)
+    setAccountDialogOpen(true)
+  }
+
   const handleAccountSubmit = async () => {
     try {
       setAccountSubmitting(true)
@@ -344,30 +365,39 @@ export default function AccountingPage() {
         return
       }
 
-      const response = await fetch('/api/accounting/accounts', {
-        method: 'POST',
+      const payload = {
+        code: accountForm.code.trim(),
+        name: accountForm.name.trim(),
+        type: accountForm.type,
+        parentId: accountForm.parentId || null,
+        normalBalance: accountForm.normalBalance,
+        isActive: accountForm.isActive
+      }
+
+      const endpoint = editingAccount
+        ? `/api/accounting/accounts/${editingAccount.id}`
+        : '/api/accounting/accounts'
+
+      const method = editingAccount ? 'PUT' : 'POST'
+
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          code: accountForm.code.trim(),
-          name: accountForm.name.trim(),
-          type: accountForm.type,
-          parentId: accountForm.parentId || null,
-          normalBalance: accountForm.normalBalance,
-          isActive: accountForm.isActive
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        const message = errorData?.error || 'فشل حفظ الحساب الجديد'
+        const fallbackMessage = editingAccount ? 'فشل تحديث الحساب' : 'فشل حفظ الحساب الجديد'
+        const message = errorData?.error || fallbackMessage
         throw new Error(message)
       }
 
       toast({
-        title: 'تم حفظ الحساب',
-        description: 'تم إضافة الحساب الجديد بنجاح'
+        title: editingAccount ? 'تم تحديث الحساب' : 'تم حفظ الحساب',
+        description: editingAccount ? 'تم تحديث بيانات الحساب بنجاح' : 'تم إضافة الحساب الجديد بنجاح'
       })
 
       setAccountDialogOpen(false)
@@ -717,7 +747,7 @@ export default function AccountingPage() {
                   <CardTitle>دليل الحسابات</CardTitle>
                   <CardDescription>عرض وإدارة جميع الحسابات المحاسبية</CardDescription>
                 </div>
-                <Button onClick={() => setAccountDialogOpen(true)}>
+                <Button onClick={handleOpenCreateAccount}>
                   <Plus className="ml-2 h-4 w-4" />
                   حساب جديد
                 </Button>
@@ -746,7 +776,7 @@ export default function AccountingPage() {
                         {account.isActive ? 'نشط' : 'غير نشط'}
                       </Badge>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" disabled>
+                        <Button variant="outline" size="sm" onClick={() => handleEditAccount(account)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="sm" disabled>
@@ -960,8 +990,12 @@ export default function AccountingPage() {
       }}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>إضافة حساب جديد</DialogTitle>
-            <DialogDescription>قم بتعبئة البيانات التالية لإنشاء حساب في دليل الحسابات</DialogDescription>
+            <DialogTitle>{editingAccount ? 'تعديل الحساب' : 'إضافة حساب جديد'}</DialogTitle>
+            <DialogDescription>
+              {editingAccount
+                ? 'قم بتحديث بيانات الحساب الحالي وتغيير حالته عند الحاجة'
+                : 'قم بتعبئة البيانات التالية لإنشاء حساب في دليل الحسابات'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid gap-2">
@@ -1047,11 +1081,13 @@ export default function AccountingPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">بدون</SelectItem>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.code} - {account.name}
-                    </SelectItem>
-                  ))}
+                  {accounts
+                    .filter((candidate) => !editingAccount || candidate.id !== editingAccount.id)
+                    .map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.code} - {account.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1072,7 +1108,11 @@ export default function AccountingPage() {
               إلغاء
             </Button>
             <Button onClick={handleAccountSubmit} disabled={accountSubmitting}>
-              {accountSubmitting ? 'جاري الحفظ...' : 'حفظ الحساب'}
+              {accountSubmitting
+                ? 'جاري الحفظ...'
+                : editingAccount
+                  ? 'تحديث الحساب'
+                  : 'حفظ الحساب'}
             </Button>
           </DialogFooter>
         </DialogContent>

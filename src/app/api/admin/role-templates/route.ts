@@ -35,14 +35,27 @@ export async function GET(request: NextRequest) {
           include: {
             permission: true
           }
+        },
+        _count: {
+          select: {
+            users: true
+          }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: [{ role: 'asc' }, { isSystem: 'desc' }, { createdAt: 'desc' }]
     })
 
-    const templatesWithPermissions = templates.map(template => ({
-      ...template,
-      permissions: template.roleTemplatePermissions.map(rtp => rtp.permission.name)
+    const templatesWithPermissions = templates.map((template) => ({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      role: template.role,
+      isActive: template.isActive,
+      isSystem: template.isSystem,
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+      userCount: template._count.users,
+      permissions: template.roleTemplatePermissions.map((rtp) => rtp.permission.name)
     }))
 
     return NextResponse.json({ templates: templatesWithPermissions })
@@ -85,36 +98,50 @@ export async function POST(request: NextRequest) {
     }
 
     // Create role template
-    const template = await db.roleTemplate.create({
-      data: {
-        name,
-        description,
-        role,
-        permissions,
-        isSystem: false
-      }
-    })
+    const uniqueName = name.trim()
 
-    // Add permissions to template
-    for (const permissionName of permissions) {
-      const permission = await db.permission.findUnique({
-        where: { name: permissionName }
+    const template = await db.$transaction(async (tx) => {
+      const created = await tx.roleTemplate.create({
+        data: {
+          name: uniqueName,
+          description,
+          role,
+          permissions,
+          isSystem: false
+        }
       })
 
-      if (permission) {
-        await db.roleTemplatePermission.create({
-          data: {
-            templateId: template.id,
-            permissionId: permission.id
-          }
+      if (permissions.length > 0) {
+        const permissionRecords = await tx.permission.findMany({
+          where: { name: { in: permissions } },
+          select: { id: true }
         })
-      }
-    }
 
-    return NextResponse.json({ 
+        if (permissionRecords.length > 0) {
+          await tx.roleTemplatePermission.createMany({
+            data: permissionRecords.map((permission) => ({
+              templateId: created.id,
+              permissionId: permission.id
+            })),
+            skipDuplicates: true
+          })
+        }
+      }
+
+      return created
+    })
+
+    return NextResponse.json({
       message: 'Role template created successfully',
       template: {
-        ...template,
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        role: template.role,
+        isActive: template.isActive,
+        isSystem: template.isSystem,
+        createdAt: template.createdAt,
+        updatedAt: template.updatedAt,
         permissions
       }
     })

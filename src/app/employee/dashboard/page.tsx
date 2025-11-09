@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -162,7 +162,16 @@ const getDefaultDueDate = () => {
 }
 
 export default function EmployeeDashboard() {
-  const { user } = useAuth()
+  const {
+    user,
+    canViewInventory,
+    canManageInventory,
+    canViewFinancials,
+    canViewFinancialOverview,
+    canViewInvoices,
+    canCreateInvoices,
+    canManagePayments
+  } = useAuth()
   const { toast } = useToast()
   const [employeeProfile, setEmployeeProfile] = useState<EmployeeProfile | null>(null)
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
@@ -203,6 +212,29 @@ export default function EmployeeDashboard() {
   const [newItemQuantity, setNewItemQuantity] = useState(1)
   const [newItemUnitPrice, setNewItemUnitPrice] = useState(0)
 
+  const inventoryAccess = canViewInventory() || canManageInventory()
+  const invoiceViewAccess = canViewInvoices()
+  const invoiceCreateAccess = canCreateInvoices()
+  const invoiceManagePaymentsAccess = canManagePayments()
+  const allowInvoiceTab = invoiceViewAccess || invoiceCreateAccess || invoiceManagePaymentsAccess
+  const allowInvoiceCreation = invoiceCreateAccess
+  const allowInvoiceListing = invoiceViewAccess || invoiceManagePaymentsAccess
+  const payrollAccess = canViewFinancials() || canViewFinancialOverview()
+  const allowInventoryTab = inventoryAccess
+  const shouldLoadInventoryData = allowInventoryTab || allowInvoiceCreation
+
+  const tabs = useMemo(
+    () => [
+      { value: 'profile', label: 'الملف الشخصي', show: true },
+      { value: 'leaves', label: 'الإجازات', show: true },
+      { value: 'payroll', label: 'الرواتب', show: payrollAccess },
+      { value: 'invoices', label: 'الفواتير', show: allowInvoiceTab },
+      { value: 'inventory', label: 'المخزون', show: allowInventoryTab },
+      { value: 'documents', label: 'المستندات', show: true }
+    ],
+    [allowInventoryTab, allowInvoiceTab, payrollAccess]
+  )
+
   const createItemId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -213,6 +245,15 @@ export default function EmployeeDashboard() {
   const invoiceTaxAmount = invoiceSubtotal * (taxRate / 100)
   const invoiceTotal = invoiceSubtotal + invoiceTaxAmount
 
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.value === activeTab && tab.show)) {
+      const firstVisible = tabs.find((tab) => tab.show)
+      if (firstVisible && firstVisible.value !== activeTab) {
+        setActiveTab(firstVisible.value)
+      }
+    }
+  }, [tabs, activeTab])
+
   const handleLogout = () => {
     void signOut({ callbackUrl: '/login' })
   }
@@ -221,7 +262,7 @@ export default function EmployeeDashboard() {
     if (user) {
       void fetchEmployeeData(true)
     }
-  }, [user])
+  }, [user, payrollAccess, allowInvoiceListing, shouldLoadInventoryData])
 
   const fetchEmployeeData = async (showSpinner = false) => {
     try {
@@ -229,21 +270,7 @@ export default function EmployeeDashboard() {
         setLoading(true)
       }
 
-      const [
-        profileRes,
-        leavesRes,
-        payrollRes,
-        invoicesRes,
-        carsRes,
-        partsRes
-      ] = await Promise.all([
-        fetch('/api/employee/profile'),
-        fetch('/api/employee/leave-requests'),
-        fetch('/api/employee/payroll'),
-        fetch('/api/employee/invoices'),
-        fetch('/api/employee/cars?limit=100&status=AVAILABLE'),
-        fetch('/api/employee/inventory/parts?limit=100')
-      ])
+      const profileRes = await fetch('/api/employee/profile')
 
       if (profileRes.ok) {
         const profileData = await profileRes.json()
@@ -259,6 +286,7 @@ export default function EmployeeDashboard() {
         setEmployeeProfile(null)
       }
 
+      const leavesRes = await fetch('/api/employee/leave-requests')
       if (leavesRes.ok) {
         const leavesData = await leavesRes.json()
         setLeaveRequests(leavesData)
@@ -266,31 +294,51 @@ export default function EmployeeDashboard() {
         setLeaveRequests([])
       }
 
-      if (payrollRes.ok) {
-        const payrollData = await payrollRes.json()
-        setPayrollRecords(payrollData)
+      if (payrollAccess) {
+        const payrollRes = await fetch('/api/employee/payroll')
+        if (payrollRes.ok) {
+          const payrollData = await payrollRes.json()
+          setPayrollRecords(payrollData)
+        } else {
+          setPayrollRecords([])
+        }
       } else {
         setPayrollRecords([])
       }
 
-      if (invoicesRes.ok) {
-        const invoicesData = await invoicesRes.json()
-        setInvoices(Array.isArray(invoicesData) ? invoicesData : [])
+      if (allowInvoiceListing) {
+        const invoicesRes = await fetch('/api/employee/invoices')
+        if (invoicesRes.ok) {
+          const invoicesData = await invoicesRes.json()
+          setInvoices(Array.isArray(invoicesData) ? invoicesData : [])
+        } else {
+          setInvoices([])
+        }
       } else {
         setInvoices([])
       }
 
-      if (carsRes.ok) {
-        const carsData = await carsRes.json()
-        setCarsInventory(Array.isArray(carsData) ? carsData : [])
+      if (shouldLoadInventoryData) {
+        const [carsRes, partsRes] = await Promise.all([
+          fetch('/api/employee/cars?limit=100&status=AVAILABLE'),
+          fetch('/api/employee/inventory/parts?limit=100')
+        ])
+
+        if (carsRes.ok) {
+          const carsData = await carsRes.json()
+          setCarsInventory(Array.isArray(carsData) ? carsData : [])
+        } else {
+          setCarsInventory([])
+        }
+
+        if (partsRes.ok) {
+          const partsData = await partsRes.json()
+          setPartsInventory(Array.isArray(partsData?.items) ? partsData.items : [])
+        } else {
+          setPartsInventory([])
+        }
       } else {
         setCarsInventory([])
-      }
-
-      if (partsRes.ok) {
-        const partsData = await partsRes.json()
-        setPartsInventory(Array.isArray(partsData?.items) ? partsData.items : [])
-      } else {
         setPartsInventory([])
       }
     } catch (error) {
@@ -778,33 +826,34 @@ export default function EmployeeDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">الراتب الصافي</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {new Intl.NumberFormat('ar-EG', {
-                style: 'currency',
-                currency: 'EGP'
-              }).format(payrollRecords[0]?.netSalary || employeeProfile.salary)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              للشهر الحالي
-            </p>
-          </CardContent>
-        </Card>
+        {payrollAccess && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">الراتب الصافي</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {new Intl.NumberFormat('ar-EG', {
+                  style: 'currency',
+                  currency: 'EGP'
+                }).format(payrollRecords[0]?.netSalary || employeeProfile.salary)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                للشهر الحالي
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="profile">الملف الشخصي</TabsTrigger>
-          <TabsTrigger value="leaves">الإجازات</TabsTrigger>
-          <TabsTrigger value="payroll">الرواتب</TabsTrigger>
-          <TabsTrigger value="invoices">الفواتير</TabsTrigger>
-          <TabsTrigger value="inventory">المخزون</TabsTrigger>
-          <TabsTrigger value="documents">المستندات</TabsTrigger>
+          {tabs.filter((tab) => tab.show).map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
@@ -1083,342 +1132,368 @@ export default function EmployeeDashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="payroll" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>سجلات الرواتب</CardTitle>
-              <CardDescription>عرض سجلات الرواتب والدفعات</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {payrollRecords.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">لا توجد سجلات رواتب</p>
-                ) : (
-                  payrollRecords.map((payroll) => (
-                    <div key={payroll.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <DollarSign className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">الفترة: {payroll.period}</h4>
-                          <div className="flex space-x-4 text-sm text-muted-foreground mt-1">
-                            <span>أساسي: {new Intl.NumberFormat('ar-EG', {
-                              style: 'currency',
-                              currency: 'EGP'
-                            }).format(payroll.basicSalary)}</span>
-                            <span>بدلات: {new Intl.NumberFormat('ar-EG', {
-                              style: 'currency',
-                              currency: 'EGP'
-                            }).format(payroll.allowances)}</span>
-                            <span>خصومات: {new Intl.NumberFormat('ar-EG', {
-                              style: 'currency',
-                              currency: 'EGP'
-                            }).format(payroll.deductions)}</span>
+        {payrollAccess && (
+          <TabsContent value="payroll" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>سجلات الرواتب</CardTitle>
+                <CardDescription>عرض سجلات الرواتب والدفعات</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {payrollRecords.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">لا توجد سجلات رواتب</p>
+                  ) : (
+                    payrollRecords.map((payroll) => (
+                      <div key={payroll.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <DollarSign className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">الفترة: {payroll.period}</h4>
+                            <div className="flex space-x-4 text-sm text-muted-foreground mt-1">
+                              <span>أساسي: {new Intl.NumberFormat('ar-EG', {
+                                style: 'currency',
+                                currency: 'EGP'
+                              }).format(payroll.basicSalary)}</span>
+                              <span>بدلات: {new Intl.NumberFormat('ar-EG', {
+                                style: 'currency',
+                                currency: 'EGP'
+                              }).format(payroll.allowances)}</span>
+                              <span>خصومات: {new Intl.NumberFormat('ar-EG', {
+                                style: 'currency',
+                                currency: 'EGP'
+                              }).format(payroll.deductions)}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-medium">
-                          {new Intl.NumberFormat('ar-EG', {
-                            style: 'currency',
-                            currency: 'EGP'
-                          }).format(payroll.netSalary)}
-                        </p>
-                        <Badge className={getStatusColor(payroll.status)}>
-                          {getStatusText(payroll.status)}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="invoices" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <CardTitle>الفواتير</CardTitle>
-                <CardDescription>إنشاء الفواتير للعملاء وتتبع حالتها اليومية</CardDescription>
-              </div>
-              <Dialog open={isInvoiceDialogOpen} onOpenChange={handleInvoiceDialogChange}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 ml-2" />
-                    فاتورة جديدة
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl">
-                  <DialogHeader>
-                    <DialogTitle>إنشاء فاتورة جديدة</DialogTitle>
-                    <DialogDescription>
-                      قم بإدخال بيانات العميل وإضافة العناصر أو الخدمات المطلوب تحصيلها.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-6">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="invoiceCustomerName">اسم العميل</Label>
-                        <Input
-                          id="invoiceCustomerName"
-                          value={invoiceForm.customerName}
-                          onChange={(e) => setInvoiceForm({ ...invoiceForm, customerName: e.target.value })}
-                          placeholder="أدخل اسم العميل"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="invoiceCustomerEmail">البريد الإلكتروني</Label>
-                        <Input
-                          id="invoiceCustomerEmail"
-                          type="email"
-                          value={invoiceForm.customerEmail}
-                          onChange={(e) => setInvoiceForm({ ...invoiceForm, customerEmail: e.target.value })}
-                          placeholder="example@email.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="invoiceOrderId">رقم الطلب (اختياري)</Label>
-                        <Input
-                          id="invoiceOrderId"
-                          value={invoiceForm.orderId}
-                          onChange={(e) => setInvoiceForm({ ...invoiceForm, orderId: e.target.value })}
-                          placeholder="إن وجد"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="invoiceTax">نسبة الضريبة (%)</Label>
-                        <Input
-                          id="invoiceTax"
-                          type="number"
-                          min={0}
-                          value={invoiceForm.taxRate}
-                          onChange={(e) => setInvoiceForm({ ...invoiceForm, taxRate: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="invoiceDueDate">تاريخ الاستحقاق</Label>
-                        <Input
-                          id="invoiceDueDate"
-                          type="date"
-                          value={invoiceForm.dueDate}
-                          onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-base font-semibold">عناصر الفاتورة</h4>
-                        <div className="text-sm text-muted-foreground">
-                          الإجمالي الحالي: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTotal)}
-                        </div>
-                      </div>
-
-                      <div className="border rounded-lg">
-                        {invoiceItems.length === 0 ? (
-                          <p className="text-center text-muted-foreground py-6">لم يتم إضافة أي عناصر حتى الآن</p>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>الوصف</TableHead>
-                                <TableHead className="w-24 text-center">الكمية</TableHead>
-                                <TableHead className="w-32 text-center">السعر للوحدة</TableHead>
-                                <TableHead className="w-32 text-right">الإجمالي</TableHead>
-                                <TableHead className="w-12 text-right"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {invoiceItems.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell className="font-medium">{item.description}</TableCell>
-                                  <TableCell>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      value={item.quantity}
-                                      onChange={(e) => handleInvoiceItemChange(item.id, 'quantity', Number(e.target.value))}
-                                    />
-                                  </TableCell>
-                                  <TableCell>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      value={item.unitPrice}
-                                      onChange={(e) => handleInvoiceItemChange(item.id, 'unitPrice', Number(e.target.value))}
-                                    />
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(item.quantity * item.unitPrice)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveInvoiceItem(item.id)}>
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </div>
-
-                      <div className="grid gap-3 md:grid-cols-5">
-                        <div className="space-y-2">
-                          <Label>نوع العنصر</Label>
-                          <Select value={newItemType} onValueChange={(value) => handleNewItemTypeChange(value as InvoiceDraftSource)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="اختر نوع العنصر" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="CUSTOM">خدمة أو عنصر مخصص</SelectItem>
-                              <SelectItem value="PART">قطعة غيار من المخزون</SelectItem>
-                              <SelectItem value="VEHICLE">مركبة</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label>تفاصيل العنصر</Label>
-                          {newItemType === 'CUSTOM' ? (
-                            <Input
-                              value={newItemDescription}
-                              onChange={(e) => setNewItemDescription(e.target.value)}
-                              placeholder="أدخل وصف العنصر أو الخدمة"
-                            />
-                          ) : (
-                            <Select value={newItemSelection} onValueChange={handleNewItemSelection}>
-                              <SelectTrigger>
-                                <SelectValue placeholder={newItemType === 'PART' ? 'اختر قطعة الغيار' : 'اختر المركبة'} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {newItemType === 'PART'
-                                  ? partsInventory.slice(0, 50).map((part) => (
-                                      <SelectItem key={part.id} value={part.id}>
-                                        {part.name} • {part.partNumber}
-                                      </SelectItem>
-                                    ))
-                                  : carsInventory.slice(0, 50).map((car) => (
-                                      <SelectItem key={car.id} value={car.id}>
-                                        {car.make} {car.model} {car.year}
-                                      </SelectItem>
-                                    ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label>الكمية</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={newItemQuantity}
-                            onChange={(e) => {
-                              const value = Number(e.target.value)
-                              setNewItemQuantity(Number.isNaN(value) ? 0 : value)
-                            }}
-                            disabled={newItemType === 'VEHICLE'}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>سعر الوحدة</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={newItemUnitPrice}
-                            onChange={(e) => {
-                              const value = Number(e.target.value)
-                              setNewItemUnitPrice(Number.isNaN(value) ? 0 : value)
-                            }}
-                            disabled={newItemType !== 'CUSTOM'}
-                          />
-                        </div>
-                        <div className="md:col-span-5 flex justify-end">
-                          <Button type="button" variant="secondary" onClick={handleAddInvoiceItem}>
-                            <Plus className="h-4 w-4 ml-2" />
-                            إضافة العنصر
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <p>الإجمالي الفرعي: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceSubtotal)}</p>
-                          <p>
-                            الضريبة ({taxRate}%): {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTaxAmount)}
+                        <div className="text-right">
+                          <p className="text-lg font-medium">
+                            {new Intl.NumberFormat('ar-EG', {
+                              style: 'currency',
+                              currency: 'EGP'
+                            }).format(payroll.netSalary)}
                           </p>
-                        </div>
-                        <div className="text-lg font-semibold">
-                          المبلغ المستحق: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTotal)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => handleInvoiceDialogChange(false)}>
-                        إلغاء
-                      </Button>
-                      <Button onClick={handleCreateInvoice} disabled={invoiceSubmitting}>
-                        {invoiceSubmitting ? 'جارٍ الحفظ...' : 'حفظ الفاتورة'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              {invoices.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">لم يتم إصدار أي فواتير حتى الآن</p>
-              ) : (
-                <div className="space-y-3">
-                  {invoices.map((invoice) => {
-                    const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null
-                    const dueDate = invoice.dueDate ? new Date(invoice.dueDate) : null
-                    const issueDateText = issueDate && !Number.isNaN(issueDate.getTime())
-                      ? format(issueDate, 'dd/MM/yyyy', { locale: ar })
-                      : 'غير متوفر'
-                    const dueDateText = dueDate && !Number.isNaN(dueDate.getTime())
-                      ? format(dueDate, 'dd/MM/yyyy', { locale: ar })
-                      : 'غير محدد'
-
-                    return (
-                      <div key={invoice.id} className="flex flex-col gap-2 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-1">
-                          <h4 className="font-semibold">فاتورة #{invoice.id.slice(0, 8)}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {invoice.customerName} • {invoice.customerEmail}
-                          </p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            صادرة في {issueDateText} • مستحقة في {dueDateText}
-                          </p>
-                        </div>
-                        <div className="space-y-2 text-right">
-                          <p className="text-lg font-semibold">
-                            {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoice.total)}
-                          </p>
-                          <Badge className={getStatusColor(invoice.status.toUpperCase())}>
-                            {getStatusText(invoice.status.toUpperCase())}
+                          <Badge className={getStatusColor(payroll.status)}>
+                            {getStatusText(payroll.status)}
                           </Badge>
                         </div>
                       </div>
-                    )
-                  })}
+                    ))
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
-        <TabsContent value="inventory" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>مخزون السيارات المتاحة</CardTitle>
-              <CardDescription>نظرة سريعة على المركبات الجاهزة للبيع أو التسليم</CardDescription>
-            </CardHeader>
-            <CardContent>
+        {allowInvoiceTab && (
+          <TabsContent value="invoices" className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle>الفواتير</CardTitle>
+                  <CardDescription>إنشاء الفواتير للعملاء وتتبع حالتها اليومية</CardDescription>
+                </div>
+                {allowInvoiceCreation ? (
+                  <Dialog open={isInvoiceDialogOpen} onOpenChange={handleInvoiceDialogChange}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 ml-2" />
+                        فاتورة جديدة
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl">
+                      <DialogHeader>
+                        <DialogTitle>إنشاء فاتورة جديدة</DialogTitle>
+                        <DialogDescription>
+                          قم بإدخال بيانات العميل وإضافة العناصر أو الخدمات المطلوب تحصيلها.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-6">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="invoiceCustomerName">اسم العميل</Label>
+                            <Input
+                              id="invoiceCustomerName"
+                              value={invoiceForm.customerName}
+                              onChange={(e) => setInvoiceForm({ ...invoiceForm, customerName: e.target.value })}
+                              placeholder="أدخل اسم العميل"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="invoiceCustomerEmail">البريد الإلكتروني</Label>
+                            <Input
+                              id="invoiceCustomerEmail"
+                              type="email"
+                              value={invoiceForm.customerEmail}
+                              onChange={(e) => setInvoiceForm({ ...invoiceForm, customerEmail: e.target.value })}
+                              placeholder="example@email.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="invoiceOrderId">رقم الطلب (اختياري)</Label>
+                            <Input
+                              id="invoiceOrderId"
+                              value={invoiceForm.orderId}
+                              onChange={(e) => setInvoiceForm({ ...invoiceForm, orderId: e.target.value })}
+                              placeholder="إن وجد"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="invoiceTax">نسبة الضريبة (%)</Label>
+                            <Input
+                              id="invoiceTax"
+                              type="number"
+                              min={0}
+                              value={invoiceForm.taxRate}
+                              onChange={(e) => setInvoiceForm({ ...invoiceForm, taxRate: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="invoiceDueDate">تاريخ الاستحقاق</Label>
+                            <Input
+                              id="invoiceDueDate"
+                              type="date"
+                              value={invoiceForm.dueDate}
+                              onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <h4 className="text-lg font-semibold">عناصر الفاتورة</h4>
+                            <div className="text-sm text-muted-foreground">
+                              المجموع الفرعي:{' '}
+                              {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceSubtotal)}
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            {invoiceItems.length === 0 ? (
+                              <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                                لم يتم إضافة عناصر إلى الفاتورة بعد
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>الوصف</TableHead>
+                                    <TableHead>الكمية</TableHead>
+                                    <TableHead>سعر الوحدة</TableHead>
+                                    <TableHead className="text-right">الإجمالي</TableHead>
+                                    <TableHead className="text-right">إجراءات</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {invoiceItems.map((item) => (
+                                    <TableRow key={item.id}>
+                                      <TableCell>
+                                        <div className="font-medium">{item.description}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {item.sourceType === 'CUSTOM'
+                                            ? 'عنصر مخصص'
+                                            : item.sourceType === 'PART'
+                                              ? 'قطعة غيار من المخزون'
+                                              : 'مركبة'}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="w-[120px]">
+                                        <Input
+                                          type="number"
+                                          min={1}
+                                          value={item.quantity}
+                                          onChange={(e) => handleInvoiceItemChange(item.id, 'quantity', Number(e.target.value))}
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          value={item.unitPrice}
+                                          onChange={(e) => handleInvoiceItemChange(item.id, 'unitPrice', Number(e.target.value))}
+                                        />
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(item.quantity * item.unitPrice)}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveInvoiceItem(item.id)}>
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </div>
+
+                          <div className="grid gap-3 md:grid-cols-5">
+                            <div className="space-y-2">
+                              <Label>نوع العنصر</Label>
+                              <Select value={newItemType} onValueChange={(value) => handleNewItemTypeChange(value as InvoiceDraftSource)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="اختر نوع العنصر" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="CUSTOM">خدمة أو عنصر مخصص</SelectItem>
+                                  <SelectItem value="PART">قطعة غيار من المخزون</SelectItem>
+                                  <SelectItem value="VEHICLE">مركبة</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                              <Label>تفاصيل العنصر</Label>
+                              {newItemType === 'CUSTOM' ? (
+                                <Input
+                                  value={newItemDescription}
+                                  onChange={(e) => setNewItemDescription(e.target.value)}
+                                  placeholder="أدخل وصف العنصر أو الخدمة"
+                                />
+                              ) : (
+                                <Select value={newItemSelection} onValueChange={handleNewItemSelection}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={newItemType === 'PART' ? 'اختر قطعة الغيار' : 'اختر المركبة'} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {newItemType === 'PART'
+                                      ? partsInventory.slice(0, 50).map((part) => (
+                                          <SelectItem key={part.id} value={part.id}>
+                                            {part.name} • {part.partNumber}
+                                          </SelectItem>
+                                        ))
+                                      : carsInventory.slice(0, 50).map((car) => (
+                                          <SelectItem key={car.id} value={car.id}>
+                                            {car.make} {car.model} {car.year}
+                                          </SelectItem>
+                                        ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <Label>الكمية</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={newItemQuantity}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value)
+                                  setNewItemQuantity(Number.isNaN(value) ? 0 : value)
+                                }}
+                                disabled={newItemType === 'VEHICLE'}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>سعر الوحدة</Label>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={newItemUnitPrice}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value)
+                                  setNewItemUnitPrice(Number.isNaN(value) ? 0 : value)
+                                }}
+                                disabled={newItemType !== 'CUSTOM'}
+                              />
+                            </div>
+                            <div className="md:col-span-5 flex justify-end">
+                              <Button type="button" variant="secondary" onClick={handleAddInvoiceItem}>
+                                <Plus className="h-4 w-4 ml-2" />
+                                إضافة العنصر
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-between">
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <p>الإجمالي الفرعي: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceSubtotal)}</p>
+                              <p>
+                                الضريبة ({taxRate}%): {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTaxAmount)}
+                              </p>
+                            </div>
+                            <div className="text-lg font-semibold">
+                              المبلغ المستحق: {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoiceTotal)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline" onClick={() => handleInvoiceDialogChange(false)}>
+                            إلغاء
+                          </Button>
+                          <Button onClick={handleCreateInvoice} disabled={invoiceSubmitting}>
+                            {invoiceSubmitting ? 'جارٍ الحفظ...' : 'حفظ الفاتورة'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                ) : (
+                  <Button variant="outline" size="sm" disabled>
+                    لا تملك صلاحية إنشاء فاتورة
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {allowInvoiceListing ? (
+                  invoices.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">لم يتم إصدار أي فواتير حتى الآن</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {invoices.map((invoice) => {
+                        const issueDate = invoice.issueDate ? new Date(invoice.issueDate) : null
+                        const dueDate = invoice.dueDate ? new Date(invoice.dueDate) : null
+                        const issueDateText = issueDate && !Number.isNaN(issueDate.getTime())
+                          ? format(issueDate, 'dd/MM/yyyy', { locale: ar })
+                          : 'غير متوفر'
+                        const dueDateText = dueDate && !Number.isNaN(dueDate.getTime())
+                          ? format(dueDate, 'dd/MM/yyyy', { locale: ar })
+                          : 'غير محدد'
+
+                        return (
+                          <div key={invoice.id} className="flex flex-col gap-2 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
+                            <div className="space-y-1">
+                              <h4 className="font-semibold">فاتورة #{invoice.id.slice(0, 8)}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {invoice.customerName} • {invoice.customerEmail}
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" />
+                                صادرة في {issueDateText} • مستحقة في {dueDateText}
+                              </p>
+                            </div>
+                            <div className="space-y-2 text-right">
+                              <p className="text-lg font-semibold">
+                                {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(invoice.total)}
+                              </p>
+                              <Badge className={getStatusColor(invoice.status.toUpperCase())}>
+                                {getStatusText(invoice.status.toUpperCase())}
+                              </Badge>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">لا تملك صلاحية عرض الفواتير الحالية</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+        {allowInventoryTab && (
+          <TabsContent value="inventory" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>مخزون السيارات المتاحة</CardTitle>
+                <CardDescription>نظرة سريعة على المركبات الجاهزة للبيع أو التسليم</CardDescription>
+              </CardHeader>
+              <CardContent>
               {carsInventory.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">لا توجد سيارات متاحة حالياً في المخزون</p>
               ) : (
@@ -1446,15 +1521,15 @@ export default function EmployeeDashboard() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>مخزون قطع الغيار</CardTitle>
-              <CardDescription>تتبع سريع لمستويات المخزون والقطع منخفضة الكمية</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>مخزون قطع الغيار</CardTitle>
+                <CardDescription>تتبع سريع لمستويات المخزون والقطع منخفضة الكمية</CardDescription>
+              </CardHeader>
+              <CardContent>
               {partsInventory.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">لا توجد بيانات متاحة لقطع الغيار</p>
               ) : (
@@ -1492,9 +1567,10 @@ export default function EmployeeDashboard() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="documents" className="space-y-4">
           <Card>

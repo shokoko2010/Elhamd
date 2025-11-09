@@ -31,7 +31,12 @@ import {
   Settings,
   Shield,
   Users,
+  UserPlus,
+  Trash2,
+  Copy,
+  PlusCircle,
 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 
 interface PermissionRecord {
   id: string
@@ -56,6 +61,14 @@ interface ApiUser {
   branchId?: string | null
   branchName?: string | null
   permissions?: ApiPermissionEdge[]
+  roleTemplateId?: string | null
+  roleTemplate?: {
+    id: string
+    name: string
+    role: UserRole
+    isSystem: boolean
+    isActive: boolean
+  } | null
 }
 
 interface Metrics {
@@ -81,6 +94,7 @@ interface RoleTemplate {
   isSystem: boolean
   createdAt: string
   updatedAt: string
+  userCount?: number
 }
 
 interface RoleTemplatesResponse {
@@ -102,6 +116,9 @@ interface UserWithPermissions {
   createdAt: string
   permissions: string[]
   permissionDetails: PermissionRecord[]
+  roleTemplateId?: string | null
+  roleTemplateName?: string | null
+  roleTemplateRole?: UserRole | null
 }
 
 interface PermissionGroup {
@@ -221,8 +238,43 @@ function PermissionsDashboard() {
     description: '',
     role: UserRole.STAFF,
     permissions: [] as string[],
+    isActive: true,
   })
   const isSystemTemplateLocked = Boolean(selectedTemplate?.isSystem && !allowSystemTemplateEditing)
+
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
+  const [createUserForm, setCreateUserForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: UserRole.STAFF,
+    roleTemplateId: '',
+    password: '',
+    confirmPassword: '',
+    applyRoleTemplate: true,
+    preserveManualPermissions: false,
+    permissions: [] as string[],
+  })
+  const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState(false)
+  const [newTemplateForm, setNewTemplateForm] = useState({
+    name: '',
+    description: '',
+    role: UserRole.STAFF,
+    permissions: [] as string[],
+    isActive: true,
+  })
+  const [templatePendingDelete, setTemplatePendingDelete] = useState<RoleTemplate | null>(null)
+
+  const [userEditForm, setUserEditForm] = useState({
+    role: UserRole.STAFF,
+    roleTemplateId: '',
+    applyRoleTemplate: false,
+    preserveManualPermissions: false,
+  })
+  const [isSavingUser, setIsSavingUser] = useState(false)
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false)
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
 
   const fetchData = useCallback(
     async (options?: { initial?: boolean }) => {
@@ -277,12 +329,20 @@ function PermissionsDashboard() {
             createdAt: user.createdAt,
             permissions: permissionDetails.map((permission) => permission.name),
             permissionDetails,
+            roleTemplateId: user.roleTemplateId ?? undefined,
+            roleTemplateName: user.roleTemplate?.name ?? undefined,
+            roleTemplateRole: user.roleTemplate?.role ?? undefined,
           }
         })
 
+        const transformedTemplates = (templatesPayload.templates ?? []).map<RoleTemplate>((template) => ({
+          ...template,
+          userCount: template.userCount ?? 0,
+        }))
+
         setUsers(transformedUsers)
         setMetrics(usersPayload.metrics ?? null)
-        setRoleTemplates(templatesPayload.templates ?? [])
+        setRoleTemplates(transformedTemplates)
         setPermissionsCatalog(permissionsPayload.permissions ?? [])
       } catch (err) {
         console.error(err)
@@ -319,6 +379,25 @@ function PermissionsDashboard() {
       }
     })
   }, [permissionsCatalog])
+
+  const templateMap = useMemo(() => new Map(roleTemplates.map((template) => [template.id, template])), [roleTemplates])
+
+  const templatesByRole = useMemo(() => {
+    const groups = new Map<UserRole, RoleTemplate[]>()
+    roleTemplates.forEach((template) => {
+      const existing = groups.get(template.role) ?? []
+      groups.set(template.role, [...existing, template])
+    })
+    return groups
+  }, [roleTemplates])
+
+  const activeTemplateOptions = useMemo(
+    () =>
+      roleTemplates
+        .filter((template) => template.isActive || user?.role === UserRole.SUPER_ADMIN)
+        .sort((a, b) => a.name.localeCompare(b.name, 'ar')),
+    [roleTemplates, user?.role]
+  )
 
   const aggregatedMetrics = useMemo(() => {
     return {
@@ -377,6 +456,12 @@ function PermissionsDashboard() {
   const handleEditUser = (user: UserWithPermissions) => {
     setSelectedUser(user)
     setUserPermissions([...user.permissions])
+    setUserEditForm({
+      role: user.role,
+      roleTemplateId: user.roleTemplateId ?? '',
+      applyRoleTemplate: false,
+      preserveManualPermissions: user.permissions.length > 0,
+    })
     setIsEditUserModalOpen(true)
   }
 
@@ -384,20 +469,34 @@ function PermissionsDashboard() {
     if (!selectedUser) return
 
     try {
-      const response = await fetch(`/api/admin/users/${selectedUser.id}/permissions`, {
+      setIsSavingUser(true)
+      const payload: Record<string, unknown> = {
+        role: userEditForm.role,
+        roleTemplateId: userEditForm.roleTemplateId ? userEditForm.roleTemplateId : null,
+        applyRoleTemplate: userEditForm.applyRoleTemplate,
+        preserveManualPermissions: userEditForm.preserveManualPermissions,
+      }
+
+      if (userEditForm.applyRoleTemplate) {
+        payload.additionalPermissions = Array.from(new Set(userPermissions))
+      } else {
+        payload.permissions = Array.from(new Set(userPermissions))
+      }
+
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ permissions: userPermissions }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
-        const payload = await response.json().catch(() => ({ error: 'Failed to update user permissions' }))
-        throw new Error(payload.error ?? 'Failed to update user permissions')
+        const result = await response.json().catch(() => ({ error: 'Failed to update user permissions' }))
+        throw new Error(result.error ?? 'Failed to update user permissions')
       }
 
-      toast({ title: 'تم التحديث', description: 'تم تحديث صلاحيات المستخدم بنجاح.' })
+      toast({ title: 'تم التحديث', description: 'تم تحديث بيانات المستخدم وصلاحياته بنجاح.' })
       setIsEditUserModalOpen(false)
       setSelectedUser(null)
       fetchData()
@@ -408,6 +507,8 @@ function PermissionsDashboard() {
         description: 'تعذر تحديث صلاحيات المستخدم.',
         variant: 'destructive',
       })
+    } finally {
+      setIsSavingUser(false)
     }
   }
 
@@ -418,6 +519,7 @@ function PermissionsDashboard() {
       description: template.description ?? '',
       role: template.role,
       permissions: [...template.permissions],
+      isActive: template.isActive,
     })
     setIsEditTemplateModalOpen(true)
   }
@@ -426,12 +528,16 @@ function PermissionsDashboard() {
     if (!selectedTemplate) return
 
     try {
+      setIsSavingTemplate(true)
       const response = await fetch(`/api/admin/role-templates/${selectedTemplate.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(templateForm),
+        body: JSON.stringify({
+          ...templateForm,
+          permissions: Array.from(new Set(templateForm.permissions)),
+        }),
       })
 
       if (!response.ok) {
@@ -450,6 +556,8 @@ function PermissionsDashboard() {
         description: 'تعذر تحديث قالب الدور.',
         variant: 'destructive',
       })
+    } finally {
+      setIsSavingTemplate(false)
     }
   }
 
@@ -475,6 +583,214 @@ function PermissionsDashboard() {
     })
   }
 
+  const toggleNewTemplatePermission = (permission: string, enabled: boolean) => {
+    setNewTemplateForm((prev) => {
+      const permissions = enabled
+        ? prev.permissions.includes(permission)
+          ? prev.permissions
+          : [...prev.permissions, permission]
+        : prev.permissions.filter((value) => value !== permission)
+
+      return { ...prev, permissions }
+    })
+  }
+
+  const resetCreateUserForm = () => {
+    setCreateUserForm({
+      name: '',
+      email: '',
+      phone: '',
+      role: UserRole.STAFF,
+      roleTemplateId: '',
+      password: '',
+      confirmPassword: '',
+      applyRoleTemplate: true,
+      preserveManualPermissions: false,
+      permissions: [],
+    })
+  }
+
+  const handleCreateTemplate = async () => {
+    try {
+      setIsCreatingTemplate(true)
+      const response = await fetch('/api/admin/role-templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...newTemplateForm,
+          permissions: Array.from(new Set(newTemplateForm.permissions)),
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to create role template' }))
+        throw new Error(payload.error ?? 'Failed to create role template')
+      }
+
+      toast({ title: 'تم الإنشاء', description: 'تم إنشاء قالب الدور بنجاح.' })
+      setIsCreateTemplateModalOpen(false)
+      setNewTemplateForm({
+        name: '',
+        description: '',
+        role: UserRole.STAFF,
+        permissions: [],
+        isActive: true,
+      })
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      toast({ title: 'خطأ', description: 'تعذر إنشاء قالب الدور.', variant: 'destructive' })
+    } finally {
+      setIsCreatingTemplate(false)
+    }
+  }
+
+  const handleDeleteTemplate = async () => {
+    if (!templatePendingDelete) return
+
+    try {
+      setIsSavingTemplate(true)
+      const response = await fetch(`/api/admin/role-templates/${templatePendingDelete.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to delete template' }))
+        throw new Error(payload.error ?? 'Failed to delete template')
+      }
+
+      toast({ title: 'تم الحذف', description: 'تم حذف قالب الدور بنجاح.' })
+      setTemplatePendingDelete(null)
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      toast({ title: 'خطأ', description: 'تعذر حذف قالب الدور.', variant: 'destructive' })
+    } finally {
+      setIsSavingTemplate(false)
+    }
+  }
+
+  const handleCreateUser = async () => {
+    if (!createUserForm.email || !createUserForm.password) {
+      toast({ title: 'خطأ', description: 'البريد الإلكتروني وكلمة المرور مطلوبان.', variant: 'destructive' })
+      return
+    }
+
+    if (createUserForm.password !== createUserForm.confirmPassword) {
+      toast({ title: 'خطأ', description: 'كلمتا المرور غير متطابقتين.', variant: 'destructive' })
+      return
+    }
+
+    try {
+      setIsCreatingUser(true)
+      const payload = {
+        email: createUserForm.email,
+        name: createUserForm.name,
+        phone: createUserForm.phone,
+        role: createUserForm.role,
+        password: createUserForm.password,
+        roleTemplateId: createUserForm.roleTemplateId || undefined,
+        applyRoleTemplate: createUserForm.applyRoleTemplate,
+        preserveManualPermissions: createUserForm.preserveManualPermissions,
+        permissions: createUserForm.permissions,
+      }
+
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({ error: 'Failed to create user' }))
+        throw new Error(result.error ?? 'Failed to create user')
+      }
+
+      toast({ title: 'تم الإنشاء', description: 'تم إنشاء المستخدم وتحديد دوره بنجاح.' })
+      setIsCreateUserModalOpen(false)
+      resetCreateUserForm()
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      toast({ title: 'خطأ', description: 'تعذر إنشاء المستخدم الجديد.', variant: 'destructive' })
+    } finally {
+      setIsCreatingUser(false)
+    }
+  }
+
+  const handleSelectTemplateForNewUser = (templateId: string) => {
+    const template = templateMap.get(templateId)
+    setCreateUserForm((prev) => ({
+      ...prev,
+      roleTemplateId: templateId,
+      role: template?.role ?? prev.role,
+      permissions: prev.permissions,
+    }))
+  }
+
+  const handleSelectTemplateForEditUser = (templateId: string) => {
+    const template = templateMap.get(templateId)
+    setUserEditForm((prev) => ({
+      ...prev,
+      roleTemplateId: templateId,
+      role: template?.role ?? prev.role,
+    }))
+    if (template && userEditForm.applyRoleTemplate) {
+      setUserPermissions(template.permissions)
+    }
+  }
+
+  const handleDuplicateTemplate = (template: RoleTemplate) => {
+    setNewTemplateForm({
+      name: `${template.name}-نسخة`,
+      description: template.description ?? '',
+      role: template.role,
+      permissions: [...template.permissions],
+      isActive: template.isActive,
+    })
+    setIsCreateTemplateModalOpen(true)
+  }
+
+  const handleToggleTemplateActive = async (template: RoleTemplate, active: boolean) => {
+    if (template.isSystem && !allowSystemTemplateEditing) {
+      return
+    }
+
+    try {
+      setIsSavingTemplate(true)
+      const response = await fetch(`/api/admin/role-templates/${template.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: template.name,
+          description: template.description,
+          role: template.role,
+          permissions: template.permissions,
+          isActive: active,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to update template state' }))
+        throw new Error(payload.error ?? 'Failed to update template state')
+      }
+
+      toast({ title: 'تم التحديث', description: 'تم تحديث حالة القالب بنجاح.' })
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      toast({ title: 'خطأ', description: 'تعذر تحديث حالة القالب.', variant: 'destructive' })
+    } finally {
+      setIsSavingTemplate(false)
+    }
+  }
+
   const formatRoleBadge = (role: UserRole) => ROLE_BADGE_STYLES[role] ?? ROLE_BADGE_STYLES[UserRole.CUSTOMER]
 
   if (loading && users.length === 0 && roleTemplates.length === 0) {
@@ -498,7 +814,17 @@ function PermissionsDashboard() {
             الإشراف على صلاحيات المستخدمين، قوالب الأدوار، والوصول إلى إعدادات النظام
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setIsCreateUserModalOpen(true)}>
+            <UserPlus className="ml-2 h-4 w-4" />
+            إضافة مستخدم
+          </Button>
+          {allowRoleTemplateManagement && (
+            <Button variant="outline" onClick={() => setIsCreateTemplateModalOpen(true)}>
+              <PlusCircle className="ml-2 h-4 w-4" />
+              قالب جديد
+            </Button>
+          )}
           <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`ml-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             تحديث البيانات
@@ -635,6 +961,11 @@ function PermissionsDashboard() {
                               {user.branchName}
                             </Badge>
                           )}
+                          {user.roleTemplateName && (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                              {user.roleTemplateName}
+                            </Badge>
+                          )}
                           <Badge variant={user.isActive ? 'default' : 'secondary'}>
                             {user.isActive ? 'نشط' : 'غير نشط'}
                           </Badge>
@@ -643,7 +974,9 @@ function PermissionsDashboard() {
                     </div>
                     <div className="flex flex-col items-start gap-2 md:flex-row md:items-center">
                       <div className="text-right">
-                        <div className="text-sm font-medium">{formatNumber(user.permissions.length)} صلاحية</div>
+                        <div className="text-sm font-medium">
+                          {formatNumber(user.permissions.length)} صلاحية مخصصة
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           آخر تحديث: {new Date(user.createdAt).toLocaleDateString('ar-EG')}
                         </div>
@@ -687,50 +1020,92 @@ function PermissionsDashboard() {
               ) : roleTemplates.length === 0 ? (
                 <EmptyState title="لا توجد قوالب أدوار" message="لم يتم إنشاء أي قالب دور حتى الآن." />
               ) : (
-                roleTemplates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
-                        <Shield className="h-5 w-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{template.name}</h3>
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground">{template.description}</p>
-                        )}
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <Badge className={formatRoleBadge(template.role)}>{ROLE_LABELS[template.role]}</Badge>
-                          <Badge variant={template.isActive ? 'default' : 'secondary'}>
-                            {template.isActive ? 'نشط' : 'غير نشط'}
-                          </Badge>
-                          {template.isSystem && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700">
-                              نظام
-                            </Badge>
+                Array.from(templatesByRole.entries()).map(([role, templates]) => (
+                  <div key={role} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Badge className={formatRoleBadge(role)}>{ROLE_LABELS[role]}</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatNumber(templates.filter((template) => template.isActive).length)} قالب نشط
+                      </span>
+                    </div>
+                    {templates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="flex flex-col gap-4 rounded-lg border p-4 transition hover:bg-muted/50 md:flex-row md:items-center md:justify-between"
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                            <Shield className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">{template.name}</h3>
+                            {template.description && (
+                              <p className="text-sm text-muted-foreground">{template.description}</p>
+                            )}
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <Badge className={formatRoleBadge(template.role)}>{ROLE_LABELS[template.role]}</Badge>
+                              <Badge variant={template.isActive ? 'default' : 'secondary'}>
+                                {template.isActive ? 'نشط' : 'غير نشط'}
+                              </Badge>
+                              {template.isSystem && (
+                                <Badge variant="outline" className="bg-orange-50 text-orange-700">
+                                  نظام
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="bg-slate-50 text-slate-700">
+                                {formatNumber(template.userCount ?? 0)} مستخدم
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-start gap-2 md:flex-row md:items-center">
+                          <div className="text-right">
+                            <div className="text-sm font-medium">
+                              {formatNumber(template.permissions.length)} صلاحية مدمجة
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              آخر تحديث: {new Date(template.updatedAt).toLocaleDateString('ar-EG')}
+                            </div>
+                          </div>
+                          {allowRoleTemplateManagement && (
+                            <div className="flex flex-wrap gap-2">
+                              <Switch
+                                checked={template.isActive}
+                                disabled={template.isSystem && !allowSystemTemplateEditing}
+                                onCheckedChange={(checked) => handleToggleTemplateActive(template, checked)}
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditTemplate(template)}
+                                disabled={template.isSystem && !allowSystemTemplateEditing}
+                              >
+                                <Edit className="ml-1 h-4 w-4" />
+                                تعديل
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDuplicateTemplate(template)}
+                              >
+                                <Copy className="ml-1 h-4 w-4" />
+                                نسخ
+                              </Button>
+                              {!template.isSystem && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => setTemplatePendingDelete(template)}
+                                >
+                                  <Trash2 className="ml-1 h-4 w-4" />
+                                  حذف
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-start gap-2 md:flex-row md:items-center">
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{formatNumber(template.permissions.length)} صلاحية</div>
-                        <div className="text-xs text-muted-foreground">قالب دور مؤسسي</div>
-                      </div>
-                      {allowRoleTemplateManagement && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditTemplate(template)}
-                          disabled={template.isSystem && !allowSystemTemplateEditing}
-                        >
-                          <Edit className="ml-1 h-4 w-4" />
-                          تعديل القالب
-                        </Button>
-                      )}
-                    </div>
+                    ))}
                   </div>
                 ))
               )}
@@ -747,6 +1122,103 @@ function PermissionsDashboard() {
               {selectedUser ? `تحديث صلاحيات المستخدم: ${selectedUser.name || selectedUser.email}` : ''}
             </DialogDescription>
           </DialogHeader>
+
+          {selectedUser && (
+            <div className="mb-4 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>الدور الرئيسي</Label>
+                <Select
+                  value={userEditForm.role}
+                  onValueChange={(value) =>
+                    setUserEditForm((prev) => ({ ...prev, role: value as UserRole }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر الدور" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.values(UserRole) as UserRole[]).map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>قالب الدور</Label>
+                <Select
+                  value={userEditForm.roleTemplateId}
+                  onValueChange={(value) => handleSelectTemplateForEditUser(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="بدون قالب" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">بدون قالب</SelectItem>
+                    {activeTemplateOptions.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name} ({ROLE_LABELS[template.role]})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium">تطبيق صلاحيات القالب</p>
+                    <p className="text-xs text-muted-foreground">
+                      في حال التفعيل سيتم استبدال الصلاحيات اليدوية بالقالب المحدد مع إمكانية إضافة صلاحيات مخصصة.
+                    </p>
+                  </div>
+                <Switch
+                  checked={userEditForm.applyRoleTemplate}
+                  onCheckedChange={(checked) => {
+                    setUserEditForm((prev) => ({ ...prev, applyRoleTemplate: checked }))
+                    if (checked && !userEditForm.preserveManualPermissions) {
+                      setUserPermissions([])
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+                <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium">الاحتفاظ بالصلاحيات اليدوية</p>
+                    <p className="text-xs text-muted-foreground">
+                      عند التفعيل سيتم إضافة الصلاحيات اليدوية الحالية فوق صلاحيات القالب المختار.
+                    </p>
+                  </div>
+                  <Switch
+                    disabled={!userEditForm.applyRoleTemplate}
+                    checked={userEditForm.preserveManualPermissions}
+                    onCheckedChange={(checked) =>
+                      setUserEditForm((prev) => {
+                        if (!checked && prev.applyRoleTemplate) {
+                          setUserPermissions([])
+                        }
+                        return { ...prev, preserveManualPermissions: checked }
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              {selectedUser.roleTemplateName && (
+                <Card className="sm:col-span-2">
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm font-medium">القالب الحالي</CardTitle>
+                    <CardDescription>
+                      {selectedUser.roleTemplateName} ({selectedUser.roleTemplateRole
+                        ? ROLE_LABELS[selectedUser.roleTemplateRole]
+                        : 'غير محدد'})
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+            </div>
+          )}
 
           {permissionGroups.map((group) => (
             <Card key={group.category} className="mb-4">
@@ -766,6 +1238,7 @@ function PermissionsDashboard() {
                           checked={userPermissions.includes(permission.name)}
                           onChange={(event) => toggleUserPermission(permission.name, event.target.checked)}
                           className="h-4 w-4 rounded border-gray-300"
+                          disabled={userEditForm.applyRoleTemplate && !userEditForm.preserveManualPermissions}
                         />
                         <span>{formatPermissionLabel(permission)}</span>
                       </label>
@@ -780,9 +1253,9 @@ function PermissionsDashboard() {
             <Button variant="outline" onClick={() => setIsEditUserModalOpen(false)}>
               إلغاء
             </Button>
-            <Button onClick={handleSaveUserPermissions}>
+            <Button onClick={handleSaveUserPermissions} disabled={isSavingUser}>
               <Save className="ml-2 h-4 w-4" />
-              حفظ الصلاحيات
+              {isSavingUser ? 'جاري الحفظ...' : 'حفظ التغييرات'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -823,6 +1296,28 @@ function PermissionsDashboard() {
                   <SelectItem value={UserRole.CUSTOMER}>{ROLE_LABELS[UserRole.CUSTOMER]}</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>حالة القالب</Label>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">القالب {templateForm.isActive ? 'مفعل' : 'غير مفعل'}</p>
+                  <p className="text-xs text-muted-foreground">يمكن تعطيل القالب مؤقتاً دون حذفه.</p>
+                </div>
+                <Switch
+                  checked={templateForm.isActive}
+                  disabled={isSystemTemplateLocked}
+                  onCheckedChange={(checked) =>
+                    setTemplateForm((prev) => ({ ...prev, isActive: checked }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>عدد الصلاحيات</Label>
+              <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+                {formatNumber(templateForm.permissions.length)} صلاحية مختارة
+              </div>
             </div>
           </div>
 
@@ -869,9 +1364,343 @@ function PermissionsDashboard() {
             <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
               إلغاء
             </Button>
-            <Button onClick={handleSaveTemplate} disabled={isSystemTemplateLocked}>
+            <Button
+              onClick={handleSaveTemplate}
+              disabled={isSystemTemplateLocked || isSavingTemplate}
+            >
               <Save className="ml-2 h-4 w-4" />
-              حفظ القالب
+              {isSavingTemplate ? 'جاري الحفظ...' : 'حفظ القالب'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isCreateTemplateModalOpen}
+        onOpenChange={(open) => {
+          setIsCreateTemplateModalOpen(open)
+          if (!open) {
+            setNewTemplateForm({
+              name: '',
+              description: '',
+              role: UserRole.STAFF,
+              permissions: [],
+              isActive: true,
+            })
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>إنشاء قالب دور جديد</DialogTitle>
+            <DialogDescription>حدد الدور والصلاحيات الافتراضية للقالب الجديد</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="newTemplateName">اسم القالب</Label>
+              <Input
+                id="newTemplateName"
+                value={newTemplateForm.name}
+                onChange={(event) => setNewTemplateForm((prev) => ({ ...prev, name: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newTemplateRole">الدور</Label>
+              <Select
+                value={newTemplateForm.role}
+                onValueChange={(value) => setNewTemplateForm((prev) => ({ ...prev, role: value as UserRole }))}
+              >
+                <SelectTrigger id="newTemplateRole">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UserRole.SUPER_ADMIN}>{ROLE_LABELS[UserRole.SUPER_ADMIN]}</SelectItem>
+                  <SelectItem value={UserRole.ADMIN}>{ROLE_LABELS[UserRole.ADMIN]}</SelectItem>
+                  <SelectItem value={UserRole.BRANCH_MANAGER}>{ROLE_LABELS[UserRole.BRANCH_MANAGER]}</SelectItem>
+                  <SelectItem value={UserRole.STAFF}>{ROLE_LABELS[UserRole.STAFF]}</SelectItem>
+                  <SelectItem value={UserRole.CUSTOMER}>{ROLE_LABELS[UserRole.CUSTOMER]}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>حالة القالب</Label>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">القالب {newTemplateForm.isActive ? 'مفعل' : 'غير مفعل'}</p>
+                  <p className="text-xs text-muted-foreground">يمكن تعديل الحالة بعد الإنشاء.</p>
+                </div>
+                <Switch
+                  checked={newTemplateForm.isActive}
+                  onCheckedChange={(checked) => setNewTemplateForm((prev) => ({ ...prev, isActive: checked }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>عدد الصلاحيات</Label>
+              <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+                {formatNumber(newTemplateForm.permissions.length)} صلاحية محددة
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="newTemplateDescription">الوصف</Label>
+            <Textarea
+              id="newTemplateDescription"
+              value={newTemplateForm.description}
+              onChange={(event) => setNewTemplateForm((prev) => ({ ...prev, description: event.target.value }))}
+            />
+          </div>
+
+          {permissionGroups.map((group) => (
+            <Card key={group.category} className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">{group.title}</CardTitle>
+                <CardDescription>{group.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {group.permissions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">لا توجد صلاحيات معرفة لهذه الفئة حالياً.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.permissions.map((permission) => (
+                      <label key={permission.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={newTemplateForm.permissions.includes(permission.name)}
+                          onChange={(event) => toggleNewTemplatePermission(permission.name, event.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <span>{formatPermissionLabel(permission)}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateTemplateModalOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleCreateTemplate} disabled={isCreatingTemplate}>
+              <Save className="ml-2 h-4 w-4" />
+              {isCreatingTemplate ? 'جاري الإنشاء...' : 'حفظ القالب'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(templatePendingDelete)} onOpenChange={(open) => !open && setTemplatePendingDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>حذف قالب الدور</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من رغبتك في حذف القالب {templatePendingDelete?.name}؟ لن يتم حذف الصلاحيات الخاصة بالمستخدمين الحاليين
+              لكن لن يكون القالب متاحاً للتعيين مستقبلاً.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplatePendingDelete(null)}>
+              إلغاء
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteTemplate} disabled={isSavingTemplate}>
+              <Trash2 className="ml-2 h-4 w-4" />
+              {isSavingTemplate ? 'جاري الحذف...' : 'حذف القالب'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isCreateUserModalOpen}
+        onOpenChange={(open) => {
+          setIsCreateUserModalOpen(open)
+          if (!open) {
+            resetCreateUserForm()
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>إضافة مستخدم جديد</DialogTitle>
+            <DialogDescription>قم بإضافة مستخدم جديد وتحديد دوره وصلاحياته المبدئية</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="userName">الاسم</Label>
+              <Input
+                id="userName"
+                value={createUserForm.name}
+                onChange={(event) => setCreateUserForm((prev) => ({ ...prev, name: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="userEmail">البريد الإلكتروني</Label>
+              <Input
+                id="userEmail"
+                type="email"
+                value={createUserForm.email}
+                onChange={(event) => setCreateUserForm((prev) => ({ ...prev, email: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="userPhone">رقم الهاتف</Label>
+              <Input
+                id="userPhone"
+                value={createUserForm.phone}
+                onChange={(event) => setCreateUserForm((prev) => ({ ...prev, phone: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="userRole">الدور الأساسي</Label>
+              <Select
+                value={createUserForm.role}
+                onValueChange={(value) => setCreateUserForm((prev) => ({ ...prev, role: value as UserRole }))}
+              >
+                <SelectTrigger id="userRole">
+                  <SelectValue placeholder="اختر الدور" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.values(UserRole) as UserRole[]).map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {ROLE_LABELS[role]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="userPassword">كلمة المرور</Label>
+              <Input
+                id="userPassword"
+                type="password"
+                value={createUserForm.password}
+                onChange={(event) => setCreateUserForm((prev) => ({ ...prev, password: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="userConfirmPassword">تأكيد كلمة المرور</Label>
+              <Input
+                id="userConfirmPassword"
+                type="password"
+                value={createUserForm.confirmPassword}
+                onChange={(event) => setCreateUserForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>قالب الدور</Label>
+              <Select
+                value={createUserForm.roleTemplateId}
+                onValueChange={(value) => handleSelectTemplateForNewUser(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="بدون قالب" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">بدون قالب</SelectItem>
+                  {activeTemplateOptions.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name} ({ROLE_LABELS[template.role]})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>عدد الصلاحيات اليدوية</Label>
+              <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+                {formatNumber(createUserForm.permissions.length)} صلاحية إضافية
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">تطبيق صلاحيات القالب</p>
+                <p className="text-xs text-muted-foreground">
+                  عند التفعيل سيتم تعيين الصلاحيات الأساسية من القالب المختار.
+                </p>
+              </div>
+              <Switch
+                checked={createUserForm.applyRoleTemplate}
+                onCheckedChange={(checked) =>
+                  setCreateUserForm((prev) => ({
+                    ...prev,
+                    applyRoleTemplate: checked,
+                    permissions: checked
+                      ? prev.preserveManualPermissions
+                        ? prev.permissions
+                        : []
+                      : prev.permissions,
+                  }))
+                }
+              />
+            </div>
+            <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">الاحتفاظ بالصلاحيات اليدوية</p>
+                <p className="text-xs text-muted-foreground">
+                  إذا كان القالب مفعلاً يمكنك إضافة صلاحيات إضافية لهذا المستخدم.
+                </p>
+              </div>
+              <Switch
+                disabled={!createUserForm.applyRoleTemplate}
+                checked={createUserForm.preserveManualPermissions}
+                onCheckedChange={(checked) =>
+                  setCreateUserForm((prev) => ({
+                    ...prev,
+                    preserveManualPermissions: checked,
+                    permissions:
+                      !checked && prev.applyRoleTemplate ? [] : prev.permissions,
+                  }))
+                }
+              />
+            </div>
+          </div>
+
+          {permissionGroups.map((group) => (
+            <Card key={group.category} className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">{group.title}</CardTitle>
+                <CardDescription>{group.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {group.permissions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">لا توجد صلاحيات معرفة لهذه الفئة حالياً.</p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.permissions.map((permission) => (
+                      <label key={permission.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={createUserForm.permissions.includes(permission.name)}
+                          onChange={(event) => toggleCreateUserPermission(permission.name, event.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
+                          disabled={
+                            createUserForm.applyRoleTemplate && !createUserForm.preserveManualPermissions
+                          }
+                        />
+                        <span>{formatPermissionLabel(permission)}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateUserModalOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleCreateUser} disabled={isCreatingUser}>
+              <Save className="ml-2 h-4 w-4" />
+              {isCreatingUser ? 'جاري الإنشاء...' : 'إضافة المستخدم'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -879,3 +1708,15 @@ function PermissionsDashboard() {
     </div>
   )
 }
+  const toggleCreateUserPermission = (permission: string, enabled: boolean) => {
+    setCreateUserForm((prev) => {
+      const permissions = enabled
+        ? prev.permissions.includes(permission)
+          ? prev.permissions
+          : [...prev.permissions, permission]
+        : prev.permissions.filter((value) => value !== permission)
+
+      return { ...prev, permissions }
+    })
+  }
+
