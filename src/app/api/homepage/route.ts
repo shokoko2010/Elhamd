@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // Mock data for homepage - this will be replaced with database data later
 const mockHomepageData = {
   siteSettings: {
-    siteTitle: 'الهمد للسيارات - وكيل تاتا موتورز المعتمد',
-    siteDescription: 'الوكيل المعتمد لسيارات تاتا في مصر - نقدم أفضل السيارات والخدمات',
+    siteTitle: 'الحمد للسيارات - الموزع المعتمد لسيارات تاتا في مدن القناة',
+    siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - نقدم أفضل السيارات والخدمات المتخصصة',
     contactEmail: 'info@elhamdimport.com',
     contactPhone: '+20 123 456 7890',
     contactAddress: 'القاهرة، مصر',
@@ -39,7 +39,7 @@ const mockHomepageData = {
     id: 'main',
     title: 'نحن شريككم الموثوق في عالم السيارات',
     subtitle: 'خبرة تمتد لأكثر من 20 عاماً في السوق المصري',
-    description: 'الهمد للسيارات هي الوكيل المعتمد لشركة تاتا موتورز في مصر، نقدم أفضل السيارات والخدمات مع ضمان الجودة والأداء العالي. فريقنا من الخبراء جاهز لمساعدتك في اختيار السيارة المناسبة لك.',
+    description: 'الحمد للسيارات هي الموزع المعتمد لشركة تاتا موتورز في مدن القناة، نقدم أفضل السيارات والخدمات مع ضمان الجودة والأداء العالي. فريقنا من الخبراء جاهز لمساعدتك في اختيار السيارة المناسبة لك.',
     imageUrl: '/uploads/company-showroom.jpg',
     ctaButtons: [
       {

@@ -72,7 +72,7 @@ export function EnhancedVehicleCard({
 
   if (loading) {
     return (
-      <Card className={`${compact ? 'h-64' : 'h-full min-h-[460px]'} ${className}`}>
+      <Card className={`${compact ? 'h-72' : 'h-full min-h-[520px]'} ${className}`}>
         <CardContent className="p-0 h-full">
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -86,10 +86,10 @@ export function EnhancedVehicleCard({
   }
 
   return (
-    <Card className={`h-full min-h-[460px] overflow-hidden hover:shadow-xl transition-all duration-300 group border-0 shadow-lg hover:shadow-2xl ${className}`}>
+    <Card className={`h-full min-h-[520px] overflow-hidden hover:shadow-2xl transition-all duration-300 group border-0 shadow-lg ${className}`}>
       <CardContent className="p-0 h-full">
         {/* Image Section */}
-        <div className="relative h-64 overflow-hidden bg-gray-100">
+        <div className="relative h-80 md:h-[22rem] overflow-hidden bg-gray-100">
           <img
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
             alt={`${vehicle.make} ${vehicle.model}`}
@@ -157,43 +157,43 @@ export function EnhancedVehicleCard({
         </div>
 
         {/* Content Section */}
-        <div className="p-5 bg-white flex-1 flex flex-col justify-between">
+        <div className="p-6 bg-white flex-1 flex flex-col justify-between space-y-4">
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-xl text-gray-900 mb-1 leading-tight truncate">
+              <h3 className="font-bold text-2xl text-gray-900 mb-2 leading-tight truncate">
                 {vehicle.make} {vehicle.model}
               </h3>
-              <p className="text-sm text-gray-600 truncate">{vehicle.year} • {vehicle.category}</p>
+              <p className="text-base text-gray-600 truncate">{vehicle.year} • {vehicle.category}</p>
             </div>
             <div className="text-right mr-3 flex-shrink-0">
-              <p className="font-bold text-xl text-blue-600 mb-1 whitespace-nowrap">
+              <p className="font-bold text-2xl text-blue-600 mb-1 whitespace-nowrap">
                 {formatPrice(vehicle.price)}
               </p>
               {vehicle.mileage && (
-                <p className="text-xs text-gray-500 whitespace-nowrap">{formatMileage(vehicle.mileage)}</p>
+                <p className="text-sm text-gray-500 whitespace-nowrap">{formatMileage(vehicle.mileage)}</p>
               )}
             </div>
           </div>
 
           {/* Key Specifications */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-100 min-h-[56px] flex flex-col justify-center">
-              <Fuel className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-              <p className="text-sm font-medium text-gray-700 leading-tight">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 min-h-[64px] flex flex-col justify-center">
+              <Fuel className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+              <p className="text-base font-medium text-gray-700 leading-tight">
                 {vehicle.fuelType === 'PETROL' ? 'بنزين' :
                  vehicle.fuelType === 'DIESEL' ? 'ديزل' :
                  vehicle.fuelType === 'ELECTRIC' ? 'كهرباء' : vehicle.fuelType}
               </p>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-100 min-h-[56px] flex flex-col justify-center">
-              <Settings className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-              <p className="text-sm font-medium text-gray-700 leading-tight">
+            <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 min-h-[64px] flex flex-col justify-center">
+              <Settings className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+              <p className="text-base font-medium text-gray-700 leading-tight">
                 {vehicle.transmission === 'MANUAL' ? 'يدوي' : 'أوتوماتيك'}
               </p>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-100 min-h-[56px] flex flex-col justify-center">
-              <Users className="w-5 h-5 mx-auto mb-1 text-blue-600" />
-              <p className="text-sm font-medium text-gray-700 leading-tight">5 مقاعد</p>
+            <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 min-h-[64px] flex flex-col justify-center">
+              <Users className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+              <p className="text-base font-medium text-gray-700 leading-tight">5 مقاعد</p>
             </div>
           </div>
 
@@ -202,12 +202,12 @@ export function EnhancedVehicleCard({
             <div className="mb-4 flex-1">
               <div className="flex flex-wrap gap-2">
                 {vehicle.features.slice(0, 3).map((feature, index) => (
-                  <Badge key={index} variant="outline" className="text-sm border-blue-200 text-blue-700 px-3 py-1">
+                  <Badge key={index} variant="outline" className="text-base border-blue-200 text-blue-700 px-4 py-1.5">
                     {feature}
                   </Badge>
                 ))}
                 {vehicle.features.length > 3 && (
-                  <Badge variant="outline" className="text-sm border-gray-200 text-gray-600 px-3 py-1">
+                  <Badge variant="outline" className="text-base border-gray-200 text-gray-600 px-4 py-1.5">
                     +{vehicle.features.length - 3}
                   </Badge>
                 )}
@@ -216,13 +216,13 @@ export function EnhancedVehicleCard({
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-2 mt-auto">
-            <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" asChild>
+          <div className="flex gap-3 mt-auto pt-2">
+            <Button size="lg" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" asChild>
               <Link href={`/vehicles/${vehicle.id}`}>
                 عرض التفاصيل
               </Link>
             </Button>
-            <Button size="sm" variant="outline" className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50" asChild>
+            <Button size="lg" variant="outline" className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50" asChild>
               <Link href={`/test-drive?vehicle=${vehicle.id}`}>
                 اختبار قيادة
               </Link>

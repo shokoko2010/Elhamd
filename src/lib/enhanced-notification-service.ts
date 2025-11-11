@@ -537,7 +537,7 @@ export class EnhancedNotificationService {
         <div class="container">
           <div class="header">
             <h1>الحمد للسيارات</h1>
-            <p>الوكيل الرسمي المعتمد لسيارات تاتا في مصر</p>
+            <p>الموزع المعتمد لسيارات تاتا في مدن القناة</p>
           </div>
           <div class="content">
             <p>${baseContent}</p>
@@ -552,7 +552,7 @@ export class EnhancedNotificationService {
     `
 
     const text = `
-      الحمد للسيارات - الوكيل الرسمي المعتمد لسيارات تاتا في مصر
+      الحمد للسيارات - الموزع المعتمد لسيارات تاتا في مدن القناة
       
       ${baseContent}
       

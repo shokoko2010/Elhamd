@@ -148,8 +148,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isAutoPlay, setIsAutoPlay] = useState(true)
-  
+
   const { handleError, clearError } = useErrorHandler()
+
+  const displayedVehicles = featuredVehicles.slice(0, 3)
 
   useEffect(() => {
     console.log('🚀 Component mounted, starting data fetch...')
@@ -344,7 +346,7 @@ export default function Home() {
                     <div className="mb-6">
                       <Badge className="bg-white/20 text-white border-white/30 mb-4">
                         <Award className="ml-2 h-4 w-4" />
-                        {companyInfo.features?.[0] || 'وكيل معتمد'}
+                        {companyInfo.features?.[0] || 'موزع معتمد'}
                       </Badge>
                     </div>
                     <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -451,7 +453,7 @@ export default function Home() {
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-full min-h-[460px]">
+                    <div key={i} className="h-full min-h-[520px]">
                       <LoadingCard title="جاري تحميل السيارة..." className="h-full" />
                     </div>
                   ))}
@@ -475,19 +477,19 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="relative">
+                  <div className="relative w-screen left-1/2 -translate-x-1/2 px-4 sm:px-8 lg:px-12">
                     <Carousel
                       opts={{
                         align: 'start',
-                        loop: featuredVehicles.length > 1,
+                        loop: displayedVehicles.length > 1,
                         dragFree: true
                       }}
                     >
-                      <CarouselContent className="py-2">
-                        {featuredVehicles.map((vehicle) => (
+                      <CarouselContent className="py-4 -ml-4">
+                        {displayedVehicles.map((vehicle) => (
                           <CarouselItem
                             key={vehicle.id}
-                            className="basis-full md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                            className="pl-4 basis-full md:basis-1/2 lg:basis-1/3"
                           >
                             <div className="h-full">
                               <EnhancedVehicleCard
@@ -498,10 +500,10 @@ export default function Home() {
                           </CarouselItem>
                         ))}
                       </CarouselContent>
-                      {featuredVehicles.length > 1 && (
+                      {displayedVehicles.length > 1 && (
                         <>
-                          <CarouselPrevious className="hidden md:flex -left-6 bg-white/80 hover:bg-white text-gray-700 border-0 shadow-lg" />
-                          <CarouselNext className="hidden md:flex -right-6 bg-white/80 hover:bg-white text-gray-700 border-0 shadow-lg" />
+                          <CarouselPrevious className="hidden md:flex -left-2 lg:-left-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
+                          <CarouselNext className="hidden md:flex -right-2 lg:-right-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
                         </>
                       )}
                     </Carousel>
@@ -1072,7 +1074,7 @@ export default function Home() {
                   {
                     name: 'خالد إبراهيم',
                     rating: 5,
-                    comment: 'أفضل وكيل سيارات تعاملت معه. أسعار ممتازة وخدمة ما بعد البيع رائعة.',
+                    comment: 'أفضل موزع سيارات تعاملت معه. أسعار ممتازة وخدمة ما بعد البيع رائعة.',
                     car: 'تاتا هارير',
                     date: '2024'
                   }

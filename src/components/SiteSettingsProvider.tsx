@@ -72,7 +72,7 @@ const defaultSettings: SiteSettings = {
   seoSettings: {
     metaTitle: 'شركة الحمد للسيارات - الموزع المعتمد لتاتا موتورز في مدن القناة',
     metaDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة، متخصصون في السيارات التجارية والبيك أب والشاحنات فقط',
-    keywords: 'سيارات تاتا، وكيل تاتا، سيارات تجارية، شاحنات، بيك أب، مصر',
+    keywords: 'سيارات تاتا، موزع تاتا، سيارات تجارية، شاحنات، بيك أب، مدن القناة',
     ogImage: '/og-image.jpg',
     twitterHandle: '@elhamdimport'
   },

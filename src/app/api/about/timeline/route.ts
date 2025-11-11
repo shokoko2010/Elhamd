@@ -21,7 +21,7 @@ export async function GET() {
           id: '1',
           year: '1999',
           title: 'تأسيس الشركة',
-          description: 'تأسست الحمد للسيارات كوكيل رسمي لسيارات تاتا في مصر',
+          description: 'تأسست الحمد للسيارات كموزع معتمد لسيارات تاتا في مدن القناة',
           icon: 'Car',
           order: 0,
           isActive: true
@@ -48,7 +48,7 @@ export async function GET() {
           id: '4',
           year: '2015',
           title: 'التميز في الخدمة',
-          description: 'الحصول على جائزة أفضل وكيل خدمة لسيارات تاتا',
+          description: 'الحصول على جائزة أفضل موزع خدمة لسيارات تاتا',
           icon: 'Award',
           order: 3,
           isActive: true

@@ -19,21 +19,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Elhamd Imports - الوكيل الرسمي لتاتا موتورز في مصر",
-  description: "الوكيل الرسمي لشركة تاتا موتورز في مصر. استكشف تشكيلتنا من السيارات، واحجز قيادة تجريبية، وجد مواعيد الصيانة.",
-  keywords: "Elhamd Imports, الحمد للسيارات, تاتا موتورز, مصر, سيارات, مركبات, قيادة تجريبية, صيانة, وكالة",
+  title: "Elhamd Imports - الموزع المعتمد لتاتا موتورز في مدن القناة",
+  description: "الموزع المعتمد لشركة تاتا موتورز في مدن القناة. استكشف تشكيلتنا المتخصصة من السيارات التجارية والخدمية، واحجز قيادة تجريبية، وجد مواعيد الصيانة.",
+  keywords: "Elhamd Imports, الحمد للسيارات, تاتا موتورز, مدن القناة, سيارات, مركبات, قيادة تجريبية, صيانة, موزع",
   authors: [{ name: "فريق Elhamd Imports" }],
   openGraph: {
-    title: "Elhamd Imports - الوكيل الرسمي لتاتا موتورز في مصر",
-    description: "الوكيل الرسمي لشركة تاتا موتورز في مصر",
+    title: "Elhamd Imports - الموزع المعتمد لتاتا موتورز في مدن القناة",
+    description: "الموزع المعتمد لشركة تاتا موتورز في مدن القناة",
     url: "https://elhamdimports.com",
     siteName: "Elhamd Imports",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Elhamd Imports - الوكيل الرسمي لتاتا موتورز في مصر",
-    description: "الوكيل الرسمي لشركة تاتا موتورز في مصر",
+    title: "Elhamd Imports - الموزع المعتمد لتاتا موتورز في مدن القناة",
+    description: "الموزع المعتمد لشركة تاتا موتورز في مدن القناة",
   },
   alternates: {
     canonical: "https://elhamdimports.com",

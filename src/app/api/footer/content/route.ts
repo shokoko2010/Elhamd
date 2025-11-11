@@ -15,7 +15,7 @@ export async function GET() {
       // Return default content if none exists
       return NextResponse.json({
         logoText: 'الحمد للسيارات',
-        tagline: 'وكيل تاتا المعتمد في مصر',
+        tagline: 'الموزع المعتمد لتاتا موتورز في مدن القناة',
         primaryPhone: '+20 2 1234 5678',
         primaryEmail: 'info@elhamdimport.com',
         address: 'القاهرة، مصر',

@@ -340,7 +340,7 @@ function InvoiceDetailsContent() {
         <div class="print-header">
           <div class="company-info">
             <h1>TATA Motors Egypt</h1>
-            <p>وكيل معتمد لسيارات تاتا</p>
+            <p>موزع معتمد لسيارات تاتا</p>
             <p>القاهرة، مصر</p>
             <p>هاتف: +20 2 12345678</p>
             <p>البريد الإلكتروني: info@tata-egypt.com</p>

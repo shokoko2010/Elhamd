@@ -67,7 +67,7 @@ export default function ContactInfoPage() {
               مرحباً بكم في الحمد للسيارات
             </h1>
             <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto leading-relaxed">
-              نحن وكيل تاتا المعتمد في مصر، نقدم أفضل الخدمات والمنتجات لعملائنا الكرام
+              نحن الموزع المعتمد لتاتا موتورز في مدن القناة، نقدم أفضل الخدمات والمنتجات لعملائنا الكرام
             </p>
           </div>
 
