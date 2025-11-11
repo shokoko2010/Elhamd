@@ -12,6 +12,7 @@ import { OptimizedImage, ResponsiveImage, BackgroundImage } from '@/components/u
 import { LoadingIndicator, LoadingCard, ErrorState } from '@/components/ui/LoadingIndicator'
 import { WorkingSlider } from '@/components/ui/WorkingSlider'
 import { EnhancedVehicleCard } from '@/components/ui/EnhancedVehicleCard'
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
 import { cache } from '@/lib/cache'
 import { ErrorHandler, useErrorHandler } from '@/lib/errorHandler'
 import { toast } from 'sonner'
@@ -448,16 +449,16 @@ export default function Home() {
               </div>
             
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-full min-h-[420px] max-h-[440px]">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-full min-h-[460px]">
                       <LoadingCard title="جاري تحميل السيارة..." className="h-full" />
                     </div>
                   ))}
                 </div>
               ) : error ? (
-                <ErrorState 
-                  title="حدث خطأ" 
+                <ErrorState
+                  title="حدث خطأ"
                   message={error}
                   onRetry={() => window.location.reload()}
                 />
@@ -474,30 +475,50 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 auto-rows-fr">
-                    {featuredVehicles.slice(0, 4).map((vehicle) => (
-                      <div key={vehicle.id} className="h-full">
-                        <EnhancedVehicleCard
-                          vehicle={vehicle}
-                        />
-                      </div>
-                    ))}
+                  <div className="relative">
+                    <Carousel
+                      opts={{
+                        align: 'start',
+                        loop: featuredVehicles.length > 1,
+                        dragFree: true
+                      }}
+                    >
+                      <CarouselContent className="py-2">
+                        {featuredVehicles.map((vehicle) => (
+                          <CarouselItem
+                            key={vehicle.id}
+                            className="basis-full md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                          >
+                            <div className="h-full">
+                              <EnhancedVehicleCard
+                                vehicle={vehicle}
+                                className="h-full"
+                              />
+                            </div>
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      {featuredVehicles.length > 1 && (
+                        <>
+                          <CarouselPrevious className="hidden md:flex -left-6 bg-white/80 hover:bg-white text-gray-700 border-0 shadow-lg" />
+                          <CarouselNext className="hidden md:flex -right-6 bg-white/80 hover:bg-white text-gray-700 border-0 shadow-lg" />
+                        </>
+                      )}
+                    </Carousel>
                   </div>
 
-                  {featuredVehicles.length > 4 && (
-                    <div className="text-center mt-12">
-                      <Link href="/vehicles">
-                        <TouchButton 
-                          variant="outline" 
-                          size="xl"
-                          className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
-                        >
-                          استعرض جميع السيارات ({featuredVehicles.length})
-                          <Car className="mr-3 h-5 w-5" />
-                        </TouchButton>
-                      </Link>
-                    </div>
-                  )}
+                  <div className="text-center mt-12">
+                    <Link href="/vehicles">
+                      <TouchButton
+                        variant="outline"
+                        size="xl"
+                        className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
+                      >
+                        استعرض جميع السيارات ({featuredVehicles.length})
+                        <Car className="mr-3 h-5 w-5" />
+                      </TouchButton>
+                    </Link>
+                  </div>
                 </>
               )}
             </div>

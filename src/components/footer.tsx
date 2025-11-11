@@ -266,12 +266,24 @@ export default function Footer() {
 
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div 
-              className="text-gray-400 text-sm"
-              dangerouslySetInnerHTML={{ 
-                __html: footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings.siteTitle}. جميع الحقوق محفوظة.` 
-              }}
-            />
+            <div className="text-gray-400 text-sm text-center md:text-right">
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings.siteTitle}. جميع الحقوق محفوظة.`
+                }}
+              />
+              <span className="block md:inline md:ml-2">
+                تم التطوير ويتم الإدارة بواسطة{' '}
+                <a
+                  href="https://arab-web3.com"
+                  className="text-white hover:text-blue-200 underline decoration-dotted"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Arab Web 3
+                </a>
+              </span>
+            </div>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
                 سياسة الخصوصية

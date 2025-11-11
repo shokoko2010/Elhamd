@@ -59,10 +59,10 @@ const defaultSettings: SiteSettings = {
   accentColor: '#F59E0B',
   fontFamily: 'Inter',
   siteTitle: 'شركة الحمد لاستيراد السيارات',
-  siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+  siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
   contactEmail: 'info@elhamdimport.online',
   contactPhone: '+20 2 12345678',
-  contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
+  contactAddress: 'بورسعيد، مصر',
   socialLinks: {
     facebook: 'https://facebook.com/elhamdimport',
     twitter: 'https://twitter.com/elhamdimport',
@@ -70,8 +70,8 @@ const defaultSettings: SiteSettings = {
     linkedin: 'https://linkedin.com/company/elhamdimport'
   },
   seoSettings: {
-    metaTitle: 'شركة الحمد للسيارات - الوكيل الحصري لتاتا موتورز',
-    metaDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
+    metaTitle: 'شركة الحمد للسيارات - الموزع المعتمد لتاتا موتورز في مدن القناة',
+    metaDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة، متخصصون في السيارات التجارية والبيك أب والشاحنات فقط',
     keywords: 'سيارات تاتا، وكيل تاتا، سيارات تجارية، شاحنات، بيك أب، مصر',
     ogImage: '/og-image.jpg',
     twitterHandle: '@elhamdimport'

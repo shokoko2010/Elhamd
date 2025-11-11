@@ -59,10 +59,10 @@ async function main() {
   const siteSettings = await prisma.siteSettings.create({
     data: {
       siteTitle: 'شركة الحمد لاستيراد السيارات',
-      siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+      siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
       contactEmail: 'info@elhamdimport.online',
       contactPhone: '+20 2 12345678',
-      contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
+      contactAddress: 'بورسعيد، مصر',
       socialLinks: {
         facebook: 'https://facebook.com/elhamdimport',
         twitter: 'https://twitter.com/elhamdimport',
@@ -78,8 +78,8 @@ async function main() {
   const companyInfo = await prisma.companyInfo.create({
     data: {
       title: 'شركة الحمد لاستيراد السيارات',
-      subtitle: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
-      description: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
+      subtitle: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
+      description: 'الموزع المعتمد لسيارات تاتا في مدن القناة، متخصصون في السيارات التجارية والبيك أب والشاحنات فقط',
       features: ['الجودة', 'الموثوقية', 'خدمة العملاء', 'الابتكار'],
       ctaButtons: [
         {
@@ -102,8 +102,8 @@ async function main() {
     data: [
       { number: '5000+', label: 'عملاء سعداء', icon: 'users' },
       { number: '10000+', label: 'مركبة مباعة', icon: 'truck' },
-      { number: '14+', label: 'سنوات خبرة', icon: 'award' },
-      { number: '1', label: 'فرع', icon: 'map-pin' }
+        { number: '14+', label: 'سنوات خبرة', icon: 'award' },
+        { number: '2', label: 'فروع', icon: 'map-pin' }
     ]
   })
   console.log('✓ companyStat created')
@@ -926,7 +926,7 @@ async function main() {
     data: {
       logoUrl: '/uploads/logo/elhamd-logo.png',
       logoText: 'شركة الحمد لاستيراد السيارات',
-      tagline: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
+      tagline: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
       primaryPhone: '+20 2 12345678',
       primaryEmail: 'info@elhamdimport.online',
       address: 'القنطرة غرب، الإسماعيلية، مصر',
@@ -942,7 +942,7 @@ async function main() {
     data: {
       logoUrl: '/uploads/logo/elhamd-logo.png',
       logoText: 'شركة الحمد لاستيراد السيارات',
-      tagline: 'الوكيل الحصري لشركة تاتا موتورز في مصر - متخصصون في السيارات التجارية والبيك أب والشاحنات',
+      tagline: 'الموزع المعتمد لسيارات تاتا في مدن القناة - متخصصون في السيارات التجارية والبيك أب والشاحنات',
       primaryPhone: '+20 2 12345678',
       secondaryPhone: '+20 1012345678',
       primaryEmail: 'info@elhamdimport.online',
