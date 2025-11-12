@@ -4,6 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { normalizeBrandingObject } from '@/lib/branding'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     if (!settings) {
       // Return default settings if none exist
-      const defaultSettings = {
+      const defaultSettings = normalizeBrandingObject({
         id: 'default',
         logoUrl: '/logo.svg',
         faviconUrl: '/favicon.ico',
@@ -79,19 +80,19 @@ export async function GET(request: NextRequest) {
           showCopyright: true,
           columns: 4
         }
-      }
+      })
       return NextResponse.json(defaultSettings, { headers })
     }
 
     // Ensure all JSON fields have default values
-    const processedSettings = {
+    const processedSettings = normalizeBrandingObject({
       ...settings,
       socialLinks: settings.socialLinks || {},
       seoSettings: settings.seoSettings || {},
       performanceSettings: settings.performanceSettings || {},
       headerSettings: settings.headerSettings || {},
       footerSettings: settings.footerSettings || {}
-    }
+    })
 
     return NextResponse.json(processedSettings, { headers })
   } catch (error) {

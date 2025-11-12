@@ -5,6 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
+import { normalizeBrandingObject } from '@/lib/branding'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,7 @@ export async function GET() {
 
     if (!companyInfo) {
       // Return default company info if none exists
-      return NextResponse.json({
+      return NextResponse.json(normalizeBrandingObject({
         id: 'default',
         title: 'مرحباً بك في الحمد للسيارات',
         subtitle: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
@@ -63,18 +64,18 @@ export async function GET() {
           { text: 'قيادة تجريبية', link: '/test-drive', variant: 'secondary' }
         ],
         isActive: true
-      }, {
+      }), {
         status: 200,
         headers: { 'Cache-Control': 'no-store' }
       })
     }
 
     return NextResponse.json(
-      {
+      normalizeBrandingObject({
         ...companyInfo,
         features: normalizeArrayField(companyInfo.features),
         ctaButtons: normalizeButtons(companyInfo.ctaButtons)
-      },
+      }),
       { headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (error) {
@@ -130,11 +131,11 @@ export async function PUT(request: NextRequest) {
         data: sanitizedData
       })
       return NextResponse.json(
-        {
+        normalizeBrandingObject({
           ...updatedInfo,
           features: normalizeArrayField(updatedInfo.features),
           ctaButtons: normalizeButtons(updatedInfo.ctaButtons)
-        },
+        }),
         { headers: { 'Cache-Control': 'no-store' } }
       )
     } else {
@@ -142,11 +143,11 @@ export async function PUT(request: NextRequest) {
         data: sanitizedData
       })
       return NextResponse.json(
-        {
+        normalizeBrandingObject({
           ...newInfo,
           features: normalizeArrayField(newInfo.features),
           ctaButtons: normalizeButtons(newInfo.ctaButtons)
-        },
+        }),
         { headers: { 'Cache-Control': 'no-store' } }
       )
     }

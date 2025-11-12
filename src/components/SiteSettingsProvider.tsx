@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import React from 'react'
+import { normalizeBrandingObject } from '@/lib/branding'
 
 interface SiteSettings {
   id?: string
@@ -53,7 +54,7 @@ interface SiteSettingsContextType {
   loading: boolean
 }
 
-const defaultSettings: SiteSettings = {
+const defaultSettings: SiteSettings = normalizeBrandingObject({
   primaryColor: '#3B82F6',
   secondaryColor: '#10B981',
   accentColor: '#F59E0B',
@@ -93,7 +94,7 @@ const defaultSettings: SiteSettings = {
     showCopyright: true,
     columns: 4
   }
-}
+})
 
 export const SiteSettingsContext = React.createContext<SiteSettingsContextType>({
   settings: defaultSettings,
@@ -113,8 +114,9 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       const response = await fetch('/api/public/site-settings')
       if (response.ok) {
         const data = await response.json()
-        setSettings(data)
-        applySettingsToDOM(data)
+        const normalized = normalizeBrandingObject(data)
+        setSettings(normalized)
+        applySettingsToDOM(normalized)
       } else {
         console.warn('Failed to load site settings, using defaults')
       }

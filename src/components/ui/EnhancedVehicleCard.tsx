@@ -86,10 +86,10 @@ export function EnhancedVehicleCard({
   }
 
   return (
-    <Card className={`h-full min-h-[520px] overflow-hidden hover:shadow-2xl transition-all duration-300 group border-0 shadow-lg ${className}`}>
+    <Card className={`h-full min-h-[620px] overflow-hidden hover:shadow-2xl transition-all duration-300 group border-0 shadow-xl ${className}`}>
       <CardContent className="p-0 h-full">
         {/* Image Section */}
-        <div className="relative h-80 md:h-[22rem] overflow-hidden bg-gray-100">
+        <div className="relative h-[22rem] md:h-[26rem] overflow-hidden bg-gray-100">
           <img
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
             alt={`${vehicle.make} ${vehicle.model}`}
@@ -157,16 +157,16 @@ export function EnhancedVehicleCard({
         </div>
 
         {/* Content Section */}
-        <div className="p-6 bg-white flex-1 flex flex-col justify-between space-y-4">
-          <div className="flex justify-between items-start mb-4">
+        <div className="p-8 bg-white flex-1 flex flex-col justify-between space-y-6">
+          <div className="flex justify-between items-start mb-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-2xl text-gray-900 mb-2 leading-tight truncate">
+              <h3 className="font-bold text-3xl text-gray-900 mb-2 leading-tight truncate">
                 {vehicle.make} {vehicle.model}
               </h3>
-              <p className="text-base text-gray-600 truncate">{vehicle.year} • {vehicle.category}</p>
+              <p className="text-lg text-gray-600 truncate">{vehicle.year} • {vehicle.category}</p>
             </div>
             <div className="text-right mr-3 flex-shrink-0">
-              <p className="font-bold text-2xl text-blue-600 mb-1 whitespace-nowrap">
+              <p className="font-bold text-3xl text-blue-600 mb-1 whitespace-nowrap">
                 {formatPrice(vehicle.price)}
               </p>
               {vehicle.mileage && (
@@ -176,24 +176,24 @@ export function EnhancedVehicleCard({
           </div>
 
           {/* Key Specifications */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 min-h-[64px] flex flex-col justify-center">
-              <Fuel className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-base font-medium text-gray-700 leading-tight">
+          <div className="grid grid-cols-3 gap-5">
+            <div className="text-center p-5 bg-gray-50 rounded-2xl border border-gray-100 min-h-[72px] flex flex-col justify-center shadow-sm">
+              <Fuel className="w-7 h-7 mx-auto mb-2 text-blue-600" />
+              <p className="text-lg font-medium text-gray-700 leading-tight">
                 {vehicle.fuelType === 'PETROL' ? 'بنزين' :
                  vehicle.fuelType === 'DIESEL' ? 'ديزل' :
                  vehicle.fuelType === 'ELECTRIC' ? 'كهرباء' : vehicle.fuelType}
               </p>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 min-h-[64px] flex flex-col justify-center">
-              <Settings className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-base font-medium text-gray-700 leading-tight">
+            <div className="text-center p-5 bg-gray-50 rounded-2xl border border-gray-100 min-h-[72px] flex flex-col justify-center shadow-sm">
+              <Settings className="w-7 h-7 mx-auto mb-2 text-blue-600" />
+              <p className="text-lg font-medium text-gray-700 leading-tight">
                 {vehicle.transmission === 'MANUAL' ? 'يدوي' : 'أوتوماتيك'}
               </p>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 min-h-[64px] flex flex-col justify-center">
-              <Users className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-base font-medium text-gray-700 leading-tight">5 مقاعد</p>
+            <div className="text-center p-5 bg-gray-50 rounded-2xl border border-gray-100 min-h-[72px] flex flex-col justify-center shadow-sm">
+              <Users className="w-7 h-7 mx-auto mb-2 text-blue-600" />
+              <p className="text-lg font-medium text-gray-700 leading-tight">5 مقاعد</p>
             </div>
           </div>
 

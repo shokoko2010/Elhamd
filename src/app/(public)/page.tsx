@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import { LoadingIndicator, LoadingCard, ErrorState } from '@/components/ui/Loadi
 import { WorkingSlider } from '@/components/ui/WorkingSlider'
 import { EnhancedVehicleCard } from '@/components/ui/EnhancedVehicleCard'
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
+import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
 import { cache } from '@/lib/cache'
 import { ErrorHandler, useErrorHandler } from '@/lib/errorHandler'
 import { toast } from 'sonner'
@@ -38,6 +39,7 @@ interface Vehicle {
   fuelType: string
   transmission: string
   images: { imageUrl: string; isPrimary: boolean }[]
+  mileage?: number
 }
 
 interface SliderItem {
@@ -61,6 +63,51 @@ const arabicDayLabels: Record<string, string> = {
   Thursday: 'الخميس',
   Friday: 'الجمعة'
 }
+
+const fallbackVehicles: Vehicle[] = [
+  {
+    id: 'fallback-nexon-ev',
+    make: 'Tata',
+    model: 'Nexon EV',
+    year: 2024,
+    price: 650000,
+    category: 'SUV',
+    fuelType: 'ELECTRIC',
+    transmission: 'AUTOMATIC',
+    mileage: 0,
+    images: [
+      { imageUrl: '/uploads/vehicles/1/tata-nexon-ev-1.jpg', isPrimary: true }
+    ]
+  },
+  {
+    id: 'fallback-punch',
+    make: 'Tata',
+    model: 'Punch',
+    year: 2024,
+    price: 380000,
+    category: 'CROSSOVER',
+    fuelType: 'GASOLINE',
+    transmission: 'AUTOMATIC',
+    mileage: 0,
+    images: [
+      { imageUrl: '/uploads/vehicles/2/tata-punch-1.jpg', isPrimary: true }
+    ]
+  },
+  {
+    id: 'fallback-tiago',
+    make: 'Tata',
+    model: 'Tiago',
+    year: 2024,
+    price: 345000,
+    category: 'HATCHBACK',
+    fuelType: 'GASOLINE',
+    transmission: 'AUTOMATIC',
+    mileage: 0,
+    images: [
+      { imageUrl: '/uploads/vehicles/3/tata-tiago-1.jpg', isPrimary: true }
+    ]
+  }
+]
 
 const normalizeContactInfo = (data: any) => {
   if (!data) {
@@ -151,7 +198,39 @@ export default function Home() {
 
   const { handleError, clearError } = useErrorHandler()
 
-  const displayedVehicles = featuredVehicles.slice(0, 3)
+  const carouselVehicles = useMemo(() => {
+    if (featuredVehicles.length >= 3) {
+      return featuredVehicles
+    }
+
+    const deduped = [...featuredVehicles]
+    for (const fallback of fallbackVehicles) {
+      if (deduped.length >= 3) break
+      if (!deduped.some(vehicle => vehicle.model === fallback.model)) {
+        deduped.push(fallback)
+      }
+    }
+
+    if (deduped.length === 0) {
+      return fallbackVehicles
+    }
+
+    return deduped.slice(0, Math.max(3, deduped.length))
+  }, [featuredVehicles])
+
+  const slidesToShow = Math.min(3, carouselVehicles.length)
+  const carouselAlign = slidesToShow >= 3 ? 'start' : 'center'
+  const carouselDragFree = carouselVehicles.length > slidesToShow
+  const itemBasisClass = useMemo(() => {
+    if (slidesToShow === 1) {
+      return 'sm:basis-3/4 lg:basis-2/5 xl:basis-1/3'
+    }
+    if (slidesToShow === 2) {
+      return 'md:basis-1/2 xl:basis-2/5 2xl:basis-1/3'
+    }
+    return 'md:basis-1/2 xl:basis-1/3 2xl:basis-1/4'
+  }, [slidesToShow])
+  const totalVehiclesCount = featuredVehicles.length > 0 ? featuredVehicles.length : carouselVehicles.length
 
   useEffect(() => {
     console.log('🚀 Component mounted, starting data fetch...')
@@ -163,7 +242,7 @@ export default function Home() {
         const companyInfoResponse = await fetch('/api/company-info')
         if (companyInfoResponse.ok) {
           const companyData = await companyInfoResponse.json()
-          setCompanyInfo(companyData)
+          setCompanyInfo(normalizeBrandingObject(companyData))
         }
 
         // Fetch service items
@@ -174,7 +253,7 @@ export default function Home() {
             // Remove duplicates based on title
             const uniqueServices = serviceData.reduce((acc, current) => {
               if (!acc.find(item => item.title === current.title)) {
-                acc.push(current)
+                acc.push(normalizeBrandingObject(current))
               }
               return acc
             }, [])
@@ -192,7 +271,7 @@ export default function Home() {
             // Remove duplicates based on label
             const uniqueStats = statsData.reduce((acc, current) => {
               if (!acc.find(item => item.label === current.label)) {
-                acc.push(current)
+                acc.push(normalizeBrandingObject(current))
               }
               return acc
             }, [])
@@ -208,7 +287,7 @@ export default function Home() {
             // Remove duplicates based on title
             const uniqueValues = valuesData.reduce((acc, current) => {
               if (!acc.find(item => item.title === current.title)) {
-                acc.push(current)
+                acc.push(normalizeBrandingObject(current))
               }
               return acc
             }, [])
@@ -222,7 +301,7 @@ export default function Home() {
         const featuresResponse = await fetch('/api/about/features')
         if (featuresResponse.ok) {
           const featuresData = await featuresResponse.json()
-          setCompanyFeatures(Array.isArray(featuresData) ? featuresData : [])
+          setCompanyFeatures(Array.isArray(featuresData) ? featuresData.map((feature: any) => normalizeBrandingObject(feature)) : [])
         }
 
         // Fetch timeline events
@@ -234,7 +313,7 @@ export default function Home() {
             const uniqueTimeline = timelineData.reduce((acc, current) => {
               const exists = acc.find(item => item.year === current.year && item.title === current.title)
               if (!exists) {
-                acc.push(current)
+                acc.push(normalizeBrandingObject(current))
               }
               return acc
             }, [])
@@ -248,7 +327,7 @@ export default function Home() {
         const contactResponse = await fetch('/api/contact-info')
         if (contactResponse.ok) {
           const contactData = await contactResponse.json()
-          setContactInfo(normalizeContactInfo(contactData))
+          setContactInfo(normalizeContactInfo(normalizeBrandingObject(contactData)))
         }
 
         // Fetch sliders
@@ -261,16 +340,19 @@ export default function Home() {
           } else if (Array.isArray(slidersData)) {
             sliders = slidersData
           }
-          setSliderItems(sliders)
+          setSliderItems(sliders.map((item) => normalizeBrandingObject(item)))
         }
 
         // Fetch vehicles
         const vehiclesResponse = await fetch('/api/public/vehicles?limit=8')
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
-          setFeaturedVehicles(vehiclesData?.vehicles || [])
-          
-          if (vehiclesData?.vehicles?.length === 0) {
+          const normalizedVehicles = Array.isArray(vehiclesData?.vehicles)
+            ? vehiclesData.vehicles.map((vehicle: Vehicle) => normalizeBrandingObject(vehicle))
+            : []
+          setFeaturedVehicles(normalizedVehicles)
+
+          if (!vehiclesData?.vehicles || vehiclesData.vehicles.length === 0) {
             toast.info('لا توجد سيارات متاحة حالياً')
           }
         }
@@ -353,7 +435,7 @@ export default function Home() {
                       {companyInfo.title}
                     </h1>
                     <p className="text-xl md:text-2xl mb-6 text-blue-100 font-semibold">
-                      {companyInfo.subtitle}
+                      {normalizeBrandingText(companyInfo.subtitle || DISTRIBUTOR_BRANDING)}
                     </p>
                     <p className="text-lg md:text-xl mb-8 text-blue-50 leading-relaxed">
                       {companyInfo.description}
@@ -446,7 +528,7 @@ export default function Home() {
                   {companyInfo?.title || 'استعرض سيارات تاتا'}
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  {companyInfo?.subtitle || 'استعرض أحدث سيارات تاتا التجارية والخفيفة بأفضل الأسعار والمواصفات'}
+                  {normalizeBrandingText(companyInfo?.subtitle || DISTRIBUTOR_BRANDING)}
                 </p>
               </div>
             
@@ -464,7 +546,7 @@ export default function Home() {
                   message={error}
                   onRetry={() => window.location.reload()}
                 />
-              ) : featuredVehicles.length === 0 ? (
+              ) : carouselVehicles.length === 0 ? (
                 <div className="text-center py-12">
                   <Car className="mx-auto h-16 w-16 text-gray-400 mb-4" />
                   <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد سيارات حالياً</h3>
@@ -480,16 +562,16 @@ export default function Home() {
                   <div className="relative w-screen left-1/2 -translate-x-1/2 px-4 sm:px-8 lg:px-12">
                     <Carousel
                       opts={{
-                        align: 'start',
-                        loop: displayedVehicles.length > 1,
-                        dragFree: true
+                        align: carouselAlign,
+                        loop: carouselVehicles.length > slidesToShow,
+                        dragFree: carouselDragFree
                       }}
                     >
-                      <CarouselContent className="py-4 -ml-4">
-                        {displayedVehicles.map((vehicle) => (
+                      <CarouselContent className="py-4">
+                        {carouselVehicles.map((vehicle) => (
                           <CarouselItem
                             key={vehicle.id}
-                            className="pl-4 basis-full md:basis-1/2 lg:basis-1/3"
+                            className={`pl-4 basis-full ${itemBasisClass}`}
                           >
                             <div className="h-full">
                               <EnhancedVehicleCard
@@ -500,7 +582,7 @@ export default function Home() {
                           </CarouselItem>
                         ))}
                       </CarouselContent>
-                      {displayedVehicles.length > 1 && (
+                      {carouselVehicles.length > slidesToShow && (
                         <>
                           <CarouselPrevious className="hidden md:flex -left-2 lg:-left-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
                           <CarouselNext className="hidden md:flex -right-2 lg:-right-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
@@ -516,7 +598,7 @@ export default function Home() {
                         size="xl"
                         className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
                       >
-                        استعرض جميع السيارات ({featuredVehicles.length})
+                        استعرض جميع السيارات ({totalVehiclesCount})
                         <Car className="mr-3 h-5 w-5" />
                       </TouchButton>
                     </Link>

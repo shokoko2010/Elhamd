@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizeBrandingObject } from '@/lib/branding';
 
 // Mock data for homepage - this will be replaced with database data later
-const mockHomepageData = {
+const mockHomepageData = normalizeBrandingObject({
   siteSettings: {
     siteTitle: 'الحمد للسيارات - الموزع المعتمد لسيارات تاتا في مدن القناة',
     siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - نقدم أفضل السيارات والخدمات المتخصصة',
@@ -184,9 +185,33 @@ const mockHomepageData = {
         currency: 'EGP',
         hasDiscount: false
       }
+    },
+    {
+      id: 'vehicle-3',
+      make: 'Tata',
+      model: 'Tiago',
+      year: 2024,
+      price: 345000,
+      mileage: 0,
+      fuelType: 'GASOLINE',
+      transmission: 'AUTOMATIC',
+      description: 'هاتشباك ذكية للمدن بتقنيات أمان متقدمة ومقصورة رحبة تلائم عائلات القناة.',
+      images: [
+        {
+          id: 'img-3',
+          imageUrl: '/uploads/vehicles/3/tata-tiago-1.jpg',
+          altText: 'Tata Tiago Front View',
+          isPrimary: true
+        }
+      ],
+      pricing: {
+        basePrice: 345000,
+        currency: 'EGP',
+        hasDiscount: false
+      }
     }
   ]
-};
+});
 
 export async function GET(request: NextRequest) {
   try {
