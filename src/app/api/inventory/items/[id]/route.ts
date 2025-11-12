@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { InventoryStatus, UserRole } from '@prisma/client'
+import { syncMaintenancePartFromInventory } from '@/lib/maintenance-part-sync'
 
 const resolveStatus = (
   quantity: number,
@@ -100,6 +101,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     if ('error' in auth) {
       return auth.error
     }
+    const { user } = auth
 
     const { id } = await context.params
     const existing = await db.inventoryItem.findUnique({ where: { id } })
@@ -172,6 +174,23 @@ export async function PUT(request: NextRequest, context: RouteParams) {
               : existing.lastRestockDate
       }
     })
+
+    await syncMaintenancePartFromInventory(
+      {
+        partNumber: updated.partNumber,
+        name: updated.name,
+        description: updated.description,
+        category: updated.category,
+        quantity: updated.quantity,
+        minStockLevel: updated.minStockLevel,
+        maxStockLevel: updated.maxStockLevel,
+        unitPrice: updated.unitPrice,
+        supplier: updated.supplier,
+        location: updated.location,
+        status: updated.status
+      },
+      user.id
+    )
 
     return NextResponse.json(transformItem(updated))
   } catch (error) {

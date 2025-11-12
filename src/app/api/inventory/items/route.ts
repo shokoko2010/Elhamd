@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { InventoryStatus, Prisma, UserRole } from '@prisma/client'
+import { syncMaintenancePartFromInventory } from '@/lib/maintenance-part-sync'
 
 const resolveStatus = (
   quantity: number,
@@ -367,6 +368,23 @@ export async function POST(request: NextRequest) {
         notes
       }
     })
+
+    await syncMaintenancePartFromInventory(
+      {
+        partNumber: item.partNumber,
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        quantity: item.quantity,
+        minStockLevel: item.minStockLevel,
+        maxStockLevel: item.maxStockLevel,
+        unitPrice: item.unitPrice,
+        supplier: item.supplier,
+        location: item.location,
+        status
+      },
+      user.id
+    )
 
     return NextResponse.json({
       id: item.id,

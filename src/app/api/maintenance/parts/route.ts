@@ -5,6 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { PartStatus, PartCategory } from '@/types/maintenance'
+import { backfillMaintenancePartsFromInventory } from '@/lib/maintenance-part-sync'
 import { getAuthUser, UserRole } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    await backfillMaintenancePartsFromInventory(user.id)
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
