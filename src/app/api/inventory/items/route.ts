@@ -5,7 +5,25 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { UserRole } from '@prisma/client'
+import { InventoryStatus, UserRole } from '@prisma/client'
+
+const resolveStatus = (quantity: number, minStockLevel: number, status?: string) => {
+  const normalizedStatus = status?.toUpperCase() as keyof typeof InventoryStatus | undefined
+
+  if (normalizedStatus && InventoryStatus[normalizedStatus]) {
+    return InventoryStatus[normalizedStatus]
+  }
+
+  if (quantity <= 0) {
+    return InventoryStatus.OUT_OF_STOCK
+  }
+
+  if (quantity <= Math.max(minStockLevel, 0)) {
+    return InventoryStatus.LOW_STOCK
+  }
+
+  return InventoryStatus.IN_STOCK
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,11 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Handle low stock filter
-    if (lowStock) {
-      whereClause.quantity = {
-        lte: db.inventoryItem.fields.minStockLevel
-      }
-    }
+    const shouldFilterLowStock = lowStock
 
     // Handle stats request
     if (stats) {
@@ -152,8 +166,11 @@ export async function GET(request: NextRequest) {
       take: limit
     })
 
-    // Transform items data
-    const transformedItems = items.map(item => ({
+    const filteredItems = shouldFilterLowStock
+      ? items.filter(item => item.quantity <= item.minStockLevel)
+      : items
+
+    const transformedItems = filteredItems.map(item => ({
       id: item.id,
       partNumber: item.partNumber,
       name: item.name,
@@ -173,8 +190,27 @@ export async function GET(request: NextRequest) {
       notes: item.notes
     }))
 
-    // Get total count for pagination
-    const totalCount = await db.inventoryItem.count({ where: whereClause })
+    const baseWhere = { ...whereClause }
+
+    if (shouldFilterLowStock) {
+      const lowStockFilter = {
+        OR: [
+          { quantity: { lte: 0 } },
+          {
+            AND: [
+              { quantity: { gt: 0 } },
+              { quantity: { lte: db.inventoryItem.fields.minStockLevel } }
+            ]
+          }
+        ]
+      }
+
+      baseWhere.AND = Array.isArray(baseWhere.AND)
+        ? [...baseWhere.AND, lowStockFilter]
+        : [lowStockFilter]
+    }
+
+    const totalCount = await db.inventoryItem.count({ where: baseWhere })
 
     return NextResponse.json({
       items: transformedItems,
@@ -221,7 +257,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!partNumber || !name || !category || !unitPrice || !supplier || !warehouse) {
+    if (!partNumber || !name || !category || unitPrice === undefined || unitPrice === null || !supplier || !warehouse) {
       return NextResponse.json(
         { error: 'Part number, name, category, unit price, supplier, and warehouse are required' },
         { status: 400 }
@@ -241,12 +277,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine status based on quantity
-    let status: string = 'in_stock'
-    if (quantity === 0) {
-      status = 'out_of_stock'
-    } else if (quantity <= (minStockLevel || 0)) {
-      status = 'low_stock'
-    }
+    const status = resolveStatus(quantity || 0, minStockLevel || 0, body.status)
 
     // Create new inventory item
     const item = await db.inventoryItem.create({
