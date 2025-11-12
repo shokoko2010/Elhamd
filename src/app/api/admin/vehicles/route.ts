@@ -9,8 +9,7 @@ import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } 
 import { z } from 'zod'
 import { PERMISSIONS } from '@/lib/permissions'
 
-// Validation schemas
-const createVehicleSchema = z.object({
+const baseVehicleSchema = z.object({
   make: z.string().min(1, 'الماركة مطلوبة'),
   model: z.string().min(1, 'الموديل مطلوب'),
   year: z.number().int().min(1900).max(new Date().getFullYear() + 1),
@@ -22,15 +21,51 @@ const createVehicleSchema = z.object({
   category: z.nativeEnum(VehicleCategory),
   fuelType: z.nativeEnum(FuelType),
   transmission: z.nativeEnum(TransmissionType),
-  mileage: z.number().min(0).optional(),
+  mileage: z.number().int().min(0).optional(),
   color: z.string().optional(),
   status: z.nativeEnum(VehicleStatus),
-  isActive: z.boolean()
+  featured: z.boolean().optional()
 })
 
-const updateVehicleSchema = createVehicleSchema.partial().extend({
-  id: z.string().cuid()
-})
+const createVehicleSchema = baseVehicleSchema
+const updateVehicleSchema = baseVehicleSchema.partial()
+
+const sanitizeVehiclePayload = <T extends Partial<z.infer<typeof baseVehicleSchema>>>(
+  payload: T,
+  options: { applyDefaults?: boolean } = {}
+) => {
+  const data: Record<string, unknown> = { ...payload }
+
+  if (data.vin !== undefined) {
+    const vin = typeof data.vin === 'string' ? data.vin.trim() : data.vin
+    data.vin = vin ? vin : undefined
+  }
+
+  if (data.description !== undefined && typeof data.description === 'string') {
+    const trimmed = data.description.trim()
+    data.description = trimmed ? trimmed : undefined
+  }
+
+  if (data.color !== undefined && typeof data.color === 'string') {
+    const trimmed = data.color.trim()
+    data.color = trimmed ? trimmed : undefined
+  }
+
+  if (data.mileage !== undefined && data.mileage !== null) {
+    data.mileage = Number(data.mileage)
+  }
+
+  if (data.stockQuantity !== undefined && data.stockQuantity !== null) {
+    data.stockQuantity = Number(data.stockQuantity)
+  }
+
+  if (options.applyDefaults) {
+    data.stockQuantity = typeof data.stockQuantity === 'number' ? data.stockQuantity : 0
+    data.featured = typeof data.featured === 'boolean' ? data.featured : false
+  }
+
+  return data as T
+}
 
 // GET /api/admin/vehicles - List all vehicles
 export async function GET(request: NextRequest) {
@@ -42,11 +77,13 @@ export async function GET(request: NextRequest) {
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.STAFF ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes(PERMISSIONS.VIEW_VEHICLES)
+    const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
+    const hasAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.STAFF ||
+      user.role === UserRole.BRANCH_MANAGER ||
+      userPermissions.includes(PERMISSIONS.VIEW_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -139,11 +176,13 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.STAFF ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes(PERMISSIONS.CREATE_VEHICLES)
+    const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
+    const hasAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.STAFF ||
+      user.role === UserRole.BRANCH_MANAGER ||
+      userPermissions.includes(PERMISSIONS.CREATE_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -153,10 +192,11 @@ export async function POST(request: NextRequest) {
     
     // Validate input
     const validatedData = createVehicleSchema.parse(body)
+    const sanitizedData = sanitizeVehiclePayload(validatedData, { applyDefaults: true })
 
     // Check if stock number already exists
     const existingVehicle = await db.vehicle.findUnique({
-      where: { stockNumber: validatedData.stockNumber }
+      where: { stockNumber: sanitizedData.stockNumber }
     })
     
     if (existingVehicle) {
@@ -167,11 +207,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if VIN already exists (if provided)
-    if (validatedData.vin) {
+    const sanitizedVin = sanitizedData.vin as string | undefined
+    if (sanitizedVin) {
       const existingVin = await db.vehicle.findUnique({
-        where: { vin: validatedData.vin }
+        where: { vin: sanitizedVin }
       })
-      
+
       if (existingVin) {
         return NextResponse.json(
           { error: 'رقم الهيكل (VIN) مستخدم بالفعل' },
@@ -183,15 +224,15 @@ export async function POST(request: NextRequest) {
     // Create vehicle with default pricing
     const vehicle = await db.vehicle.create({
       data: {
-        ...validatedData,
+        ...sanitizedData,
         pricing: {
           create: {
-            basePrice: validatedData.price,
+            basePrice: sanitizedData.price,
             discountPrice: null,
             discountPercentage: null,
             taxes: 0,
             fees: 0,
-            totalPrice: validatedData.price,
+            totalPrice: sanitizedData.price,
             currency: 'EGP',
             hasDiscount: false,
             discountExpires: null

@@ -25,6 +25,63 @@ const resolveStatus = (quantity: number, minStockLevel: number, status?: string)
   return InventoryStatus.IN_STOCK
 }
 
+const LOW_STOCK_STATUSES = [InventoryStatus.OUT_OF_STOCK, InventoryStatus.LOW_STOCK]
+
+const normalizeDate = (value?: Date | null) => (value ? value.toISOString() : null)
+
+const buildFilters = ({
+  search,
+  category,
+  status,
+  warehouse,
+  lowStock
+}: {
+  search?: string
+  category?: string
+  status?: string
+  warehouse?: string
+  lowStock?: boolean
+}) => {
+  const filters: any[] = []
+
+  const trimmedSearch = search?.trim()
+
+  if (trimmedSearch) {
+    filters.push({
+      OR: [
+        { name: { contains: trimmedSearch, mode: 'insensitive' } },
+        { partNumber: { contains: trimmedSearch, mode: 'insensitive' } },
+        { description: { contains: trimmedSearch, mode: 'insensitive' } }
+      ]
+    })
+  }
+
+  if (category && category !== 'all') {
+    filters.push({ category })
+  }
+
+  if (status && status !== 'all') {
+    const normalizedStatus = status.toUpperCase() as keyof typeof InventoryStatus
+    if (InventoryStatus[normalizedStatus]) {
+      filters.push({ status: InventoryStatus[normalizedStatus] })
+    }
+  }
+
+  if (warehouse && warehouse !== 'all') {
+    filters.push({ warehouse })
+  }
+
+  if (lowStock && (!status || status === 'all')) {
+    filters.push({ status: { in: LOW_STOCK_STATUSES } })
+  }
+
+  if (!filters.length) {
+    return {}
+  }
+
+  return { AND: filters }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getApiUser(request)
@@ -44,32 +101,14 @@ export async function GET(request: NextRequest) {
     const lowStock = searchParams.get('lowStock') === 'true'
 
     const offset = (page - 1) * limit
-
-    // Build where clause
-    let whereClause: any = {}
-    
-    if (search) {
-      whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { partNumber: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
-      ]
-    }
-    
-    if (category && category !== 'all') {
-      whereClause.category = category
-    }
-    
-    if (status && status !== 'all') {
-      whereClause.status = status
-    }
-    
-    if (warehouse && warehouse !== 'all') {
-      whereClause.warehouse = warehouse
-    }
-
-    // Handle low stock filter
     const shouldFilterLowStock = lowStock
+    const where = buildFilters({
+      search,
+      category,
+      status,
+      warehouse,
+      lowStock: shouldFilterLowStock
+    })
 
     // Handle stats request
     if (stats) {
@@ -90,32 +129,23 @@ export async function GET(request: NextRequest) {
         currentMonthValue,
         previousMonthValue
       ] = await Promise.all([
-        // Total items
         db.inventoryItem.count(),
-        // Total value
         db.inventoryItem.aggregate({
           _sum: { unitPrice: true }
         }),
-        // Low stock items
         db.inventoryItem.count({
-          where: {
-            quantity: {
-              lte: db.inventoryItem.fields.minStockLevel
-            }
-          }
+          where: { status: { in: LOW_STOCK_STATUSES } }
         }),
-        // Active suppliers (unique)
         db.inventoryItem.groupBy({
           by: ['supplier'],
+          where: { supplier: { not: '' } },
           _count: true
         }),
-        // Current month items
         db.inventoryItem.count({
           where: {
             createdAt: { gte: currentMonthStart }
           }
         }),
-        // Previous month items
         db.inventoryItem.count({
           where: {
             createdAt: {
@@ -124,14 +154,12 @@ export async function GET(request: NextRequest) {
             }
           }
         }),
-        // Current month value
         db.inventoryItem.aggregate({
           where: {
             createdAt: { gte: currentMonthStart }
           },
           _sum: { unitPrice: true }
         }),
-        // Previous month value
         db.inventoryItem.aggregate({
           where: {
             createdAt: {
@@ -143,15 +171,20 @@ export async function GET(request: NextRequest) {
         })
       ])
 
+      const currentMonthValueSum = currentMonthValue._sum.unitPrice ?? 0
+      const previousMonthValueSum = previousMonthValue._sum.unitPrice ?? 0
+
       const monthlyGrowth = {
         items: previousMonthItems > 0 ? ((currentMonthItems - previousMonthItems) / previousMonthItems) * 100 : 0,
-        value: previousMonthValue._sum.unitPrice ? 
-          ((currentMonthValue._sum.unitPrice || 0) - previousMonthValue._sum.unitPrice) / previousMonthValue._sum.unitPrice * 100 : 0
+        value:
+          previousMonthValueSum > 0
+            ? ((currentMonthValueSum - previousMonthValueSum) / previousMonthValueSum) * 100
+            : 0
       }
 
       return NextResponse.json({
         totalItems,
-        totalValue: totalValue._sum.unitPrice || 0,
+        totalValue: totalValue._sum.unitPrice ?? 0,
         lowStockItems,
         activeSuppliers: activeSuppliers.length,
         monthlyGrowth
@@ -160,7 +193,7 @@ export async function GET(request: NextRequest) {
 
     // Get inventory items
     const items = await db.inventoryItem.findMany({
-      where: whereClause,
+      where,
       orderBy: { createdAt: 'desc' },
       skip: offset,
       take: limit
@@ -184,33 +217,13 @@ export async function GET(request: NextRequest) {
       location: item.location,
       warehouse: item.warehouse,
       status: item.status,
-      lastRestockDate: item.lastRestockDate.toISOString(),
-      nextRestockDate: item.nextRestockDate?.toISOString(),
+      lastRestockDate: normalizeDate(item.lastRestockDate),
+      nextRestockDate: normalizeDate(item.nextRestockDate),
       leadTime: item.leadTime,
       notes: item.notes
     }))
 
-    const baseWhere = { ...whereClause }
-
-    if (shouldFilterLowStock) {
-      const lowStockFilter = {
-        OR: [
-          { quantity: { lte: 0 } },
-          {
-            AND: [
-              { quantity: { gt: 0 } },
-              { quantity: { lte: db.inventoryItem.fields.minStockLevel } }
-            ]
-          }
-        ]
-      }
-
-      baseWhere.AND = Array.isArray(baseWhere.AND)
-        ? [...baseWhere.AND, lowStockFilter]
-        : [lowStockFilter]
-    }
-
-    const totalCount = await db.inventoryItem.count({ where: baseWhere })
+    const totalCount = await db.inventoryItem.count({ where })
 
     return NextResponse.json({
       items: transformedItems,
