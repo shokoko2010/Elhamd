@@ -620,10 +620,21 @@ export default function AdminVehiclesPage() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <div className="text-right">
+                    <div className="text-right space-y-1">
                       <p className="text-lg font-bold text-green-600">
                         {formatPrice(vehicle.pricing?.totalPrice || vehicle.price)}
                       </p>
+                      {typeof vehicle.stockQuantity === 'number' && (
+                        <Badge
+                          variant="outline"
+                          className="flex items-center justify-center gap-1 border-emerald-200 bg-emerald-50 text-emerald-700"
+                        >
+                          <Package className="h-3 w-3" />
+                          <span>
+                            المخزون: {vehicle.stockQuantity.toLocaleString('ar-EG')}
+                          </span>
+                        </Badge>
+                      )}
                       {vehicle.mileage && (
                         <p className="text-xs text-gray-500">
                           {vehicle.mileage.toLocaleString('ar-EG')} كم

@@ -111,6 +111,18 @@ const STATUS_OPTIONS = [
   { value: 'DISCONTINUED', label: 'متوقف' }
 ]
 
+const computeInventoryStatus = (quantity: number, minStockLevel: number) => {
+  if (quantity <= 0) {
+    return 'OUT_OF_STOCK'
+  }
+
+  if (quantity <= Math.max(minStockLevel, 0)) {
+    return 'LOW_STOCK'
+  }
+
+  return 'IN_STOCK'
+}
+
 const DEFAULT_FORM: InventoryListItem = {
   id: '',
   partNumber: '',
@@ -156,6 +168,7 @@ export default function InventoryPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formState, setFormState] = useState(DEFAULT_FORM)
+  const [statusManuallySet, setStatusManuallySet] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryListItem | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -328,6 +341,7 @@ export default function InventoryPage() {
   const resetForm = () => {
     setFormState(DEFAULT_FORM)
     setEditingItem(null)
+    setStatusManuallySet(false)
   }
 
   const openCreateDialog = () => {
@@ -336,14 +350,34 @@ export default function InventoryPage() {
   }
 
   const openEditDialog = (item: InventoryListItem) => {
+    const autoStatus = computeInventoryStatus(Number(item.quantity) || 0, Number(item.minStockLevel) || 0)
+    const preserveManualStatus = item.status === 'DISCONTINUED' || (item.status && item.status !== autoStatus)
+    setStatusManuallySet(preserveManualStatus)
     setEditingItem(item)
     setFormState({
       ...item,
+      status: preserveManualStatus ? item.status : autoStatus,
       nextRestockDate: item.nextRestockDate ? item.nextRestockDate.substring(0, 10) : '',
       lastRestockDate: item.lastRestockDate ? item.lastRestockDate.substring(0, 10) : ''
     })
     setIsDialogOpen(true)
   }
+
+  useEffect(() => {
+    if (statusManuallySet) {
+      return
+    }
+
+    setFormState(prev => {
+      const autoStatus = computeInventoryStatus(Number(prev.quantity) || 0, Number(prev.minStockLevel) || 0)
+
+      if (prev.status === autoStatus) {
+        return prev
+      }
+
+      return { ...prev, status: autoStatus }
+    })
+  }, [formState.quantity, formState.minStockLevel, statusManuallySet])
 
   const handleDelete = async (item: InventoryListItem) => {
     if (!confirm(`هل أنت متأكد من حذف الصنف ${item.name}؟`)) {
@@ -407,7 +441,7 @@ export default function InventoryPage() {
       supplier: formState.supplier.trim(),
       location: formState.location?.trim() || '',
       warehouse: formState.warehouse.trim(),
-      status: formState.status,
+      status: statusManuallySet ? formState.status : undefined,
       leadTime: Number(formState.leadTime) || 0,
       notes: formState.notes?.trim() || '',
       nextRestockDate: formState.nextRestockDate ? new Date(formState.nextRestockDate).toISOString() : null,
@@ -1233,7 +1267,10 @@ export default function InventoryPage() {
                 <Label htmlFor="status">حالة المخزون</Label>
                 <Select
                   value={formState.status}
-                  onValueChange={(value) => setFormState(prev => ({ ...prev, status: value }))}
+                  onValueChange={(value) => {
+                    setStatusManuallySet(true)
+                    setFormState(prev => ({ ...prev, status: value }))
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />

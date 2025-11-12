@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
-import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
+import { Prisma, UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -146,7 +146,8 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 
     // Check if vehicle exists
     const existingVehicle = await db.vehicle.findUnique({
-      where: { id }
+      where: { id },
+      include: { pricing: true }
     })
 
     if (!existingVehicle) {
@@ -161,6 +162,10 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     // Validate input
     const validatedData = updateVehicleSchema.parse(body)
     const sanitizedData = sanitizeVehiclePayload(validatedData)
+
+    const updateData: Prisma.VehicleUpdateInput = {
+      ...sanitizedData
+    }
 
     // Check if stock number already exists (if being updated)
     if (sanitizedData.stockNumber && sanitizedData.stockNumber !== existingVehicle.stockNumber) {
@@ -191,10 +196,69 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       }
     }
 
+    if (sanitizedData.price !== undefined) {
+      const basePrice = sanitizedData.price
+      const existingPricing = existingVehicle.pricing
+      const taxes = existingPricing?.taxes ?? 0
+      const fees = existingPricing?.fees ?? 0
+
+      let discountPrice = existingPricing?.discountPrice ?? null
+      let discountPercentage = existingPricing?.discountPercentage ?? null
+      let hasDiscount = existingPricing?.hasDiscount ?? false
+
+      if (hasDiscount && discountPrice !== null) {
+        if (discountPrice >= basePrice) {
+          discountPrice = basePrice
+          discountPercentage = 0
+          hasDiscount = discountPrice < basePrice
+        } else {
+          const computedDiscount = ((basePrice - discountPrice) / basePrice) * 100
+          discountPercentage = Number.isFinite(computedDiscount) ? Number(computedDiscount.toFixed(2)) : null
+          hasDiscount = true
+        }
+      } else {
+        discountPrice = null
+        discountPercentage = null
+        hasDiscount = false
+      }
+
+      if (!hasDiscount) {
+        discountPrice = null
+        discountPercentage = null
+      }
+
+      const totalPrice = hasDiscount && discountPrice !== null ? discountPrice + taxes + fees : basePrice + taxes + fees
+
+      updateData.pricing = existingPricing
+        ? {
+            update: {
+              basePrice,
+              taxes,
+              fees,
+              totalPrice,
+              hasDiscount,
+              discountPrice,
+              discountPercentage
+            }
+          }
+        : {
+            create: {
+              basePrice,
+              taxes,
+              fees,
+              totalPrice,
+              currency: 'EGP',
+              hasDiscount,
+              discountPrice,
+              discountPercentage
+            }
+          }
+    }
+
     // Update vehicle
     const vehicle = await db.vehicle.update({
       where: { id },
-      data: sanitizedData,
+      data: updateData,
       include: {
         images: {
           orderBy: { order: 'asc' }
