@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { InventoryStatus, UserRole } from '@prisma/client'
+import { InventoryStatus, Prisma, UserRole } from '@prisma/client'
 
 const resolveStatus = (
   quantity: number,
@@ -32,6 +32,18 @@ const resolveStatus = (
 const LOW_STOCK_STATUSES = [InventoryStatus.OUT_OF_STOCK, InventoryStatus.LOW_STOCK]
 
 const normalizeDate = (value?: Date | null) => (value ? value.toISOString() : null)
+
+const calculateInventoryValue = async (where?: Prisma.InventoryItemWhereInput) => {
+  const items = await db.inventoryItem.findMany({
+    where,
+    select: {
+      quantity: true,
+      unitPrice: true
+    }
+  })
+
+  return items.reduce((total, item) => total + item.quantity * item.unitPrice, 0)
+}
 
 const buildFilters = ({
   search,
@@ -123,20 +135,28 @@ export async function GET(request: NextRequest) {
       const previousMonthStart = new Date(currentMonthStart)
       previousMonthStart.setMonth(previousMonthStart.getMonth() - 1)
 
+      const currentMonthWhere: Prisma.InventoryItemWhereInput = {
+        createdAt: { gte: currentMonthStart }
+      }
+
+      const previousMonthWhere: Prisma.InventoryItemWhereInput = {
+        createdAt: {
+          gte: previousMonthStart,
+          lt: currentMonthStart
+        }
+      }
+
       const [
         totalItems,
-        totalValue,
         lowStockItems,
-        activeSuppliers,
+        activeSuppliersGrouped,
         currentMonthItems,
         previousMonthItems,
+        totalValue,
         currentMonthValue,
         previousMonthValue
       ] = await Promise.all([
         db.inventoryItem.count(),
-        db.inventoryItem.aggregate({
-          _sum: { unitPrice: true }
-        }),
         db.inventoryItem.count({
           where: { status: { in: LOW_STOCK_STATUSES } }
         }),
@@ -146,51 +166,29 @@ export async function GET(request: NextRequest) {
           _count: true
         }),
         db.inventoryItem.count({
-          where: {
-            createdAt: { gte: currentMonthStart }
-          }
+          where: currentMonthWhere
         }),
         db.inventoryItem.count({
-          where: {
-            createdAt: {
-              gte: previousMonthStart,
-              lt: currentMonthStart
-            }
-          }
+          where: previousMonthWhere
         }),
-        db.inventoryItem.aggregate({
-          where: {
-            createdAt: { gte: currentMonthStart }
-          },
-          _sum: { unitPrice: true }
-        }),
-        db.inventoryItem.aggregate({
-          where: {
-            createdAt: {
-              gte: previousMonthStart,
-              lt: currentMonthStart
-            }
-          },
-          _sum: { unitPrice: true }
-        })
+        calculateInventoryValue(),
+        calculateInventoryValue(currentMonthWhere),
+        calculateInventoryValue(previousMonthWhere)
       ])
-
-      const currentMonthValueSum = currentMonthValue._sum.unitPrice ?? 0
-      const previousMonthValueSum = previousMonthValue._sum.unitPrice ?? 0
 
       const monthlyGrowth = {
         items: previousMonthItems > 0 ? ((currentMonthItems - previousMonthItems) / previousMonthItems) * 100 : 0,
         value:
-          previousMonthValueSum > 0
-            ? ((currentMonthValueSum - previousMonthValueSum) / previousMonthValueSum) * 100
+          previousMonthValue > 0
+            ? ((currentMonthValue - previousMonthValue) / previousMonthValue) * 100
             : 0
       }
 
       return NextResponse.json({
         totalItems,
-        totalValue: totalValue._sum.unitPrice ?? 0,
+        totalValue,
         lowStockItems,
-        activeSuppliers: activeSuppliers.length,
+        activeSuppliers: activeSuppliersGrouped.length,
         monthlyGrowth
       })
     }
