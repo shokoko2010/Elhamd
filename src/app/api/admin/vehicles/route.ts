@@ -16,6 +16,7 @@ const createVehicleSchema = z.object({
   year: z.number().int().min(1900).max(new Date().getFullYear() + 1),
   price: z.number().positive('السعر يجب أن يكون موجباً'),
   stockNumber: z.string().min(1, 'رقم المخزون مطلوب'),
+  stockQuantity: z.number().int().min(0).default(0),
   vin: z.string().optional(),
   description: z.string().optional(),
   category: z.nativeEnum(VehicleCategory),

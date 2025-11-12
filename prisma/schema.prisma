@@ -149,6 +149,7 @@ model Vehicle {
   model             String
   year              Int
   price             Float
+  stockQuantity     Int                    @default(0)
   stockNumber       String                 @unique
   vin               String?                @unique
   description       String?
@@ -625,6 +626,22 @@ model SiteSettings {
   updatedAt           DateTime @updatedAt
 
   @@map("site_settings")
+}
+
+model HomepageSettings {
+  id                    String         @id @default(cuid())
+  showHeroSlider        Boolean        @default(true)
+  autoPlaySlider        Boolean        @default(true)
+  sliderInterval        Int            @default(5000)
+  showFeaturedVehicles  Boolean        @default(true)
+  featuredVehiclesCount Int            @default(6)
+  showServices          Boolean        @default(true)
+  showCompanyInfo       Boolean        @default(true)
+  theme                 HomepageTheme  @default(LIGHT)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@map("homepage_settings")
 }
 
 model FooterContent {
@@ -3581,6 +3598,12 @@ enum PartStatus {
   OUT_OF_STOCK
   ORDERED
   RESERVED
+}
+
+enum HomepageTheme {
+  LIGHT
+  DARK
+  AUTO
 }
 
 enum PartCategory {

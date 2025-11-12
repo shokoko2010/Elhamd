@@ -5,12 +5,24 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { PartStatus, PartCategory } from '@/types/maintenance'
+import { getAuthUser, UserRole } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const hasAccess = [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.STAFF,
+      UserRole.BRANCH_MANAGER
+    ].includes(user.role)
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -44,20 +56,6 @@ export async function GET(request: NextRequest) {
     const [parts, total] = await Promise.all([
       prisma.maintenancePart.findMany({
         where,
-        include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          _count: {
-            select: {
-              usedIn: true,
-            },
-          },
-        },
         orderBy: [
           { status: 'asc' },
           { name: 'asc' },
@@ -93,6 +91,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const hasAccess = [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.STAFF,
+      UserRole.BRANCH_MANAGER
+    ].includes(user.role)
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const data = await request.json()
     const {
       partNumber,
@@ -112,7 +121,13 @@ export async function POST(request: NextRequest) {
     } = data
 
     // Validate required fields
-    if (!partNumber || !name || !category || !cost || !price || !quantity || !minStock) {
+    const parsedCost = Number(cost)
+    const parsedPrice = Number(price)
+    const parsedQuantity = Number(quantity)
+    const parsedMinStock = Number(minStock)
+    const parsedMaxStock = maxStock !== undefined && maxStock !== null ? Number(maxStock) : null
+
+    if (!partNumber || !name || !category || Number.isNaN(parsedCost) || Number.isNaN(parsedPrice) || Number.isNaN(parsedQuantity) || Number.isNaN(parsedMinStock)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -137,26 +152,17 @@ export async function POST(request: NextRequest) {
         name,
         category: category as PartCategory,
         description,
-        cost,
-        price,
-        quantity,
-        minStock,
-        maxStock,
+        cost: parsedCost,
+        price: parsedPrice,
+        quantity: parsedQuantity,
+        minStock: parsedMinStock,
+        maxStock: parsedMaxStock,
         location,
         supplier,
-        status: status as PartStatus || PartStatus.AVAILABLE,
+        status: status ? (status as PartStatus) : PartStatus.AVAILABLE,
         barcode,
         imageUrl,
         createdBy: user.id,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
       },
     })
 
