@@ -42,7 +42,12 @@ const calculateInventoryValue = async (where?: Prisma.InventoryItemWhereInput) =
     }
   })
 
-  return items.reduce((total, item) => total + item.quantity * item.unitPrice, 0)
+  return items.reduce((total, item) => {
+    const quantity = typeof item.quantity === 'number' ? item.quantity : 0
+    const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+
+    return total + quantity * unitPrice
+  }, 0)
 }
 
 const buildFilters = ({
@@ -146,24 +151,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const [
-        totalItems,
-        lowStockItems,
-        activeSuppliersGrouped,
-        currentMonthItems,
-        previousMonthItems,
-        totalValue,
-        currentMonthValue,
-        previousMonthValue
-      ] = await Promise.all([
+      const statsResults = await Promise.allSettled([
         db.inventoryItem.count(),
         db.inventoryItem.count({
           where: { status: { in: LOW_STOCK_STATUSES } }
         }),
-        db.inventoryItem.groupBy({
-          by: ['supplier'],
-          where: { supplier: { not: '' } },
-          _count: true
+        db.inventoryItem.findMany({
+          where: { supplier: { notIn: ['', null] } },
+          select: { supplier: true },
+          distinct: ['supplier']
         }),
         db.inventoryItem.count({
           where: currentMonthWhere
@@ -175,6 +171,37 @@ export async function GET(request: NextRequest) {
         calculateInventoryValue(currentMonthWhere),
         calculateInventoryValue(previousMonthWhere)
       ])
+
+      const [
+        totalItemsResult,
+        lowStockItemsResult,
+        activeSuppliersResult,
+        currentMonthItemsResult,
+        previousMonthItemsResult,
+        totalValueResult,
+        currentMonthValueResult,
+        previousMonthValueResult
+      ] = statsResults
+
+      const readResult = <T>(
+        result: PromiseSettledResult<T>,
+        fallback: T
+      ): T => {
+        if (result.status === 'rejected') {
+          console.error('Inventory stats computation error:', result.reason)
+          return fallback
+        }
+        return result.value
+      }
+
+      const totalItems = readResult(totalItemsResult, 0)
+      const lowStockItems = readResult(lowStockItemsResult, 0)
+      const activeSuppliers = readResult(activeSuppliersResult, []).length
+      const currentMonthItems = readResult(currentMonthItemsResult, 0)
+      const previousMonthItems = readResult(previousMonthItemsResult, 0)
+      const totalValue = readResult(totalValueResult, 0)
+      const currentMonthValue = readResult(currentMonthValueResult, 0)
+      const previousMonthValue = readResult(previousMonthValueResult, 0)
 
       const monthlyGrowth = {
         items: previousMonthItems > 0 ? ((currentMonthItems - previousMonthItems) / previousMonthItems) * 100 : 0,
@@ -188,7 +215,7 @@ export async function GET(request: NextRequest) {
         totalItems,
         totalValue,
         lowStockItems,
-        activeSuppliers: activeSuppliersGrouped.length,
+        activeSuppliers,
         monthlyGrowth
       })
     }

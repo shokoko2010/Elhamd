@@ -179,7 +179,11 @@ export default function AdminVehiclesPage() {
         sold: vehiclesData.filter((v: Vehicle) => v.status === 'SOLD').length,
         reserved: vehiclesData.filter((v: Vehicle) => v.status === 'RESERVED').length,
         maintenance: vehiclesData.filter((v: Vehicle) => v.status === 'MAINTENANCE').length,
-        totalValue: vehiclesData.reduce((sum: number, v: Vehicle) => sum + (v.pricing?.totalPrice || v.price), 0)
+        totalValue: vehiclesData.reduce((sum: number, v: Vehicle) => {
+          const quantity = typeof v.stockQuantity === 'number' ? Math.max(v.stockQuantity, 0) : 0
+          const unitValue = v.pricing?.totalPrice || v.price
+          return sum + quantity * unitValue
+        }, 0)
       }
       setStats(vehicleStats)
       
