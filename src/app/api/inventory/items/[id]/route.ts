@@ -7,10 +7,19 @@ import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { InventoryStatus, UserRole } from '@prisma/client'
 
-const resolveStatus = (quantity: number, minStockLevel: number, status?: string) => {
+const resolveStatus = (
+  quantity: number,
+  minStockLevel: number,
+  status?: string,
+  allowManual = false
+) => {
   const normalizedStatus = status?.toUpperCase() as keyof typeof InventoryStatus | undefined
 
-  if (normalizedStatus && InventoryStatus[normalizedStatus]) {
+  if (normalizedStatus === 'DISCONTINUED') {
+    return InventoryStatus.DISCONTINUED
+  }
+
+  if (allowManual && normalizedStatus && InventoryStatus[normalizedStatus]) {
     return InventoryStatus[normalizedStatus]
   }
 
@@ -39,6 +48,7 @@ const transformItem = (item: any) => ({
   location: item.location,
   warehouse: item.warehouse,
   status: item.status,
+  statusOverride: item.statusOverride,
   lastRestockDate: item.lastRestockDate?.toISOString(),
   nextRestockDate: item.nextRestockDate?.toISOString(),
   leadTime: item.leadTime,
@@ -64,12 +74,27 @@ export async function GET(request: NextRequest, context: RouteParams) {
 
     const { id } = await context.params
 
-    const item = await db.inventoryItem.findUnique({
+    let item = await db.inventoryItem.findUnique({
       where: { id }
     })
 
     if (!item) {
       return NextResponse.json({ error: 'Inventory item not found' }, { status: 404 })
+    }
+
+    const manualOverrideActive = item.statusOverride && item.status === InventoryStatus.DISCONTINUED
+    const computedStatus = resolveStatus(item.quantity, item.minStockLevel)
+    const nextStatus = manualOverrideActive ? item.status : computedStatus
+    const nextStatusOverride = manualOverrideActive
+
+    if (item.status !== nextStatus || item.statusOverride !== nextStatusOverride) {
+      item = await db.inventoryItem.update({
+        where: { id },
+        data: {
+          status: nextStatus,
+          statusOverride: nextStatusOverride
+        }
+      })
     }
 
     return NextResponse.json(transformItem(item))
@@ -107,6 +132,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       location,
       warehouse,
       status,
+      statusOverride,
       leadTime,
       notes,
       nextRestockDate,
@@ -120,7 +146,13 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       )
     }
 
-    const computedStatus = resolveStatus(quantity ?? existing.quantity, minStockLevel ?? existing.minStockLevel, status)
+    const manualOverrideRequested = statusOverride === true && typeof status === 'string'
+    const computedStatus = resolveStatus(
+      quantity ?? existing.quantity,
+      minStockLevel ?? existing.minStockLevel,
+      status,
+      manualOverrideRequested
+    )
 
     const updated = await db.inventoryItem.update({
       where: { id },
@@ -137,6 +169,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
         location,
         warehouse,
         status: computedStatus,
+        statusOverride: manualOverrideRequested,
         leadTime,
         notes,
         nextRestockDate:

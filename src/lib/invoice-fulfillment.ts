@@ -133,54 +133,57 @@ export const applyInvoiceSideEffects = async (
   const nowIso = new Date().toISOString()
   const inventoryUpdates: Array<Promise<unknown>> = []
 
-  if (adjustInventory) {
-    for (const link of links) {
-      if (link.type === 'PART' && link.inventoryItemId) {
-        const inventoryItem = inventoryMap.get(link.inventoryItemId)
-        if (!inventoryItem) {
-          continue
-        }
-
-        const quantityToDeduct = Math.max(0, Math.round(link.normalized.quantity))
-        if (quantityToDeduct <= 0) {
-          continue
-        }
-
-        const newQuantity = Math.max(0, inventoryItem.quantity - quantityToDeduct)
-        const newStatus = ensureInventoryStatus(inventoryItem, newQuantity)
-
-        inventoryUpdates.push(
-          db.inventoryItem.update({
-            where: { id: inventoryItem.id },
-            data: {
-              quantity: newQuantity,
-              status: newStatus,
-              updatedAt: new Date(),
-            },
-          })
-        )
+  for (const link of links) {
+    if (link.type === 'PART' && link.inventoryItemId) {
+      if (!adjustInventory) {
+        continue
       }
 
-      if (link.type === 'VEHICLE' && link.vehicleId) {
-        const vehicle = vehicleMap.get(link.vehicleId)
-        if (!vehicle) {
-          continue
-        }
-
-        const newStatus = invoice.status === InvoiceStatus.PAID
-          ? VehicleStatus.SOLD
-          : VehicleStatus.RESERVED
-
-        inventoryUpdates.push(
-          db.vehicle.update({
-            where: { id: vehicle.id },
-            data: {
-              status: newStatus,
-              updatedAt: new Date(),
-            },
-          })
-        )
+      const inventoryItem = inventoryMap.get(link.inventoryItemId)
+      if (!inventoryItem) {
+        continue
       }
+
+      const quantityToDeduct = Math.max(0, Math.round(link.normalized.quantity))
+      if (quantityToDeduct <= 0) {
+        continue
+      }
+
+      const newQuantity = Math.max(0, inventoryItem.quantity - quantityToDeduct)
+      const newStatus = ensureInventoryStatus(inventoryItem, newQuantity)
+
+      inventoryUpdates.push(
+        db.inventoryItem.update({
+          where: { id: inventoryItem.id },
+          data: {
+            quantity: newQuantity,
+            status: newStatus,
+            statusOverride: false,
+            updatedAt: new Date(),
+          },
+        })
+      )
+    }
+
+    if (link.type === 'VEHICLE' && link.vehicleId) {
+      const vehicle = vehicleMap.get(link.vehicleId)
+      if (!vehicle) {
+        continue
+      }
+
+      const newStatus = invoice.status === InvoiceStatus.PAID
+        ? VehicleStatus.SOLD
+        : VehicleStatus.RESERVED
+
+      inventoryUpdates.push(
+        db.vehicle.update({
+          where: { id: vehicle.id },
+          data: {
+            status: newStatus,
+            updatedAt: new Date(),
+          },
+        })
+      )
     }
   }
 
@@ -234,12 +237,93 @@ export const applyInvoiceSideEffects = async (
   if (adjustInventory) {
     metadataUpdates.inventoryAdjusted = true
     metadataUpdates.inventoryAdjustedAt = nowIso
+    metadataUpdates.inventoryRestored = false
+    metadataUpdates.inventoryRestoredAt = null
   }
 
   await db.invoice.update({
     where: { id: invoice.id },
     data: {
       metadata: mergeInvoiceMetadata(invoice, metadataUpdates),
+      updatedAt: new Date(),
+    },
+  })
+}
+
+export const releaseInvoiceSideEffects = async (
+  options: {
+    invoice: Invoice
+    links: InvoiceItemLink[]
+    inventoryMap: Map<string, InventoryItem>
+    vehicleMap: Map<string, Vehicle>
+  }
+) => {
+  const { invoice, links, inventoryMap, vehicleMap } = options
+  const nowIso = new Date().toISOString()
+  const updates: Array<Promise<unknown>> = []
+
+  for (const link of links) {
+    if (link.type === 'PART' && link.inventoryItemId) {
+      const inventoryItem = inventoryMap.get(link.inventoryItemId)
+      if (!inventoryItem) {
+        continue
+      }
+
+      const quantityToRestore = Math.max(0, Math.round(link.normalized.quantity))
+      if (quantityToRestore <= 0) {
+        continue
+      }
+
+      const newQuantity = inventoryItem.quantity + quantityToRestore
+      const newStatus = ensureInventoryStatus(inventoryItem, newQuantity)
+
+      updates.push(
+        db.inventoryItem.update({
+          where: { id: inventoryItem.id },
+          data: {
+            quantity: newQuantity,
+            status: newStatus,
+            statusOverride: false,
+            updatedAt: new Date(),
+          },
+        })
+      )
+    }
+
+    if (link.type === 'VEHICLE' && link.vehicleId) {
+      const vehicle = vehicleMap.get(link.vehicleId)
+      if (!vehicle) {
+        continue
+      }
+
+      if (vehicle.status !== VehicleStatus.SOLD) {
+        updates.push(
+          db.vehicle.update({
+            where: { id: vehicle.id },
+            data: {
+              status: VehicleStatus.AVAILABLE,
+              updatedAt: new Date(),
+            },
+          })
+        )
+      }
+    }
+  }
+
+  if (updates.length) {
+    await Promise.all(updates)
+  }
+
+  await db.invoice.update({
+    where: { id: invoice.id },
+    data: {
+      metadata: mergeInvoiceMetadata(invoice, {
+        saleStatus: invoice.status,
+        saleStatusUpdatedAt: nowIso,
+        inventoryAdjusted: false,
+        inventoryRestored: true,
+        inventoryRestoredAt: nowIso,
+      }),
       updatedAt: new Date(),
     },
   })

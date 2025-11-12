@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
               quantity: 1,
               unitPrice: vehicle.price,
               status: 'IN_STOCK',
+              statusOverride: false,
               lastRestockDate: new Date(),
               updatedAt: new Date()
             }
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
               location: 'المعرض',
               warehouse: 'المعرض الرئيسي',
               status: 'IN_STOCK',
+              statusOverride: false,
               lastRestockDate: new Date(),
               notes: `رقم المخزون: ${vehicle.stockNumber} | VIN: ${vehicle.vin || 'N/A'} | اللون: ${vehicle.color || 'N/A'}`
             }

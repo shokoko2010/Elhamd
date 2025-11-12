@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
-import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
+import { InvoiceStatus, UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -148,8 +148,54 @@ export async function GET(request: NextRequest) {
       db.vehicle.count({ where })
     ])
 
+    const reservedVehicleIds = vehicles
+      .filter(vehicle => vehicle.status === VehicleStatus.RESERVED)
+      .map(vehicle => vehicle.id)
+
+    const activeVehicleReservations = reservedVehicleIds.length
+      ? await db.invoice.findMany({
+          where: {
+            vehicleId: { in: reservedVehicleIds },
+            status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
+            isDeleted: false
+          },
+          select: { vehicleId: true },
+          distinct: ['vehicleId']
+        })
+      : []
+
+    const activeReservationSet = new Set(activeVehicleReservations.map(record => record.vehicleId).filter(Boolean) as string[])
+
+    const staleReservationUpdates: Array<Promise<unknown>> = []
+    const normalizedVehicles = vehicles.map(vehicle => {
+      if (vehicle.status === VehicleStatus.RESERVED) {
+        const hasActiveReservation = activeReservationSet.has(vehicle.id)
+        if (!hasActiveReservation && vehicle.stockQuantity > 0) {
+          staleReservationUpdates.push(
+            db.vehicle.update({
+              where: { id: vehicle.id },
+              data: {
+                status: VehicleStatus.AVAILABLE,
+                updatedAt: new Date()
+              }
+            })
+          )
+          return {
+            ...vehicle,
+            status: VehicleStatus.AVAILABLE
+          }
+        }
+      }
+
+      return vehicle
+    })
+
+    if (staleReservationUpdates.length) {
+      await Promise.all(staleReservationUpdates)
+    }
+
     return NextResponse.json({
-      vehicles,
+      vehicles: normalizedVehicles,
       pagination: {
         total,
         page,

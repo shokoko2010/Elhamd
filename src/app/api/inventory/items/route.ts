@@ -7,10 +7,19 @@ import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { InventoryStatus, UserRole } from '@prisma/client'
 
-const resolveStatus = (quantity: number, minStockLevel: number, status?: string) => {
+const resolveStatus = (
+  quantity: number,
+  minStockLevel: number,
+  status?: string,
+  allowManual = false
+) => {
   const normalizedStatus = status?.toUpperCase() as keyof typeof InventoryStatus | undefined
 
-  if (normalizedStatus && InventoryStatus[normalizedStatus]) {
+  if (normalizedStatus === 'DISCONTINUED') {
+    return InventoryStatus.DISCONTINUED
+  }
+
+  if (allowManual && normalizedStatus && InventoryStatus[normalizedStatus]) {
     return InventoryStatus[normalizedStatus]
   }
 
@@ -199,9 +208,40 @@ export async function GET(request: NextRequest) {
       take: limit
     })
 
+    const statusUpdates: Array<Promise<unknown>> = []
+
+    const normalizedItems = items.map(item => {
+      const manualOverrideActive = item.statusOverride && item.status === InventoryStatus.DISCONTINUED
+      const computedStatus = resolveStatus(item.quantity, item.minStockLevel)
+      const nextStatus = manualOverrideActive ? item.status : computedStatus
+      const nextStatusOverride = manualOverrideActive
+
+      if (item.status !== nextStatus || item.statusOverride !== nextStatusOverride) {
+        statusUpdates.push(
+          db.inventoryItem.update({
+            where: { id: item.id },
+            data: {
+              status: nextStatus,
+              statusOverride: nextStatusOverride
+            }
+          })
+        )
+      }
+
+      return {
+        ...item,
+        status: nextStatus,
+        statusOverride: nextStatusOverride
+      }
+    })
+
+    if (statusUpdates.length) {
+      await Promise.all(statusUpdates)
+    }
+
     const filteredItems = shouldFilterLowStock
-      ? items.filter(item => item.quantity <= item.minStockLevel)
-      : items
+      ? normalizedItems.filter(item => item.quantity <= item.minStockLevel)
+      : normalizedItems
 
     const transformedItems = filteredItems.map(item => ({
       id: item.id,
@@ -217,6 +257,7 @@ export async function GET(request: NextRequest) {
       location: item.location,
       warehouse: item.warehouse,
       status: item.status,
+      statusOverride: item.statusOverride,
       lastRestockDate: normalizeDate(item.lastRestockDate),
       nextRestockDate: normalizeDate(item.nextRestockDate),
       leadTime: item.leadTime,
@@ -266,7 +307,8 @@ export async function POST(request: NextRequest) {
       location,
       warehouse,
       leadTime,
-      notes
+      notes,
+      statusOverride
     } = body
 
     // Validate required fields
@@ -290,7 +332,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine status based on quantity
-    const status = resolveStatus(quantity || 0, minStockLevel || 0, body.status)
+    const manualOverrideRequested = statusOverride === true && typeof body.status === 'string'
+    const status = resolveStatus(quantity || 0, minStockLevel || 0, body.status, manualOverrideRequested)
 
     // Create new inventory item
     const item = await db.inventoryItem.create({
@@ -307,6 +350,7 @@ export async function POST(request: NextRequest) {
         location,
         warehouse,
         status,
+        statusOverride: manualOverrideRequested,
         lastRestockDate: new Date(),
         leadTime,
         notes
@@ -327,6 +371,7 @@ export async function POST(request: NextRequest) {
       location: item.location,
       warehouse: item.warehouse,
       status: item.status,
+      statusOverride: item.statusOverride,
       lastRestockDate: item.lastRestockDate.toISOString(),
       nextRestockDate: item.nextRestockDate?.toISOString(),
       leadTime: item.leadTime,

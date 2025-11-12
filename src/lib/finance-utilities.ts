@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import {
   InvoicePaymentStatus,
   InvoiceStatus,
+  InventoryStatus,
   PaymentMethod,
   PaymentStatus
 } from '@prisma/client'
@@ -390,13 +391,26 @@ export class FinanceManager {
       throw new Error('Insufficient stock')
     }
 
-    const newStatus = determineInventoryStatus(newQuantity, item.minStockLevel || 0)
+    const manualOverrideActive = item.statusOverride && item.status === InventoryStatus.DISCONTINUED
+    const computedStatus = determineInventoryStatus(newQuantity, item.minStockLevel || 0)
+    const normalizedStatus = (() => {
+      switch (computedStatus) {
+        case 'out_of_stock':
+          return InventoryStatus.OUT_OF_STOCK
+        case 'low_stock':
+          return InventoryStatus.LOW_STOCK
+        default:
+          return InventoryStatus.IN_STOCK
+      }
+    })()
+    const newStatus = manualOverrideActive ? InventoryStatus.DISCONTINUED : normalizedStatus
 
     const updatedItem = await db.inventoryItem.update({
       where: { id: inventoryItemId },
       data: {
         quantity: newQuantity,
         status: newStatus,
+        statusOverride: manualOverrideActive,
         updatedAt: new Date(),
         metadata: {
           ...item.metadata,
