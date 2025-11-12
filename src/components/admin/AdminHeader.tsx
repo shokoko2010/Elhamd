@@ -1,6 +1,7 @@
 'use client'
 
 import { Search, User, Bell } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -58,6 +59,12 @@ export function AdminHeader() {
           <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Notifications */}
             <NotificationSystem />
+
+            <Button asChild variant="outline" size="sm">
+              <Link href="/" className="font-medium">
+                الذهاب إلى الموقع
+              </Link>
+            </Button>
 
             {/* User Menu */}
             <DropdownMenu>
