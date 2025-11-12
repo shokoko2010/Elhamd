@@ -893,7 +893,6 @@ model InventoryItem {
   warehouseId     String?
   branchId        String?
   status          InventoryStatus @default(IN_STOCK)
-  statusOverride  Boolean         @default(false)
   lastRestockDate DateTime        @default(now())
   nextRestockDate DateTime?
   leadTime        Int             @default(7)

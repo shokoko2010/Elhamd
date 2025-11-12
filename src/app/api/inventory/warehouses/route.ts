@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { UserRole } from '@prisma/client'
+import { Prisma, UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
+  let page = 1
+  let limit = 10
+
   try {
     const user = await getApiUser(request)
-    
+
     if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    page = parseInt(searchParams.get('page') || '1')
+    limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
 
     const offset = (page - 1) * limit
@@ -76,6 +79,17 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching warehouses:', error)
+    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2021' || error.code === 'P2010')) {
+      return NextResponse.json({
+        warehouses: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0
+        }
+      })
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -150,6 +164,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating warehouse:', error)
+    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2021' || error.code === 'P2010')) {
+      return NextResponse.json(
+        { error: 'Warehouse storage is not initialized. Please run the latest database migrations.' },
+        { status: 503 }
+      )
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

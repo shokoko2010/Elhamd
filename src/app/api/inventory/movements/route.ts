@@ -141,11 +141,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine new status
-    const manualOverrideActive = inventoryItem.statusOverride && inventoryItem.status === InventoryStatus.DISCONTINUED
-    const newStatus = manualOverrideActive
-      ? inventoryItem.status
-      : computeInventoryStatus(newQuantity, inventoryItem.minStockLevel)
-    const nextStatusOverride = manualOverrideActive
+    const newStatus =
+      inventoryItem.status === InventoryStatus.DISCONTINUED
+        ? InventoryStatus.DISCONTINUED
+        : computeInventoryStatus(newQuantity, inventoryItem.minStockLevel)
 
     // Update inventory item
     const updatedItem = await db.inventoryItem.update({
@@ -153,7 +152,6 @@ export async function POST(request: NextRequest) {
       data: {
         quantity: newQuantity,
         status: newStatus,
-        statusOverride: nextStatusOverride,
         lastRestockDate: type === 'IN' ? new Date() : inventoryItem.lastRestockDate,
         updatedAt: new Date()
       }

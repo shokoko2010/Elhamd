@@ -96,6 +96,10 @@ export const extractInvoiceItemLinks = (
 }
 
 const ensureInventoryStatus = (item: InventoryItem, quantity: number): InventoryStatus => {
+  if (item.status === InventoryStatus.DISCONTINUED) {
+    return InventoryStatus.DISCONTINUED
+  }
+
   if (quantity <= 0) {
     return InventoryStatus.OUT_OF_STOCK
   }
@@ -158,7 +162,6 @@ export const applyInvoiceSideEffects = async (
           data: {
             quantity: newQuantity,
             status: newStatus,
-            statusOverride: false,
             updatedAt: new Date(),
           },
         })
@@ -283,7 +286,6 @@ export const releaseInvoiceSideEffects = async (
           data: {
             quantity: newQuantity,
             status: newStatus,
-            statusOverride: false,
             updatedAt: new Date(),
           },
         })

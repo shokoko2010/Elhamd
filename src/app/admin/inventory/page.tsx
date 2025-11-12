@@ -67,7 +67,6 @@ interface InventoryListItem {
   location: string
   warehouse: string
   status: string
-  statusOverride: boolean
   lastRestockDate?: string
   nextRestockDate?: string | null
   leadTime?: number
@@ -138,7 +137,6 @@ const DEFAULT_FORM: InventoryListItem = {
   location: '',
   warehouse: '',
   status: 'IN_STOCK',
-  statusOverride: false,
   lastRestockDate: '',
   nextRestockDate: '',
   leadTime: 7,
@@ -170,7 +168,6 @@ export default function InventoryPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formState, setFormState] = useState(DEFAULT_FORM)
-  const [statusManuallySet, setStatusManuallySet] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryListItem | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -216,7 +213,8 @@ export default function InventoryPage() {
         const normalizedLowStock: InventoryListItem[] = Array.isArray(lowStockData.items)
           ? lowStockData.items.map((item: InventoryListItem) => ({
               ...item,
-              statusOverride: Boolean(item.statusOverride)
+              nextRestockDate: item.nextRestockDate || null,
+              lastRestockDate: item.lastRestockDate || undefined
             }))
           : []
         setLowStockItems(normalizedLowStock)
@@ -281,7 +279,8 @@ export default function InventoryPage() {
       const normalizedItems: InventoryListItem[] = Array.isArray(data.items)
         ? data.items.map((item: InventoryListItem) => ({
             ...item,
-            statusOverride: Boolean(item.statusOverride)
+            nextRestockDate: item.nextRestockDate || null,
+            lastRestockDate: item.lastRestockDate || undefined
           }))
         : []
       setItems(normalizedItems)
@@ -355,7 +354,6 @@ export default function InventoryPage() {
   const resetForm = () => {
     setFormState(DEFAULT_FORM)
     setEditingItem(null)
-    setStatusManuallySet(false)
   }
 
   const openCreateDialog = () => {
@@ -365,13 +363,11 @@ export default function InventoryPage() {
 
   const openEditDialog = (item: InventoryListItem) => {
     const autoStatus = computeInventoryStatus(Number(item.quantity) || 0, Number(item.minStockLevel) || 0)
-    const manualOverride = item.statusOverride && item.status === 'DISCONTINUED'
-    setStatusManuallySet(manualOverride)
+    const isDiscontinued = item.status === 'DISCONTINUED'
     setEditingItem(item)
     setFormState({
       ...item,
-      status: manualOverride ? item.status : autoStatus,
-      statusOverride: manualOverride,
+      status: isDiscontinued ? 'DISCONTINUED' : autoStatus,
       nextRestockDate: item.nextRestockDate ? item.nextRestockDate.substring(0, 10) : '',
       lastRestockDate: item.lastRestockDate ? item.lastRestockDate.substring(0, 10) : ''
     })
@@ -379,20 +375,20 @@ export default function InventoryPage() {
   }
 
   useEffect(() => {
-    if (statusManuallySet) {
-      return
-    }
-
     setFormState(prev => {
-      const autoStatus = computeInventoryStatus(Number(prev.quantity) || 0, Number(prev.minStockLevel) || 0)
-
-      if (prev.status === autoStatus && !prev.statusOverride) {
+      if (prev.status === 'DISCONTINUED') {
         return prev
       }
 
-      return { ...prev, status: autoStatus, statusOverride: false }
+      const autoStatus = computeInventoryStatus(Number(prev.quantity) || 0, Number(prev.minStockLevel) || 0)
+
+      if (prev.status === autoStatus) {
+        return prev
+      }
+
+      return { ...prev, status: autoStatus }
     })
-  }, [formState.quantity, formState.minStockLevel, statusManuallySet])
+  }, [formState.quantity, formState.minStockLevel])
 
   const handleDelete = async (item: InventoryListItem) => {
     if (!confirm(`هل أنت متأكد من حذف الصنف ${item.name}؟`)) {
@@ -456,8 +452,7 @@ export default function InventoryPage() {
       supplier: formState.supplier.trim(),
       location: formState.location?.trim() || '',
       warehouse: formState.warehouse.trim(),
-      status: statusManuallySet ? formState.status : undefined,
-      statusOverride: statusManuallySet,
+      status: formState.status === 'DISCONTINUED' ? 'DISCONTINUED' : undefined,
       leadTime: Number(formState.leadTime) || 0,
       notes: formState.notes?.trim() || '',
       nextRestockDate: formState.nextRestockDate ? new Date(formState.nextRestockDate).toISOString() : null,
@@ -1284,8 +1279,13 @@ export default function InventoryPage() {
                 <Select
                   value={formState.status}
                   onValueChange={(value) => {
-                    setStatusManuallySet(true)
-                    setFormState(prev => ({ ...prev, status: value, statusOverride: true }))
+                    setFormState(prev => ({
+                      ...prev,
+                      status:
+                        value === 'DISCONTINUED'
+                          ? 'DISCONTINUED'
+                          : computeInventoryStatus(Number(prev.quantity) || 0, Number(prev.minStockLevel) || 0)
+                    }))
                   }}
                 >
                   <SelectTrigger>

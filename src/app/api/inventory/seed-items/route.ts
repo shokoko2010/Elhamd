@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
         location: 'المستودع الرئيسي',
         warehouse: 'المستودع الرئيسي',
         status: 'IN_STOCK',
-        statusOverride: false,
         leadTime: 5,
         notes: 'محرك أصلي بضمان الشركة المصنعة'
       },
@@ -56,7 +55,6 @@ export async function POST(request: NextRequest) {
         location: 'مستودع قطع الغيار',
         warehouse: 'مستودع قطع الغيار',
         status: 'IN_STOCK',
-        statusOverride: false,
         leadTime: 3,
         notes: 'متوافق مع جميع موديلات تاتا'
       },
@@ -73,7 +71,6 @@ export async function POST(request: NextRequest) {
         location: 'مستودع قطع الغيار',
         warehouse: 'مستودع قطع الغيار',
         status: 'IN_STOCK',
-        statusOverride: false,
         leadTime: 2,
         notes: 'يتم التغيير كل 10000 كم'
       },
@@ -90,7 +87,6 @@ export async function POST(request: NextRequest) {
         location: 'مستودع قطع الغيار',
         warehouse: 'مستودع قطع الغيار',
         status: 'IN_STOCK',
-        statusOverride: false,
         leadTime: 4,
         notes: 'ضمان سنتان'
       },
@@ -107,7 +103,6 @@ export async function POST(request: NextRequest) {
         location: 'مستودع قطع الغيار',
         warehouse: 'مستودع قطع الغيار',
         status: 'IN_STOCK',
-        statusOverride: false,
         leadTime: 2,
         notes: 'مناسب لجميع فصول السنة'
       },
@@ -124,7 +119,6 @@ export async function POST(request: NextRequest) {
         location: 'مستودع قطع الغيار',
         warehouse: 'مستودع قطع الغيار',
         status: 'LOW_STOCK',
-        statusOverride: false,
         leadTime: 4,
         notes: 'LED عالي الكفاءة'
       },
@@ -141,7 +135,6 @@ export async function POST(request: NextRequest) {
         location: 'مستودع قطع الغيار',
         warehouse: 'مستودع قطع الغيار',
         status: 'OUT_OF_STOCK',
-        statusOverride: false,
         leadTime: 7,
         notes: 'متوافق مع ناقل الحركة اليدوي'
       },
@@ -158,7 +151,6 @@ export async function POST(request: NextRequest) {
         location: 'مستودع قطع الغيار',
         warehouse: 'مستودع قطع الغيار',
         status: 'IN_STOCK',
-        statusOverride: false,
         leadTime: 3,
         notes: 'مجموعة 4 قطع'
       }
