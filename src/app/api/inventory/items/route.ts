@@ -7,6 +7,7 @@ import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { InventoryStatus, Prisma, UserRole } from '@prisma/client'
 import { syncMaintenancePartFromInventory } from '@/lib/maintenance-part-sync'
+import { shouldFallbackToEmptyResult } from '@/lib/prisma-error-helpers'
 
 const resolveStatus = (
   quantity: number,
@@ -105,25 +106,29 @@ const buildFilters = ({
 }
 
 export async function GET(request: NextRequest) {
+  let page = 1
+  let limit = 50
+  let statsRequested = false
+  let shouldFilterLowStock = false
+
   try {
     const user = await getApiUser(request)
-    
+
     if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    page = parseInt(searchParams.get('page') || '1')
+    limit = parseInt(searchParams.get('limit') || '50')
     const search = searchParams.get('search') || ''
     const category = searchParams.get('category') || ''
     const status = searchParams.get('status') || ''
     const warehouse = searchParams.get('warehouse') || ''
-    const stats = searchParams.get('stats') === 'true'
-    const lowStock = searchParams.get('lowStock') === 'true'
+    statsRequested = searchParams.get('stats') === 'true'
+    shouldFilterLowStock = searchParams.get('lowStock') === 'true'
 
     const offset = (page - 1) * limit
-    const shouldFilterLowStock = lowStock
     const where = buildFilters({
       search,
       category,
@@ -133,7 +138,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Handle stats request
-    if (stats) {
+    if (statsRequested) {
       const currentMonthStart = new Date()
       currentMonthStart.setDate(1)
       currentMonthStart.setHours(0, 0, 0, 0)
@@ -293,6 +298,30 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching inventory items:', error)
+    if (shouldFallbackToEmptyResult(error)) {
+      if (statsRequested) {
+        return NextResponse.json({
+          totalItems: 0,
+          totalValue: 0,
+          lowStockItems: 0,
+          activeSuppliers: 0,
+          monthlyGrowth: {
+            items: 0,
+            value: 0
+          }
+        })
+      }
+
+      return NextResponse.json({
+        items: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0
+        }
+      })
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

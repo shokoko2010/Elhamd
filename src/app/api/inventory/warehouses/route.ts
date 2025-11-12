@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { Prisma, UserRole } from '@prisma/client'
+import { UserRole } from '@prisma/client'
+import { shouldFallbackToEmptyResult } from '@/lib/prisma-error-helpers'
 
 export async function GET(request: NextRequest) {
   let page = 1
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching warehouses:', error)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2021' || error.code === 'P2010')) {
+    if (shouldFallbackToEmptyResult(error)) {
       return NextResponse.json({
         warehouses: [],
         pagination: {
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating warehouse:', error)
-    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2021' || error.code === 'P2010')) {
+    if (shouldFallbackToEmptyResult(error)) {
       return NextResponse.json(
         { error: 'Warehouse storage is not initialized. Please run the latest database migrations.' },
         { status: 503 }

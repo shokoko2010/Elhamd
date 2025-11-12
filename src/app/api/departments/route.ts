@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { shouldFallbackToEmptyResult } from '@/lib/prisma-error-helpers'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +13,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(departments)
   } catch (error) {
     console.error('Error fetching departments:', error)
+    if (shouldFallbackToEmptyResult(error)) {
+      return NextResponse.json([])
+    }
     return NextResponse.json(
       { error: 'حدث خطأ أثناء جلب بيانات الأقسام' },
       { status: 500 }
@@ -53,6 +57,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(department, { status: 201 })
   } catch (error) {
     console.error('Error creating department:', error)
+    if (shouldFallbackToEmptyResult(error)) {
+      return NextResponse.json(
+        { error: 'مخزن الأقسام غير مهيأ بعد. يرجى تشغيل آخر تحديثات قاعدة البيانات.' },
+        { status: 503 }
+      )
+    }
     return NextResponse.json(
       { error: 'حدث خطأ أثناء إنشاء القسم' },
       { status: 500 }

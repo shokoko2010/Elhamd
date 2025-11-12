@@ -7,6 +7,7 @@ import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { InventoryStatus, UserRole } from '@prisma/client'
 import { syncMaintenancePartFromInventory } from '@/lib/maintenance-part-sync'
+import { shouldFallbackToEmptyResult } from '@/lib/prisma-error-helpers'
 
 const resolveStatus = (
   quantity: number,
@@ -91,6 +92,9 @@ export async function GET(request: NextRequest, context: RouteParams) {
     return NextResponse.json(transformItem(item))
   } catch (error) {
     console.error('Error fetching inventory item:', error)
+    if (shouldFallbackToEmptyResult(error)) {
+      return NextResponse.json({ error: 'Inventory item not found' }, { status: 404 })
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -195,6 +199,12 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     return NextResponse.json(transformItem(updated))
   } catch (error) {
     console.error('Error updating inventory item:', error)
+    if (shouldFallbackToEmptyResult(error)) {
+      return NextResponse.json(
+        { error: 'Inventory storage is not initialized. Please run the latest database migrations.' },
+        { status: 503 }
+      )
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
