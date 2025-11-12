@@ -37,24 +37,37 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    const where: any = {}
+    const filters: any[] = [
+      {
+        NOT: {
+          partNumber: {
+            startsWith: 'VEH-',
+            mode: 'insensitive'
+          }
+        }
+      }
+    ]
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { partNumber: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { supplier: { contains: search, mode: 'insensitive' } },
-      ]
+      filters.push({
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { partNumber: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { supplier: { contains: search, mode: 'insensitive' } },
+        ]
+      })
     }
 
     if (status !== 'all') {
-      where.status = status as PartStatus
+      filters.push({ status: status as PartStatus })
     }
 
     if (category !== 'all') {
-      where.category = category as PartCategory
+      filters.push({ category: category as PartCategory })
     }
+
+    const where = filters.length === 1 ? filters[0] : { AND: filters }
 
     const [parts, total] = await Promise.all([
       prisma.maintenancePart.findMany({

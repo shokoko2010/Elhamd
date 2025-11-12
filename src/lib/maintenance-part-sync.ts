@@ -6,6 +6,41 @@ import {
   Prisma
 } from '@prisma/client'
 
+const VEHICLE_CATEGORY_MARKERS = new Set([
+  'VEHICLE',
+  'VEHICLES',
+  'CAR',
+  'CARS',
+  'TRUCK',
+  'TRUCKS',
+  'SUV',
+  'SUVS',
+  'BUS',
+  'BUSES'
+])
+
+const isVehicleCategory = (category?: string | null): boolean => {
+  if (!category) {
+    return false
+  }
+
+  const normalized = category.trim().toUpperCase()
+  return VEHICLE_CATEGORY_MARKERS.has(normalized)
+}
+
+const isVehiclePartNumber = (partNumber?: string | null): boolean => {
+  if (!partNumber) {
+    return false
+  }
+
+  return partNumber.trim().toUpperCase().startsWith('VEH-')
+}
+
+export const isVehicleInventoryItem = (
+  partNumber?: string | null,
+  category?: string | null
+) => isVehiclePartNumber(partNumber) || isVehicleCategory(category)
+
 const PART_CATEGORY_VALUES = new Set<string>(Object.values(PartCategory))
 
 const normalizePartCategory = (category?: string | null): PartCategory => {
@@ -55,6 +90,13 @@ export const syncMaintenancePartFromInventory = async (
   userId: string
 ) => {
   if (!snapshot.partNumber) {
+    return
+  }
+
+  if (isVehicleInventoryItem(snapshot.partNumber, snapshot.category)) {
+    await db.maintenancePart.deleteMany({
+      where: { partNumber: snapshot.partNumber }
+    })
     return
   }
 
@@ -122,6 +164,12 @@ export const syncMaintenancePartFromInventory = async (
 
 export const backfillMaintenancePartsFromInventory = async (userId: string) => {
   try {
+    await db.maintenancePart.deleteMany({
+      where: {
+        partNumber: { startsWith: 'VEH-' }
+      }
+    })
+
     const [inventoryItems, existingParts] = await Promise.all([
       db.inventoryItem.findMany({
         select: {
@@ -148,7 +196,10 @@ export const backfillMaintenancePartsFromInventory = async (userId: string) => {
     )
 
     const missingItems = inventoryItems.filter(
-      item => item.partNumber && !existingPartNumbers.has(item.partNumber)
+      item =>
+        item.partNumber &&
+        !existingPartNumbers.has(item.partNumber) &&
+        !isVehicleInventoryItem(item.partNumber, item.category)
     )
 
     if (!missingItems.length) {
