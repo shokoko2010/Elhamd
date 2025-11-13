@@ -45,6 +45,7 @@ interface HRStats {
 
 interface NewEmployee {
   id: string
+  employeeId?: string
   name: string
   position: string
   department: string
@@ -190,6 +191,7 @@ export default function HRPage() {
             .slice(0, 4)
             .map((e: any) => ({
               id: e.id || `emp-${Math.random()}`,
+              employeeId: e.id,
               name: e.user?.name || 'غير معروف',
               position: e.position?.title || 'غير محدد',
               department: e.department?.name || 'غير محدد',
@@ -281,6 +283,24 @@ export default function HRPage() {
 
   const resetAdvanceForm = () => {
     setAdvanceForm(createInitialAdvanceForm())
+  }
+
+  const openAdvanceModalForEmployee = (employeeId?: string) => {
+    if (!employeeId) {
+      toast.error('تعذر تحديد الموظف للسلفة')
+      return
+    }
+
+    const employeeRecord = employeesList.find((emp) => emp.id === employeeId)
+    const defaultAmount = employeeRecord?.salary ? String(employeeRecord.salary) : ''
+
+    setAdvanceForm(() => ({
+      ...createInitialAdvanceForm(),
+      employeeId,
+      amount: defaultAmount,
+      reason: 'سلفة على الراتب'
+    }))
+    setAdvanceModalOpen(true)
   }
 
   const formatCurrency = (amount: number) => {
@@ -637,13 +657,21 @@ export default function HRPage() {
             <div className="space-y-4">
               {newEmployees.length > 0 ? (
                 newEmployees.map((employee) => (
-                  <div key={String(employee.id)} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={String(employee.id)} className="flex items-center justify-between gap-4 p-3 border rounded-lg">
                     <div>
                       <p className="font-medium">{employee.name || 'غير معروف'}</p>
                       <p className="text-sm text-muted-foreground">{employee.position || 'غير محدد'} - {employee.department || 'غير محدد'}</p>
                     </div>
-                    <div className="text-left">
+                    <div className="flex flex-col items-end gap-2 text-right">
                       <p className="text-sm text-muted-foreground">{employee.hireDate || 'غير محدد'}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAdvanceModalForEmployee(employee.employeeId || employee.id)}
+                        disabled={!employee.employeeId}
+                      >
+                        تسجيل سلفة
+                      </Button>
                     </div>
                   </div>
                 ))
