@@ -35,6 +35,26 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 
+type InstallmentStatus = 'PENDING' | 'SCHEDULED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED'
+
+interface Installment {
+  id: string
+  sequence: number
+  amount: number
+  dueDate: string
+  status: InstallmentStatus
+  paidAmount: number
+  paidAt?: string | null
+  notes?: string | null
+  paymentId?: string | null
+}
+
+interface InstallmentSummary {
+  scheduled: number
+  paid: number
+  outstanding: number
+}
+
 interface Invoice {
   id: string
   invoiceNumber: string
@@ -79,6 +99,8 @@ interface Invoice {
   deletedAt?: string | null
   deletedBy?: string | null
   deletedReason?: string | null
+  installments: Installment[]
+  installmentSummary?: InstallmentSummary
 }
 
 interface InvoiceItem {
@@ -137,7 +159,8 @@ function InvoiceDetailsContent() {
     paymentMethod: '',
     notes: '',
     referenceNumber: '',
-    paymentDate: new Date().toISOString().split('T')[0]
+    paymentDate: new Date().toISOString().split('T')[0],
+    installmentId: ''
   })
 
   const formatCreatorLabel = () => {
@@ -230,6 +253,48 @@ function InvoiceDetailsContent() {
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         <Icon className="w-3 h-3" />
+        {config.label}
+      </Badge>
+    )
+  }
+
+  const getInstallmentStatusBadge = (status: InstallmentStatus) => {
+    const statusConfig: Record<InstallmentStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
+      PENDING: {
+        label: 'قيد الانتظار',
+        variant: 'outline',
+        className: 'border-yellow-200 bg-yellow-100 text-yellow-800'
+      },
+      SCHEDULED: {
+        label: 'مجدول',
+        variant: 'outline',
+        className: 'border-blue-200 bg-blue-100 text-blue-800'
+      },
+      PARTIALLY_PAID: {
+        label: 'مدفوع جزئياً',
+        variant: 'outline',
+        className: 'border-purple-200 bg-purple-100 text-purple-800'
+      },
+      PAID: {
+        label: 'مدفوع',
+        variant: 'outline',
+        className: 'border-emerald-200 bg-emerald-100 text-emerald-700'
+      },
+      OVERDUE: {
+        label: 'متأخر',
+        variant: 'destructive',
+        className: 'border-red-200 bg-red-100 text-red-800'
+      },
+      CANCELLED: {
+        label: 'ملغي',
+        variant: 'secondary',
+        className: 'border-gray-200 bg-gray-100 text-gray-600'
+      }
+    }
+
+    const config = statusConfig[status]
+    return (
+      <Badge variant={config.variant} className={config.className ? `${config.className} border` : undefined}>
         {config.label}
       </Badge>
     )
@@ -587,7 +652,8 @@ function InvoiceDetailsContent() {
           paymentMethod: paymentForm.paymentMethod,
           notes: paymentForm.notes,
           referenceNumber: paymentForm.referenceNumber,
-          paymentDate: paymentForm.paymentDate
+          paymentDate: paymentForm.paymentDate,
+          installmentId: paymentForm.installmentId || undefined
         })
       })
       
@@ -604,7 +670,8 @@ function InvoiceDetailsContent() {
           paymentMethod: '',
           notes: '',
           referenceNumber: '',
-          paymentDate: new Date().toISOString().split('T')[0]
+          paymentDate: new Date().toISOString().split('T')[0],
+          installmentId: ''
         })
         setShowPaymentModal(false)
         
@@ -626,32 +693,58 @@ function InvoiceDetailsContent() {
     }
   }
   
-  const openPaymentModal = async () => {
+  const openPaymentModal = async (installment?: Installment) => {
+    if (installment) {
+      const outstanding = Math.max(0, installment.amount - installment.paidAmount)
+      setPaymentForm((prev) => ({
+        ...prev,
+        amount: outstanding > 0 ? outstanding.toFixed(2) : installment.amount.toFixed(2),
+        notes: installment.notes ?? '',
+        installmentId: installment.id,
+      }))
+      setShowPaymentModal(true)
+      return
+    }
+
     if (invoiceId) {
       try {
-        // Fetch current invoice data to get accurate remaining amount
         const response = await fetch(`/api/finance/invoices/${invoiceId}`)
         if (response.ok) {
           const currentInvoice = await response.json()
           const remainingAmount = currentInvoice.totalAmount - currentInvoice.paidAmount
-          setPaymentForm({
-            ...paymentForm,
-            amount: remainingAmount > 0 ? remainingAmount.toString() : ''
-          })
+          setPaymentForm((prev) => ({
+            ...prev,
+            amount: remainingAmount > 0 ? remainingAmount.toFixed(2) : '',
+            installmentId: '',
+          }))
         }
       } catch (error) {
         console.error('Error fetching invoice for payment:', error)
-        // Fallback to local invoice data
         if (invoice) {
           const remainingAmount = invoice.totalAmount - invoice.paidAmount
-          setPaymentForm({
-            ...paymentForm,
-            amount: remainingAmount > 0 ? remainingAmount.toString() : ''
-          })
+          setPaymentForm((prev) => ({
+            ...prev,
+            amount: remainingAmount > 0 ? remainingAmount.toFixed(2) : '',
+            installmentId: '',
+          }))
         }
       }
     }
+
     setShowPaymentModal(true)
+  }
+
+  const handlePaymentModalChange = (open: boolean) => {
+    setShowPaymentModal(open)
+    if (!open) {
+      setPaymentForm(prev => ({
+        ...prev,
+        installmentId: '',
+        amount: '',
+        notes: '',
+        referenceNumber: '',
+      }))
+    }
   }
 
   if (loading) {
@@ -678,6 +771,29 @@ function InvoiceDetailsContent() {
 
   const remainingAmount = invoice.totalAmount - invoice.paidAmount
   const isOverdue = new Date(invoice.dueDate) < new Date() && invoice.status !== 'PAID'
+  const installments = Array.isArray(invoice.installments) ? invoice.installments : []
+  const installmentSummary = invoice.installmentSummary
+    ? {
+        scheduled: invoice.installmentSummary.scheduled,
+        paid: invoice.installmentSummary.paid,
+        outstanding: invoice.installmentSummary.outstanding
+      }
+    : installments.reduce(
+        (acc, current) => {
+          acc.scheduled += current.amount
+          acc.paid += current.paidAmount
+          return acc
+        },
+        { scheduled: 0, paid: 0, outstanding: 0 }
+      )
+
+  if (!invoice.installmentSummary) {
+    installmentSummary.outstanding = Math.max(0, installmentSummary.scheduled - installmentSummary.paid)
+  }
+
+  const upcomingInstallment = [...installments]
+    .filter((installment) => !['PAID', 'CANCELLED'].includes(installment.status))
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0]
 
   return (
     <div className="space-y-6">
@@ -805,10 +921,11 @@ function InvoiceDetailsContent() {
           <Tabs defaultValue="details" className="space-y-6">
             <TabsList>
               <TabsTrigger value="details">التفاصيل</TabsTrigger>
-              <TabsTrigger value="items">البنود</TabsTrigger>
-              <TabsTrigger value="payments">المدفوعات</TabsTrigger>
-              <TabsTrigger value="history">السجل</TabsTrigger>
-            </TabsList>
+            <TabsTrigger value="items">البنود</TabsTrigger>
+            <TabsTrigger value="payments">المدفوعات</TabsTrigger>
+            <TabsTrigger value="installments">التقسيط</TabsTrigger>
+            <TabsTrigger value="history">السجل</TabsTrigger>
+          </TabsList>
 
             {/* Details Tab */}
             <TabsContent value="details">
@@ -1000,6 +1117,123 @@ function InvoiceDetailsContent() {
                       </tfoot>
                     </table>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Installments Tab */}
+            <TabsContent value="installments">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    خطة التقسيط
+                  </CardTitle>
+                  <CardDescription>
+                    تتبع الأقساط المجدولة والمدفوعة وحالاتها الحالية
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {installments.length > 0 ? (
+                    <>
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-lg border bg-gray-50 p-4">
+                          <p className="text-sm text-gray-600">إجمالي الأقساط</p>
+                          <p className="text-2xl font-semibold text-blue-600">
+                            {formatCurrency(installmentSummary.scheduled)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-gray-50 p-4">
+                          <p className="text-sm text-gray-600">المدفوع</p>
+                          <p className="text-2xl font-semibold text-emerald-600">
+                            {formatCurrency(installmentSummary.paid)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-gray-50 p-4">
+                          <p className="text-sm text-gray-600">المتبقي</p>
+                          <p className={`text-2xl font-semibold ${installmentSummary.outstanding > 0 ? 'text-orange-600' : 'text-emerald-600'}`}>
+                            {formatCurrency(installmentSummary.outstanding)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-gray-50 p-4">
+                          <p className="text-sm text-gray-600">أقرب استحقاق</p>
+                          <p className="text-lg font-semibold">
+                            {upcomingInstallment ? formatDate(upcomingInstallment.dueDate) : 'لا يوجد'}
+                          </p>
+                          {upcomingInstallment && (
+                            <p className="text-xs text-gray-500">
+                              المبلغ المستحق: {formatCurrency(Math.max(0, upcomingInstallment.amount - upcomingInstallment.paidAmount))}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="py-3 px-4 text-right">#</th>
+                              <th className="py-3 px-4 text-right">تاريخ الاستحقاق</th>
+                              <th className="py-3 px-4 text-right">المبلغ</th>
+                              <th className="py-3 px-4 text-right">المدفوع</th>
+                              <th className="py-3 px-4 text-right">المتبقي</th>
+                              <th className="py-3 px-4 text-right">الحالة</th>
+                              <th className="py-3 px-4 text-right">آخر تحديث</th>
+                              <th className="py-3 px-4 text-right">إجراءات</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {installments.map((installment) => {
+                              const outstanding = Math.max(0, installment.amount - installment.paidAmount)
+                              const isOverdueInstallment =
+                                installment.status === 'OVERDUE' ||
+                                (outstanding > 0 && new Date(installment.dueDate) < new Date())
+
+                              return (
+                                <tr key={installment.id} className="border-b">
+                                  <td className="py-3 px-4 text-right font-medium">{installment.sequence}</td>
+                                  <td className={`py-3 px-4 text-right ${isOverdueInstallment ? 'text-red-600 font-semibold' : ''}`}>
+                                    {formatDate(installment.dueDate)}
+                                  </td>
+                                  <td className="py-3 px-4 text-right">{formatCurrency(installment.amount)}</td>
+                                  <td className="py-3 px-4 text-right text-emerald-600">{formatCurrency(installment.paidAmount)}</td>
+                                  <td className="py-3 px-4 text-right text-orange-600">{formatCurrency(outstanding)}</td>
+                                  <td className="py-3 px-4 text-right">{getInstallmentStatusBadge(installment.status)}</td>
+                                  <td className="py-3 px-4 text-right">
+                                    {installment.paidAt ? formatDate(installment.paidAt) : '-'}
+                                  </td>
+                                  <td className="py-3 px-4 text-left">
+                                    <div className="flex flex-wrap justify-end gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openPaymentModal(installment)}
+                                        disabled={installment.status === 'PAID' || installment.status === 'CANCELLED'}
+                                      >
+                                        تسجيل دفعة
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="rounded-lg border border-dashed bg-gray-50 p-4 text-sm text-gray-600">
+                        <p>
+                          يمكن تسجيل الدفعات الجزئية أو الكاملة لكل قسط من خلال زر "تسجيل دفعة"، وسيتم تحديث حالة القسط تلقائياً بناءً على المبلغ المدفوع.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-8 text-center text-muted-foreground">
+                      <Calendar className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                      <p>لا توجد خطة تقسيط مسجلة لهذه الفاتورة.</p>
+                      <p className="text-sm">يمكن إضافة أقساط عند إنشاء أو تعديل الفاتورة.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1265,7 +1499,7 @@ function InvoiceDetailsContent() {
       </div>
       
       {/* Payment Modal */}
-      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+      <Dialog open={showPaymentModal} onOpenChange={handlePaymentModalChange}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>تسجيل دفعة جديدة</DialogTitle>
