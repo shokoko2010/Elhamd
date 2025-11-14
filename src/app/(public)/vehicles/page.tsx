@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Car, Search, Filter } from 'lucide-react'
+import { Car, Search } from 'lucide-react'
 import Link from 'next/link'
 
 interface Vehicle {
@@ -48,13 +48,14 @@ export default function VehiclesPage() {
     const loadVehicles = async () => {
       setLoading(true)
       try {
-        const response = await fetch('/api/vehicles')
+        const response = await fetch('/api/public/vehicles')
         if (response.ok) {
           const data = await response.json()
-          setVehicles(data.vehicles)
+          setVehicles(Array.isArray(data.vehicles) ? data.vehicles : [])
         }
       } catch (error) {
         console.error('Error fetching vehicles:', error)
+        setVehicles([])
       } finally {
         setLoading(false)
       }
@@ -145,6 +146,37 @@ export default function VehiclesPage() {
     )
   }
 
+  const categoryLabels: Record<string, string> = {
+    SEDAN: 'سيدان',
+    SUV: 'دفع رباعي',
+    HATCHBACK: 'هاتشباك',
+    TRUCK: 'شاحنة',
+    VAN: 'فان',
+    COMMERCIAL: 'تجارية',
+    BUS: 'حافلة',
+    PICKUP: 'بيك أب'
+  }
+
+  const getCategoryLabel = (category: string) => categoryLabels[category] || category
+
+  const fuelTypeLabels: Record<string, string> = {
+    PETROL: 'بنزين',
+    DIESEL: 'ديزل',
+    ELECTRIC: 'كهربائي',
+    HYBRID: 'هجين',
+    CNG: 'غاز طبيعي'
+  }
+
+  const getFuelTypeLabel = (fuelType: string) => fuelTypeLabels[fuelType] || fuelType
+
+  const transmissionLabels: Record<string, string> = {
+    MANUAL: 'يدوي',
+    AUTOMATIC: 'أوتوماتيك',
+    CVT: 'ناقل حركة متغير'
+  }
+
+  const getTransmissionLabel = (transmission: string) => transmissionLabels[transmission] || transmission
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Page Header */}
@@ -190,8 +222,13 @@ export default function VehiclesPage() {
                 <SelectContent>
                   <SelectItem value="all">الكل</SelectItem>
                   <SelectItem value="SEDAN">سيدان</SelectItem>
-                  <SelectItem value="SUV">SUV</SelectItem>
+                  <SelectItem value="SUV">دفع رباعي</SelectItem>
                   <SelectItem value="HATCHBACK">هاتشباك</SelectItem>
+                  <SelectItem value="PICKUP">بيك أب</SelectItem>
+                  <SelectItem value="TRUCK">شاحنة</SelectItem>
+                  <SelectItem value="VAN">فان</SelectItem>
+                  <SelectItem value="BUS">حافلة</SelectItem>
+                  <SelectItem value="COMMERCIAL">تجارية</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -204,6 +241,8 @@ export default function VehiclesPage() {
                   <SelectItem value="PETROL">بنزين</SelectItem>
                   <SelectItem value="DIESEL">ديزل</SelectItem>
                   <SelectItem value="ELECTRIC">كهربائي</SelectItem>
+                  <SelectItem value="HYBRID">هجين</SelectItem>
+                  <SelectItem value="CNG">غاز طبيعي</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -215,6 +254,7 @@ export default function VehiclesPage() {
                   <SelectItem value="all">الكل</SelectItem>
                   <SelectItem value="MANUAL">يدوي</SelectItem>
                   <SelectItem value="AUTOMATIC">أوتوماتيك</SelectItem>
+                  <SelectItem value="CVT">ناقل حركة متغير</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -272,11 +312,11 @@ export default function VehiclesPage() {
                       <h3 className="text-lg font-semibold">{vehicle.make} {vehicle.model}</h3>
                       <p className="text-sm text-gray-600">{vehicle.year}</p>
                     </div>
-                    <Badge variant="outline" className="text-xs">{vehicle.category}</Badge>
+                    <Badge variant="outline" className="text-xs">{getCategoryLabel(vehicle.category)}</Badge>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-4">
-                    <Badge variant="secondary" className="text-xs">{vehicle.fuelType}</Badge>
-                    <Badge variant="secondary" className="text-xs">{vehicle.transmission}</Badge>
+                    <Badge variant="secondary" className="text-xs">{getFuelTypeLabel(vehicle.fuelType)}</Badge>
+                    <Badge variant="secondary" className="text-xs">{getTransmissionLabel(vehicle.transmission)}</Badge>
                     {vehicle.color && (
                       <Badge variant="secondary" className="text-xs">{vehicle.color}</Badge>
                     )}
