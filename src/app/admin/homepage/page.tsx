@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -124,19 +124,55 @@ function HomepageContent() {
   const [editingService, setEditingService] = useState<ServiceItem | null>(null)
   const [sliderForm, setSliderForm] = useState<Partial<SliderItem>>({})
   const [serviceForm, setServiceForm] = useState<Partial<ServiceItem>>({})
+  const [companyForm, setCompanyForm] = useState<CompanyInfo | null>(null)
 
   useEffect(() => {
     loadHomepageData()
   }, [])
 
+  const defaultCompanyInfo: CompanyInfo = {
+    id: 'new-company',
+    title: '',
+    subtitle: '',
+    description: '',
+    imageUrl: '',
+    features: [],
+    ctaButtons: []
+  }
+
+  const adaptCompanyInfo = (payload: any): CompanyInfo => {
+    return {
+      id: typeof payload?.id === 'string' ? payload.id : 'company-info',
+      title: typeof payload?.title === 'string' ? payload.title : '',
+      subtitle: typeof payload?.subtitle === 'string' ? payload.subtitle : '',
+      description: typeof payload?.description === 'string' ? payload.description : '',
+      imageUrl: typeof payload?.imageUrl === 'string' ? payload.imageUrl : '',
+      features: Array.isArray(payload?.features)
+        ? payload.features.filter((feature: unknown): feature is string => typeof feature === 'string')
+        : typeof payload?.features === 'string'
+          ? payload.features
+              .split('\n')
+              .map((feature: string) => feature.trim())
+              .filter(Boolean)
+          : [],
+      ctaButtons: Array.isArray(payload?.ctaButtons)
+        ? payload.ctaButtons.map((button: any) => ({
+            text: typeof button?.text === 'string' ? button.text : '',
+            link: typeof button?.link === 'string' ? button.link : '',
+            variant: button?.variant === 'secondary' ? 'secondary' : 'primary'
+          }))
+        : []
+    }
+  }
+
   const loadHomepageData = async () => {
     setLoading(true)
     try {
       // Fetch sliders from API
-      const slidersResponse = await fetch('/api/sliders')
+      const slidersResponse = await fetch('/api/sliders', { cache: 'no-store' })
       if (slidersResponse.ok) {
         const slidersData = await slidersResponse.json()
-        setSliderItems(slidersData.sliders)
+        setSliderItems(Array.isArray(slidersData?.sliders) ? slidersData.sliders : [])
       } else {
         console.error('Failed to fetch sliders')
         // Use empty array on error
@@ -144,29 +180,73 @@ function HomepageContent() {
       }
 
       // Fetch company info from API
-      const companyInfoResponse = await fetch('/api/company-info')
+      const companyInfoResponse = await fetch('/api/company-info', { cache: 'no-store' })
       if (companyInfoResponse.ok) {
         const companyInfoData = await companyInfoResponse.json()
-        setCompanyInfo(companyInfoData)
+        setCompanyInfo(adaptCompanyInfo(companyInfoData))
+      } else {
+        setCompanyInfo(defaultCompanyInfo)
       }
 
       // Fetch service items from API
-      const serviceItemsResponse = await fetch('/api/service-items')
+      const serviceItemsResponse = await fetch('/api/service-items', { cache: 'no-store' })
       if (serviceItemsResponse.ok) {
         const serviceItemsData = await serviceItemsResponse.json()
-        setServiceItems(serviceItemsData)
+        const normalizedServices = Array.isArray(serviceItemsData)
+          ? serviceItemsData.map((item, index) => ({
+              id: typeof item?.id === 'string' ? item.id : `service-${index}`,
+              title: typeof item?.title === 'string' ? item.title : '',
+              description: typeof item?.description === 'string' ? item.description : '',
+              icon: typeof item?.icon === 'string' ? item.icon : 'Wrench',
+              link: typeof item?.link === 'string' ? item.link : '',
+              order: typeof item?.order === 'number' ? item.order : index,
+              isActive: Boolean(item?.isActive)
+            }))
+          : []
+        setServiceItems(normalizedServices.sort((a, b) => a.order - b.order))
       }
 
       // Fetch company features from API
-      const featuresResponse = await fetch('/api/about/features')
+      const featuresResponse = await fetch('/api/about/features', { cache: 'no-store' })
       if (featuresResponse.ok) {
         const featuresData = await featuresResponse.json()
-        setCompanyFeatures(featuresData)
+        const normalizedFeatures = Array.isArray(featuresData)
+          ? featuresData.map((feature, index) => ({
+              ...feature,
+              id: typeof feature?.id === 'string' ? feature.id : `feature-${index}`,
+              features: Array.isArray(feature?.features)
+                ? feature.features.filter((item: unknown): item is string => typeof item === 'string')
+                : []
+            }))
+          : []
+        setCompanyFeatures(normalizedFeatures.sort((a, b) => a.order - b.order))
+      }
+
+      // Fetch homepage settings
+      const settingsResponse = await fetch('/api/admin/homepage/settings', { cache: 'no-store' })
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json()
+        setSettings({
+          showHeroSlider: Boolean(settingsData?.showHeroSlider),
+          autoPlaySlider: Boolean(settingsData?.autoPlaySlider),
+          sliderInterval: typeof settingsData?.sliderInterval === 'number' ? settingsData.sliderInterval : 5000,
+          showFeaturedVehicles: Boolean(settingsData?.showFeaturedVehicles),
+          featuredVehiclesCount: typeof settingsData?.featuredVehiclesCount === 'number' ? settingsData.featuredVehiclesCount : 6,
+          showServices: Boolean(settingsData?.showServices),
+          showCompanyInfo: Boolean(settingsData?.showCompanyInfo),
+          theme: settingsData?.theme === 'dark' || settingsData?.theme === 'DARK'
+            ? 'dark'
+            : settingsData?.theme === 'auto' || settingsData?.theme === 'AUTO'
+              ? 'auto'
+              : 'light'
+        })
       }
     } catch (error) {
       console.error('Error loading homepage data:', error)
       // Set empty arrays on error
       setSliderItems([])
+      setCompanyInfo(defaultCompanyInfo)
+      setServiceItems([])
     } finally {
       setLoading(false)
     }
@@ -189,10 +269,147 @@ function HomepageContent() {
     setShowSliderDialog(true)
   }
 
+  const handleOpenCompanyDialog = () => {
+    const base = companyInfo
+      ? {
+          ...companyInfo,
+          features: [...(companyInfo.features || [])],
+          ctaButtons: companyInfo.ctaButtons?.map((button) => ({ ...button })) || []
+        }
+      : { ...defaultCompanyInfo }
+
+    setCompanyForm(base)
+    setShowCompanyDialog(true)
+  }
+
+  const handleAddCompanyFeature = () => {
+    if (!companyForm) return
+    setCompanyForm({
+      ...companyForm,
+      features: [...(companyForm.features || []), 'ميزة جديدة']
+    })
+  }
+
+  const handleRemoveCompanyFeature = (index: number) => {
+    if (!companyForm) return
+    setCompanyForm({
+      ...companyForm,
+      features: companyForm.features.filter((_, featureIndex) => featureIndex !== index)
+    })
+  }
+
+  const handleUpdateCompanyFeature = (index: number, value: string) => {
+    if (!companyForm) return
+    const nextFeatures = [...(companyForm.features || [])]
+    nextFeatures[index] = value
+    setCompanyForm({
+      ...companyForm,
+      features: nextFeatures
+    })
+  }
+
+  const handleAddCompanyButton = () => {
+    if (!companyForm) return
+    setCompanyForm({
+      ...companyForm,
+      ctaButtons: [
+        ...(companyForm.ctaButtons || []),
+        { text: 'زر جديد', link: '/', variant: 'primary' as const }
+      ]
+    })
+  }
+
+  const handleUpdateCompanyButton = (index: number, key: 'text' | 'link' | 'variant', value: string) => {
+    if (!companyForm) return
+    const nextButtons = (companyForm.ctaButtons || []).map((button, buttonIndex) =>
+      buttonIndex === index
+        ? {
+            ...button,
+            [key]: key === 'variant' && value === 'secondary' ? 'secondary' : key === 'variant' ? 'primary' : value
+          }
+        : button
+    )
+    setCompanyForm({ ...companyForm, ctaButtons: nextButtons })
+  }
+
+  const handleRemoveCompanyButton = (index: number) => {
+    if (!companyForm) return
+    setCompanyForm({
+      ...companyForm,
+      ctaButtons: (companyForm.ctaButtons || []).filter((_, buttonIndex) => buttonIndex !== index)
+    })
+  }
+
   const handleEditSlider = (item: SliderItem) => {
     setSliderForm(item)
     setEditingSlider(item)
     setShowSliderDialog(true)
+  }
+
+  const handleAddService = () => {
+    setServiceForm({
+      id: `temp-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`,
+      title: '',
+      description: '',
+      icon: 'Wrench',
+      link: '',
+      order: serviceItems.length,
+      isActive: true
+    })
+    setEditingService(null)
+    setShowServiceDialog(true)
+  }
+
+  const handleEditServiceItem = (service: ServiceItem) => {
+    setServiceForm({ ...service })
+    setEditingService(service)
+    setShowServiceDialog(true)
+  }
+
+  const handleSaveServiceForm = () => {
+    if (!serviceForm.title || !serviceForm.title.trim()) {
+      toast.error('يرجى إدخال عنوان الخدمة')
+      return
+    }
+
+    const sanitizedItem: ServiceItem = {
+      id: (editingService?.id || serviceForm.id || `temp-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`) as string,
+      title: serviceForm.title?.trim() || '',
+      description: serviceForm.description?.trim() || '',
+      icon: serviceForm.icon || 'Wrench',
+      link: serviceForm.link || '',
+      order: typeof serviceForm.order === 'number' ? serviceForm.order : serviceItems.length,
+      isActive: serviceForm.isActive ?? true
+    }
+
+    const nextItems = editingService
+      ? serviceItems.map((item) => (item.id === editingService.id ? sanitizedItem : item))
+      : [...serviceItems, sanitizedItem]
+
+    setServiceItems(nextItems.map((item, index) => ({ ...item, order: index })))
+    setShowServiceDialog(false)
+    setEditingService(null)
+    setServiceForm({})
+  }
+
+  const handleDeleteServiceItem = (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الخدمة؟')) return
+    const nextItems = serviceItems.filter((item) => item.id !== id).map((item, index) => ({ ...item, order: index }))
+    setServiceItems(nextItems)
+  }
+
+  const moveServiceItem = (id: string, direction: 'up' | 'down') => {
+    const currentIndex = serviceItems.findIndex((item) => item.id === id)
+    if (currentIndex === -1) return
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (newIndex < 0 || newIndex >= serviceItems.length) return
+
+    const updatedItems = [...serviceItems]
+    const [movedItem] = updatedItems.splice(currentIndex, 1)
+    updatedItems.splice(newIndex, 0, movedItem)
+
+    setServiceItems(updatedItems.map((item, index) => ({ ...item, order: index })))
   }
 
   const handleSaveSlider = async () => {
@@ -284,13 +501,33 @@ function HomepageContent() {
   }
 
   const handleSaveCompany = async () => {
+    if (!companyForm) {
+      toast.error('لا توجد بيانات لحفظها')
+      return
+    }
+
+    const payload = {
+      title: companyForm.title?.trim() || '',
+      subtitle: companyForm.subtitle?.trim() || '',
+      description: companyForm.description?.trim() || '',
+      imageUrl: companyForm.imageUrl?.trim() || '',
+      features: (companyForm.features || []).map((feature) => feature.trim()).filter(Boolean),
+      ctaButtons: (companyForm.ctaButtons || [])
+        .filter((button) => button.text.trim())
+        .map((button) => ({
+          text: button.text.trim(),
+          link: button.link?.trim() || '/',
+          variant: button.variant === 'secondary' ? 'secondary' : 'primary'
+        }))
+    }
+
     try {
       const response = await fetch('/api/company-info', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(companyInfo),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -299,7 +536,9 @@ function HomepageContent() {
       }
 
       const data = await response.json()
+      setCompanyInfo(adaptCompanyInfo(data))
       setShowCompanyDialog(false)
+      setCompanyForm(null)
       toast.success('تم حفظ معلومات الشركة بنجاح')
     } catch (error) {
       console.error('Error saving company info:', error)
@@ -309,12 +548,23 @@ function HomepageContent() {
 
   const handleSaveService = async () => {
     try {
+      const payload = serviceItems
+        .map((item, index) => ({
+          title: item.title?.trim() || '',
+          description: item.description?.trim() || '',
+          icon: item.icon || 'Wrench',
+          link: item.link || '',
+          order: index,
+          isActive: item.isActive ?? true
+        }))
+        .filter((item) => item.title)
+
       const response = await fetch('/api/service-items', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(serviceItems),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -323,7 +573,20 @@ function HomepageContent() {
       }
 
       const data = await response.json()
+      setServiceItems(
+        (Array.isArray(data) ? data : []).map((item, index) => ({
+          id: typeof item?.id === 'string' ? item.id : `service-${index}`,
+          title: typeof item?.title === 'string' ? item.title : '',
+          description: typeof item?.description === 'string' ? item.description : '',
+          icon: typeof item?.icon === 'string' ? item.icon : 'Wrench',
+          link: typeof item?.link === 'string' ? item.link : '',
+          order: typeof item?.order === 'number' ? item.order : index,
+          isActive: Boolean(item?.isActive)
+        })).sort((a, b) => a.order - b.order)
+      )
       setShowServiceDialog(false)
+      setServiceForm({})
+      setEditingService(null)
       toast.success('تم حفظ الخدمات بنجاح')
     } catch (error) {
       console.error('Error saving service items:', error)
@@ -357,11 +620,38 @@ function HomepageContent() {
 
   const handleSaveSettings = async () => {
     try {
-      // Save settings to API
-      console.log('Saving settings:', settings)
+      const response = await fetch('/api/admin/homepage/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...settings,
+          theme: settings.theme.toUpperCase()
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'فشل في حفظ الإعدادات')
+      }
+
+      const data = await response.json()
+      setSettings({
+        showHeroSlider: Boolean(data?.showHeroSlider),
+        autoPlaySlider: Boolean(data?.autoPlaySlider),
+        sliderInterval: typeof data?.sliderInterval === 'number' ? data.sliderInterval : settings.sliderInterval,
+        showFeaturedVehicles: Boolean(data?.showFeaturedVehicles),
+        featuredVehiclesCount: typeof data?.featuredVehiclesCount === 'number' ? data.featuredVehiclesCount : settings.featuredVehiclesCount,
+        showServices: Boolean(data?.showServices),
+        showCompanyInfo: Boolean(data?.showCompanyInfo),
+        theme: data?.theme === 'DARK' ? 'dark' : data?.theme === 'AUTO' ? 'auto' : 'light'
+      })
       setShowSettingsDialog(false)
+      toast.success('تم حفظ الإعدادات بنجاح')
     } catch (error) {
       console.error('Error saving settings:', error)
+      toast.error(error instanceof Error ? error.message : 'فشل في حفظ الإعدادات')
     }
   }
 
@@ -495,7 +785,7 @@ function HomepageContent() {
                     تحكم في معلومات الشركة ونبذة تعريفية
                   </CardDescription>
                 </div>
-                <Button onClick={() => setShowCompanyDialog(true)}>
+                <Button onClick={handleOpenCompanyDialog}>
                   <Edit className="ml-2 h-4 w-4" />
                   تعديل المعلومات
                 </Button>
@@ -546,7 +836,7 @@ function HomepageContent() {
                     تحكم في الخدمات المعروضة في الصفحة الرئيسية
                   </CardDescription>
                 </div>
-                <Button onClick={() => setShowServiceDialog(true)}>
+                <Button onClick={handleAddService}>
                   <Plus className="ml-2 h-4 w-4" />
                   إضافة خدمة جديدة
                 </Button>
@@ -554,28 +844,65 @@ function HomepageContent() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {serviceItems.map((service) => (
-                  <Card key={service.id} className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold">{service.title}</h3>
-                      <Badge variant={service.isActive ? 'default' : 'secondary'}>
-                        {service.isActive ? 'نشط' : 'معطل'}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">{service.description}</p>
+                {serviceItems.map((service, index) => (
+                  <Card key={service.id} className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">الترتيب: {service.order + 1}</span>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{service.title || 'بدون عنوان'}</h3>
+                          <Badge variant={service.isActive ? 'default' : 'secondary'}>
+                            {service.isActive ? 'نشط' : 'معطل'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">الأيقونة: {service.icon || 'Wrench'}</p>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveServiceItem(service.id, 'up')}
+                          disabled={index === 0}
+                        >
+                          <MoveUp className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveServiceItem(service.id, 'down')}
+                          disabled={index === serviceItems.length - 1}
+                        >
+                          <MoveDown className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
+                    <p className="text-sm text-gray-600">{service.description || 'لا يوجد وصف محدد'}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>الترتيب: {service.order + 1}</span>
+                      <span>الرابط: {service.link || '—'}</span>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEditServiceItem(service)}>
+                        <Edit className="ml-1 h-4 w-4" />
+                        تعديل
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteServiceItem(service.id)}>
+                        <Trash2 className="ml-1 h-4 w-4" />
+                        حذف
+                      </Button>
+                    </div>
                   </Card>
                 ))}
+                {serviceItems.length === 0 && (
+                  <Card className="p-6 text-center text-gray-500">
+                    لم يتم إضافة خدمات بعد. استخدم زر "إضافة خدمة جديدة" للبدء.
+                  </Card>
+                )}
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button onClick={handleSaveService}>
+                  <Save className="ml-2 h-4 w-4" />
+                  حفظ جميع الخدمات
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -653,6 +980,264 @@ function HomepageContent() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Company Dialog */}
+      <Dialog
+        open={showCompanyDialog}
+        onOpenChange={(open) => {
+          setShowCompanyDialog(open)
+          if (!open) {
+            setCompanyForm(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>تعديل معلومات الشركة</DialogTitle>
+            <DialogDescription>
+              حدث البيانات التعريفية، الصورة والأزرار الظاهرة في قسم "من نحن"
+            </DialogDescription>
+          </DialogHeader>
+
+          {companyForm ? (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="company-title">العنوان *</Label>
+                  <Input
+                    id="company-title"
+                    value={companyForm.title}
+                    onChange={(e) => setCompanyForm({ ...companyForm, title: e.target.value })}
+                    placeholder="أدخل عنوان الشركة"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="company-subtitle">العنوان الفرعي *</Label>
+                  <Input
+                    id="company-subtitle"
+                    value={companyForm.subtitle}
+                    onChange={(e) => setCompanyForm({ ...companyForm, subtitle: e.target.value })}
+                    placeholder="أدخل العنوان الفرعي"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="company-description">الوصف *</Label>
+                <Textarea
+                  id="company-description"
+                  value={companyForm.description}
+                  onChange={(e) => setCompanyForm({ ...companyForm, description: e.target.value })}
+                  rows={4}
+                  placeholder="اشرح نشاط الشركة والخدمات المقدمة"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="company-image">رابط الصورة الرئيسية</Label>
+                <Input
+                  id="company-image"
+                  value={companyForm.imageUrl}
+                  onChange={(e) => setCompanyForm({ ...companyForm, imageUrl: e.target.value })}
+                  placeholder="/uploads/company.jpg"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>المميزات التفصيلية</Label>
+                  <Button variant="outline" size="sm" onClick={handleAddCompanyFeature}>
+                    <Plus className="ml-1 h-4 w-4" />
+                    إضافة ميزة
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {(companyForm.features || []).map((feature, index) => (
+                    <div key={`feature-${index}`} className="flex items-center gap-2">
+                      <Input
+                        value={feature}
+                        onChange={(e) => handleUpdateCompanyFeature(index, e.target.value)}
+                        placeholder={`الميزة رقم ${index + 1}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveCompanyFeature(index)}
+                        aria-label="حذف الميزة"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {(!companyForm.features || companyForm.features.length === 0) && (
+                    <p className="text-xs text-gray-500">لم يتم إضافة أي مميزات بعد.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>أزرار الدعوة للعمل</Label>
+                  <Button variant="outline" size="sm" onClick={handleAddCompanyButton}>
+                    <Plus className="ml-1 h-4 w-4" />
+                    إضافة زر
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {(companyForm.ctaButtons || []).map((button, index) => (
+                    <div key={`cta-${index}`} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_140px_auto] gap-2">
+                      <Input
+                        value={button.text}
+                        onChange={(e) => handleUpdateCompanyButton(index, 'text', e.target.value)}
+                        placeholder="نص الزر"
+                      />
+                      <Input
+                        value={button.link}
+                        onChange={(e) => handleUpdateCompanyButton(index, 'link', e.target.value)}
+                        placeholder="/الرابط"
+                      />
+                      <Select
+                        value={button.variant === 'secondary' ? 'secondary' : 'primary'}
+                        onValueChange={(value) => handleUpdateCompanyButton(index, 'variant', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="نوع الزر" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="primary">رئيسي</SelectItem>
+                          <SelectItem value="secondary">ثانوي</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveCompanyButton(index)}
+                        aria-label="حذف الزر"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {(!companyForm.ctaButtons || companyForm.ctaButtons.length === 0) && (
+                    <p className="text-xs text-gray-500">لم يتم إضافة أزرار بعد.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">جارٍ تحميل بيانات الشركة...</p>
+          )}
+
+          <DialogFooter className="pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCompanyDialog(false)
+                setCompanyForm(null)
+              }}
+            >
+              إلغاء
+            </Button>
+            <Button onClick={handleSaveCompany}>
+              <Save className="ml-2 h-4 w-4" />
+              حفظ المعلومات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Service Dialog */}
+      <Dialog
+        open={showServiceDialog}
+        onOpenChange={(open) => {
+          setShowServiceDialog(open)
+          if (!open) {
+            setServiceForm({})
+            setEditingService(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editingService ? 'تعديل خدمة' : 'إضافة خدمة جديدة'}</DialogTitle>
+            <DialogDescription>
+              قم بتعبئة تفاصيل الخدمة التي ستظهر في الصفحة الرئيسية
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="service-title">عنوان الخدمة *</Label>
+              <Input
+                id="service-title"
+                value={serviceForm.title || ''}
+                onChange={(e) => setServiceForm({ ...serviceForm, title: e.target.value })}
+                placeholder="مثال: صيانة معتمدة"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="service-description">وصف مختصر</Label>
+              <Textarea
+                id="service-description"
+                value={serviceForm.description || ''}
+                onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
+                rows={3}
+                placeholder="صف الخدمة في جملتين"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="service-icon">الأيقونة</Label>
+                <Input
+                  id="service-icon"
+                  value={serviceForm.icon || ''}
+                  onChange={(e) => setServiceForm({ ...serviceForm, icon: e.target.value })}
+                  placeholder="مثال: Wrench"
+                />
+              </div>
+              <div>
+                <Label htmlFor="service-link">الرابط</Label>
+                <Input
+                  id="service-link"
+                  value={serviceForm.link || ''}
+                  onChange={(e) => setServiceForm({ ...serviceForm, link: e.target.value })}
+                  placeholder="/service-link"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="service-active"
+                checked={serviceForm.isActive ?? true}
+                onCheckedChange={(checked) => setServiceForm({ ...serviceForm, isActive: checked })}
+              />
+              <Label htmlFor="service-active">الخدمة نشطة</Label>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowServiceDialog(false)
+                setServiceForm({})
+                setEditingService(null)
+              }}
+            >
+              إلغاء
+            </Button>
+            <Button onClick={handleSaveServiceForm}>
+              <Save className="ml-2 h-4 w-4" />
+              حفظ الخدمة
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Slider Dialog */}
       <Dialog open={showSliderDialog} onOpenChange={setShowSliderDialog}>

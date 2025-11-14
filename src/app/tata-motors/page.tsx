@@ -365,7 +365,7 @@ export default function TataMotorsPage() {
             {[
               { number: '7+', label: 'موديلات متاحة', icon: Truck },
               { number: '50+', label: 'سنة خبرة', icon: Shield },
-              { number: '100+', label: 'وكيل معتمد', icon: Star },
+              { number: '100+', label: 'موزع معتمد', icon: Star },
               { number: '24/7', label: 'خدمة عملاء', icon: Clock }
             ].map((stat, index) => (
               <div key={index} className="text-center">

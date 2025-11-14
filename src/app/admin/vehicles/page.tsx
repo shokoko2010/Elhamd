@@ -32,6 +32,7 @@ interface Vehicle {
   year: number
   price: number
   stockNumber: string
+  stockQuantity: number
   vin?: string
   description?: string
   category: string
@@ -128,6 +129,7 @@ export default function AdminVehiclesPage() {
     year: new Date().getFullYear(),
     price: 0,
     stockNumber: '',
+    stockQuantity: 0,
     vin: '',
     description: '',
     category: 'SEDAN', // Default value instead of empty string
@@ -161,6 +163,7 @@ export default function AdminVehiclesPage() {
       // Ensure vehicles is an array and has proper structure
       const vehiclesData = Array.isArray(data.vehicles) ? data.vehicles.map(vehicle => ({
         ...vehicle,
+        stockQuantity: typeof vehicle.stockQuantity === 'number' ? vehicle.stockQuantity : 0,
         images: Array.isArray(vehicle.images) ? vehicle.images : [],
         specifications: Array.isArray(vehicle.specifications) ? vehicle.specifications : [],
         _count: vehicle._count || { testDriveBookings: 0, serviceBookings: 0 }
@@ -176,7 +179,11 @@ export default function AdminVehiclesPage() {
         sold: vehiclesData.filter((v: Vehicle) => v.status === 'SOLD').length,
         reserved: vehiclesData.filter((v: Vehicle) => v.status === 'RESERVED').length,
         maintenance: vehiclesData.filter((v: Vehicle) => v.status === 'MAINTENANCE').length,
-        totalValue: vehiclesData.reduce((sum: number, v: Vehicle) => sum + (v.pricing?.totalPrice || v.price), 0)
+        totalValue: vehiclesData.reduce((sum: number, v: Vehicle) => {
+          const quantity = typeof v.stockQuantity === 'number' ? Math.max(v.stockQuantity, 0) : 0
+          const unitValue = v.pricing?.totalPrice || v.price
+          return sum + quantity * unitValue
+        }, 0)
       }
       setStats(vehicleStats)
       
@@ -211,6 +218,10 @@ export default function AdminVehiclesPage() {
       }
       if (formData.price <= 0) {
         toast.error('السعر يجب أن يكون أكبر من صفر')
+        return
+      }
+      if (formData.stockQuantity < 0) {
+        toast.error('الكمية يجب أن تكون صفر أو أكثر')
         return
       }
 
@@ -251,6 +262,10 @@ export default function AdminVehiclesPage() {
       }
       if (formData.price <= 0) {
         toast.error('السعر يجب أن يكون أكبر من صفر')
+        return
+      }
+      if (formData.stockQuantity < 0) {
+        toast.error('الكمية يجب أن تكون صفر أو أكثر')
         return
       }
 
@@ -308,6 +323,7 @@ export default function AdminVehiclesPage() {
       year: new Date().getFullYear(),
       price: 0,
       stockNumber: '',
+      stockQuantity: 0,
       vin: '',
       description: '',
       category: 'SEDAN', // Default value instead of empty string
@@ -329,6 +345,7 @@ export default function AdminVehiclesPage() {
       year: vehicle.year || new Date().getFullYear(),
       price: vehicle.price || 0,
       stockNumber: vehicle.stockNumber || '',
+      stockQuantity: vehicle.stockQuantity ?? 0,
       vin: vehicle.vin || '',
       description: vehicle.description || '',
       category: vehicle.category || 'SEDAN',
@@ -607,10 +624,21 @@ export default function AdminVehiclesPage() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <div className="text-right">
+                    <div className="text-right space-y-1">
                       <p className="text-lg font-bold text-green-600">
                         {formatPrice(vehicle.pricing?.totalPrice || vehicle.price)}
                       </p>
+                      {typeof vehicle.stockQuantity === 'number' && (
+                        <Badge
+                          variant="outline"
+                          className="flex items-center justify-center gap-1 border-emerald-200 bg-emerald-50 text-emerald-700"
+                        >
+                          <Package className="h-3 w-3" />
+                          <span>
+                            المخزون: {vehicle.stockQuantity.toLocaleString('ar-EG')}
+                          </span>
+                        </Badge>
+                      )}
                       {vehicle.mileage && (
                         <p className="text-xs text-gray-500">
                           {vehicle.mileage.toLocaleString('ar-EG')} كم
@@ -755,6 +783,16 @@ export default function AdminVehiclesPage() {
                   id="stockNumber"
                   value={formData.stockNumber}
                   onChange={(e) => setFormData(prev => ({ ...prev, stockNumber: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="stockQuantity">الكمية في المخزون</Label>
+                <Input
+                  id="stockQuantity"
+                  type="number"
+                  min={0}
+                  value={formData.stockQuantity}
+                  onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: Number(e.target.value) }))}
                 />
               </div>
               <div className="space-y-2">
@@ -935,6 +973,16 @@ export default function AdminVehiclesPage() {
                   id="edit-stockNumber"
                   value={formData.stockNumber}
                   onChange={(e) => setFormData(prev => ({ ...prev, stockNumber: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-stockQuantity">الكمية في المخزون</Label>
+                <Input
+                  id="edit-stockQuantity"
+                  type="number"
+                  min={0}
+                  value={formData.stockQuantity}
+                  onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: Number(e.target.value) }))}
                 />
               </div>
               <div className="space-y-2">

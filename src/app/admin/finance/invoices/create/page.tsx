@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { 
   ArrowLeft, 
   Save, 
@@ -89,6 +90,13 @@ interface VehicleOption {
   year: number
 }
 
+interface InstallmentForm {
+  id: string
+  amount: number
+  dueDate: string
+  notes?: string
+}
+
 export default function CreateInvoicePage() {
   return (
     <AdminRoute>
@@ -119,6 +127,8 @@ function CreateInvoiceContent() {
     company: ''
   })
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false)
+  const [enableInstallments, setEnableInstallments] = useState(false)
+  const [installments, setInstallments] = useState<InstallmentForm[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -393,8 +403,85 @@ function CreateInvoiceContent() {
     const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.totalPrice?.toString()) || 0), 0)
     const taxAmount = items.reduce((sum, item) => sum + (parseFloat(item.taxAmount?.toString()) || 0), 0)
     const totalAmount = subtotal + taxAmount
-    
+
     return { subtotal, taxAmount, totalAmount }
+  }
+
+  const createInstallmentId = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return `temp-${crypto.randomUUID()}`
+    }
+    return `temp-${Math.random().toString(36).slice(2, 10)}`
+  }
+
+  const addInstallmentEntry = () => {
+    const { totalAmount } = calculateTotals()
+    const scheduled = installments.reduce((sum, entry) => sum + (Number.isFinite(entry.amount) ? entry.amount : 0), 0)
+    const remaining = Math.max(totalAmount - scheduled, 0)
+
+    const baseAmount = remaining > 0
+      ? Number(remaining.toFixed(2))
+      : Number((totalAmount / Math.max(installments.length + 1, 1)).toFixed(2))
+
+    const baseDate = new Date(dueDate || issueDate || new Date().toISOString().split('T')[0])
+    baseDate.setMonth(baseDate.getMonth() + installments.length + 1)
+
+    setInstallments((prev) => [
+      ...prev,
+      {
+        id: createInstallmentId(),
+        amount: Number.isFinite(baseAmount) ? baseAmount : 0,
+        dueDate: baseDate.toISOString().split('T')[0],
+        notes: '',
+      },
+    ])
+  }
+
+  const removeInstallmentEntry = (installmentId: string) => {
+    setInstallments(prev => prev.filter(installment => installment.id !== installmentId))
+  }
+
+  const updateInstallmentEntry = (
+    installmentId: string,
+    field: 'amount' | 'dueDate' | 'notes',
+    value: string
+  ) => {
+    setInstallments(prev => prev.map(installment => {
+      if (installment.id !== installmentId) {
+        return installment
+      }
+
+      if (field === 'amount') {
+        const parsed = parseFloat(value)
+        return {
+          ...installment,
+          amount: Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : 0,
+        }
+      }
+
+      if (field === 'dueDate') {
+        return {
+          ...installment,
+          dueDate: value,
+        }
+      }
+
+      return {
+        ...installment,
+        notes: value,
+      }
+    }))
+  }
+
+  const handleInstallmentToggle = (checked: boolean) => {
+    setEnableInstallments(checked)
+    if (checked) {
+      if (installments.length === 0) {
+        addInstallmentEntry()
+      }
+    } else {
+      setInstallments([])
+    }
   }
 
   const saveAsDraft = async () => {
@@ -474,7 +561,19 @@ function CreateInvoiceContent() {
       
       const derivedInvoiceType = items.some(item => item.itemType === 'VEHICLE') ? 'PRODUCT' : invoiceType
 
-      const invoiceData = {
+      const installmentsPayload = enableInstallments
+        ? installments
+            .filter((installment) => installment.amount > 0 && installment.dueDate)
+            .map((installment, index) => ({
+              id: installment.id.startsWith('temp-') ? undefined : installment.id,
+              amount: Number(installment.amount.toFixed(2)),
+              dueDate: installment.dueDate,
+              sequence: index + 1,
+              notes: installment.notes && installment.notes.trim().length > 0 ? installment.notes.trim() : undefined,
+            }))
+        : []
+
+      const invoiceData: any = {
         customerId: selectedCustomer,
         type: derivedInvoiceType,
         items: items.map(item => ({
@@ -493,6 +592,22 @@ function CreateInvoiceContent() {
         notes,
         terms,
         status
+      }
+
+      if (enableInstallments && installmentsPayload.length > 0) {
+        const scheduledTotal = installmentsPayload.reduce((sum: number, installment: any) => sum + installment.amount, 0)
+
+        if (Math.abs(scheduledTotal - totalAmount) > 0.5) {
+          setLoading(false)
+          toast({
+            title: 'تنبيه',
+            description: 'مجموع الأقساط لا يساوي إجمالي الفاتورة. يرجى تعديل المبالغ قبل الحفظ.',
+            variant: 'destructive'
+          })
+          return
+        }
+
+        invoiceData.installments = installmentsPayload
       }
 
       const response = await fetch('/api/finance/invoices', {
@@ -534,6 +649,9 @@ function CreateInvoiceContent() {
   }
 
   const { subtotal, taxAmount, totalAmount } = calculateTotals()
+  const totalInstallmentAmount = installments.reduce((sum, installment) => sum + (Number.isFinite(installment.amount) ? installment.amount : 0), 0)
+  const installmentDifference = totalInstallmentAmount - totalAmount
+  const hasInstallmentMismatch = enableInstallments && Math.abs(installmentDifference) > 0.5
 
   return (
     <div className="space-y-6">
@@ -1008,6 +1126,96 @@ function CreateInvoiceContent() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Installment Plan */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">خطة التقسيط</CardTitle>
+                <Switch checked={enableInstallments} onCheckedChange={handleInstallmentToggle} />
+              </div>
+              <CardDescription>
+                وزع قيمة الفاتورة على دفعات مجدولة يتم تتبعها تلقائياً.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {enableInstallments ? (
+                <div className="space-y-3">
+                  {installments.map((installment, index) => (
+                    <div key={installment.id} className="rounded-lg border p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">القسط #{index + 1}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeInstallmentEntry(installment.id)}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <Label className="text-xs text-gray-600">تاريخ الاستحقاق</Label>
+                          <Input
+                            type="date"
+                            value={installment.dueDate}
+                            onChange={(event) => updateInstallmentEntry(installment.id, 'dueDate', event.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">المبلغ</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={installment.amount.toString()}
+                            onChange={(event) => updateInstallmentEntry(installment.id, 'amount', event.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">ملاحظات (اختياري)</Label>
+                          <Input
+                            value={installment.notes ?? ''}
+                            onChange={(event) => updateInstallmentEntry(installment.id, 'notes', event.target.value)}
+                            placeholder="مثال: دفعة مقدّم"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex items-center justify-between rounded bg-gray-50 p-3 text-sm">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">إجمالي الأقساط</span>
+                        <Badge variant={hasInstallmentMismatch ? 'secondary' : 'outline'}>
+                          {totalInstallmentAmount.toFixed(2)} ج.م
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        الفرق عن الإجمالي: {installmentDifference >= 0 ? '+' : ''}{installmentDifference.toFixed(2)} ج.م
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={addInstallmentEntry}>
+                      <Plus className="ml-2 h-4 w-4" />
+                      إضافة قسط
+                    </Button>
+                  </div>
+
+                  {hasInstallmentMismatch && (
+                    <p className="text-xs text-amber-600">
+                      مجموع الأقساط لا يساوي إجمالي الفاتورة. يرجى تعديل المبالغ لضمان صحة البيانات.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  فعّل خيار التقسيط لتحديد مواعيد وقيم الدفعات الخاصة بالفاتورة.
+                </p>
+              )}
             </CardContent>
           </Card>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSiteSettings } from '@/components/SiteSettingsProvider'
+import { normalizeBrandingObject, normalizeBrandingText } from '@/lib/branding'
 import { 
   Car, 
   Phone, 
@@ -66,21 +67,21 @@ export default function Footer() {
         const contentResponse = await fetch('/api/footer/content')
         if (contentResponse.ok) {
           const contentData = await contentResponse.json()
-          setFooterContent(contentData)
+          setFooterContent(normalizeBrandingObject(contentData))
         }
 
         // Fetch footer columns
         const columnsResponse = await fetch('/api/footer/columns')
         if (columnsResponse.ok) {
           const columnsData = await columnsResponse.json()
-          setFooterColumns(columnsData)
+          setFooterColumns(Array.isArray(columnsData) ? columnsData.map((column: FooterColumn) => normalizeBrandingObject(column)) : [])
         }
 
         // Fetch footer social links
         const socialResponse = await fetch('/api/footer/social')
         if (socialResponse.ok) {
           const socialData = await socialResponse.json()
-          setFooterSocial(socialData)
+          setFooterSocial(normalizeBrandingObject(socialData))
         }
       } catch (error) {
         console.error('Error fetching footer data:', error)
@@ -103,15 +104,81 @@ export default function Footer() {
     }
   }
 
-  const generateLinkHref = (item: string | any) => {
-    // Handle both string (old format) and object (new format)
-    if (typeof item === 'object' && item.href) {
-      return item.href
+  const getItemText = (item: string | any) => {
+    if (typeof item === 'object' && item.text) {
+      return normalizeBrandingText(item.text)
     }
-    
-    const text = typeof item === 'string' ? item : item.text || ''
-    
-    // Map Arabic text to appropriate routes
+
+    return typeof item === 'string' ? normalizeBrandingText(item) : ''
+  }
+
+  const socialTextMap: Record<string, keyof FooterSocial | keyof typeof settings.socialLinks> = {
+    'فيسبوك': 'facebook',
+    'facebook': 'facebook',
+    'تويتر': 'twitter',
+    'twitter': 'twitter',
+    'اكس': 'twitter',
+    'انستغرام': 'instagram',
+    'انستقرام': 'instagram',
+    'instagram': 'instagram',
+    'لينكدإن': 'linkedin',
+    'linkedin': 'linkedin',
+    'يوتيوب': 'youtube',
+    'youtube': 'youtube',
+    'تيك توك': 'tiktok',
+    'tiktok': 'tiktok'
+  }
+
+  const isLikelyPhone = (value: string) => /^(\+?[0-9][0-9\s-]{5,})$/.test(value.replace(/\u200f|\u200e/g, ''))
+  const isLikelyEmail = (value: string) => /.+@.+\..+/.test(value)
+
+  const sanitizeHref = (href?: string) => {
+    if (!href) return undefined
+    if (href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('#')) {
+      return href
+    }
+    if (href.startsWith('/')) {
+      return href
+    }
+    return `/${href}`
+  }
+
+  const resolveLinkHref = (item: string | any, columnType: string, text: string) => {
+    if (typeof item === 'object' && item.href) {
+      return sanitizeHref(item.href)
+    }
+
+    const trimmedText = text.trim()
+
+    if (!trimmedText) {
+      return undefined
+    }
+
+    if (columnType === 'SOCIAL') {
+      const key = socialTextMap[trimmedText.toLowerCase()]
+      if (key) {
+        return sanitizeHref(
+          (footerSocial && footerSocial[key as keyof FooterSocial]) ||
+          (settings.socialLinks && settings.socialLinks[key as keyof typeof settings.socialLinks])
+        )
+      }
+      return undefined
+    }
+
+    if (columnType === 'CONTACT') {
+      if (isLikelyPhone(trimmedText)) {
+        const phone = trimmedText.replace(/\s+/g, '')
+        return `tel:${phone}`
+      }
+      if (isLikelyEmail(trimmedText)) {
+        return `mailto:${trimmedText}`
+      }
+      if (trimmedText.includes('بورسعيد') || trimmedText.includes('القنطرة')) {
+        return `https://maps.google.com/?q=${encodeURIComponent(trimmedText)}`
+      }
+      return undefined
+    }
+
     const linkMap: { [key: string]: string } = {
       'الرئيسية': '/',
       'السيارات': '/vehicles',
@@ -131,49 +198,41 @@ export default function Footer() {
       'الضمان': '/warranty',
       'قطع الغيار': '/parts'
     }
-    
-    return linkMap[text] || `/${text.toLowerCase().replace(/\s+/g, '-')}`
-  }
 
-  const getItemText = (item: string | any) => {
-    // Handle both string (old format) and object (new format)
-    if (typeof item === 'object' && item.text) {
-      return item.text
+    if (linkMap[trimmedText]) {
+      return linkMap[trimmedText]
     }
-    
-    return typeof item === 'string' ? item : ''
+
+    return undefined
   }
 
   const renderFooterItem = (item: any, columnType: string) => {
     const text = getItemText(item)
-    const href = generateLinkHref(item)
-    
+
     if (!text) return null
-    
-    const linkClasses = "text-gray-300 hover:text-white transition-colors"
-    
-    switch (columnType) {
-      case 'LINKS':
-      case 'CONTACT':
-        return (
-          <Link href={href} className={linkClasses}>
-            {text}
-          </Link>
-        )
-      case 'SOCIAL':
-        return (
-          <Link 
-            href={href} 
-            className={linkClasses}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {text}
-          </Link>
-        )
-      default:
-        return <span className="text-gray-300">{text}</span>
+
+    const href = resolveLinkHref(item, columnType, text)
+    const linkClasses = 'text-gray-300 hover:text-white transition-colors'
+
+    if (!href) {
+      return <span className="text-gray-300">{text}</span>
     }
+
+    const isExternal = href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')
+
+    if (isExternal) {
+      return (
+        <a href={href} className={linkClasses} target="_blank" rel="noopener noreferrer">
+          {text}
+        </a>
+      )
+    }
+
+    return (
+      <Link href={href} className={linkClasses}>
+        {text}
+      </Link>
+    )
   }
 
   const getSocialIcon = (platform: string, url: string) => {
@@ -266,12 +325,24 @@ export default function Footer() {
 
         <div className="border-t border-gray-800 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div 
-              className="text-gray-400 text-sm"
-              dangerouslySetInnerHTML={{ 
-                __html: footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings.siteTitle}. جميع الحقوق محفوظة.` 
-              }}
-            />
+            <div className="text-gray-400 text-sm text-center md:text-right">
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings.siteTitle}. جميع الحقوق محفوظة.`
+                }}
+              />
+              <span className="block md:inline md:ml-2">
+                تم التطوير ويتم الإدارة بواسطة{' '}
+                <a
+                  href="https://arab-web3.com"
+                  className="text-white hover:text-blue-200 underline decoration-dotted"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Arab Web 3
+                </a>
+              </span>
+            </div>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
                 سياسة الخصوصية

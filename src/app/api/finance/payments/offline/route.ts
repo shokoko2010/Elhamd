@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
 import { getApiUser } from '@/lib/api-auth'
 import {
+  InstallmentStatus,
   InvoicePaymentStatus,
   InvoiceStatus,
   PaymentMethod,
@@ -12,6 +13,7 @@ import {
 import { PERMISSIONS } from '@/lib/permissions'
 import { normalizeInvoiceRecord } from '@/lib/invoice-normalizer'
 import { applyInvoiceSideEffects, extractInvoiceItemLinks } from '@/lib/invoice-fulfillment'
+import { clampInstallmentStatus } from '@/lib/invoice-installments'
 
 // Handle OPTIONS requests for CORS
 export async function OPTIONS(request: NextRequest) {
@@ -240,7 +242,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
-    const { invoiceId, amount, paymentMethod, notes, referenceNumber, paymentDate } = body
+    const { invoiceId, amount, paymentMethod, notes, referenceNumber, paymentDate, installmentId } = body
 
     // Validate required fields
     if (!invoiceId || !amount || !paymentMethod) {
@@ -299,6 +301,11 @@ export async function POST(request: NextRequest) {
             payment: true,
           },
         },
+        installments: {
+          orderBy: {
+            sequence: 'asc'
+          }
+        },
       },
     })
 
@@ -325,6 +332,31 @@ export async function POST(request: NextRequest) {
       items: invoice.items,
       taxes: invoice.taxes,
     })
+
+    let installmentUpdate: {
+      id: string
+      status: InstallmentStatus
+      paidAmount: number
+      paidAt: Date | null
+    } | null = null
+
+    const targetInstallment = installmentId
+      ? invoice.installments.find(installment => installment.id === installmentId)
+      : null
+
+    if (installmentId && !targetInstallment) {
+      return NextResponse.json({
+        error: 'لم يتم العثور على القسط المرتبط بالفاتورة',
+        code: 'INSTALLMENT_NOT_FOUND'
+      }, { status: 404 })
+    }
+
+    if (targetInstallment && targetInstallment.paymentId) {
+      return NextResponse.json({
+        error: 'تم تسجيل دفعة مسبقة لهذا القسط ولا يمكن ربط دفعة أخرى مباشرةً',
+        code: 'INSTALLMENT_ALREADY_SETTLED'
+      }, { status: 400 })
+    }
 
     if (normalizedInvoice.needsNormalization) {
       await db.invoice.update({
@@ -646,6 +678,34 @@ export async function POST(request: NextRequest) {
       console.warn('Transaction creation failed, but payment was successful')
     }
 
+    if (targetInstallment) {
+      const combinedPaidAmount = (targetInstallment.paidAmount ?? 0) + parsedAmount
+      const nextPaidAmount = Math.min(targetInstallment.amount, combinedPaidAmount)
+      const nextStatus = clampInstallmentStatus({
+        amount: targetInstallment.amount,
+        paidAmount: nextPaidAmount,
+        dueDate: targetInstallment.dueDate,
+        status: targetInstallment.status,
+      })
+
+      const updatedInstallmentRecord = await db.invoiceInstallment.update({
+        where: { id: targetInstallment.id },
+        data: {
+          paidAmount: nextPaidAmount,
+          paidAt: new Date(paymentDate || Date.now()),
+          status: nextStatus,
+          paymentId: payment.id,
+        },
+      })
+
+      installmentUpdate = {
+        id: updatedInstallmentRecord.id,
+        status: updatedInstallmentRecord.status,
+        paidAmount: updatedInstallmentRecord.paidAmount,
+        paidAt: updatedInstallmentRecord.paidAt,
+      }
+    }
+
     // Log activity
     await db.activityLog.create({
       data: {
@@ -679,7 +739,8 @@ export async function POST(request: NextRequest) {
         totalAmount: normalizedInvoice.totalAmount,
         paidAmount: newTotalPaid,
         status: newStatus
-      }
+      },
+      installmentUpdate,
     })
     
     // Add CORS headers

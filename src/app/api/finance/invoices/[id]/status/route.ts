@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
 import { getApiUser } from '@/lib/api-auth'
 import { InvoiceStatus } from '@prisma/client'
+import { normalizeInvoiceRecord } from '@/lib/invoice-normalizer'
+import { applyInvoiceSideEffects, extractInvoiceItemLinks, releaseInvoiceSideEffects } from '@/lib/invoice-fulfillment'
 
 // Handle OPTIONS requests for CORS
 export async function OPTIONS(request: NextRequest) {
@@ -89,7 +91,9 @@ export async function PUT(
           include: {
             payment: true
           }
-        }
+        },
+        items: true,
+        taxes: true
       }
     })
 
@@ -171,9 +175,75 @@ export async function PUT(
           include: {
             payment: true
           }
-        }
+        },
+        items: true,
+        taxes: true
       }
     })
+
+    const baseMetadata = currentInvoice.metadata && typeof currentInvoice.metadata === 'object' && !Array.isArray(currentInvoice.metadata)
+      ? (currentInvoice.metadata as Record<string, unknown>)
+      : {}
+
+    const inventoryAdjusted = baseMetadata['inventoryAdjusted'] === true
+    const inventoryRestored = baseMetadata['inventoryRestored'] === true
+
+    const reserveStatuses = new Set<InvoiceStatus>([
+      InvoiceStatus.SENT,
+      InvoiceStatus.PARTIALLY_PAID,
+      InvoiceStatus.OVERDUE,
+      InvoiceStatus.PAID
+    ])
+
+    const releaseStatuses = new Set<InvoiceStatus>([
+      InvoiceStatus.CANCELLED,
+      InvoiceStatus.REFUNDED,
+      InvoiceStatus.DRAFT
+    ])
+
+    const shouldCallApply = reserveStatuses.has(status)
+    const shouldAdjustInventory = shouldCallApply && !inventoryAdjusted
+    const shouldReleaseInventory = releaseStatuses.has(status) && inventoryAdjusted && !inventoryRestored
+
+    const normalizedInvoice = normalizeInvoiceRecord(updatedInvoice)
+    const { links, inventoryIds, vehicleIds } = extractInvoiceItemLinks(normalizedInvoice.items)
+
+    const [inventoryRecords, vehicleRecords] = await Promise.all([
+      inventoryIds.length
+        ? db.inventoryItem.findMany({ where: { id: { in: inventoryIds } } })
+        : Promise.resolve([]),
+      vehicleIds.length
+        ? db.vehicle.findMany({ where: { id: { in: vehicleIds } } })
+        : Promise.resolve([])
+    ])
+
+    const inventoryMap = new Map(inventoryRecords.map(record => [record.id, record]))
+    const vehicleMap = new Map(vehicleRecords.map(record => [record.id, record]))
+
+    if (shouldCallApply) {
+      await applyInvoiceSideEffects({
+        invoice: updatedInvoice,
+        links,
+        inventoryMap,
+        vehicleMap,
+        totals: {
+          subtotal: normalizedInvoice.subtotal,
+          taxAmount: normalizedInvoice.taxAmount,
+          totalAmount: normalizedInvoice.totalAmount,
+          breakdown: normalizedInvoice.taxes
+        },
+        adjustInventory: shouldAdjustInventory
+      })
+    }
+
+    if (shouldReleaseInventory) {
+      await releaseInvoiceSideEffects({
+        invoice: updatedInvoice,
+        links,
+        inventoryMap,
+        vehicleMap
+      })
+    }
 
     // Log activity
     await db.activityLog.create({

@@ -70,6 +70,8 @@ model User {
   marketingCampaigns     MarketingCampaign[]    @relation("CampaignCreator")
   approvedPayrollRecords PayrollRecord[]        @relation("PayrollApprover")
   payrollRecords         PayrollRecord[]        @relation("PayrollCreator")
+  approvedSalaryAdvances SalaryAdvance[]        @relation("SalaryAdvanceApprover")
+  requestedSalaryAdvances SalaryAdvance[]       @relation("SalaryAdvanceRequester")
   performanceReviews     PerformanceReview[]    @relation("PerformanceReviewer")
   approvedPurchaseOrders PurchaseOrder[]        @relation("PurchaseOrderApprover")
   purchaseOrders         PurchaseOrder[]        @relation("PurchaseOrderCreator")
@@ -149,6 +151,7 @@ model Vehicle {
   model             String
   year              Int
   price             Float
+  stockQuantity     Int                    @default(0)
   stockNumber       String                 @unique
   vin               String?                @unique
   description       String?
@@ -366,6 +369,7 @@ model Payment {
   invoice            Invoice?          @relation("InvoicePaymentsDirect", fields: [invoiceId], references: [id])
   serviceBooking     ServiceBooking?   @relation("ServiceBookingPayments", fields: [serviceBookingId], references: [id], onDelete: SetNull)
   testDriveBooking   TestDriveBooking? @relation("TestDriveBookingPayments", fields: [testDriveBookingId], references: [id], onDelete: SetNull)
+  installments       InvoiceInstallment[] @relation("InvoiceInstallmentPayment")
 
   @@index([customerId])
   @@index([invoiceId])
@@ -625,6 +629,22 @@ model SiteSettings {
   updatedAt           DateTime @updatedAt
 
   @@map("site_settings")
+}
+
+model HomepageSettings {
+  id                    String         @id @default(cuid())
+  showHeroSlider        Boolean        @default(true)
+  autoPlaySlider        Boolean        @default(true)
+  sliderInterval        Int            @default(5000)
+  showFeaturedVehicles  Boolean        @default(true)
+  featuredVehiclesCount Int            @default(6)
+  showServices          Boolean        @default(true)
+  showCompanyInfo       Boolean        @default(true)
+  theme                 HomepageTheme  @default(LIGHT)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@map("homepage_settings")
 }
 
 model FooterContent {
@@ -1138,6 +1158,7 @@ model Invoice {
   convertedFromQuotation   Quotation?           @relation("QuotationInvoice")
   transactions             Transaction[]
   directPayments           Payment[]            @relation("InvoicePaymentsDirect")
+  installments             InvoiceInstallment[]
 
   @@index([customerId, status])
   @@index([issueDate])
@@ -1182,6 +1203,27 @@ model InvoicePayment {
 
   @@unique([invoiceId, paymentId])
   @@map("invoice_payments")
+}
+
+model InvoiceInstallment {
+  id          String             @id @default(cuid())
+  invoiceId   String
+  sequence    Int
+  amount      Float
+  dueDate     DateTime
+  status      InstallmentStatus  @default(PENDING)
+  paidAmount  Float              @default(0)
+  paidAt      DateTime?
+  notes       String?
+  paymentId   String?
+  metadata    Json?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  invoice     Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment     Payment?           @relation("InvoiceInstallmentPayment", fields: [paymentId], references: [id])
+
+  @@unique([invoiceId, sequence])
+  @@map("invoice_installments")
 }
 
 model InvoiceTax {
@@ -2133,6 +2175,7 @@ model Employee {
   performanceReviews        PerformanceReview[]
   trainingRecords           TrainingRecord[]
   createdInvoices           Invoice[]           @relation("EmployeeCreatedInvoices")
+  salaryAdvances            SalaryAdvance[]
 
   @@index([employeeNumber])
   @@index([departmentId])
@@ -2163,6 +2206,34 @@ model PayrollRecord {
 
   @@index([employeeId, period])
   @@map("payroll_records")
+}
+
+model SalaryAdvance {
+  id                 String                @id @default(cuid())
+  employeeId         String
+  requestedBy        String
+  amount             Float
+  status             SalaryAdvanceStatus   @default(PENDING)
+  reason             String?
+  requestedAt        DateTime              @default(now())
+  approvedBy         String?
+  approvedAt         DateTime?
+  disbursedAt        DateTime?
+  repaymentStart     DateTime?
+  repaymentMonths    Int?
+  repaymentSchedule  Json?
+  repaidAmount       Float                 @default(0)
+  nextDueDate        DateTime?
+  notes              String?
+  metadata           Json?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  employee           Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approver           User?                 @relation("SalaryAdvanceApprover", fields: [approvedBy], references: [id])
+  requester          User                  @relation("SalaryAdvanceRequester", fields: [requestedBy], references: [id])
+
+  @@index([employeeId, status])
+  @@map("salary_advances")
 }
 
 model LeaveRequest {
@@ -3084,6 +3155,15 @@ enum InvoicePaymentStatus {
   REFUNDED
 }
 
+enum InstallmentStatus {
+  PENDING
+  SCHEDULED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
 enum InvoiceType {
   SERVICE
   PRODUCT
@@ -3469,6 +3549,15 @@ enum PayrollStatus {
   CANCELLED
 }
 
+enum SalaryAdvanceStatus {
+  PENDING
+  APPROVED
+  DISBURSED
+  IN_REPAYMENT
+  REPAID
+  REJECTED
+}
+
 enum LeaveType {
   ANNUAL
   SICK
@@ -3581,6 +3670,12 @@ enum PartStatus {
   OUT_OF_STOCK
   ORDERED
   RESERVED
+}
+
+enum HomepageTheme {
+  LIGHT
+  DARK
+  AUTO
 }
 
 enum PartCategory {

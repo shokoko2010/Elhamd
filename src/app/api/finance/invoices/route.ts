@@ -5,7 +5,13 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/auth-server'
-import { InvoicePaymentStatus, InvoiceStatus, PerformancePeriod, UserRole } from '@prisma/client'
+import {
+  InstallmentStatus,
+  InvoicePaymentStatus,
+  InvoiceStatus,
+  PerformancePeriod,
+  UserRole
+} from '@prisma/client'
 import { PERMISSIONS } from '@/lib/permissions'
 import {
   normalizeInvoiceItemsFromInput,
@@ -15,6 +21,11 @@ import {
   applyInvoiceSideEffects,
   extractInvoiceItemLinks,
 } from '@/lib/invoice-fulfillment'
+import {
+  clampInstallmentStatus,
+  normalizeInstallmentInputs,
+  calculateInstallmentTotals,
+} from '@/lib/invoice-installments'
 import { updateEmployeePerformanceMetrics } from '@/lib/performance-metric-sync'
 
 export async function OPTIONS(request: NextRequest) {
@@ -160,6 +171,11 @@ export async function GET(request: NextRequest) {
             },
           },
           taxes: true,
+          installments: {
+            orderBy: {
+              sequence: 'asc',
+            },
+          },
         },
         orderBy,
         skip,
@@ -181,6 +197,29 @@ export async function GET(request: NextRequest) {
       })
 
       const paidAmount = normalized.totalAmount - normalized.outstanding
+
+      const normalizedInstallments = invoice.installments.map(installment => {
+        const status = clampInstallmentStatus({
+          amount: installment.amount,
+          paidAmount: installment.paidAmount,
+          dueDate: installment.dueDate,
+          status: installment.status,
+        })
+
+        return {
+          id: installment.id,
+          sequence: installment.sequence,
+          amount: installment.amount,
+          dueDate: installment.dueDate,
+          status,
+          paidAmount: installment.paidAmount,
+          paidAt: installment.paidAt,
+          notes: installment.notes,
+          paymentId: installment.paymentId,
+        }
+      })
+
+      const installmentTotals = calculateInstallmentTotals(invoice.installments)
 
       return {
         id: invoice.id,
@@ -244,6 +283,12 @@ export async function GET(request: NextRequest) {
               }
             : null,
         })),
+        installments: normalizedInstallments,
+        installmentSummary: {
+          scheduled: installmentTotals.scheduled,
+          paid: installmentTotals.paid,
+          outstanding: Math.max(0, installmentTotals.scheduled - installmentTotals.paid),
+        },
       }
     })
 
@@ -348,6 +393,7 @@ export async function POST(request: NextRequest) {
       branchId,
       status: requestedStatus,
       metadata: rawMetadata,
+      installments: rawInstallments,
     } = body
 
     // Validate required fields
@@ -457,6 +503,49 @@ export async function POST(request: NextRequest) {
 
     // Normalize invoice items and totals
     const { items: normalizedItems, totals } = normalizeInvoiceItemsFromInput(items)
+
+    const normalizedInstallments = normalizeInstallmentInputs(rawInstallments)
+    const installmentTotals = calculateInstallmentTotals(normalizedInstallments)
+
+    if (normalizedInstallments.length) {
+      const issueDateValue = new Date(issueDate)
+
+      if (Number.isNaN(issueDateValue.getTime())) {
+        return NextResponse.json(
+          {
+            error: 'تاريخ الإصدار غير صالح للفاتورة عند إعداد خطة التقسيط',
+          },
+          {
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+            },
+          }
+        )
+      }
+
+      const hasInvalidDueDate = normalizedInstallments.some(installment => {
+        return installment.dueDate.getTime() < issueDateValue.getTime()
+      })
+
+      if (hasInvalidDueDate) {
+        return NextResponse.json(
+          {
+            error: 'لا يمكن أن يكون تاريخ استحقاق القسط أقدم من تاريخ إصدار الفاتورة',
+          },
+          {
+            status: 400,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+            },
+          }
+        )
+      }
+    }
 
     const { links, inventoryIds, vehicleIds } = extractInvoiceItemLinks(normalizedItems)
 
@@ -619,10 +708,27 @@ export async function POST(request: NextRequest) {
           })),
         })
       }
-      
+
+      if (normalizedInstallments.length) {
+        await tx.invoiceInstallment.createMany({
+          data: normalizedInstallments.map((installment, index) => ({
+            invoiceId: newInvoice.id,
+            sequence: index + 1,
+            amount: installment.amount,
+            dueDate: installment.dueDate,
+            status: installment.hasManualStatus
+              ? installment.status
+              : InstallmentStatus.SCHEDULED,
+            paidAmount: installment.paidAmount,
+            notes: installment.notes ?? null,
+            metadata: installment.metadata,
+          })),
+        })
+      }
+
       return newInvoice
     })
-    
+
     const completeInvoice = await db.invoice.findUnique({
       where: { id: invoice.id },
       include: {
@@ -655,6 +761,11 @@ export async function POST(request: NextRequest) {
         },
         items: true,
         taxes: true,
+        installments: {
+          orderBy: {
+            sequence: 'asc',
+          },
+        },
       },
     })
 
@@ -709,6 +820,11 @@ export async function POST(request: NextRequest) {
         },
         items: true,
         taxes: true,
+        installments: {
+          orderBy: {
+            sequence: 'asc',
+          },
+        },
       },
     })
 
@@ -725,6 +841,29 @@ export async function POST(request: NextRequest) {
 
           const paidAmount = normalized.totalAmount - normalized.outstanding
 
+          const normalizedInstallments = refreshedInvoice.installments.map(installment => {
+            const status = clampInstallmentStatus({
+              amount: installment.amount,
+              paidAmount: installment.paidAmount,
+              dueDate: installment.dueDate,
+              status: installment.status,
+            })
+
+            return {
+              id: installment.id,
+              sequence: installment.sequence,
+              amount: installment.amount,
+              dueDate: installment.dueDate,
+              status,
+              paidAmount: installment.paidAmount,
+              paidAt: installment.paidAt,
+              notes: installment.notes,
+              paymentId: installment.paymentId,
+            }
+          })
+
+          const refreshedInstallmentTotals = calculateInstallmentTotals(refreshedInvoice.installments)
+
           return {
             ...refreshedInvoice,
             subtotal: normalized.subtotal,
@@ -734,6 +873,12 @@ export async function POST(request: NextRequest) {
             outstanding: normalized.outstanding,
             items: normalized.items,
             taxes: normalized.taxes,
+            installments: normalizedInstallments,
+            installmentSummary: {
+              scheduled: refreshedInstallmentTotals.scheduled,
+              paid: refreshedInstallmentTotals.paid,
+              outstanding: Math.max(0, refreshedInstallmentTotals.scheduled - refreshedInstallmentTotals.paid),
+            },
             createdBy: refreshedInvoice.createdBy,
             creator: refreshedInvoice.createdByEmployee
               ? {

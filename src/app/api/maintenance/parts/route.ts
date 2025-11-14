@@ -5,6 +5,8 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { PartStatus, PartCategory } from '@/types/maintenance'
+import { backfillMaintenancePartsFromInventory } from '@/lib/maintenance-part-sync'
+import { getAuthUser, UserRole } from '@/lib/auth-server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +14,19 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const hasAccess = [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.STAFF,
+      UserRole.BRANCH_MANAGER
+    ].includes(user.role)
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    await backfillMaintenancePartsFromInventory(user.id)
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -22,42 +37,41 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    const where: any = {}
+    const filters: any[] = [
+      {
+        NOT: {
+          partNumber: {
+            startsWith: 'VEH-',
+            mode: 'insensitive'
+          }
+        }
+      }
+    ]
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { partNumber: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { supplier: { contains: search, mode: 'insensitive' } },
-      ]
+      filters.push({
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { partNumber: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { supplier: { contains: search, mode: 'insensitive' } },
+        ]
+      })
     }
 
     if (status !== 'all') {
-      where.status = status as PartStatus
+      filters.push({ status: status as PartStatus })
     }
 
     if (category !== 'all') {
-      where.category = category as PartCategory
+      filters.push({ category: category as PartCategory })
     }
+
+    const where = filters.length === 1 ? filters[0] : { AND: filters }
 
     const [parts, total] = await Promise.all([
       prisma.maintenancePart.findMany({
         where,
-        include: {
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          _count: {
-            select: {
-              usedIn: true,
-            },
-          },
-        },
         orderBy: [
           { status: 'asc' },
           { name: 'asc' },
@@ -93,6 +107,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const hasAccess = [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.STAFF,
+      UserRole.BRANCH_MANAGER
+    ].includes(user.role)
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const data = await request.json()
     const {
       partNumber,
@@ -112,7 +137,13 @@ export async function POST(request: NextRequest) {
     } = data
 
     // Validate required fields
-    if (!partNumber || !name || !category || !cost || !price || !quantity || !minStock) {
+    const parsedCost = Number(cost)
+    const parsedPrice = Number(price)
+    const parsedQuantity = Number(quantity)
+    const parsedMinStock = Number(minStock)
+    const parsedMaxStock = maxStock !== undefined && maxStock !== null ? Number(maxStock) : null
+
+    if (!partNumber || !name || !category || Number.isNaN(parsedCost) || Number.isNaN(parsedPrice) || Number.isNaN(parsedQuantity) || Number.isNaN(parsedMinStock)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -137,26 +168,17 @@ export async function POST(request: NextRequest) {
         name,
         category: category as PartCategory,
         description,
-        cost,
-        price,
-        quantity,
-        minStock,
-        maxStock,
+        cost: parsedCost,
+        price: parsedPrice,
+        quantity: parsedQuantity,
+        minStock: parsedMinStock,
+        maxStock: parsedMaxStock,
         location,
         supplier,
-        status: status as PartStatus || PartStatus.AVAILABLE,
+        status: status ? (status as PartStatus) : PartStatus.AVAILABLE,
         barcode,
         imageUrl,
         createdBy: user.id,
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
       },
     })
 

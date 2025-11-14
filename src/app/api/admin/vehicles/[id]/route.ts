@@ -5,28 +5,56 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
-import { UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
+import { Prisma, UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
 import { z } from 'zod'
 import { PERMISSIONS } from '@/lib/permissions'
 
-// Validation schema for updates
 const updateVehicleSchema = z.object({
   make: z.string().min(1, 'الماركة مطلوبة').optional(),
   model: z.string().min(1, 'الموديل مطلوب').optional(),
   year: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
   price: z.number().positive('السعر يجب أن يكون موجباً').optional(),
   stockNumber: z.string().min(1, 'رقم المخزون مطلوب').optional(),
+  stockQuantity: z.number().int().min(0).optional(),
   vin: z.string().optional(),
   description: z.string().optional(),
   category: z.nativeEnum(VehicleCategory).optional(),
   fuelType: z.nativeEnum(FuelType).optional(),
   transmission: z.nativeEnum(TransmissionType).optional(),
-  mileage: z.number().min(0).optional(),
+  mileage: z.number().int().min(0).optional(),
   color: z.string().optional(),
   status: z.nativeEnum(VehicleStatus).optional(),
-  featured: z.boolean().optional(),
-  isActive: z.boolean().optional()
+  featured: z.boolean().optional()
 })
+
+const sanitizeVehiclePayload = (payload: z.infer<typeof updateVehicleSchema>) => {
+  const data: Record<string, unknown> = { ...payload }
+
+  if (data.vin !== undefined) {
+    const vin = typeof data.vin === 'string' ? data.vin.trim() : data.vin
+    data.vin = vin ? vin : undefined
+  }
+
+  if (data.description !== undefined && typeof data.description === 'string') {
+    const trimmed = data.description.trim()
+    data.description = trimmed ? trimmed : undefined
+  }
+
+  if (data.color !== undefined && typeof data.color === 'string') {
+    const trimmed = data.color.trim()
+    data.color = trimmed ? trimmed : undefined
+  }
+
+  if (data.mileage !== undefined && data.mileage !== null) {
+    data.mileage = Number(data.mileage)
+  }
+
+  if (data.stockQuantity !== undefined && data.stockQuantity !== null) {
+    data.stockQuantity = Number(data.stockQuantity)
+  }
+
+  return data as z.infer<typeof updateVehicleSchema>
+}
 
 // GET /api/admin/vehicles/[id] - Get single vehicle
 export async function GET(request: NextRequest, context: RouteParams) {
@@ -39,14 +67,16 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.STAFF ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes(PERMISSIONS.EDIT_VEHICLES) ||
-                      user.permissions.includes(PERMISSIONS.DELETE_VEHICLES) ||
-                      user.permissions.includes(PERMISSIONS.CREATE_VEHICLES) ||
-                      user.permissions.includes(PERMISSIONS.VIEW_VEHICLES)
+    const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
+    const hasAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.STAFF ||
+      user.role === UserRole.BRANCH_MANAGER ||
+      userPermissions.includes(PERMISSIONS.EDIT_VEHICLES) ||
+      userPermissions.includes(PERMISSIONS.DELETE_VEHICLES) ||
+      userPermissions.includes(PERMISSIONS.CREATE_VEHICLES) ||
+      userPermissions.includes(PERMISSIONS.VIEW_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -99,14 +129,16 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.role === UserRole.STAFF ||
-                      user.role === UserRole.BRANCH_MANAGER ||
-                      user.permissions.includes(PERMISSIONS.EDIT_VEHICLES) ||
-                      user.permissions.includes(PERMISSIONS.DELETE_VEHICLES) ||
-                      user.permissions.includes(PERMISSIONS.CREATE_VEHICLES) ||
-                      user.permissions.includes(PERMISSIONS.VIEW_VEHICLES)
+    const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
+    const hasAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.STAFF ||
+      user.role === UserRole.BRANCH_MANAGER ||
+      userPermissions.includes(PERMISSIONS.EDIT_VEHICLES) ||
+      userPermissions.includes(PERMISSIONS.DELETE_VEHICLES) ||
+      userPermissions.includes(PERMISSIONS.CREATE_VEHICLES) ||
+      userPermissions.includes(PERMISSIONS.VIEW_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
@@ -114,7 +146,8 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 
     // Check if vehicle exists
     const existingVehicle = await db.vehicle.findUnique({
-      where: { id }
+      where: { id },
+      include: { pricing: true }
     })
 
     if (!existingVehicle) {
@@ -128,13 +161,18 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     
     // Validate input
     const validatedData = updateVehicleSchema.parse(body)
+    const sanitizedData = sanitizeVehiclePayload(validatedData)
+
+    const updateData: Prisma.VehicleUpdateInput = {
+      ...sanitizedData
+    }
 
     // Check if stock number already exists (if being updated)
-    if (validatedData.stockNumber && validatedData.stockNumber !== existingVehicle.stockNumber) {
+    if (sanitizedData.stockNumber && sanitizedData.stockNumber !== existingVehicle.stockNumber) {
       const stockNumberExists = await db.vehicle.findUnique({
-        where: { stockNumber: validatedData.stockNumber }
+        where: { stockNumber: sanitizedData.stockNumber }
       })
-      
+
       if (stockNumberExists) {
         return NextResponse.json(
           { error: 'رقم المخزون مستخدم بالفعل' },
@@ -144,11 +182,12 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     // Check if VIN already exists (if being updated)
-    if (validatedData.vin && validatedData.vin !== existingVehicle.vin) {
+    const sanitizedVin = sanitizedData.vin as string | undefined
+    if (sanitizedVin && sanitizedVin !== existingVehicle.vin) {
       const vinExists = await db.vehicle.findUnique({
-        where: { vin: validatedData.vin }
+        where: { vin: sanitizedVin }
       })
-      
+
       if (vinExists) {
         return NextResponse.json(
           { error: 'رقم الهيكل (VIN) مستخدم بالفعل' },
@@ -157,10 +196,69 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       }
     }
 
+    if (sanitizedData.price !== undefined) {
+      const basePrice = sanitizedData.price
+      const existingPricing = existingVehicle.pricing
+      const taxes = existingPricing?.taxes ?? 0
+      const fees = existingPricing?.fees ?? 0
+
+      let discountPrice = existingPricing?.discountPrice ?? null
+      let discountPercentage = existingPricing?.discountPercentage ?? null
+      let hasDiscount = existingPricing?.hasDiscount ?? false
+
+      if (hasDiscount && discountPrice !== null) {
+        if (discountPrice >= basePrice) {
+          discountPrice = basePrice
+          discountPercentage = 0
+          hasDiscount = discountPrice < basePrice
+        } else {
+          const computedDiscount = ((basePrice - discountPrice) / basePrice) * 100
+          discountPercentage = Number.isFinite(computedDiscount) ? Number(computedDiscount.toFixed(2)) : null
+          hasDiscount = true
+        }
+      } else {
+        discountPrice = null
+        discountPercentage = null
+        hasDiscount = false
+      }
+
+      if (!hasDiscount) {
+        discountPrice = null
+        discountPercentage = null
+      }
+
+      const totalPrice = hasDiscount && discountPrice !== null ? discountPrice + taxes + fees : basePrice + taxes + fees
+
+      updateData.pricing = existingPricing
+        ? {
+            update: {
+              basePrice,
+              taxes,
+              fees,
+              totalPrice,
+              hasDiscount,
+              discountPrice,
+              discountPercentage
+            }
+          }
+        : {
+            create: {
+              basePrice,
+              taxes,
+              fees,
+              totalPrice,
+              currency: 'EGP',
+              hasDiscount,
+              discountPrice,
+              discountPercentage
+            }
+          }
+    }
+
     // Update vehicle
     const vehicle = await db.vehicle.update({
       where: { id },
-      data: validatedData,
+      data: updateData,
       include: {
         images: {
           orderBy: { order: 'asc' }
@@ -201,9 +299,11 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     }
     
     // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN ||
-                      user.permissions.includes(PERMISSIONS.DELETE_VEHICLES)
+    const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
+    const hasAccess =
+      user.role === UserRole.ADMIN ||
+      user.role === UserRole.SUPER_ADMIN ||
+      userPermissions.includes(PERMISSIONS.DELETE_VEHICLES)
     
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
