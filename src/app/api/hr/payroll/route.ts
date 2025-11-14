@@ -87,57 +87,76 @@ export async function POST(request: NextRequest) {
       bonus
     } = body
 
-    const netSalary = basicSalary + allowances + overtime + bonus - deductions
+    const parsedBasicSalary = parseFloat(basicSalary)
+    const parsedAllowances = parseFloat(allowances) || 0
+    const parsedDeductions = parseFloat(deductions) || 0
+    const parsedOvertime = parseFloat(overtime) || 0
+    const parsedBonus = parseFloat(bonus) || 0
+    const netSalary = parsedBasicSalary + parsedAllowances + parsedOvertime + parsedBonus - parsedDeductions
+
+    const includeConfig = {
+      employee: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          department: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          position: {
+            select: {
+              id: true,
+              title: true
+            }
+          }
+        }
+      },
+      creator: {
+        select: {
+          id: true,
+          name: true
+        }
+      },
+      approver: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    }
+
+    const existingRecord = await db.payrollRecord.findFirst({
+      where: {
+        employeeId,
+        period
+      },
+      include: includeConfig
+    })
+
+    if (existingRecord) {
+      return NextResponse.json(existingRecord)
+    }
 
     const payrollRecord = await db.payrollRecord.create({
       data: {
         employeeId,
         period,
-        basicSalary: parseFloat(basicSalary),
-        allowances: parseFloat(allowances) || 0,
-        deductions: parseFloat(deductions) || 0,
-        overtime: parseFloat(overtime) || 0,
-        bonus: parseFloat(bonus) || 0,
+        basicSalary: parsedBasicSalary,
+        allowances: parsedAllowances,
+        deductions: parsedDeductions,
+        overtime: parsedOvertime,
+        bonus: parsedBonus,
         netSalary,
         createdBy: user.id
       },
-      include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            department: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            position: {
-              select: {
-                id: true,
-                title: true
-              }
-            }
-          }
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
+      include: includeConfig
     })
 
     return NextResponse.json(payrollRecord)
