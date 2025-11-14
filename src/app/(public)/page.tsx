@@ -566,19 +566,20 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  <div className="relative w-screen left-1/2 -translate-x-1/2 px-4 sm:px-8 lg:px-12">
+                  <div className="relative px-2 sm:px-4 lg:px-6">
                     <Carousel
                       opts={{
                         align: carouselAlign,
                         loop: carouselVehicles.length > slidesToShow,
                         dragFree: carouselDragFree
                       }}
+                      className="w-full overflow-visible"
                     >
-                      <CarouselContent className="py-4">
+                      <CarouselContent className="py-4 -mr-2 sm:-mr-4">
                         {carouselVehicles.map((vehicle) => (
                           <CarouselItem
                             key={vehicle.id}
-                            className={`pl-4 basis-full ${itemBasisClass}`}
+                            className={`pr-2 sm:pr-4 basis-full ${itemBasisClass}`}
                           >
                             <div className="h-full">
                               <EnhancedVehicleCard

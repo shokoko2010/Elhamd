@@ -43,14 +43,29 @@ function AuthAwareNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [navigation, setNavigation] = useState<NavigationItem[]>([])
+  const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
   const { user, loading, logout } = useAuth()
   const { settings } = useSiteSettings()
   const isAuthenticated = !!user
+  const isHome = pathname === '/'
 
   useEffect(() => {
     setIsMounted(true)
     fetchNavigation()
+  }, [])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 24)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   const fetchNavigation = async () => {
@@ -109,15 +124,36 @@ function AuthAwareNavbar() {
     return pathname.startsWith(href)
   }
 
+  const shouldUseTransparent = isHome && !isScrolled
+  const navBaseClasses =
+    'fixed top-0 left-0 right-0 z-50 transition-all duration-300 backdrop-blur-xl border-b'
+  const navToneClasses = shouldUseTransparent
+    ? 'bg-white/10 border-white/20 text-white shadow-none'
+    : 'bg-white/95 border-white/70 text-gray-900 shadow-lg'
+  const desktopLinkDefault = shouldUseTransparent
+    ? 'text-white/80 hover:text-white'
+    : 'text-gray-600 hover:text-blue-600'
+  const desktopLinkActive = shouldUseTransparent
+    ? 'text-white font-semibold drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]'
+    : 'text-blue-600'
+  const contactTextClass = shouldUseTransparent ? 'text-white/80' : 'text-gray-600'
+  const iconToneClass = shouldUseTransparent ? 'text-white' : 'text-gray-700'
+  const actionGhostClass = shouldUseTransparent
+    ? 'text-white hover:bg-white/10 hover:text-white'
+    : 'text-gray-700 hover:bg-gray-100'
+  const actionPrimaryClass = shouldUseTransparent
+    ? 'bg-white text-blue-600 hover:bg-white/90'
+    : ''
+
   if (!isMounted) {
     return (
-      <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4">
+      <nav className={`${navBaseClasses} ${navToneClasses}`}>
+        <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center space-x-2">
-                <Car className="h-8 w-8 text-blue-600" />
-                <span className="text-xl font-bold text-gray-900">Al-Hamd Cars</span>
+                <Car className="h-8 w-8 text-white" />
+                <span className="text-xl font-bold">Al-Hamd Cars</span>
               </Link>
             </div>
             <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
@@ -128,18 +164,25 @@ function AuthAwareNavbar() {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
-      <div className="container mx-auto px-4">
+    <nav className={`${navBaseClasses} ${navToneClasses}`}>
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
               {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt={settings.siteTitle} className="h-8 w-auto" />
+                <img
+                  src={settings.logoUrl}
+                  alt={settings.siteTitle}
+                  className="h-8 w-auto drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]"
+                />
               ) : (
-                <Car className="h-8 w-8" style={{ color: settings.primaryColor }} />
+                <Car className={`h-8 w-8 ${iconToneClass}`} style={{ color: shouldUseTransparent ? undefined : settings.primaryColor }} />
               )}
-              <span className="text-xl font-bold" style={{ color: settings.primaryColor }}>
+              <span
+                className={`text-xl font-bold transition-colors ${shouldUseTransparent ? 'text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.35)]' : ''}`}
+                style={!shouldUseTransparent ? { color: settings.primaryColor } : undefined}
+              >
                 {settings.siteTitle}
               </span>
             </Link>
@@ -156,13 +199,13 @@ function AuthAwareNavbar() {
                   <Link
                     key={item.id}
                     href={item.href}
-                    className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-blue-600 ${
-                      isActive(item.href) 
-                        ? 'text-blue-600' 
-                        : 'text-gray-600'
+                    className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
+                      isActive(item.href)
+                        ? `${desktopLinkActive} ${shouldUseTransparent ? 'hover:text-white' : 'hover:text-blue-600'}`
+                        : desktopLinkDefault
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className={`h-4 w-4 ${shouldUseTransparent ? 'text-white/80' : ''}`} />
                     <span>{item.label}</span>
                   </Link>
                 )
@@ -170,16 +213,16 @@ function AuthAwareNavbar() {
           </div>
 
           {/* Contact Info */}
-          <div className="hidden lg:flex items-center space-x-4 text-sm text-gray-600">
+          <div className={`hidden lg:flex items-center space-x-4 text-sm ${contactTextClass}`}>
             {settings.contactPhone && (
               <div className="flex items-center space-x-1">
-                <Phone className="h-4 w-4" />
+                <Phone className={`h-4 w-4 ${shouldUseTransparent ? 'text-white/80' : 'text-gray-500'}`} />
                 <span>{settings.contactPhone}</span>
               </div>
             )}
             {settings.contactEmail && (
               <div className="flex items-center space-x-1">
-                <Mail className="h-4 w-4" />
+                <Mail className={`h-4 w-4 ${shouldUseTransparent ? 'text-white/80' : 'text-gray-500'}`} />
                 <span>{settings.contactEmail}</span>
               </div>
             )}
@@ -251,12 +294,12 @@ function AuthAwareNavbar() {
             ) : (
               <div className="flex items-center space-x-2">
                 <Link href="/login">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className={actionGhostClass}>
                     تسجيل الدخول
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm">
+                  <Button size="sm" className={actionPrimaryClass}>
                     إنشاء حساب
                   </Button>
                 </Link>
@@ -270,6 +313,7 @@ function AuthAwareNavbar() {
               variant="ghost"
               size="sm"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={shouldUseTransparent ? 'text-white hover:bg-white/10' : ''}
             >
               {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
@@ -278,7 +322,7 @@ function AuthAwareNavbar() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden border-t bg-white">
+          <div className="md:hidden border-t bg-white/95 backdrop-blur-lg text-gray-900">
             <div className="px-2 pt-2 pb-3 space-y-1">
               {navigation
                 .filter(item => item.isVisible)
@@ -290,8 +334,8 @@ function AuthAwareNavbar() {
                       key={item.id}
                       href={item.href}
                       className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                        isActive(item.href) 
-                          ? 'bg-blue-50 text-blue-600' 
+                        isActive(item.href)
+                          ? 'bg-blue-50 text-blue-600'
                           : 'text-gray-600 hover:bg-gray-50'
                       }`}
                       onClick={() => setIsMenuOpen(false)}
@@ -409,7 +453,7 @@ function AuthAwareNavbar() {
                       className="block w-full"
                       onClick={() => setIsMenuOpen(false)}
                     >
-                      <Button className="w-full">
+                      <Button className="w-full bg-blue-600 text-white hover:bg-blue-700">
                         إنشاء حساب
                       </Button>
                     </Link>
@@ -431,8 +475,8 @@ export default function Navbar() {
     console.error('Navbar error:', error)
     // Fallback navbar without auth functionality
     return (
-      <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 border-b border-white/70 shadow-lg backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center space-x-2">
