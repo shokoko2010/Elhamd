@@ -1245,7 +1245,25 @@ async function main() {
     console.log('✓ leave requests created')
 
     // 16. Sample Payroll Records
+    console.log('↻ Resetting payroll data before seeding sample records')
+    try {
+      await prisma.$executeRaw`TRUNCATE TABLE "salary_advances" RESTART IDENTITY CASCADE`
+      console.log('✓ salary_advances truncated')
+    } catch (error) {
+      console.warn('⚠️  Failed to truncate salary_advances, falling back to deleteMany()', error)
+      await prisma.salaryAdvance.deleteMany()
+    }
+
+    try {
+      await prisma.$executeRaw`TRUNCATE TABLE "payroll_records" RESTART IDENTITY CASCADE`
+      console.log('✓ payroll_records truncated')
+    } catch (error) {
+      console.warn('⚠️  Failed to truncate payroll_records, falling back to deleteMany()', error)
+      await prisma.payrollRecord.deleteMany()
+    }
+
     await prisma.payrollRecord.createMany({
+      skipDuplicates: true,
       data: employees.map((emp, index) => ({
         employeeId: emp.id,
         period: '2024-05',

@@ -2204,7 +2204,7 @@ model PayrollRecord {
   creator     User          @relation("PayrollCreator", fields: [createdBy], references: [id])
   employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
-  @@index([employeeId, period])
+  @@unique([employeeId, period])
   @@map("payroll_records")
 }
 
