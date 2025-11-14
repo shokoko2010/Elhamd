@@ -1245,24 +1245,55 @@ async function main() {
     console.log('✓ leave requests created')
 
     // 16. Sample Payroll Records
-    await prisma.payrollRecord.createMany({
-      data: employees.map((emp) => ({
-        employeeId: emp.id,
-        period: '2024-05',
-        basicSalary: emp.salary,
-        allowances: emp.salary * 0.2, // 20% allowances
-        deductions: emp.salary * 0.1, // 10% deductions
-        overtime: Math.random() > 0.5 ? emp.salary * 0.05 : 0, // Random overtime
-        bonus: Math.random() > 0.7 ? emp.salary * 0.1 : 0, // Random bonus
-        netSalary: emp.salary * 1.1, // Basic + allowances - deductions
-        payDate: new Date('2024-05-31'),
-        status: 'PAID',
-        createdBy: staffUsers[0].id,
-        approvedBy: staffUsers[0].id
-      })),
-      skipDuplicates: true
-    })
-    console.log('✓ payroll records created')
+    let processedPayroll = 0
+    const payrollPeriod = '2024-05'
+    const payrollPayDate = new Date('2024-05-31')
+
+    for (const emp of employees) {
+      const allowances = emp.salary * 0.2
+      const deductions = emp.salary * 0.1
+      const overtime = Math.random() > 0.5 ? emp.salary * 0.05 : 0
+      const bonus = Math.random() > 0.7 ? emp.salary * 0.1 : 0
+      const netSalary = emp.salary + allowances - deductions + overtime + bonus
+
+      await prisma.payrollRecord.upsert({
+        where: {
+          employeeId_period: {
+            employeeId: emp.id,
+            period: payrollPeriod
+          }
+        },
+        update: {
+          basicSalary: emp.salary,
+          allowances,
+          deductions,
+          overtime,
+          bonus,
+          netSalary,
+          payDate: payrollPayDate,
+          status: 'PAID',
+          approvedBy: staffUsers[0].id
+        },
+        create: {
+          employeeId: emp.id,
+          period: payrollPeriod,
+          basicSalary: emp.salary,
+          allowances,
+          deductions,
+          overtime,
+          bonus,
+          netSalary,
+          payDate: payrollPayDate,
+          status: 'PAID',
+          createdBy: staffUsers[0].id,
+          approvedBy: staffUsers[0].id
+        }
+      })
+
+      processedPayroll += 1
+    }
+
+    console.log(`✓ payroll records processed: ${processedPayroll}`)
   }
 
   console.log('✅ Comprehensive database seeding completed successfully!')
