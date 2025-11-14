@@ -4,6 +4,7 @@ interface RouteParams {
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { normalizeBrandingObject } from '@/lib/branding'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     if (!settings) {
       // Return default settings if none exist
-      const defaultSettings = {
+      const defaultSettings = normalizeBrandingObject({
         id: 'default',
         logoUrl: '/logo.svg',
         faviconUrl: '/favicon.ico',
@@ -32,10 +33,10 @@ export async function GET(request: NextRequest) {
         accentColor: '#F59E0B',
         fontFamily: 'Inter',
         siteTitle: 'شركة الحمد لاستيراد السيارات',
-        siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+        siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
         contactEmail: 'info@elhamdimport.online',
         contactPhone: '+20 2 12345678',
-        contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
+          contactAddress: 'بورسعيد، مصر',
         socialLinks: {
           facebook: 'https://facebook.com/elhamdimport',
           twitter: 'https://twitter.com/elhamdimport',
@@ -43,9 +44,9 @@ export async function GET(request: NextRequest) {
           linkedin: 'https://linkedin.com/company/elhamdimport'
         },
         seoSettings: {
-          metaTitle: 'شركة الحمد للسيارات - الوكيل الحصري لتاتا موتورز',
-          metaDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
-          keywords: 'سيارات تاتا، وكيل تاتا، سيارات تجارية، شاحنات، بيك أب، مصر',
+          metaTitle: 'شركة الحمد للسيارات - الموزع المعتمد لتاتا موتورز في مدن القناة',
+          metaDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة، متخصصون في السيارات التجارية والبيك أب والشاحنات فقط',
+          keywords: 'سيارات تاتا، موزع تاتا، سيارات تجارية، شاحنات، بيك أب، مدن القناة',
           ogImage: '/og-image.jpg',
           twitterHandle: '@elhamdimport'
         },
@@ -79,19 +80,19 @@ export async function GET(request: NextRequest) {
           showCopyright: true,
           columns: 4
         }
-      }
+      })
       return NextResponse.json(defaultSettings, { headers })
     }
 
     // Ensure all JSON fields have default values
-    const processedSettings = {
+    const processedSettings = normalizeBrandingObject({
       ...settings,
       socialLinks: settings.socialLinks || {},
       seoSettings: settings.seoSettings || {},
       performanceSettings: settings.performanceSettings || {},
       headerSettings: settings.headerSettings || {},
       footerSettings: settings.footerSettings || {}
-    }
+    })
 
     return NextResponse.json(processedSettings, { headers })
   } catch (error) {

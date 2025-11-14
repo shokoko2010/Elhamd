@@ -7,7 +7,7 @@ const roundCurrency = (value: number) => {
   return Math.round(value * 100) / 100
 }
 
-const sanitizeNumber = (value: unknown): number => {
+export const sanitizeNumber = (value: unknown): number => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : 0
   }

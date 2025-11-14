@@ -6,12 +6,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticateProductionUser } from '@/lib/auth-server'
 import { PERMISSIONS } from '@/lib/permissions'
-import { PerformancePeriod, UserRole } from '@prisma/client'
+import { PerformancePeriod, UserRole, InstallmentStatus } from '@prisma/client'
 import {
   normalizeInvoiceItemsFromInput,
   normalizeInvoiceRecord,
+  sanitizeNumber,
 } from '@/lib/invoice-normalizer'
 import { updateEmployeePerformanceMetrics } from '@/lib/performance-metric-sync'
+import {
+  clampInstallmentStatus,
+  normalizeInstallmentInputs,
+  calculateInstallmentTotals,
+} from '@/lib/invoice-installments'
 
 export async function GET(
   request: NextRequest,
@@ -69,6 +75,11 @@ export async function GET(
           orderBy: {
             createdAt: 'desc'
           }
+        },
+        installments: {
+          orderBy: {
+            sequence: 'asc'
+          }
         }
       }
     })
@@ -90,6 +101,29 @@ export async function GET(
     })
 
     const paidAmount = normalized.totalAmount - normalized.outstanding
+
+    const normalizedInstallments = invoice.installments.map(installment => {
+      const status = clampInstallmentStatus({
+        amount: installment.amount,
+        paidAmount: installment.paidAmount,
+        dueDate: installment.dueDate,
+        status: installment.status,
+      })
+
+      return {
+        id: installment.id,
+        sequence: installment.sequence,
+        amount: installment.amount,
+        dueDate: installment.dueDate,
+        status,
+        paidAmount: installment.paidAmount,
+        paidAt: installment.paidAt,
+        notes: installment.notes,
+        paymentId: installment.paymentId,
+      }
+    })
+
+    const installmentTotals = calculateInstallmentTotals(invoice.installments)
 
     const payload = {
       ...invoice,
@@ -120,6 +154,12 @@ export async function GET(
       deletedBy: invoice.deletedBy,
       deletedReason: invoice.deletedReason,
       isDeleted: invoice.isDeleted,
+      installments: normalizedInstallments,
+      installmentSummary: {
+        scheduled: installmentTotals.scheduled,
+        paid: installmentTotals.paid,
+        outstanding: Math.max(0, installmentTotals.scheduled - installmentTotals.paid),
+      },
     }
 
     return NextResponse.json(payload)
@@ -158,7 +198,8 @@ export async function PUT(
       dueDate,
       notes,
       terms,
-      status
+      status,
+      installments: rawInstallments
     } = body
 
     // Validate required fields
@@ -172,7 +213,7 @@ export async function PUT(
     // Check if invoice exists
     const existingInvoice = await db.invoice.findUnique({
       where: { id },
-      include: { payments: true }
+      include: { payments: true, installments: true }
     })
 
     if (!existingInvoice) {
@@ -190,6 +231,28 @@ export async function PUT(
     }
 
     const { items: normalizedItems, totals } = normalizeInvoiceItemsFromInput(items)
+
+    const normalizedInstallments = normalizeInstallmentInputs(rawInstallments)
+
+    if (normalizedInstallments.length) {
+      const issueDateValue = new Date(issueDate)
+
+      if (Number.isNaN(issueDateValue.getTime())) {
+        return NextResponse.json({
+          error: 'تاريخ الإصدار غير صالح عند تحديث خطة التقسيط',
+          code: 'INVALID_ISSUE_DATE'
+        }, { status: 400 })
+      }
+
+      const invalidDueDate = normalizedInstallments.some(installment => installment.dueDate.getTime() < issueDateValue.getTime())
+
+      if (invalidDueDate) {
+        return NextResponse.json({
+          error: 'لا يمكن تعيين أقساط بتاريخ استحقاق أقدم من تاريخ إصدار الفاتورة',
+          code: 'INVALID_INSTALLMENT_DUE_DATE'
+        }, { status: 400 })
+      }
+    }
 
     const subtotal = totals.subtotal
     const totalTaxAmount = totals.taxAmount
@@ -270,6 +333,11 @@ export async function PUT(
             orderBy: {
               createdAt: 'desc'
             }
+          },
+          installments: {
+            orderBy: {
+              sequence: 'asc'
+            }
           }
         }
       })
@@ -299,7 +367,81 @@ export async function PUT(
           })),
         })
       }
-      
+
+      const existingInstallments = await tx.invoiceInstallment.findMany({
+        where: { invoiceId: id }
+      })
+
+      const normalizedWithSequence = normalizedInstallments.map((installment, index) => ({
+        ...installment,
+        sequence: index + 1,
+      }))
+
+      const incomingIds = new Set(
+        normalizedWithSequence
+          .map(installment => installment.id)
+          .filter((value): value is string => Boolean(value))
+      )
+
+      const removableInstallments = existingInstallments.filter(installment => !incomingIds.has(installment.id))
+
+      if (
+        removableInstallments.some(
+          installment => installment.paymentId || sanitizeNumber(installment.paidAmount) > 0
+        )
+      ) {
+        throw new Error('لا يمكن حذف قسط مرتبط بسداد مسجل أو مدفوعات قائمة')
+      }
+
+      if (removableInstallments.length) {
+        await tx.invoiceInstallment.deleteMany({
+          where: { id: { in: removableInstallments.map(installment => installment.id) } }
+        })
+      }
+
+      for (const installment of normalizedWithSequence) {
+        const existing = installment.id
+          ? existingInstallments.find(item => item.id === installment.id)
+          : undefined
+
+        const paidAmount = installment.paidAmount > 0
+          ? installment.paidAmount
+          : sanitizeNumber(existing?.paidAmount)
+
+        const computedStatus = installment.hasManualStatus
+          ? installment.status
+          : clampInstallmentStatus({
+              amount: installment.amount,
+              paidAmount,
+              dueDate: installment.dueDate,
+              status: existing?.status ?? InstallmentStatus.SCHEDULED,
+            })
+
+        const installmentData = {
+          sequence: installment.sequence,
+          amount: installment.amount,
+          dueDate: installment.dueDate,
+          status: computedStatus,
+          paidAmount,
+          notes: installment.notes ?? null,
+          metadata: installment.metadata ?? existing?.metadata ?? null,
+        }
+
+        if (existing) {
+          await tx.invoiceInstallment.update({
+            where: { id: existing.id },
+            data: installmentData,
+          })
+        } else {
+          await tx.invoiceInstallment.create({
+            data: {
+              invoiceId: id,
+              ...installmentData,
+            }
+          })
+        }
+      }
+
       return invoice
     })
     
@@ -314,6 +456,29 @@ export async function PUT(
     })
 
     const paidAmount = normalizedInvoice.totalAmount - normalizedInvoice.outstanding
+
+    const normalizedInstallmentsResponse = updatedInvoice.installments.map(installment => {
+      const status = clampInstallmentStatus({
+        amount: installment.amount,
+        paidAmount: installment.paidAmount,
+        dueDate: installment.dueDate,
+        status: installment.status,
+      })
+
+      return {
+        id: installment.id,
+        sequence: installment.sequence,
+        amount: installment.amount,
+        dueDate: installment.dueDate,
+        status,
+        paidAmount: installment.paidAmount,
+        paidAt: installment.paidAt,
+        notes: installment.notes,
+        paymentId: installment.paymentId,
+      }
+    })
+
+    const updatedInstallmentTotals = calculateInstallmentTotals(updatedInvoice.installments)
 
     if (updatedInvoice.createdByEmployeeId) {
       await updateEmployeePerformanceMetrics({
@@ -351,6 +516,12 @@ export async function PUT(
                 : null,
             }
           : null,
+        installments: normalizedInstallmentsResponse,
+        installmentSummary: {
+          scheduled: updatedInstallmentTotals.scheduled,
+          paid: updatedInstallmentTotals.paid,
+          outstanding: Math.max(0, updatedInstallmentTotals.scheduled - updatedInstallmentTotals.paid),
+        },
       },
     })
     

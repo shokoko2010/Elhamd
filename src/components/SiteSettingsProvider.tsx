@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import React from 'react'
+import { normalizeBrandingObject } from '@/lib/branding'
 
 interface SiteSettings {
   id?: string
@@ -53,16 +54,16 @@ interface SiteSettingsContextType {
   loading: boolean
 }
 
-const defaultSettings: SiteSettings = {
+const defaultSettings: SiteSettings = normalizeBrandingObject({
   primaryColor: '#3B82F6',
   secondaryColor: '#10B981',
   accentColor: '#F59E0B',
   fontFamily: 'Inter',
   siteTitle: 'شركة الحمد لاستيراد السيارات',
-  siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+  siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
   contactEmail: 'info@elhamdimport.online',
   contactPhone: '+20 2 12345678',
-  contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
+  contactAddress: 'بورسعيد، مصر',
   socialLinks: {
     facebook: 'https://facebook.com/elhamdimport',
     twitter: 'https://twitter.com/elhamdimport',
@@ -70,9 +71,9 @@ const defaultSettings: SiteSettings = {
     linkedin: 'https://linkedin.com/company/elhamdimport'
   },
   seoSettings: {
-    metaTitle: 'شركة الحمد للسيارات - الوكيل الحصري لتاتا موتورز',
-    metaDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
-    keywords: 'سيارات تاتا، وكيل تاتا، سيارات تجارية، شاحنات، بيك أب، مصر',
+    metaTitle: 'شركة الحمد للسيارات - الموزع المعتمد لتاتا موتورز في مدن القناة',
+    metaDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة، متخصصون في السيارات التجارية والبيك أب والشاحنات فقط',
+    keywords: 'سيارات تاتا، موزع تاتا، سيارات تجارية، شاحنات، بيك أب، مدن القناة',
     ogImage: '/og-image.jpg',
     twitterHandle: '@elhamdimport'
   },
@@ -93,7 +94,7 @@ const defaultSettings: SiteSettings = {
     showCopyright: true,
     columns: 4
   }
-}
+})
 
 export const SiteSettingsContext = React.createContext<SiteSettingsContextType>({
   settings: defaultSettings,
@@ -113,8 +114,9 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       const response = await fetch('/api/public/site-settings')
       if (response.ok) {
         const data = await response.json()
-        setSettings(data)
-        applySettingsToDOM(data)
+        const normalized = normalizeBrandingObject(data)
+        setSettings(normalized)
+        applySettingsToDOM(normalized)
       } else {
         console.warn('Failed to load site settings, using defaults')
       }

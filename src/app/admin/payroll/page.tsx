@@ -3,7 +3,17 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, Pencil } from 'lucide-react'
+import {
+  DollarSign,
+  Users,
+  TrendingUp,
+  Calendar,
+  Download,
+  Plus,
+  CheckCircle,
+  Pencil,
+  Loader2
+} from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,9 +23,11 @@ import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface PayrollRecord {
   id: string
+  employeeId: string
   employee: {
     user: {
       name: string
@@ -67,6 +79,15 @@ export default function PayrollPage() {
     overtime: 0,
     bonus: 0
   })
+  const [advanceModalOpen, setAdvanceModalOpen] = useState(false)
+  const [advanceSubmitting, setAdvanceSubmitting] = useState(false)
+  const [advanceForm, setAdvanceForm] = useState({
+    employeeId: '',
+    amount: '',
+    reason: 'صرف سلفة على الراتب',
+    notes: ''
+  })
+  const [selectedAdvanceEmployee, setSelectedAdvanceEmployee] = useState<{ id: string; name: string; period: string } | null>(null)
 
   useEffect(() => {
     fetchPayrollData()
@@ -111,9 +132,22 @@ export default function PayrollPage() {
       }
       
       const employees = await employeesResponse.json()
-      
+
+      const existingResponse = await fetch(`/api/hr/payroll?period=${selectedPeriod}`)
+      const existingRecords = existingResponse.ok ? await existingResponse.json() : payrollRecords
+
+      const existingEmployeeIds = new Set((existingRecords || []).map((record: any) => record.employeeId))
+
+      const employeesToCreate = employees.filter((employee: any) => !existingEmployeeIds.has(employee.id))
+
+      if (employeesToCreate.length === 0) {
+        toast.info('لا توجد سجلات جديدة لإنشائها لهذه الفترة. جميع الموظفين لديهم رواتب مسجلة بالفعل.')
+        setIsGenerating(false)
+        return
+      }
+
       // Generate payroll records for each employee
-      const payrollPromises = employees.map(async (employee: any) => {
+      const payrollPromises = employeesToCreate.map(async (employee: any) => {
         const basicSalary = employee.salary || 0
         const allowances = basicSalary * 0.2 // 20% allowances
         const deductions = basicSalary * 0.1 // 10% deductions
@@ -139,11 +173,16 @@ export default function PayrollPage() {
       })
       
       const results = await Promise.allSettled(payrollPromises)
-      const successful = results.filter(r => r.status === 'fulfilled').length
-      const failed = results.filter(r => r.status === 'rejected').length
-      
+      const successful = results.filter((result) => result.status === 'fulfilled' && result.value?.ok).length
+      const failed = results.filter((result) => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value?.ok)).length
+
+      const skipped = employees.length - employeesToCreate.length
+
       if (successful > 0) {
         toast.success(`تم إنشاء ${successful} سجل راتب بنجاح`)
+        if (skipped > 0) {
+          toast.info(`تم تجاهل ${skipped} موظف لديهم سجل راتب مسجل مسبقاً لهذه الفترة`)
+        }
         if (failed > 0) {
           toast.warning(`فشل في إنشاء ${failed} سجل راتب`)
         }
@@ -218,11 +257,79 @@ export default function PayrollPage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'قيد الانتظار'
-      case 'APPROVED': return 'معتمد'
-      case 'PAID': return 'مدفوع'
-      default: return status
+      case 'PENDING':
+        return 'قيد الانتظار'
+      case 'APPROVED':
+        return 'معتمد'
+      case 'PAID':
+        return 'مدفوع'
+      default:
+        return status
     }
+  }
+
+  const openAdvanceModal = (record: PayrollRecord) => {
+    const defaultAmount = record.netSalary ? record.netSalary.toString() : ''
+    setSelectedAdvanceEmployee({ id: record.employeeId, name: record.employee.user.name, period: record.period })
+    setAdvanceForm({
+      employeeId: record.employeeId,
+      amount: defaultAmount,
+      reason: `صرف سلفة على راتب فترة ${record.period}`,
+      notes: ''
+    })
+    setAdvanceModalOpen(true)
+  }
+
+  const handleAdvanceSubmit = async () => {
+    if (!advanceForm.employeeId) {
+      toast.error('تعذر تحديد الموظف للسلفة')
+      return
+    }
+
+    const amountValue = parseFloat(advanceForm.amount)
+    if (Number.isNaN(amountValue) || amountValue <= 0) {
+      toast.error('الرجاء إدخال مبلغ صالح للسلفة')
+      return
+    }
+
+    try {
+      setAdvanceSubmitting(true)
+      const response = await fetch('/api/hr/salary-advances', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          employeeId: advanceForm.employeeId,
+          amount: amountValue,
+          reason: advanceForm.reason,
+          repaymentMonths: null,
+          repaymentStart: null,
+          notes: advanceForm.notes
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'فشل في تسجيل السلفة')
+      }
+
+      toast.success('تم تسجيل السلفة بنجاح')
+      setAdvanceModalOpen(false)
+      setSelectedAdvanceEmployee(null)
+      setAdvanceForm({ employeeId: '', amount: '', reason: 'صرف سلفة على الراتب', notes: '' })
+    } catch (error) {
+      console.error('Error creating salary advance from payroll:', error)
+      toast.error(error instanceof Error ? error.message : 'فشل في تسجيل السلفة')
+    } finally {
+      setAdvanceSubmitting(false)
+    }
+  }
+
+  const closeAdvanceModal = () => {
+    setAdvanceModalOpen(false)
+    setSelectedAdvanceEmployee(null)
+    setAdvanceForm({ employeeId: '', amount: '', reason: 'صرف سلفة على الراتب', notes: '' })
   }
 
   const openEditModal = (record: PayrollRecord) => {
@@ -452,13 +559,20 @@ export default function PayrollPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => openEditModal(record)}
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openAdvanceModal(record)}
+                        >
+                          تسجيل سلفة
                         </Button>
                         {record.status === 'PENDING' && (
                           <Button
@@ -570,6 +684,65 @@ export default function PayrollPage() {
               <Button type="submit">حفظ التعديلات</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={advanceModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          closeAdvanceModal()
+        } else {
+          setAdvanceModalOpen(true)
+        }
+      }}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>تسجيل سلفة للراتب</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+              <p className="font-medium">
+                الموظف: {selectedAdvanceEmployee?.name || 'غير معروف'}
+              </p>
+              <p className="text-muted-foreground">الفترة: {selectedAdvanceEmployee?.period || selectedPeriod}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="advanceAmount">المبلغ</Label>
+              <Input
+                id="advanceAmount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={advanceForm.amount}
+                onChange={(event) => setAdvanceForm((prev) => ({ ...prev, amount: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="advanceReason">السبب</Label>
+              <Input
+                id="advanceReason"
+                value={advanceForm.reason}
+                onChange={(event) => setAdvanceForm((prev) => ({ ...prev, reason: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="advanceNotes">ملاحظات إضافية</Label>
+              <Textarea
+                id="advanceNotes"
+                rows={3}
+                placeholder="تفاصيل إضافية حول السلفة"
+                value={advanceForm.notes}
+                onChange={(event) => setAdvanceForm((prev) => ({ ...prev, notes: event.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeAdvanceModal}>
+              إلغاء
+            </Button>
+            <Button onClick={handleAdvanceSubmit} disabled={advanceSubmitting}>
+              {advanceSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              حفظ السلفة
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

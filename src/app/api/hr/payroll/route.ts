@@ -87,21 +87,19 @@ export async function POST(request: NextRequest) {
       bonus
     } = body
 
-    const netSalary = basicSalary + allowances + overtime + bonus - deductions
+    if (!employeeId || !period) {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+    }
 
-    const payrollRecord = await db.payrollRecord.create({
-      data: {
-        employeeId,
-        period,
-        basicSalary: parseFloat(basicSalary),
-        allowances: parseFloat(allowances) || 0,
-        deductions: parseFloat(deductions) || 0,
-        overtime: parseFloat(overtime) || 0,
-        bonus: parseFloat(bonus) || 0,
-        netSalary,
-        createdBy: user.id
-      },
-      include: {
+    const numericBasic = Number(basicSalary) || 0
+    const numericAllowances = Number(allowances) || 0
+    const numericDeductions = Number(deductions) || 0
+    const numericOvertime = Number(overtime) || 0
+    const numericBonus = Number(bonus) || 0
+
+    const netSalary = numericBasic + numericAllowances + numericOvertime + numericBonus - numericDeductions
+
+    const includeConfig = {
         employee: {
           include: {
             user: {
@@ -138,6 +136,34 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+
+    const existingRecord = await db.payrollRecord.findUnique({
+      where: {
+        employeeId_period: {
+          employeeId,
+          period
+        }
+      },
+      include: includeConfig
+    })
+
+    if (existingRecord) {
+      return NextResponse.json({ ...existingRecord, existing: true })
+    }
+
+    const payrollRecord = await db.payrollRecord.create({
+      data: {
+        employeeId,
+        period,
+        basicSalary: numericBasic,
+        allowances: numericAllowances,
+        deductions: numericDeductions,
+        overtime: numericOvertime,
+        bonus: numericBonus,
+        netSalary,
+        createdBy: user.id
+      },
+      include: includeConfig
     })
 
     return NextResponse.json(payrollRecord)

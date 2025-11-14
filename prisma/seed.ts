@@ -60,10 +60,10 @@ async function main() {
   const siteSettings = await prisma.siteSettings.create({
     data: {
       siteTitle: 'شركة الحمد لاستيراد السيارات',
-      siteDescription: 'الوكيل الحصري لشركة تاتا موتورز في مصر - السيارات التجارية والبيك أب والشاحنات',
+      siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
       contactEmail: 'info@elhamdimport.online',
       contactPhone: '+20 2 12345678',
-      contactAddress: 'القنطرة غرب، الإسماعيلية، مصر',
+      contactAddress: 'بورسعيد، مصر',
       socialLinks: {
         facebook: 'https://facebook.com/elhamdimport',
         twitter: 'https://twitter.com/elhamdimport',
@@ -79,8 +79,8 @@ async function main() {
   const companyInfo = await prisma.companyInfo.create({
     data: {
       title: 'شركة الحمد لاستيراد السيارات',
-      subtitle: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
-      description: 'الوكيل الحصري لشركة تاتا موتورز في مصر، متخصصة في السيارات التجارية والبيك أب والشاحنات فقط',
+      subtitle: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
+      description: 'الموزع المعتمد لسيارات تاتا في مدن القناة، متخصصون في السيارات التجارية والبيك أب والشاحنات فقط',
       features: ['الجودة', 'الموثوقية', 'خدمة العملاء', 'الابتكار'],
       ctaButtons: [
         {
@@ -104,7 +104,7 @@ async function main() {
       { number: '5000+', label: 'عملاء سعداء', icon: 'users' },
       { number: '10000+', label: 'مركبة مباعة', icon: 'truck' },
       { number: '14+', label: 'سنوات خبرة', icon: 'award' },
-      { number: '1', label: 'فرع', icon: 'map-pin' }
+      { number: '2', label: 'فروع', icon: 'map-pin' }
     ]
   })
   console.log('✓ companyStat created')
@@ -180,7 +180,7 @@ async function main() {
   // 6. Timeline Events
   await prisma.timelineEvent.createMany({
     data: [
-      { year: '2010', title: 'تأسيس الشركة', description: 'تأسست شركة الحمد لاستيراد السيارات كوكيل لـ تاتا موتورز' },
+      { year: '2010', title: 'تأسيس الشركة', description: 'تأسست شركة الحمد لاستيراد السيارات كموزع معتمد لتاتا موتورز في مدن القناة' },
       { year: '2015', title: 'توسع الخدمات', description: 'إضافة خدمات الصيانة وقطع الغيار' },
       { year: '2020', title: 'التحول الرقمي', description: 'إطلاق النظام الإلكتروني لإدارة المبيعات والخدمات' },
       { year: '2024', title: 'التطوير المستمر', description: 'تحديث النظام وتوسيع قاعدة العملاء' }
@@ -194,7 +194,7 @@ async function main() {
       primaryPhone: '+20 2 12345678',
       secondaryPhone: '+20 1012345678',
       primaryEmail: 'info@elhamdimport.online',
-      address: 'القنطرة غرب، الإسماعيلية، مصر',
+      address: 'بورسعيد (الفرع الرئيسي) - القنطرة غرب، الإسماعيلية (الفرع الثاني)',
       workingHours: {
         Saturday: '9:00-17:00',
         Sunday: '9:00-17:00',
@@ -229,12 +229,12 @@ async function main() {
     }
   }
 
-  // 10. Main Branch
+  // 10. Branches
   const mainBranch = await prisma.branch.create({
     data: {
-      name: 'الفرع الرئيسي - القنطرة غرب',
-      code: 'ELHAMD-MAIN',
-      address: 'القنطرة غرب، الإسماعيلية، مصر',
+      name: 'الفرع الرئيسي - بورسعيد',
+      code: 'ELHAMD-PORTSAID',
+      address: 'بورسعيد، مصر',
       phone: '+20 2 12345678',
       email: 'info@elhamdimport.online',
       isActive: true,
@@ -252,11 +252,39 @@ async function main() {
           Friday: 'مغلق'
         },
         services: ['صيانة', 'قطع غيار', 'تأجير', 'بيع سيارات', 'خدمة 24 ساعة'],
-        coordinates: { lat: 30.0131, lng: 31.2089 }
+        coordinates: { lat: 31.2565, lng: 32.2841 }
       }
     }
   })
-  console.log('✓ main branch created')
+  console.log('✓ main branch (Port Said) created')
+
+  const qantaraBranch = await prisma.branch.create({
+    data: {
+      name: 'فرع القنطرة غرب',
+      code: 'ELHAMD-QANTARA',
+      address: 'القنطرة غرب، الإسماعيلية، مصر',
+      phone: '+20 2 12345679',
+      email: 'qantara@elhamdimport.online',
+      isActive: true,
+      openingDate: new Date('2012-05-01'),
+      currency: 'EGP',
+      timezone: 'Africa/Cairo',
+      settings: {
+        workingHours: {
+          Saturday: '9:00-17:00',
+          Sunday: '9:00-17:00',
+          Monday: '9:00-17:00',
+          Tuesday: '9:00-17:00',
+          Wednesday: '9:00-17:00',
+          Thursday: '9:00-17:00',
+          Friday: 'مغلق'
+        },
+        services: ['صيانة', 'قطع غيار', 'دعم الأسطول'],
+        coordinates: { lat: 30.8672, lng: 32.3225 }
+      }
+    }
+  })
+  console.log('✓ secondary branch (Qantara Gharb) created')
 
   // 11. Users
   const superAdminRole = roleTemplateMap.get('SUPER_ADMIN')
@@ -307,7 +335,7 @@ async function main() {
       isActive: true,
       emailVerified: true,
       roleTemplateId: staffRole?.id,
-      branchId: mainBranch.id
+      branchId: qantaraBranch.id
     },
     {
       email: 'sales1@elhamdimport.online',
@@ -329,7 +357,7 @@ async function main() {
       isActive: true,
       emailVerified: true,
       roleTemplateId: staffRole?.id,
-      branchId: mainBranch.id
+      branchId: qantaraBranch.id
     },
     {
       email: 'service1@elhamdimport.online',
@@ -1018,7 +1046,7 @@ async function main() {
     data: {
       logoUrl: '/uploads/logo/elhamd-logo.png',
       logoText: 'شركة الحمد لاستيراد السيارات',
-      tagline: 'الوكيل الحصري لشركة تاتا موتورز في مصر',
+      tagline: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
       primaryPhone: '+20 2 12345678',
       primaryEmail: 'info@elhamdimport.online',
       address: 'القنطرة غرب، الإسماعيلية، مصر',
@@ -1034,7 +1062,7 @@ async function main() {
     data: {
       logoUrl: '/uploads/logo/elhamd-logo.png',
       logoText: 'شركة الحمد لاستيراد السيارات',
-      tagline: 'الوكيل الحصري لشركة تاتا موتورز في مصر - متخصصون في السيارات التجارية والبيك أب والشاحنات',
+      tagline: 'الموزع المعتمد لسيارات تاتا في مدن القناة - متخصصون في السيارات التجارية والبيك أب والشاحنات',
       primaryPhone: '+20 2 12345678',
       secondaryPhone: '+20 1012345678',
       primaryEmail: 'info@elhamdimport.online',
@@ -1216,24 +1244,59 @@ async function main() {
     })
     console.log('✓ leave requests created')
 
-    // 16. Sample Payroll Records
-    await prisma.payrollRecord.createMany({
-      data: employees.map((emp, index) => ({
-        employeeId: emp.id,
-        period: '2024-05',
-        basicSalary: emp.salary,
-        allowances: emp.salary * 0.2, // 20% allowances
-        deductions: emp.salary * 0.1, // 10% deductions
-        overtime: Math.random() > 0.5 ? emp.salary * 0.05 : 0, // Random overtime
-        bonus: Math.random() > 0.7 ? emp.salary * 0.1 : 0, // Random bonus
-        netSalary: emp.salary * 1.1, // Basic + allowances - deductions
-        payDate: new Date('2024-05-31'),
-        status: 'PAID',
-        createdBy: staffUsers[0].id,
-        approvedBy: staffUsers[0].id
-      }))
-    })
-    console.log('✓ payroll records created')
+    // 16. Sample Payroll Records (idempotent)
+    const payrollPeriod = '2024-05'
+    const payrollPayDate = new Date('2024-05-31')
+    const payrollCreatorId = staffUsers[0]?.id
+
+    if (!payrollCreatorId) {
+      console.log('⚠️  Skipping payroll seeding because no staff users were found')
+    } else {
+      const employeeIds = employees.map((emp) => emp.id)
+
+      if (employeeIds.length > 0) {
+        const payrollIds = new Set<string>()
+
+        for (const emp of employees) {
+          const allowances = emp.salary * 0.2
+          const deductions = emp.salary * 0.1
+          const overtime = Math.random() > 0.5 ? emp.salary * 0.05 : 0
+          const bonus = Math.random() > 0.7 ? emp.salary * 0.1 : 0
+
+          const payload = {
+            basicSalary: emp.salary,
+            allowances,
+            deductions,
+            overtime,
+            bonus,
+            netSalary: emp.salary + allowances - deductions + overtime + bonus,
+            payDate: payrollPayDate,
+            status: 'PAID' as const,
+            createdBy: payrollCreatorId,
+            approvedBy: payrollCreatorId
+          }
+
+          const record = await prisma.payrollRecord.upsert({
+            where: {
+              employeeId_period: {
+                employeeId: emp.id,
+                period: payrollPeriod
+              }
+            },
+            update: payload,
+            create: {
+              employeeId: emp.id,
+              period: payrollPeriod,
+              ...payload
+            }
+          })
+
+          payrollIds.add(record.id)
+        }
+
+        console.log(`✓ payroll records seeded: ${payrollIds.size}`)
+      }
+    }
   }
 
   console.log('✅ Comprehensive database seeding completed successfully!')

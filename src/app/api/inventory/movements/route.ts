@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { UserRole } from '@prisma/client'
+import { InventoryStatus, UserRole } from '@prisma/client'
+
+const computeInventoryStatus = (quantity: number, minStockLevel: number) => {
+  if (quantity <= 0) {
+    return InventoryStatus.OUT_OF_STOCK
+  }
+
+  if (quantity <= Math.max(minStockLevel, 0)) {
+    return InventoryStatus.LOW_STOCK
+  }
+
+  return InventoryStatus.IN_STOCK
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -129,12 +141,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine new status
-    let newStatus = 'IN_STOCK'
-    if (newQuantity === 0) {
-      newStatus = 'OUT_OF_STOCK'
-    } else if (newQuantity <= inventoryItem.minStockLevel) {
-      newStatus = 'LOW_STOCK'
-    }
+    const newStatus =
+      inventoryItem.status === InventoryStatus.DISCONTINUED
+        ? InventoryStatus.DISCONTINUED
+        : computeInventoryStatus(newQuantity, inventoryItem.minStockLevel)
 
     // Update inventory item
     const updatedItem = await db.inventoryItem.update({

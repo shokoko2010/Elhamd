@@ -5,60 +5,140 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiUser } from '@/lib/api-auth'
 import { db } from '@/lib/db'
-import { UserRole } from '@prisma/client'
+import { InventoryStatus, Prisma, UserRole } from '@prisma/client'
+import { syncMaintenancePartFromInventory } from '@/lib/maintenance-part-sync'
+import { shouldFallbackToEmptyResult } from '@/lib/prisma-error-helpers'
+
+const resolveStatus = (
+  quantity: number,
+  minStockLevel: number,
+  explicitStatus?: string | null
+) => {
+  const normalizedStatus = explicitStatus?.toUpperCase() as keyof typeof InventoryStatus | undefined
+
+  if (normalizedStatus === 'DISCONTINUED') {
+    return InventoryStatus.DISCONTINUED
+  }
+
+  if (quantity <= 0) {
+    return InventoryStatus.OUT_OF_STOCK
+  }
+
+  if (quantity <= Math.max(minStockLevel, 0)) {
+    return InventoryStatus.LOW_STOCK
+  }
+
+  return InventoryStatus.IN_STOCK
+}
+
+const LOW_STOCK_STATUSES = [InventoryStatus.OUT_OF_STOCK, InventoryStatus.LOW_STOCK]
+
+const normalizeDate = (value?: Date | null) => (value ? value.toISOString() : null)
+
+const calculateInventoryValue = async (where?: Prisma.InventoryItemWhereInput) => {
+  const items = await db.inventoryItem.findMany({
+    where,
+    select: {
+      quantity: true,
+      unitPrice: true
+    }
+  })
+
+  return items.reduce((total, item) => {
+    const quantity = typeof item.quantity === 'number' ? item.quantity : 0
+    const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+
+    return total + quantity * unitPrice
+  }, 0)
+}
+
+const buildFilters = ({
+  search,
+  category,
+  status,
+  warehouse,
+  lowStock
+}: {
+  search?: string
+  category?: string
+  status?: string
+  warehouse?: string
+  lowStock?: boolean
+}) => {
+  const filters: any[] = []
+
+  const trimmedSearch = search?.trim()
+
+  if (trimmedSearch) {
+    filters.push({
+      OR: [
+        { name: { contains: trimmedSearch, mode: 'insensitive' } },
+        { partNumber: { contains: trimmedSearch, mode: 'insensitive' } },
+        { description: { contains: trimmedSearch, mode: 'insensitive' } }
+      ]
+    })
+  }
+
+  if (category && category !== 'all') {
+    filters.push({ category })
+  }
+
+  if (status && status !== 'all') {
+    const normalizedStatus = status.toUpperCase() as keyof typeof InventoryStatus
+    if (InventoryStatus[normalizedStatus]) {
+      filters.push({ status: InventoryStatus[normalizedStatus] })
+    }
+  }
+
+  if (warehouse && warehouse !== 'all') {
+    filters.push({ warehouse })
+  }
+
+  if (lowStock && (!status || status === 'all')) {
+    filters.push({ status: { in: LOW_STOCK_STATUSES } })
+  }
+
+  if (!filters.length) {
+    return {}
+  }
+
+  return { AND: filters }
+}
 
 export async function GET(request: NextRequest) {
+  let page = 1
+  let limit = 50
+  let statsRequested = false
+  let shouldFilterLowStock = false
+
   try {
     const user = await getApiUser(request)
-    
+
     if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.STAFF)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    page = parseInt(searchParams.get('page') || '1')
+    limit = parseInt(searchParams.get('limit') || '50')
     const search = searchParams.get('search') || ''
     const category = searchParams.get('category') || ''
     const status = searchParams.get('status') || ''
     const warehouse = searchParams.get('warehouse') || ''
-    const stats = searchParams.get('stats') === 'true'
-    const lowStock = searchParams.get('lowStock') === 'true'
+    statsRequested = searchParams.get('stats') === 'true'
+    shouldFilterLowStock = searchParams.get('lowStock') === 'true'
 
     const offset = (page - 1) * limit
-
-    // Build where clause
-    let whereClause: any = {}
-    
-    if (search) {
-      whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { partNumber: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
-      ]
-    }
-    
-    if (category && category !== 'all') {
-      whereClause.category = category
-    }
-    
-    if (status && status !== 'all') {
-      whereClause.status = status
-    }
-    
-    if (warehouse && warehouse !== 'all') {
-      whereClause.warehouse = warehouse
-    }
-
-    // Handle low stock filter
-    if (lowStock) {
-      whereClause.quantity = {
-        lte: db.inventoryItem.fields.minStockLevel
-      }
-    }
+    const where = buildFilters({
+      search,
+      category,
+      status,
+      warehouse,
+      lowStock: shouldFilterLowStock
+    })
 
     // Handle stats request
-    if (stats) {
+    if (statsRequested) {
       const currentMonthStart = new Date()
       currentMonthStart.setDate(1)
       currentMonthStart.setHours(0, 0, 0, 0)
@@ -66,94 +146,125 @@ export async function GET(request: NextRequest) {
       const previousMonthStart = new Date(currentMonthStart)
       previousMonthStart.setMonth(previousMonthStart.getMonth() - 1)
 
-      const [
-        totalItems,
-        totalValue,
-        lowStockItems,
-        activeSuppliers,
-        currentMonthItems,
-        previousMonthItems,
-        currentMonthValue,
-        previousMonthValue
-      ] = await Promise.all([
-        // Total items
+      const currentMonthWhere: Prisma.InventoryItemWhereInput = {
+        createdAt: { gte: currentMonthStart }
+      }
+
+      const previousMonthWhere: Prisma.InventoryItemWhereInput = {
+        createdAt: {
+          gte: previousMonthStart,
+          lt: currentMonthStart
+        }
+      }
+
+      const statsResults = await Promise.allSettled([
         db.inventoryItem.count(),
-        // Total value
-        db.inventoryItem.aggregate({
-          _sum: { unitPrice: true }
-        }),
-        // Low stock items
         db.inventoryItem.count({
-          where: {
-            quantity: {
-              lte: db.inventoryItem.fields.minStockLevel
-            }
-          }
+          where: { status: { in: LOW_STOCK_STATUSES } }
         }),
-        // Active suppliers (unique)
-        db.inventoryItem.groupBy({
-          by: ['supplier'],
-          _count: true
+        db.inventoryItem.findMany({
+          where: { supplier: { notIn: ['', null] } },
+          select: { supplier: true },
+          distinct: ['supplier']
         }),
-        // Current month items
         db.inventoryItem.count({
-          where: {
-            createdAt: { gte: currentMonthStart }
-          }
+          where: currentMonthWhere
         }),
-        // Previous month items
         db.inventoryItem.count({
-          where: {
-            createdAt: {
-              gte: previousMonthStart,
-              lt: currentMonthStart
-            }
-          }
+          where: previousMonthWhere
         }),
-        // Current month value
-        db.inventoryItem.aggregate({
-          where: {
-            createdAt: { gte: currentMonthStart }
-          },
-          _sum: { unitPrice: true }
-        }),
-        // Previous month value
-        db.inventoryItem.aggregate({
-          where: {
-            createdAt: {
-              gte: previousMonthStart,
-              lt: currentMonthStart
-            }
-          },
-          _sum: { unitPrice: true }
-        })
+        calculateInventoryValue(),
+        calculateInventoryValue(currentMonthWhere),
+        calculateInventoryValue(previousMonthWhere)
       ])
+
+      const [
+        totalItemsResult,
+        lowStockItemsResult,
+        activeSuppliersResult,
+        currentMonthItemsResult,
+        previousMonthItemsResult,
+        totalValueResult,
+        currentMonthValueResult,
+        previousMonthValueResult
+      ] = statsResults
+
+      const readResult = <T>(
+        result: PromiseSettledResult<T>,
+        fallback: T
+      ): T => {
+        if (result.status === 'rejected') {
+          console.error('Inventory stats computation error:', result.reason)
+          return fallback
+        }
+        return result.value
+      }
+
+      const totalItems = readResult(totalItemsResult, 0)
+      const lowStockItems = readResult(lowStockItemsResult, 0)
+      const activeSuppliers = readResult(activeSuppliersResult, []).length
+      const currentMonthItems = readResult(currentMonthItemsResult, 0)
+      const previousMonthItems = readResult(previousMonthItemsResult, 0)
+      const totalValue = readResult(totalValueResult, 0)
+      const currentMonthValue = readResult(currentMonthValueResult, 0)
+      const previousMonthValue = readResult(previousMonthValueResult, 0)
 
       const monthlyGrowth = {
         items: previousMonthItems > 0 ? ((currentMonthItems - previousMonthItems) / previousMonthItems) * 100 : 0,
-        value: previousMonthValue._sum.unitPrice ? 
-          ((currentMonthValue._sum.unitPrice || 0) - previousMonthValue._sum.unitPrice) / previousMonthValue._sum.unitPrice * 100 : 0
+        value:
+          previousMonthValue > 0
+            ? ((currentMonthValue - previousMonthValue) / previousMonthValue) * 100
+            : 0
       }
 
       return NextResponse.json({
         totalItems,
-        totalValue: totalValue._sum.unitPrice || 0,
+        totalValue,
         lowStockItems,
-        activeSuppliers: activeSuppliers.length,
+        activeSuppliers,
         monthlyGrowth
       })
     }
 
     // Get inventory items
     const items = await db.inventoryItem.findMany({
-      where: whereClause,
+      where,
       orderBy: { createdAt: 'desc' },
       skip: offset,
       take: limit
     })
 
-    // Transform items data
-    const transformedItems = items.map(item => ({
+    const statusUpdates: Array<Promise<unknown>> = []
+
+    const normalizedItems = items.map(item => {
+      const computedStatus = resolveStatus(item.quantity, item.minStockLevel, item.status)
+
+      if (item.status !== computedStatus) {
+        statusUpdates.push(
+          db.inventoryItem.update({
+            where: { id: item.id },
+            data: {
+              status: computedStatus
+            }
+          })
+        )
+      }
+
+      return {
+        ...item,
+        status: computedStatus
+      }
+    })
+
+    if (statusUpdates.length) {
+      await Promise.all(statusUpdates)
+    }
+
+    const filteredItems = shouldFilterLowStock
+      ? normalizedItems.filter(item => item.quantity <= item.minStockLevel)
+      : normalizedItems
+
+    const transformedItems = filteredItems.map(item => ({
       id: item.id,
       partNumber: item.partNumber,
       name: item.name,
@@ -167,14 +278,13 @@ export async function GET(request: NextRequest) {
       location: item.location,
       warehouse: item.warehouse,
       status: item.status,
-      lastRestockDate: item.lastRestockDate.toISOString(),
-      nextRestockDate: item.nextRestockDate?.toISOString(),
+      lastRestockDate: normalizeDate(item.lastRestockDate),
+      nextRestockDate: normalizeDate(item.nextRestockDate),
       leadTime: item.leadTime,
       notes: item.notes
     }))
 
-    // Get total count for pagination
-    const totalCount = await db.inventoryItem.count({ where: whereClause })
+    const totalCount = await db.inventoryItem.count({ where })
 
     return NextResponse.json({
       items: transformedItems,
@@ -188,6 +298,30 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching inventory items:', error)
+    if (shouldFallbackToEmptyResult(error)) {
+      if (statsRequested) {
+        return NextResponse.json({
+          totalItems: 0,
+          totalValue: 0,
+          lowStockItems: 0,
+          activeSuppliers: 0,
+          monthlyGrowth: {
+            items: 0,
+            value: 0
+          }
+        })
+      }
+
+      return NextResponse.json({
+        items: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0
+        }
+      })
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -221,7 +355,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validate required fields
-    if (!partNumber || !name || !category || !unitPrice || !supplier || !warehouse) {
+    if (!partNumber || !name || !category || unitPrice === undefined || unitPrice === null || !supplier || !warehouse) {
       return NextResponse.json(
         { error: 'Part number, name, category, unit price, supplier, and warehouse are required' },
         { status: 400 }
@@ -241,12 +375,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine status based on quantity
-    let status: string = 'in_stock'
-    if (quantity === 0) {
-      status = 'out_of_stock'
-    } else if (quantity <= (minStockLevel || 0)) {
-      status = 'low_stock'
-    }
+    const status = resolveStatus(quantity || 0, minStockLevel || 0, body.status)
 
     // Create new inventory item
     const item = await db.inventoryItem.create({
@@ -268,6 +397,23 @@ export async function POST(request: NextRequest) {
         notes
       }
     })
+
+    await syncMaintenancePartFromInventory(
+      {
+        partNumber: item.partNumber,
+        name: item.name,
+        description: item.description,
+        category: item.category,
+        quantity: item.quantity,
+        minStockLevel: item.minStockLevel,
+        maxStockLevel: item.maxStockLevel,
+        unitPrice: item.unitPrice,
+        supplier: item.supplier,
+        location: item.location,
+        status
+      },
+      user.id
+    )
 
     return NextResponse.json({
       id: item.id,

@@ -228,7 +228,7 @@ export default function Home() {
                     <div className="mb-6">
                       <Badge className="bg-white/20 text-white border-white/30 mb-4">
                         <Award className="ml-2 h-4 w-4" />
-                        {companyInfo.features?.[0] || 'وكيل معتمد'}
+                        {companyInfo.features?.[0] || 'موزع معتمد'}
                       </Badge>
                     </div>
                     <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -786,7 +786,7 @@ export default function Home() {
                   {
                     name: 'خالد إبراهيم',
                     rating: 5,
-                    comment: 'أفضل وكيل سيارات تعاملت معه. أسعار ممتازة وخدمة ما بعد البيع رائعة.',
+                    comment: 'أفضل موزع سيارات تعاملت معه. أسعار ممتازة وخدمة ما بعد البيع رائعة.',
                     car: 'تاتا هارير',
                     date: '2024'
                   }

@@ -83,10 +83,10 @@ export default function Home() {
         console.error('Error fetching company info:', error)
         // Set default company info on error
         setCompanyInfo({
-          title: 'الحمد للسيارات - وكيل تاتا المعتمد',
+          title: 'الحمد للسيارات - الموزع المعتمد لتاتا موتورز في مدن القناة',
           subtitle: 'الجودة والثقة في عالم السيارات',
-          description: 'نحن وكيل تاتا المعتمد في مصر، نقدم أحدث موديلات تاتا مع ضمان المصنع الكامل وخدمة ما بعد البيع المتميزة.',
-          features: ['وكيل معتمد لتاتا', 'ضمان المصنع الكامل', 'خدمة ما بعد البيع 24/7', 'تمويل سهل ومريح'],
+          description: 'نحن الموزع المعتمد لتاتا موتورز في مدن القناة، نقدم أحدث موديلات تاتا مع ضمان المصنع الكامل وخدمة ما بعد البيع المتميزة.',
+          features: ['موزع معتمد لتاتا', 'ضمان المصنع الكامل', 'خدمة ما بعد البيع 24/7', 'تمويل سهل ومريح'],
           ctaButtons: [
             { text: 'استعرض السيارات', link: '/vehicles', variant: 'primary' },
             { text: 'قيادة تجريبية', link: '/test-drive', variant: 'secondary' }
@@ -290,7 +290,7 @@ export default function Home() {
                     <div className="mb-6">
                       <Badge className="bg-white/20 text-white border-white/30 mb-4">
                         <Award className="ml-2 h-4 w-4" />
-                        وكيل معتمد لتاتا
+                        موزع معتمد لتاتا
                       </Badge>
                     </div>
                     <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -1311,7 +1311,7 @@ export default function Home() {
               </p>
               <div className="flex items-center justify-center gap-3 text-sm text-gray-500">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>الوكيل الرسمي المعتمد لسيارات تاتا في مصر</span>
+                <span>الموزع المعتمد لسيارات تاتا في مدن القناة</span>
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               </div>
             </div>
@@ -1326,11 +1326,11 @@ export default function Home() {
                     قصتنا
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-4 text-lg">
-                    تأسست الحمد للسيارات في عام 1999 كأحد الوكلاء الرائدين لسيارات تاتا في مصر. 
+                    تأسست الحمد للسيارات في عام 1999 كموزع معتمد لسيارات تاتا في مدن القناة.
                     ومنذ ذلك الحين، ونحن نلتزم بتقديم أفضل المنتجات والخدمات لعملائنا الكرام.
                   </p>
                   <p className="text-gray-700 leading-relaxed text-lg">
-                    اليوم، نحن فخورون بكوننا أحد أكبر وأهم وكلاء تاتا في مصر، مع شبكة واسعة من المعارض 
+                    اليوم، نحن فخورون بكوننا أحد أهم موزعي تاتا في مصر، مع شبكة واسعة من المعارض
                     ومراكز الخدمة تغطي جميع أنحاء الجمهورية.
                   </p>
                 </div>
