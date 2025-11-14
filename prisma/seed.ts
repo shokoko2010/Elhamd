@@ -1246,6 +1246,7 @@ async function main() {
 
     // 16. Sample Payroll Records (idempotent)
     const payrollPeriod = '2024-05'
+    const payrollPeriodLabel = 'CURRENT'
     const payrollPayDate = new Date('2024-05-31')
     const payrollCreatorId = staffUsers[0]?.id
 
@@ -1255,12 +1256,11 @@ async function main() {
       const employeeIds = employees.map((emp) => emp.id)
 
       if (employeeIds.length > 0) {
-        // Clear any existing payroll rows for this cohort/period to avoid unique collisions when
-        // the seed script is re-run against a persistent environment (e.g. Vercel preview DB).
+        // Ensure any stale payroll rows for the targeted employees/period are cleared
         await prisma.payrollRecord.deleteMany({
           where: {
-            period: payrollPeriod,
-            employeeId: { in: employeeIds }
+            employeeId: { in: employeeIds },
+            period: payrollPeriod
           }
         })
 
@@ -1273,6 +1273,7 @@ async function main() {
           return {
             employeeId: emp.id,
             period: payrollPeriod,
+            periodLabel: payrollPeriodLabel,
             basicSalary: emp.salary,
             allowances,
             deductions,
@@ -1286,14 +1287,36 @@ async function main() {
           }
         })
 
-        if (payrollSeedData.length > 0) {
-          const result = await prisma.payrollRecord.createMany({
-            data: payrollSeedData,
-            skipDuplicates: true
+        let upsertedCount = 0
+
+        for (const record of payrollSeedData) {
+          await prisma.payrollRecord.upsert({
+            where: {
+              employeeId_period_periodLabel: {
+                employeeId: record.employeeId,
+                period: record.period,
+                periodLabel: record.periodLabel
+              }
+            },
+            update: {
+              basicSalary: record.basicSalary,
+              allowances: record.allowances,
+              deductions: record.deductions,
+              overtime: record.overtime,
+              bonus: record.bonus,
+              netSalary: record.netSalary,
+              payDate: record.payDate,
+              status: record.status,
+              createdBy: record.createdBy,
+              approvedBy: record.approvedBy
+            },
+            create: record
           })
 
-          console.log(`✓ payroll records seeded: ${result.count}`)
+          upsertedCount += 1
         }
+
+        console.log(`✓ payroll records seeded or updated: ${upsertedCount}`)
       }
     }
   }
