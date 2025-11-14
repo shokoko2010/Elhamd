@@ -10,11 +10,10 @@ async function updateNavigation() {
     const navigationUpdates = [
       { id: 'nav-home', label: 'الرئيسية', href: '/', order: 1 },
       { id: 'nav-vehicles', label: 'السيارات', href: '/vehicles', order: 2 },
-      { id: 'nav-search', label: 'بحث', href: '/search', order: 3 },
-      { id: 'nav-test-drive', label: 'قيادة تجريبية', href: '/test-drive', order: 4 },
-      { id: 'nav-service-booking', label: 'حجز خدمة', href: '/service-booking', order: 5 },
-      { id: 'nav-consultation', label: 'استشارة', href: '/consultation', order: 6 },
-      { id: 'nav-contact', label: 'اتصل بنا', href: '/contact', order: 7 }
+      { id: 'nav-test-drive', label: 'قيادة تجريبية', href: '/test-drive', order: 3 },
+      { id: 'nav-service-booking', label: 'حجز خدمة', href: '/service-booking', order: 4 },
+      { id: 'nav-consultation', label: 'استشارة', href: '/consultation', order: 5 },
+      { id: 'nav-contact', label: 'اتصل بنا', href: '/contact', order: 6 }
     ]
 
     // Get existing items

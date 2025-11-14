@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Car, Search } from 'lucide-react'
 import Link from 'next/link'
+import { AdvancedPublicSearch } from '@/components/search/AdvancedPublicSearch'
 
 interface Vehicle {
   id: string
@@ -32,10 +33,43 @@ interface Filters {
   sortBy: string
 }
 
+type AdvancedSearchResult = {
+  id: string
+  title: string
+  description: string
+  category: string
+  relevanceScore: number
+  metadata: {
+    year: number
+    price: number
+    status: string
+    mileage?: number
+    fuelType: string
+    transmission: string
+    primaryImage?: string | null
+  }
+}
+
+type AdvancedSearchPayload = {
+  results: AdvancedSearchResult[]
+  query: string
+  pagination: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
+  // Additional filter metadata from advanced search component (unused for now)
+  filters?: Record<string, unknown>
+}
+
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
+  const [advancedVehicles, setAdvancedVehicles] = useState<Vehicle[]>([])
+  const [advancedSearchActive, setAdvancedSearchActive] = useState(false)
+  const [advancedResultInfo, setAdvancedResultInfo] = useState<{ total: number; query: string } | null>(null)
   const [filters, setFilters] = useState<Filters>({
     search: '',
     category: 'all',
@@ -64,8 +98,53 @@ export default function VehiclesPage() {
     loadVehicles()
   }, [])
 
+  const mapAdvancedResultToVehicle = (result: AdvancedSearchResult): Vehicle => {
+    const titleParts = result.title.split(' ')
+    const make = titleParts[0] || result.title
+    const model = titleParts.slice(1).join(' ') || result.title
+    const primaryImage = result.metadata.primaryImage
+
+    return {
+      id: result.id,
+      make,
+      model,
+      year: result.metadata.year,
+      price: result.metadata.price,
+      category: result.category,
+      fuelType: result.metadata.fuelType,
+      transmission: result.metadata.transmission,
+      mileage: result.metadata.mileage,
+      status: result.metadata.status,
+      images: [
+        {
+          imageUrl: primaryImage || '/uploads/vehicles/1/nexon-front-new.jpg',
+          isPrimary: true
+        }
+      ]
+    }
+  }
+
+  const clearAdvancedSearch = () => {
+    setAdvancedVehicles([])
+    setAdvancedSearchActive(false)
+    setAdvancedResultInfo(null)
+  }
+
+  const handleAdvancedSearchComplete = (payload: AdvancedSearchPayload) => {
+    if (!payload.query) {
+      clearAdvancedSearch()
+      return
+    }
+
+    const mapped = payload.results.map(mapAdvancedResultToVehicle)
+    setAdvancedVehicles(mapped)
+    setAdvancedSearchActive(true)
+    setAdvancedResultInfo({ total: payload.pagination.total, query: payload.query })
+  }
+
   useEffect(() => {
-    let filtered = [...vehicles]
+    const baseVehicles = advancedSearchActive ? advancedVehicles : vehicles
+    let filtered = [...baseVehicles]
 
     // Apply search filter
     if (filters.search) {
@@ -109,7 +188,7 @@ export default function VehiclesPage() {
     })
 
     setFilteredVehicles(filtered)
-  }, [vehicles, filters])
+  }, [vehicles, filters, advancedVehicles, advancedSearchActive])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', {
@@ -131,6 +210,7 @@ export default function VehiclesPage() {
       transmission: 'all',
       sortBy: 'featured'
     })
+    clearAdvancedSearch()
   }
 
   if (loading) {
@@ -189,7 +269,16 @@ export default function VehiclesPage() {
             </div>
             <div className="mt-4 md:mt-0">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <span>تم العثور على {filteredVehicles.length} مركبة</span>
+                <span>
+                  {advancedSearchActive && advancedResultInfo
+                    ? `تم العثور على ${advancedResultInfo.total} مركبة لبحث "${advancedResultInfo.query}"`
+                    : `تم العثور على ${filteredVehicles.length} مركبة`}
+                </span>
+                {advancedSearchActive && (
+                  <Button variant="ghost" size="sm" onClick={clearAdvancedSearch}>
+                    عرض كل المركبات
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -275,6 +364,28 @@ export default function VehiclesPage() {
               </Button>
             </div>
           </div>
+          <div className="mt-6">
+            <div className="rounded-lg border bg-gray-50 p-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">البحث المتقدم</h2>
+                  <p className="text-sm text-gray-600">استخدم الفلاتر الذكية للحصول على نتائج دقيقة من قاعدة البيانات</p>
+                </div>
+                {advancedSearchActive && advancedResultInfo && (
+                  <div className="text-sm text-gray-600">
+                    عرض نتائج البحث المتقدم
+                  </div>
+                )}
+              </div>
+              <AdvancedPublicSearch
+                showResults={false}
+                onSearchComplete={({ results, query, pagination }) =>
+                  handleAdvancedSearchComplete({ results, query, pagination })
+                }
+                onClear={clearAdvancedSearch}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -283,11 +394,23 @@ export default function VehiclesPage() {
         {filteredVehicles.length === 0 ? (
           <div className="text-center py-12">
             <Car className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد مركبات</h3>
-            <p className="text-gray-600 mb-4">لم يتم العثور على مركبات تطابق معايير البحث الخاصة بك</p>
-            <Button onClick={clearFilters} variant="outline">
-              مسح الفلاتر
-            </Button>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {advancedSearchActive ? 'لا توجد نتائج للبحث المتقدم' : 'لا توجد مركبات'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {advancedSearchActive && advancedResultInfo
+                ? `لم يتم العثور على مركبات تطابق "${advancedResultInfo.query}"`
+                : 'لم يتم العثور على مركبات تطابق معايير البحث الخاصة بك'}
+            </p>
+            {advancedSearchActive ? (
+              <Button onClick={clearAdvancedSearch} variant="outline">
+                عرض كل المركبات
+              </Button>
+            ) : (
+              <Button onClick={clearFilters} variant="outline">
+                مسح الفلاتر
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

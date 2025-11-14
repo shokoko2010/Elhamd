@@ -66,11 +66,10 @@ function AuthAwareNavbar() {
       setNavigation([
         { id: '1', label: 'الرئيسية', href: '/', order: 1, isVisible: true },
         { id: '2', label: 'السيارات', href: '/vehicles', order: 2, isVisible: true },
-        { id: '3', label: 'بحث', href: '/search', order: 3, isVisible: true },
-        { id: '4', label: 'قيادة تجريبية', href: '/test-drive', order: 4, isVisible: true },
-        { id: '5', label: 'حجز خدمة', href: '/service-booking', order: 5, isVisible: true },
-        { id: '6', label: 'استشارة', href: '/consultation', order: 6, isVisible: true },
-        { id: '7', label: 'اتصل بنا', href: '/contact', order: 7, isVisible: true },
+        { id: '3', label: 'قيادة تجريبية', href: '/test-drive', order: 3, isVisible: true },
+        { id: '4', label: 'حجز خدمة', href: '/service-booking', order: 4, isVisible: true },
+        { id: '5', label: 'استشارة', href: '/consultation', order: 5, isVisible: true },
+        { id: '6', label: 'اتصل بنا', href: '/contact', order: 6, isVisible: true },
       ])
     }
   }

@@ -4,30 +4,40 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Phone, Calendar, MapPin, Mail, Clock, ArrowLeft } from 'lucide-react'
+import { Phone, Calendar, MapPin, Mail, Clock, ArrowLeft, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { TouchButton, useDeviceInfo } from '@/components/ui/enhanced-mobile-optimization'
 import { OptimizedImage } from '@/components/ui/OptimizedImage'
 
 export default function ConsultationPage() {
   const deviceInfo = useDeviceInfo()
-  const [isLoading, setIsLoading] = useState(false)
+  const [loadingAction, setLoadingAction] = useState<'call' | 'whatsapp' | 'booking' | null>(null)
 
   const handlePhoneCall = () => {
-    setIsLoading(true)
+    setLoadingAction('call')
     // Simulate call action
     setTimeout(() => {
       window.open('tel:+201234567890', '_blank')
-      setIsLoading(false)
+      setLoadingAction(null)
+    }, 500)
+  }
+
+  const handleWhatsApp = () => {
+    setLoadingAction('whatsapp')
+    // Simulate WhatsApp action
+    setTimeout(() => {
+      const message = encodeURIComponent('مرحبا، أود الاستفسار عن سيارات تاتا المتاحة.')
+      window.open(`https://wa.me/201234567890?text=${message}`, '_blank')
+      setLoadingAction(null)
     }, 500)
   }
 
   const handleBooking = () => {
-    setIsLoading(true)
+    setLoadingAction('booking')
     // Navigate to booking page
     setTimeout(() => {
       window.location.href = '/booking'
-      setIsLoading(false)
+      setLoadingAction(null)
     }, 500)
   }
 
@@ -91,27 +101,50 @@ export default function ConsultationPage() {
                     <span className="font-medium">24/7 خدمة متاحة</span>
                   </div>
                 </div>
-                <TouchButton
-                  onClick={handlePhoneCall}
-                  disabled={isLoading}
-                  variant="primary"
-                  size={deviceInfo.isMobile ? "lg" : "xl"}
-                  fullWidth
-                  hapticFeedback={true}
-                  className="bg-orange-600 hover:bg-orange-700 text-white text-lg font-semibold py-4 border-orange-600"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      جاري الاتصال...
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <Phone className="ml-2 h-5 w-5" />
-                      اتصل الآن
-                    </div>
-                  )}
-                </TouchButton>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <TouchButton
+                    onClick={handlePhoneCall}
+                    disabled={loadingAction !== null}
+                    variant="primary"
+                    size={deviceInfo.isMobile ? "lg" : "xl"}
+                    fullWidth
+                    hapticFeedback={true}
+                    className="bg-orange-600 hover:bg-orange-700 text-white text-lg font-semibold py-4 border-orange-600"
+                  >
+                    {loadingAction === 'call' ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        جاري الاتصال...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <Phone className="ml-2 h-5 w-5" />
+                        اتصال هاتفي
+                      </div>
+                    )}
+                  </TouchButton>
+                  <TouchButton
+                    onClick={handleWhatsApp}
+                    disabled={loadingAction !== null}
+                    variant="outline"
+                    size={deviceInfo.isMobile ? "lg" : "xl"}
+                    fullWidth
+                    hapticFeedback={true}
+                    className="border-green-600 text-green-700 hover:bg-green-50"
+                  >
+                    {loadingAction === 'whatsapp' ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600 mr-2"></div>
+                        جاري فتح واتساب...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <MessageCircle className="ml-2 h-5 w-5" />
+                        مراسلة واتساب
+                      </div>
+                    )}
+                  </TouchButton>
+                </div>
               </CardContent>
             </Card>
 
@@ -141,14 +174,14 @@ export default function ConsultationPage() {
                 </div>
                 <TouchButton
                   onClick={handleBooking}
-                  disabled={isLoading}
+                  disabled={loadingAction !== null}
                   variant="primary"
                   size={deviceInfo.isMobile ? "lg" : "xl"}
                   fullWidth
                   hapticFeedback={true}
                   className="bg-orange-600 hover:bg-orange-700 text-white text-lg font-semibold py-4 border-orange-600"
                 >
-                  {isLoading ? (
+                  {loadingAction === 'booking' ? (
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                       جاري الحجز...
@@ -168,7 +201,7 @@ export default function ConsultationPage() {
           <div className="text-center">
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
               <p className="text-orange-100 text-lg">
-                يمكنك أيضاً زيارة المعرض مباشرة أو التواصل عبر البريد الإلكتروني
+                يمكنك التواصل معنا عبر الاتصال الهاتفي أو رسائل واتساب، كما يمكنك زيارة المعرض مباشرة أو مراسلتنا عبر البريد الإلكتروني
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
                 <div className="flex items-center gap-2 text-white">
