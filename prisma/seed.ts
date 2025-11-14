@@ -1246,7 +1246,7 @@ async function main() {
 
     // 16. Sample Payroll Records
     await prisma.payrollRecord.createMany({
-      data: employees.map((emp, index) => ({
+      data: employees.map((emp) => ({
         employeeId: emp.id,
         period: '2024-05',
         basicSalary: emp.salary,
@@ -1259,7 +1259,8 @@ async function main() {
         status: 'PAID',
         createdBy: staffUsers[0].id,
         approvedBy: staffUsers[0].id
-      }))
+      })),
+      skipDuplicates: true
     })
     console.log('✓ payroll records created')
   }
