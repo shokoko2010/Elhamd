@@ -1255,13 +1255,6 @@ async function main() {
       const employeeIds = employees.map((emp) => emp.id)
 
       if (employeeIds.length > 0) {
-        await prisma.payrollRecord.deleteMany({
-          where: {
-            employeeId: { in: employeeIds },
-            period: payrollPeriod
-          }
-        })
-
         const payrollSeedData = employees.map((emp) => {
           const allowances = emp.salary * 0.2
           const deductions = emp.salary * 0.1
@@ -1284,11 +1277,31 @@ async function main() {
           }
         })
 
-        if (payrollSeedData.length > 0) {
-          await prisma.payrollRecord.createMany({
-            data: payrollSeedData,
-            skipDuplicates: true
+        for (const record of payrollSeedData) {
+          await prisma.payrollRecord.upsert({
+            where: {
+              employeeId_period: {
+                employeeId: record.employeeId,
+                period: record.period
+              }
+            },
+            update: {
+              basicSalary: record.basicSalary,
+              allowances: record.allowances,
+              deductions: record.deductions,
+              overtime: record.overtime,
+              bonus: record.bonus,
+              netSalary: record.netSalary,
+              payDate: record.payDate,
+              status: record.status,
+              createdBy: record.createdBy,
+              approvedBy: record.approvedBy
+            },
+            create: record
           })
+        }
+
+        if (payrollSeedData.length > 0) {
           console.log(`✓ payroll records processed: ${payrollSeedData.length}`)
         }
       }
