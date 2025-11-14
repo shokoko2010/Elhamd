@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Car, Search } from 'lucide-react'
+import { Car } from 'lucide-react'
 import Link from 'next/link'
 import { AdvancedPublicSearch } from '@/components/search/AdvancedPublicSearch'
 
@@ -26,7 +25,6 @@ interface Vehicle {
 }
 
 interface Filters {
-  search: string
   category: string
   fuelType: string
   transmission: string
@@ -71,7 +69,6 @@ export default function VehiclesPage() {
   const [advancedSearchActive, setAdvancedSearchActive] = useState(false)
   const [advancedResultInfo, setAdvancedResultInfo] = useState<{ total: number; query: string } | null>(null)
   const [filters, setFilters] = useState<Filters>({
-    search: '',
     category: 'all',
     fuelType: 'all',
     transmission: 'all',
@@ -146,14 +143,6 @@ export default function VehiclesPage() {
     const baseVehicles = advancedSearchActive ? advancedVehicles : vehicles
     let filtered = [...baseVehicles]
 
-    // Apply search filter
-    if (filters.search) {
-      filtered = filtered.filter(vehicle =>
-        vehicle.make.toLowerCase().includes(filters.search.toLowerCase()) ||
-        vehicle.model.toLowerCase().includes(filters.search.toLowerCase())
-      )
-    }
-
     // Apply category filter
     if (filters.category !== 'all') {
       filtered = filtered.filter(vehicle => vehicle.category === filters.category)
@@ -204,7 +193,6 @@ export default function VehiclesPage() {
 
   const clearFilters = () => {
     setFilters({
-      search: '',
       category: 'all',
       fuelType: 'all',
       transmission: 'all',
@@ -287,104 +275,87 @@ export default function VehiclesPage() {
 
       {/* Search and Filters */}
       <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="ابحث عن مركبة..."
-                  value={filters.search}
-                  onChange={(e) => updateFilter('search', e.target.value)}
-                  className="pr-10"
-                />
+        <div className="container mx-auto px-4 py-6 space-y-6">
+          <div className="rounded-lg border bg-gray-50 p-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">البحث المتقدم</h2>
+                <p className="text-sm text-gray-600">استخدم الفلاتر الذكية للحصول على نتائج دقيقة من قاعدة البيانات</p>
               </div>
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2">
-              <Select value={filters.category} onValueChange={(value) => updateFilter('category', value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل</SelectItem>
-                  <SelectItem value="SEDAN">سيدان</SelectItem>
-                  <SelectItem value="SUV">دفع رباعي</SelectItem>
-                  <SelectItem value="HATCHBACK">هاتشباك</SelectItem>
-                  <SelectItem value="PICKUP">بيك أب</SelectItem>
-                  <SelectItem value="TRUCK">شاحنة</SelectItem>
-                  <SelectItem value="VAN">فان</SelectItem>
-                  <SelectItem value="BUS">حافلة</SelectItem>
-                  <SelectItem value="COMMERCIAL">تجارية</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.fuelType} onValueChange={(value) => updateFilter('fuelType', value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل</SelectItem>
-                  <SelectItem value="PETROL">بنزين</SelectItem>
-                  <SelectItem value="DIESEL">ديزل</SelectItem>
-                  <SelectItem value="ELECTRIC">كهربائي</SelectItem>
-                  <SelectItem value="HYBRID">هجين</SelectItem>
-                  <SelectItem value="CNG">غاز طبيعي</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.transmission} onValueChange={(value) => updateFilter('transmission', value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل</SelectItem>
-                  <SelectItem value="MANUAL">يدوي</SelectItem>
-                  <SelectItem value="AUTOMATIC">أوتوماتيك</SelectItem>
-                  <SelectItem value="CVT">ناقل حركة متغير</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="featured">المميزة</SelectItem>
-                  <SelectItem value="price-asc">السعر: الأقل</SelectItem>
-                  <SelectItem value="price-desc">السعر: الأعلى</SelectItem>
-                  <SelectItem value="year-desc">الأحدث</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button variant="outline" onClick={clearFilters}>
-                مسح الفلاتر
-              </Button>
-            </div>
-          </div>
-          <div className="mt-6">
-            <div className="rounded-lg border bg-gray-50 p-4">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">البحث المتقدم</h2>
-                  <p className="text-sm text-gray-600">استخدم الفلاتر الذكية للحصول على نتائج دقيقة من قاعدة البيانات</p>
+              {advancedSearchActive && advancedResultInfo && (
+                <div className="text-sm text-gray-600">
+                  عرض نتائج البحث المتقدم
                 </div>
-                {advancedSearchActive && advancedResultInfo && (
-                  <div className="text-sm text-gray-600">
-                    عرض نتائج البحث المتقدم
-                  </div>
-                )}
-              </div>
-              <AdvancedPublicSearch
-                showResults={false}
-                onSearchComplete={({ results, query, pagination }) =>
-                  handleAdvancedSearchComplete({ results, query, pagination })
-                }
-                onClear={clearAdvancedSearch}
-              />
+              )}
             </div>
+            <AdvancedPublicSearch
+              showResults={false}
+              onSearchComplete={({ results, query, pagination }) =>
+                handleAdvancedSearchComplete({ results, query, pagination })
+              }
+              onClear={clearAdvancedSearch}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Select value={filters.category} onValueChange={(value) => updateFilter('category', value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="SEDAN">سيدان</SelectItem>
+                <SelectItem value="SUV">دفع رباعي</SelectItem>
+                <SelectItem value="HATCHBACK">هاتشباك</SelectItem>
+                <SelectItem value="PICKUP">بيك أب</SelectItem>
+                <SelectItem value="TRUCK">شاحنة</SelectItem>
+                <SelectItem value="VAN">فان</SelectItem>
+                <SelectItem value="BUS">حافلة</SelectItem>
+                <SelectItem value="COMMERCIAL">تجارية</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.fuelType} onValueChange={(value) => updateFilter('fuelType', value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="PETROL">بنزين</SelectItem>
+                <SelectItem value="DIESEL">ديزل</SelectItem>
+                <SelectItem value="ELECTRIC">كهربائي</SelectItem>
+                <SelectItem value="HYBRID">هجين</SelectItem>
+                <SelectItem value="CNG">غاز طبيعي</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.transmission} onValueChange={(value) => updateFilter('transmission', value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                <SelectItem value="MANUAL">يدوي</SelectItem>
+                <SelectItem value="AUTOMATIC">أوتوماتيك</SelectItem>
+                <SelectItem value="CVT">ناقل حركة متغير</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="featured">المميزة</SelectItem>
+                <SelectItem value="price-asc">السعر: الأقل</SelectItem>
+                <SelectItem value="price-desc">السعر: الأعلى</SelectItem>
+                <SelectItem value="year-desc">الأحدث</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button variant="outline" onClick={clearFilters}>
+              مسح الفلاتر
+            </Button>
           </div>
         </div>
       </div>
