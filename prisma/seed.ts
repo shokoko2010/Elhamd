@@ -1245,6 +1245,10 @@ async function main() {
     console.log('✓ leave requests created')
 
     // 16. Sample Payroll Records
+    console.log('↻ Resetting payroll data before seeding sample records')
+    await prisma.salaryAdvance.deleteMany()
+    await prisma.payrollRecord.deleteMany()
+
     await prisma.payrollRecord.createMany({
       skipDuplicates: true,
       data: employees.map((emp, index) => ({
