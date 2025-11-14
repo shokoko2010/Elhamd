@@ -1249,6 +1249,10 @@ async function main() {
     const payrollPeriod = '2024-05'
     const payrollPayDate = new Date('2024-05-31')
 
+    await prisma.payrollRecord.deleteMany({
+      where: { period: payrollPeriod }
+    })
+
     for (const emp of employees) {
       const allowances = emp.salary * 0.2
       const deductions = emp.salary * 0.1
