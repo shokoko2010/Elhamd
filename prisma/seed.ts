@@ -1244,60 +1244,55 @@ async function main() {
     })
     console.log('✓ leave requests created')
 
-    // 16. Sample Payroll Records
-    let processedPayroll = 0
+    // 16. Sample Payroll Records (idempotent)
     const payrollPeriod = '2024-05'
     const payrollPayDate = new Date('2024-05-31')
+    const payrollCreatorId = staffUsers[0]?.id
 
-    await prisma.payrollRecord.deleteMany({
-      where: { period: payrollPeriod }
-    })
+    if (!payrollCreatorId) {
+      console.log('⚠️  Skipping payroll seeding because no staff users were found')
+    } else {
+      const employeeIds = employees.map((emp) => emp.id)
 
-    for (const emp of employees) {
-      const allowances = emp.salary * 0.2
-      const deductions = emp.salary * 0.1
-      const overtime = Math.random() > 0.5 ? emp.salary * 0.05 : 0
-      const bonus = Math.random() > 0.7 ? emp.salary * 0.1 : 0
-      const netSalary = emp.salary + allowances - deductions + overtime + bonus
-
-      await prisma.payrollRecord.upsert({
-        where: {
-          employeeId_period: {
-            employeeId: emp.id,
+      if (employeeIds.length > 0) {
+        await prisma.payrollRecord.deleteMany({
+          where: {
+            employeeId: { in: employeeIds },
             period: payrollPeriod
           }
-        },
-        update: {
-          basicSalary: emp.salary,
-          allowances,
-          deductions,
-          overtime,
-          bonus,
-          netSalary,
-          payDate: payrollPayDate,
-          status: 'PAID',
-          approvedBy: staffUsers[0].id
-        },
-        create: {
-          employeeId: emp.id,
-          period: payrollPeriod,
-          basicSalary: emp.salary,
-          allowances,
-          deductions,
-          overtime,
-          bonus,
-          netSalary,
-          payDate: payrollPayDate,
-          status: 'PAID',
-          createdBy: staffUsers[0].id,
-          approvedBy: staffUsers[0].id
+        })
+
+        const payrollSeedData = employees.map((emp) => {
+          const allowances = emp.salary * 0.2
+          const deductions = emp.salary * 0.1
+          const overtime = Math.random() > 0.5 ? emp.salary * 0.05 : 0
+          const bonus = Math.random() > 0.7 ? emp.salary * 0.1 : 0
+
+          return {
+            employeeId: emp.id,
+            period: payrollPeriod,
+            basicSalary: emp.salary,
+            allowances,
+            deductions,
+            overtime,
+            bonus,
+            netSalary: emp.salary + allowances - deductions + overtime + bonus,
+            payDate: payrollPayDate,
+            status: 'PAID' as const,
+            createdBy: payrollCreatorId,
+            approvedBy: payrollCreatorId
+          }
+        })
+
+        if (payrollSeedData.length > 0) {
+          await prisma.payrollRecord.createMany({
+            data: payrollSeedData,
+            skipDuplicates: true
+          })
+          console.log(`✓ payroll records processed: ${payrollSeedData.length}`)
         }
-      })
-
-      processedPayroll += 1
+      }
     }
-
-    console.log(`✓ payroll records processed: ${processedPayroll}`)
   }
 
   console.log('✅ Comprehensive database seeding completed successfully!')
