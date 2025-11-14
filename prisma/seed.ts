@@ -1246,7 +1246,6 @@ async function main() {
 
     // 16. Sample Payroll Records (idempotent)
     const payrollPeriod = '2024-05'
-    const payrollPeriodLabel = 'CURRENT'
     const payrollPayDate = new Date('2024-05-31')
     const payrollCreatorId = staffUsers[0]?.id
 
@@ -1256,10 +1255,9 @@ async function main() {
       const employeeIds = employees.map((emp) => emp.id)
 
       if (employeeIds.length > 0) {
-        // Ensure any stale payroll rows for the targeted employees/period are cleared
+        // Remove any stale payroll rows for the seeded period to guarantee idempotency
         await prisma.payrollRecord.deleteMany({
           where: {
-            employeeId: { in: employeeIds },
             period: payrollPeriod
           }
         })
@@ -1273,7 +1271,6 @@ async function main() {
           return {
             employeeId: emp.id,
             period: payrollPeriod,
-            periodLabel: payrollPeriodLabel,
             basicSalary: emp.salary,
             allowances,
             deductions,
@@ -1287,36 +1284,12 @@ async function main() {
           }
         })
 
-        let upsertedCount = 0
+        const createResult = await prisma.payrollRecord.createMany({
+          data: payrollSeedData,
+          skipDuplicates: true
+        })
 
-        for (const record of payrollSeedData) {
-          await prisma.payrollRecord.upsert({
-            where: {
-              employeeId_period_periodLabel: {
-                employeeId: record.employeeId,
-                period: record.period,
-                periodLabel: record.periodLabel
-              }
-            },
-            update: {
-              basicSalary: record.basicSalary,
-              allowances: record.allowances,
-              deductions: record.deductions,
-              overtime: record.overtime,
-              bonus: record.bonus,
-              netSalary: record.netSalary,
-              payDate: record.payDate,
-              status: record.status,
-              createdBy: record.createdBy,
-              approvedBy: record.approvedBy
-            },
-            create: record
-          })
-
-          upsertedCount += 1
-        }
-
-        console.log(`✓ payroll records seeded or updated: ${upsertedCount}`)
+        console.log(`✓ payroll records seeded: ${createResult.count}`)
       }
     }
   }
