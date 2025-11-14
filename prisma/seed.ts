@@ -1246,6 +1246,7 @@ async function main() {
 
     // 16. Sample Payroll Records
     await prisma.payrollRecord.createMany({
+      skipDuplicates: true,
       data: employees.map((emp, index) => ({
         employeeId: emp.id,
         period: '2024-05',
