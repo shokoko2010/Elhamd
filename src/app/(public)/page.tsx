@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Settings, Droplet } from 'lucide-react'
+import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Settings, Droplet, Facebook } from 'lucide-react'
 import Link from 'next/link'
 import { VehicleCardSkeleton, HeroSliderSkeleton } from '@/components/ui/skeleton'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
@@ -19,8 +19,8 @@ import { ErrorHandler, useErrorHandler } from '@/lib/errorHandler'
 import { toast } from 'sonner'
 import { AdvancedPublicSearch } from '@/components/search/AdvancedPublicSearch'
 import ConfigurablePopup from '@/components/ConfigurablePopup'
-import { 
-  TouchButton, 
+import {
+  TouchButton,
   useDeviceInfo,
   ResponsiveGrid,
   SwipeableCard,
@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/enhanced-mobile-optimization'
 import { EnhancedLazyImage } from '@/components/ui/enhanced-lazy-loading'
 import { VehicleImage } from '@/components/ui/VehicleImage'
+import { FacebookFeeds } from '@/components/social/FacebookFeeds'
 
 interface Vehicle {
   id: string
@@ -197,6 +198,12 @@ export default function Home() {
   const [isAutoPlay, setIsAutoPlay] = useState(true)
 
   const { handleError, clearError } = useErrorHandler()
+
+  const facebookPageUrl =
+    contactInfo?.socialMedia?.facebook ??
+    companyInfo?.socialMedia?.facebook ??
+    companyInfo?.socialLinks?.facebook ??
+    'https://www.facebook.com/elhamdimport'
 
   const carouselVehicles = useMemo(() => {
     if (featuredVehicles.length >= 3) {
@@ -1115,6 +1122,26 @@ export default function Home() {
             </section>
           </EnhancedLazySection>
         )}
+
+        <EnhancedLazySection rootMargin="100px" preload={false}>
+          <section className="py-16 md:py-24 bg-gradient-to-b from-blue-50 to-white">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="text-center mb-16">
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
+                  <Facebook className="ml-2 h-4 w-4" />
+                  تابعونا على فيسبوك
+                </Badge>
+                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+                  أحدث ما ننشره على فيسبوك
+                </h2>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                  تعرفوا على آخر الأخبار والعروض من خلال منشوراتنا وريلز فيسبوك.
+                </p>
+              </div>
+              <FacebookFeeds pageUrl={facebookPageUrl} />
+            </div>
+          </section>
+        </EnhancedLazySection>
 
         {/* Testimonials Section - Using Customer Feedback */}
         <EnhancedLazySection rootMargin="100px" preload={false}>
