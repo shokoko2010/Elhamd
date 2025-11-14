@@ -1255,22 +1255,15 @@ async function main() {
       const employeeIds = employees.map((emp) => emp.id)
 
       if (employeeIds.length > 0) {
-        // Remove any stale payroll rows for the seeded period to guarantee idempotency
-        await prisma.payrollRecord.deleteMany({
-          where: {
-            period: payrollPeriod
-          }
-        })
+        const payrollIds = new Set<string>()
 
-        const payrollSeedData = employees.map((emp) => {
+        for (const emp of employees) {
           const allowances = emp.salary * 0.2
           const deductions = emp.salary * 0.1
           const overtime = Math.random() > 0.5 ? emp.salary * 0.05 : 0
           const bonus = Math.random() > 0.7 ? emp.salary * 0.1 : 0
 
-          return {
-            employeeId: emp.id,
-            period: payrollPeriod,
+          const payload = {
             basicSalary: emp.salary,
             allowances,
             deductions,
@@ -1282,14 +1275,26 @@ async function main() {
             createdBy: payrollCreatorId,
             approvedBy: payrollCreatorId
           }
-        })
 
-        const createResult = await prisma.payrollRecord.createMany({
-          data: payrollSeedData,
-          skipDuplicates: true
-        })
+          const record = await prisma.payrollRecord.upsert({
+            where: {
+              employeeId_period: {
+                employeeId: emp.id,
+                period: payrollPeriod
+              }
+            },
+            update: payload,
+            create: {
+              employeeId: emp.id,
+              period: payrollPeriod,
+              ...payload
+            }
+          })
 
-        console.log(`✓ payroll records seeded: ${createResult.count}`)
+          payrollIds.add(record.id)
+        }
+
+        console.log(`✓ payroll records seeded: ${payrollIds.size}`)
       }
     }
   }
