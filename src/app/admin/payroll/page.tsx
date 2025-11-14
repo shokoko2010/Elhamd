@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, Pencil } from 'lucide-react'
+import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, Pencil, HandCoins } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,15 +13,21 @@ import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface PayrollRecord {
   id: string
   employee: {
+    id: string
     user: {
       name: string
     }
-    department: string
-    position: string
+    department?: {
+      name: string
+    } | null
+    position?: {
+      title: string
+    } | null
   }
   period: string
   basicSalary: number
@@ -66,6 +72,14 @@ export default function PayrollPage() {
     deductions: 0,
     overtime: 0,
     bonus: 0
+  })
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false)
+  const [isAdvanceSubmitting, setIsAdvanceSubmitting] = useState(false)
+  const [advanceForm, setAdvanceForm] = useState({
+    employeeId: '',
+    employeeName: '',
+    amount: '',
+    reason: ''
   })
 
   useEffect(() => {
@@ -237,8 +251,22 @@ export default function PayrollPage() {
     setIsEditModalOpen(true)
   }
 
+  const openAdvanceModal = (record: PayrollRecord) => {
+    setAdvanceForm({
+      employeeId: record.employee.id,
+      employeeName: record.employee.user.name,
+      amount: '',
+      reason: ''
+    })
+    setIsAdvanceModalOpen(true)
+  }
+
   const handleEditChange = (field: keyof typeof editForm, value: number) => {
     setEditForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleAdvanceChange = (field: keyof typeof advanceForm, value: string) => {
+    setAdvanceForm(prev => ({ ...prev, [field]: value }))
   }
 
   const submitEdit = async (event: React.FormEvent) => {
@@ -264,6 +292,51 @@ export default function PayrollPage() {
     } catch (error) {
       console.error('Error updating payroll record:', error)
       toast.error('حدث خطأ أثناء تحديث سجل الراتب')
+    }
+  }
+
+  const submitAdvance = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    if (!advanceForm.employeeId) {
+      toast.error('تعذر تحديد الموظف للسلفة')
+      return
+    }
+
+    const amountValue = parseFloat(advanceForm.amount)
+    if (Number.isNaN(amountValue) || amountValue <= 0) {
+      toast.error('الرجاء إدخال مبلغ صالح للسلفة')
+      return
+    }
+
+    setIsAdvanceSubmitting(true)
+    try {
+      const response = await fetch('/api/hr/salary-advances', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          employeeId: advanceForm.employeeId,
+          amount: amountValue,
+          reason: advanceForm.reason || undefined
+        })
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'فشل في تسجيل السلفة')
+      }
+
+      toast.success('تم تسجيل السلفة بنجاح')
+      setIsAdvanceModalOpen(false)
+      setAdvanceForm({ employeeId: '', employeeName: '', amount: '', reason: '' })
+    } catch (error) {
+      console.error('Error creating salary advance:', error)
+      toast.error(error instanceof Error ? error.message : 'فشل في تسجيل السلفة')
+    } finally {
+      setIsAdvanceSubmitting(false)
     }
   }
 
@@ -456,6 +529,14 @@ export default function PayrollPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => openAdvanceModal(record)}
+                          title="تسجيل سلفة"
+                        >
+                          <HandCoins className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => openEditModal(record)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -568,6 +649,65 @@ export default function PayrollPage() {
                 إلغاء
               </Button>
               <Button type="submit">حفظ التعديلات</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isAdvanceModalOpen} onOpenChange={(open) => {
+        setIsAdvanceModalOpen(open)
+        if (!open) {
+          setAdvanceForm({ employeeId: '', employeeName: '', amount: '', reason: '' })
+        }
+      }}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>تسجيل سلفة راتب</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitAdvance} className="space-y-4">
+            <div className="space-y-2">
+              <Label>الموظف</Label>
+              <div className="rounded-md border bg-muted px-3 py-2 text-sm">
+                {advanceForm.employeeName || 'غير محدد'}
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="advanceAmount">مبلغ السلفة</Label>
+                <Input
+                  id="advanceAmount"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={advanceForm.amount}
+                  onChange={(event) => handleAdvanceChange('amount', event.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="advanceReason">سبب السلفة (اختياري)</Label>
+                <Textarea
+                  id="advanceReason"
+                  value={advanceForm.reason}
+                  onChange={(event) => handleAdvanceChange('reason', event.target.value)}
+                  placeholder="أدخل سبب السلفة"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAdvanceModalOpen(false)
+                  setAdvanceForm({ employeeId: '', employeeName: '', amount: '', reason: '' })
+                }}
+              >
+                إلغاء
+              </Button>
+              <Button type="submit" disabled={isAdvanceSubmitting}>
+                {isAdvanceSubmitting ? 'جاري الحفظ...' : 'تسجيل السلفة'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
