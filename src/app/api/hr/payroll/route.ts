@@ -166,6 +166,32 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getAuthUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const period = searchParams.get('period') || new Date().toISOString().slice(0, 7)
+
+    const result = await db.payrollRecord.deleteMany({
+      where: {
+        period
+      }
+    })
+
+    return NextResponse.json({
+      message: 'تم حذف سجلات الرواتب بنجاح',
+      deletedCount: result.count
+    })
+  } catch (error) {
+    console.error('Error deleting payroll records:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await getAuthUser()
