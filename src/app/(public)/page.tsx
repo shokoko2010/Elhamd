@@ -1,18 +1,14 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Settings, Droplet, Facebook } from 'lucide-react'
 import Link from 'next/link'
-import { VehicleCardSkeleton, HeroSliderSkeleton } from '@/components/ui/skeleton'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
 import { OptimizedImage, ResponsiveImage, BackgroundImage } from '@/components/ui/OptimizedImage'
-import { LoadingIndicator, LoadingCard, ErrorState } from '@/components/ui/LoadingIndicator'
+import { LoadingIndicator, LoadingCard } from '@/components/ui/LoadingIndicator'
 import { WorkingSlider } from '@/components/ui/WorkingSlider'
-import { EnhancedVehicleCard } from '@/components/ui/EnhancedVehicleCard'
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
 import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
 import { cache } from '@/lib/cache'
 import { ErrorHandler, useErrorHandler } from '@/lib/errorHandler'
@@ -27,21 +23,9 @@ import {
   MobileNav
 } from '@/components/ui/enhanced-mobile-optimization'
 import { EnhancedLazyImage } from '@/components/ui/enhanced-lazy-loading'
-import { VehicleImage } from '@/components/ui/VehicleImage'
 import { FacebookFeeds } from '@/components/social/FacebookFeeds'
-
-interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  price: number
-  category: string
-  fuelType: string
-  transmission: string
-  images: { imageUrl: string; isPrimary: boolean }[]
-  mileage?: number
-}
+import { ModernVehicleCarousel } from '@/components/home/ModernVehicleCarousel'
+import type { PublicVehicle } from '@/types/public-vehicle'
 
 interface SliderItem {
   id: string
@@ -65,7 +49,7 @@ const arabicDayLabels: Record<string, string> = {
   Friday: 'الجمعة'
 }
 
-const fallbackVehicles: Vehicle[] = [
+const fallbackVehicles: PublicVehicle[] = [
   {
     id: 'fallback-nexon-ev',
     make: 'Tata',
@@ -206,37 +190,12 @@ export default function Home() {
     'https://www.facebook.com/elhamdimport'
 
   const carouselVehicles = useMemo(() => {
-    if (featuredVehicles.length >= 3) {
+    if (featuredVehicles.length > 0) {
       return featuredVehicles
     }
 
-    const deduped = [...featuredVehicles]
-    for (const fallback of fallbackVehicles) {
-      if (deduped.length >= 3) break
-      if (!deduped.some(vehicle => vehicle.model === fallback.model)) {
-        deduped.push(fallback)
-      }
-    }
-
-    if (deduped.length === 0) {
-      return fallbackVehicles
-    }
-
-    return deduped.slice(0, Math.max(3, deduped.length))
+    return fallbackVehicles
   }, [featuredVehicles])
-
-  const slidesToShow = Math.min(3, carouselVehicles.length)
-  const carouselAlign = slidesToShow >= 3 ? 'start' : 'center'
-  const carouselDragFree = carouselVehicles.length > slidesToShow
-  const itemBasisClass = useMemo(() => {
-    if (slidesToShow === 1) {
-      return 'sm:basis-3/4 lg:basis-2/5 xl:basis-1/3'
-    }
-    if (slidesToShow === 2) {
-      return 'md:basis-1/2 xl:basis-2/5 2xl:basis-1/3'
-    }
-    return 'md:basis-1/2 xl:basis-1/3 2xl:basis-1/4'
-  }, [slidesToShow])
   const totalVehiclesCount = featuredVehicles.length > 0 ? featuredVehicles.length : carouselVehicles.length
 
   useEffect(() => {
@@ -539,80 +498,13 @@ export default function Home() {
                 </p>
               </div>
             
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-full min-h-[520px]">
-                      <LoadingCard title="جاري تحميل السيارة..." className="h-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : error ? (
-                <ErrorState
-                  title="حدث خطأ"
-                  message={error}
-                  onRetry={() => window.location.reload()}
-                />
-              ) : carouselVehicles.length === 0 ? (
-                <div className="text-center py-12">
-                  <Car className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد سيارات حالياً</h3>
-                  <p className="text-gray-500 mb-6">يرجى التحقق لاحقاً أو التواصل معنا</p>
-                  <Link href="/contact">
-                    <TouchButton variant="outline" size="lg">
-                      تواصل معنا
-                    </TouchButton>
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <div className="relative px-2 sm:px-4 lg:px-6">
-                    <Carousel
-                      opts={{
-                        align: carouselAlign,
-                        loop: carouselVehicles.length > slidesToShow,
-                        dragFree: carouselDragFree
-                      }}
-                      className="w-full overflow-visible"
-                    >
-                      <CarouselContent className="py-4 -mr-2 sm:-mr-4">
-                        {carouselVehicles.map((vehicle) => (
-                          <CarouselItem
-                            key={vehicle.id}
-                            className={`pr-2 sm:pr-4 basis-full ${itemBasisClass}`}
-                          >
-                            <div className="h-full">
-                              <EnhancedVehicleCard
-                                vehicle={vehicle}
-                                className="h-full"
-                              />
-                            </div>
-                          </CarouselItem>
-                        ))}
-                      </CarouselContent>
-                      {carouselVehicles.length > slidesToShow && (
-                        <>
-                          <CarouselPrevious className="hidden md:flex -left-2 lg:-left-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
-                          <CarouselNext className="hidden md:flex -right-2 lg:-right-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
-                        </>
-                      )}
-                    </Carousel>
-                  </div>
-
-                  <div className="text-center mt-12">
-                    <Link href="/vehicles">
-                      <TouchButton
-                        variant="outline"
-                        size="xl"
-                        className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
-                      >
-                        استعرض جميع السيارات ({totalVehiclesCount})
-                        <Car className="mr-3 h-5 w-5" />
-                      </TouchButton>
-                    </Link>
-                  </div>
-                </>
-              )}
+              <ModernVehicleCarousel
+                vehicles={carouselVehicles}
+                loading={loading}
+                error={error}
+                onRetry={() => window.location.reload()}
+                totalVehiclesCount={totalVehiclesCount}
+              />
             </div>
           </section>
         </EnhancedLazySection>
