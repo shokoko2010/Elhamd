@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, Pencil, HandCoins } from 'lucide-react'
+import { DollarSign, Users, TrendingUp, Calendar, Download, Plus, CheckCircle, Pencil, HandCoins, Trash2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -81,6 +81,8 @@ export default function PayrollPage() {
     amount: '',
     reason: ''
   })
+  const [isExporting, setIsExporting] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
 
   useEffect(() => {
     fetchPayrollData()
@@ -215,6 +217,97 @@ export default function PayrollPage() {
       currency: 'EGP',
       minimumFractionDigits: 0
     }).format(amount)
+  }
+
+  const exportPayrollData = () => {
+    if (!payrollRecords.length) {
+      toast.info('لا توجد بيانات لتصديرها')
+      return
+    }
+
+    try {
+      setIsExporting(true)
+
+      const headers = [
+        'الموظف',
+        'القسم',
+        'المسمى الوظيفي',
+        'الفترة',
+        'الراتب الأساسي',
+        'البدلات',
+        'الاستقطاعات',
+        'العمل الإضافي',
+        'المكافآت',
+        'صافي الراتب',
+        'الحالة'
+      ]
+
+      const rows = payrollRecords.map((record) => [
+        record.employee.user.name,
+        record.employee.department?.name ?? '-',
+        record.employee.position?.title ?? '-',
+        record.period,
+        record.basicSalary.toString(),
+        record.allowances.toString(),
+        record.deductions.toString(),
+        record.overtime.toString(),
+        record.bonus.toString(),
+        record.netSalary.toString(),
+        getStatusText(record.status)
+      ])
+
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `payroll-${selectedPeriod}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast.success('تم تصدير بيانات الرواتب بنجاح')
+    } catch (error) {
+      console.error('Error exporting payroll data:', error)
+      toast.error('حدث خطأ أثناء تصدير البيانات')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const clearPayrollData = async () => {
+    if (!payrollRecords.length) {
+      toast.info('لا توجد بيانات لحذفها')
+      return
+    }
+
+    const confirmed = window.confirm('هل أنت متأكد من حذف جميع سجلات الرواتب لهذه الفترة؟')
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      setIsClearing(true)
+      const response = await fetch(`/api/hr/payroll?period=${selectedPeriod}`, {
+        method: 'DELETE'
+      })
+      const result = await response.json()
+      if (response.ok) {
+        toast.success(result.message || 'تم حذف سجلات الرواتب بنجاح')
+        fetchPayrollData()
+      } else {
+        toast.error(result.error || 'فشل في حذف سجلات الرواتب')
+      }
+    } catch (error) {
+      console.error('Error clearing payroll data:', error)
+      toast.error('حدث خطأ أثناء حذف سجلات الرواتب')
+    } finally {
+      setIsClearing(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -391,38 +484,24 @@ export default function PayrollPage() {
             <Calendar className="ml-2 h-4 w-4" />
             تحديث
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={exportPayrollData} disabled={isExporting}>
             <Download className="ml-2 h-4 w-4" />
-            تصدير
+            {isExporting ? 'جارٍ التصدير...' : 'تصدير'}
           </Button>
-          <Button 
-            onClick={generatePayroll} 
+          <Button
+            onClick={generatePayroll}
             disabled={isGenerating}
           >
             <Plus className="ml-2 h-4 w-4" />
             {isGenerating ? 'جاري الإنشاء...' : 'إنشاء كشف رواتب'}
           </Button>
-          <Button 
-            variant="outline"
-            onClick={async () => {
-              try {
-                const response = await fetch('/api/admin/test-data', {
-                  method: 'POST'
-                })
-                const result = await response.json()
-                if (response.ok) {
-                  toast.success(result.message || 'تم إنشاء بيانات تجريبية')
-                  fetchPayrollData()
-                } else {
-                  toast.error(result.error || 'فشل في إنشاء البيانات التجريبية')
-                }
-              } catch (error) {
-                toast.error('حدث خطأ أثناء إنشاء البيانات التجريبية')
-              }
-            }}
+          <Button
+            variant="destructive"
+            onClick={clearPayrollData}
+            disabled={isClearing}
           >
-            <Users className="ml-2 h-4 w-4" />
-            إنشاء بيانات تجريبية
+            <Trash2 className="ml-2 h-4 w-4" />
+            {isClearing ? 'جارٍ الحذف...' : 'حذف جميع السجلات'}
           </Button>
         </div>
       </div>

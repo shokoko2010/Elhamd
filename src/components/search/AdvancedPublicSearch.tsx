@@ -77,8 +77,22 @@ interface AvailableFilters {
   }
 }
 
+interface SearchCallbackPayload {
+  results: SearchResult[]
+  query: string
+  filters: SearchFilters
+  pagination: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
+}
+
 interface AdvancedPublicSearchProps {
   onSearch?: (results: SearchResult[]) => void
+  onSearchComplete?: (payload: SearchCallbackPayload) => void
+  onClear?: () => void
   className?: string
   placeholder?: string
   showResults?: boolean
@@ -86,6 +100,8 @@ interface AdvancedPublicSearchProps {
 
 export function AdvancedPublicSearch({
   onSearch,
+  onSearchComplete,
+  onClear,
   className = "",
   placeholder = "ابحث عن سيارة...",
   showResults = true
@@ -203,9 +219,18 @@ export function AdvancedPublicSearch({
         setTotalPages(data.pagination.totalPages)
         setCurrentPage(page)
         setAvailableFilters(data.filters)
-        
+
         if (onSearch) {
           onSearch(data.results)
+        }
+
+        if (onSearchComplete) {
+          onSearchComplete({
+            results: data.results,
+            query: searchQuery,
+            filters: { ...filters },
+            pagination: data.pagination
+          })
         }
       } else {
         toast({
@@ -421,6 +446,26 @@ export function AdvancedPublicSearch({
               setSearchQuery('')
               setSearchResults([])
               setIsOpen(false)
+              onSearch?.([])
+              onSearchComplete?.({
+                results: [],
+                query: '',
+                filters: {
+                  category: 'all',
+                  minPrice: 0,
+                  maxPrice: 1000000,
+                  fuelType: 'all',
+                  transmission: 'all',
+                  year: 'all'
+                },
+                pagination: {
+                  total: 0,
+                  page: 1,
+                  limit: 12,
+                  totalPages: 0
+                }
+              })
+              onClear?.()
             }}
           >
             <X className="h-3 w-3" />

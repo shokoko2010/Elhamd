@@ -1,46 +1,62 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Button } from '@/components/ui/mobile-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Settings, Droplet } from 'lucide-react'
+import {
+  Car,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  Wrench,
+  Star,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Pause,
+  AlertCircle,
+  Package,
+  Shield,
+  Award,
+  Users,
+  Clock,
+  Zap,
+  Heart,
+  Eye,
+  Grid,
+  List,
+  Home as HomeIcon,
+  Truck,
+  Settings,
+  Droplet,
+  Facebook
+} from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
-import { VehicleCardSkeleton, HeroSliderSkeleton } from '@/components/ui/skeleton'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
 import { OptimizedImage, ResponsiveImage, BackgroundImage } from '@/components/ui/OptimizedImage'
-import { LoadingIndicator, LoadingCard, ErrorState } from '@/components/ui/LoadingIndicator'
+import { LoadingIndicator, LoadingCard } from '@/components/ui/LoadingIndicator'
 import { WorkingSlider } from '@/components/ui/WorkingSlider'
-import { EnhancedVehicleCard } from '@/components/ui/EnhancedVehicleCard'
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
 import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
 import { cache } from '@/lib/cache'
 import { ErrorHandler, useErrorHandler } from '@/lib/errorHandler'
 import { toast } from 'sonner'
 import { AdvancedPublicSearch } from '@/components/search/AdvancedPublicSearch'
 import ConfigurablePopup from '@/components/ConfigurablePopup'
-import { 
-  TouchButton, 
+import {
+  TouchButton,
   useDeviceInfo,
   ResponsiveGrid,
   SwipeableCard,
   MobileNav
 } from '@/components/ui/enhanced-mobile-optimization'
 import { EnhancedLazyImage } from '@/components/ui/enhanced-lazy-loading'
-import { VehicleImage } from '@/components/ui/VehicleImage'
-
-interface Vehicle {
-  id: string
-  make: string
-  model: string
-  year: number
-  price: number
-  category: string
-  fuelType: string
-  transmission: string
-  images: { imageUrl: string; isPrimary: boolean }[]
-  mileage?: number
-}
+import { FacebookFeeds } from '@/components/social/FacebookFeeds'
+import { ModernVehicleCarousel } from '@/components/home/ModernVehicleCarousel'
+import type { PublicVehicle } from '@/types/public-vehicle'
 
 interface SliderItem {
   id: string
@@ -64,7 +80,7 @@ const arabicDayLabels: Record<string, string> = {
   Friday: 'الجمعة'
 }
 
-const fallbackVehicles: Vehicle[] = [
+const fallbackVehicles: PublicVehicle[] = [
   {
     id: 'fallback-nexon-ev',
     make: 'Tata',
@@ -108,6 +124,49 @@ const fallbackVehicles: Vehicle[] = [
     ]
   }
 ]
+
+const resolveServiceIcon = (iconName?: string): LucideIcon => {
+  if (!iconName) {
+    return Wrench
+  }
+
+  const trimmed = iconName.trim()
+  if (!trimmed) {
+    return Wrench
+  }
+
+  const directMatch = (LucideIcons as Record<string, LucideIcon | undefined>)[trimmed as keyof typeof LucideIcons]
+  if (directMatch) {
+    return directMatch
+  }
+
+  const pascalCase = trimmed
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join('')
+
+  const normalizedMatch = (LucideIcons as Record<string, LucideIcon | undefined>)[pascalCase as keyof typeof LucideIcons]
+
+  return normalizedMatch ?? Wrench
+}
+
+const resolveServiceLink = (rawLink?: string): string => {
+  if (!rawLink) {
+    return '/service-booking'
+  }
+
+  const trimmed = rawLink.trim()
+  if (!trimmed) {
+    return '/service-booking'
+  }
+
+  if (/^(https?:\/\/|mailto:|tel:|whatsapp:)/i.test(trimmed)) {
+    return trimmed
+  }
+
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+}
 
 const normalizeContactInfo = (data: any) => {
   if (!data) {
@@ -198,38 +257,19 @@ export default function Home() {
 
   const { handleError, clearError } = useErrorHandler()
 
+  const facebookPageUrl =
+    contactInfo?.socialMedia?.facebook ??
+    companyInfo?.socialMedia?.facebook ??
+    companyInfo?.socialLinks?.facebook ??
+    'https://www.facebook.com/elhamdimport'
+
   const carouselVehicles = useMemo(() => {
-    if (featuredVehicles.length >= 3) {
+    if (featuredVehicles.length > 0) {
       return featuredVehicles
     }
 
-    const deduped = [...featuredVehicles]
-    for (const fallback of fallbackVehicles) {
-      if (deduped.length >= 3) break
-      if (!deduped.some(vehicle => vehicle.model === fallback.model)) {
-        deduped.push(fallback)
-      }
-    }
-
-    if (deduped.length === 0) {
-      return fallbackVehicles
-    }
-
-    return deduped.slice(0, Math.max(3, deduped.length))
+    return fallbackVehicles
   }, [featuredVehicles])
-
-  const slidesToShow = Math.min(3, carouselVehicles.length)
-  const carouselAlign = slidesToShow >= 3 ? 'start' : 'center'
-  const carouselDragFree = carouselVehicles.length > slidesToShow
-  const itemBasisClass = useMemo(() => {
-    if (slidesToShow === 1) {
-      return 'sm:basis-3/4 lg:basis-2/5 xl:basis-1/3'
-    }
-    if (slidesToShow === 2) {
-      return 'md:basis-1/2 xl:basis-2/5 2xl:basis-1/3'
-    }
-    return 'md:basis-1/2 xl:basis-1/3 2xl:basis-1/4'
-  }, [slidesToShow])
   const totalVehiclesCount = featuredVehicles.length > 0 ? featuredVehicles.length : carouselVehicles.length
 
   useEffect(() => {
@@ -532,79 +572,13 @@ export default function Home() {
                 </p>
               </div>
             
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-full min-h-[520px]">
-                      <LoadingCard title="جاري تحميل السيارة..." className="h-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : error ? (
-                <ErrorState
-                  title="حدث خطأ"
-                  message={error}
-                  onRetry={() => window.location.reload()}
-                />
-              ) : carouselVehicles.length === 0 ? (
-                <div className="text-center py-12">
-                  <Car className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد سيارات حالياً</h3>
-                  <p className="text-gray-500 mb-6">يرجى التحقق لاحقاً أو التواصل معنا</p>
-                  <Link href="/contact">
-                    <TouchButton variant="outline" size="lg">
-                      تواصل معنا
-                    </TouchButton>
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <div className="relative w-screen left-1/2 -translate-x-1/2 px-4 sm:px-8 lg:px-12">
-                    <Carousel
-                      opts={{
-                        align: carouselAlign,
-                        loop: carouselVehicles.length > slidesToShow,
-                        dragFree: carouselDragFree
-                      }}
-                    >
-                      <CarouselContent className="py-4">
-                        {carouselVehicles.map((vehicle) => (
-                          <CarouselItem
-                            key={vehicle.id}
-                            className={`pl-4 basis-full ${itemBasisClass}`}
-                          >
-                            <div className="h-full">
-                              <EnhancedVehicleCard
-                                vehicle={vehicle}
-                                className="h-full"
-                              />
-                            </div>
-                          </CarouselItem>
-                        ))}
-                      </CarouselContent>
-                      {carouselVehicles.length > slidesToShow && (
-                        <>
-                          <CarouselPrevious className="hidden md:flex -left-2 lg:-left-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
-                          <CarouselNext className="hidden md:flex -right-2 lg:-right-6 bg-white/90 hover:bg-white text-gray-700 border-0 shadow-xl" />
-                        </>
-                      )}
-                    </Carousel>
-                  </div>
-
-                  <div className="text-center mt-12">
-                    <Link href="/vehicles">
-                      <TouchButton
-                        variant="outline"
-                        size="xl"
-                        className="bg-white hover:bg-gray-50 text-blue-600 border-blue-200 hover:border-blue-300"
-                      >
-                        استعرض جميع السيارات ({totalVehiclesCount})
-                        <Car className="mr-3 h-5 w-5" />
-                      </TouchButton>
-                    </Link>
-                  </div>
-                </>
-              )}
+              <ModernVehicleCarousel
+                vehicles={carouselVehicles}
+                loading={loading}
+                error={error}
+                onRetry={() => window.location.reload()}
+                totalVehiclesCount={totalVehiclesCount}
+              />
             </div>
           </section>
         </EnhancedLazySection>
@@ -671,53 +645,65 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {serviceItems.map((service, index) => (
-                    <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
-                      <CardHeader className="text-center pb-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                          <Wrench className="h-8 w-8 text-white" />
-                        </div>
-                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
-                          {service.title}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-center">
-                        <p className="text-gray-600 mb-6 leading-relaxed">
-                          {service.description}
-                        </p>
-                        {service.features && (
-                          <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
-                            {service.features.slice(0, 3).map((feature: string, idx: number) => (
-                              <li key={idx} className="flex items-center justify-end gap-2">
-                                <span>{feature}</span>
-                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-sm text-gray-500">المدة:</span>
-                          <span className="text-sm font-medium text-gray-700">{service.duration}</span>
-                        </div>
-                        {service.price && (
-                          <div className="flex items-center justify-between mb-6">
-                            <span className="text-sm text-gray-500">السعر:</span>
-                            <span className="text-lg font-bold text-green-600">
-                              {formatPrice(service.price)}
-                            </span>
+                  {serviceItems.map((service, index) => {
+                    const IconComponent = resolveServiceIcon(service.icon)
+                    const href = resolveServiceLink(service.link)
+
+                    return (
+                      <Card
+                        key={service?.id ?? `service-${index}`}
+                        className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm"
+                      >
+                        <CardHeader className="text-center pb-4">
+                          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <IconComponent className="h-8 w-8 text-white" />
                           </div>
-                        )}
-                        <Link href="/service-booking">
-                          <TouchButton 
-                            variant="outline" 
-                            className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
-                          >
-                            احجز الآن
-                          </TouchButton>
-                        </Link>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
+                            {service.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-center">
+                          {service.description && (
+                            <p className="text-gray-600 mb-6 leading-relaxed">
+                              {service.description}
+                            </p>
+                          )}
+                          {Array.isArray(service.features) && service.features.length > 0 && (
+                            <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
+                              {service.features.slice(0, 3).map((feature: string, idx: number) => (
+                                <li key={idx} className="flex items-center justify-end gap-2">
+                                  <span>{feature}</span>
+                                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {service.duration && (
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-sm text-gray-500">المدة:</span>
+                              <span className="text-sm font-medium text-gray-700">{service.duration}</span>
+                            </div>
+                          )}
+                          {service.price && (
+                            <div className="flex items-center justify-between mb-6">
+                              <span className="text-sm text-gray-500">السعر:</span>
+                              <span className="text-lg font-bold text-green-600">
+                                {formatPrice(service.price)}
+                              </span>
+                            </div>
+                          )}
+                          <Link href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+                            <TouchButton
+                              variant="outline"
+                              className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
+                            >
+                              {service.ctaText?.trim() || 'احجز الآن'}
+                            </TouchButton>
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
               </div>
             </section>
@@ -1115,6 +1101,26 @@ export default function Home() {
             </section>
           </EnhancedLazySection>
         )}
+
+        <EnhancedLazySection rootMargin="100px" preload={false}>
+          <section className="py-16 md:py-24 bg-gradient-to-b from-blue-50 to-white">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="text-center mb-16">
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
+                  <Facebook className="ml-2 h-4 w-4" />
+                  تابعونا على فيسبوك
+                </Badge>
+                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+                  أحدث ما ننشره على فيسبوك
+                </h2>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                  تعرفوا على آخر الأخبار والعروض من خلال منشوراتنا وريلز فيسبوك.
+                </p>
+              </div>
+              <FacebookFeeds pageUrl={facebookPageUrl} />
+            </div>
+          </section>
+        </EnhancedLazySection>
 
         {/* Testimonials Section - Using Customer Feedback */}
         <EnhancedLazySection rootMargin="100px" preload={false}>

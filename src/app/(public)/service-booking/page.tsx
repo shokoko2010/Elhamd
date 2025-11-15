@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useSession, signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -77,6 +79,7 @@ interface ServiceBookingFormData {
 }
 
 export default function ServiceBookingPage() {
+  const { status } = useSession()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
@@ -116,7 +119,15 @@ export default function ServiceBookingPage() {
   const [submitError, setSubmitError] = useState('')
   const [calendarLoading, setCalendarLoading] = useState(false)
 
+  const isAuthenticated = status === 'authenticated'
+
   useEffect(() => {
+    if (!isAuthenticated) {
+      setVehicles([])
+      setServiceTypes([])
+      return
+    }
+
     // Fetch vehicles from API
     const fetchVehicles = async () => {
       try {
@@ -166,7 +177,7 @@ export default function ServiceBookingPage() {
     fetchVehicles()
     fetchServiceTypes()
     fetchCalendarData()
-  }, [])
+  }, [isAuthenticated])
 
   useEffect(() => {
     // Calculate total price based on selected service
@@ -197,6 +208,20 @@ export default function ServiceBookingPage() {
   const handleServiceSelect = (serviceId: string) => {
     setSelectedService(serviceId)
     setStep(3)
+  }
+
+  const handleSkipVehicleSelection = () => {
+    setSelectedVehicle(null)
+    setFormData(prev => ({
+      ...prev,
+      vehicleId: '',
+      vehicleInfo: {
+        ...prev.vehicleInfo,
+        licensePlate: '',
+        vin: ''
+      }
+    }))
+    setStep(2)
   }
 
   const handleDateSelect = (date: Date, timeSlot: TimeSlot | undefined) => {
@@ -301,6 +326,45 @@ export default function ServiceBookingPage() {
     return serviceTypes.find(s => s.id === selectedService)
   }
 
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
+          <div className="container mx-auto px-4 py-12">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold mb-4">حجز موعد خدمة</h1>
+              <p className="text-xl text-blue-100">
+                خدمات صيانة وإصلاح احترافية لمركبتك
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-3xl mx-auto">
+            <Card>
+              <CardContent className="p-8 text-center space-y-4">
+                <AlertCircle className="mx-auto h-12 w-12 text-blue-600" />
+                <h2 className="text-2xl font-bold">يجب تسجيل الدخول لحجز خدمة</h2>
+                <p className="text-gray-600">
+                  قم بتسجيل الدخول للوصول إلى مركباتك ومتابعة حجز الخدمة.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button onClick={() => signIn()} size="lg" className="min-w-[160px]">
+                    تسجيل الدخول
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="min-w-[160px]">
+                    <Link href="/">العودة إلى الصفحة الرئيسية</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Page Header */}
@@ -356,7 +420,10 @@ export default function ServiceBookingPage() {
                 </p>
                 <div className="bg-gray-50 rounded-lg p-6 mb-6 text-right max-w-md mx-auto">
                   <h3 className="font-semibold mb-2">تفاصيل الحجز:</h3>
-                  <p><strong>المركبة:</strong> {selectedVehicle?.make} {selectedVehicle?.model}</p>
+                  <p>
+                    <strong>المركبة:</strong>{' '}
+                    {selectedVehicle ? `${selectedVehicle.make} ${selectedVehicle.model}` : 'لم يتم اختيار مركبة'}
+                  </p>
                   <p><strong>الخدمة:</strong> {getSelectedService()?.name}</p>
                   <p><strong>التاريخ:</strong> {selectedDate && format(selectedDate, 'PPP', { locale: ar })}</p>
                   <p><strong>الوقت:</strong> {formData.timeSlot}</p>
@@ -413,35 +480,42 @@ export default function ServiceBookingPage() {
                         </CardContent>
                       </Card>
                     </div>
+                    <div className="mt-6 flex justify-center">
+                      <Button variant="outline" onClick={handleSkipVehicleSelection}>
+                        المتابعة بدون اختيار مركبة
+                      </Button>
+                    </div>
                   </div>
                 )}
 
                 {/* Step 2: Service Selection */}
-                {step === 2 && selectedVehicle && (
+                {step === 2 && (
                   <div>
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold">اختر الخدمة</h2>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={() => setStep(1)}
                       >
                         السابق
                       </Button>
                     </div>
-                    <div className="mb-6">
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-4">
-                            <Car className="h-8 w-8 text-blue-600" />
-                            <div>
-                              <h3 className="font-semibold">{selectedVehicle.make} {selectedVehicle.model}</h3>
-                              <p className="text-sm text-gray-600">{selectedVehicle.year} • {selectedVehicle.licensePlate}</p>
+                    {selectedVehicle && (
+                      <div className="mb-6">
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-4">
+                              <Car className="h-8 w-8 text-blue-600" />
+                              <div>
+                                <h3 className="font-semibold">{selectedVehicle.make} {selectedVehicle.model}</h3>
+                                <p className="text-sm text-gray-600">{selectedVehicle.year} • {selectedVehicle.licensePlate}</p>
+                              </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                    
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {ensureArray(serviceTypes).map((service) => (
                         <Card 
@@ -485,7 +559,7 @@ export default function ServiceBookingPage() {
                 )}
 
                 {/* Step 3: Calendar & Time Slot Selection */}
-                {step === 3 && selectedVehicle && selectedService && (
+                {step === 3 && selectedService && (
                   <div>
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold">اختر الموعد</h2>
@@ -516,7 +590,7 @@ export default function ServiceBookingPage() {
                 )}
 
                 {/* Step 4: Customer Information */}
-                {step === 4 && selectedVehicle && selectedService && selectedDate && selectedTimeSlot && (
+                {step === 4 && selectedService && selectedDate && selectedTimeSlot && (
                   <div>
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold">معلومات العميل</h2>
@@ -538,7 +612,11 @@ export default function ServiceBookingPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label className="text-sm font-medium">المركبة</Label>
-                              <p className="text-lg">{selectedVehicle.make} {selectedVehicle.model}</p>
+                              <p className="text-lg">
+                                {selectedVehicle
+                                  ? `${selectedVehicle.make} ${selectedVehicle.model}`
+                                  : 'لم يتم اختيار مركبة'}
+                              </p>
                             </div>
                             <div>
                               <Label className="text-sm font-medium">الخدمة</Label>

@@ -11,7 +11,6 @@ const PUBLIC_ROUTES = [
   '/register',
   '/forgot-password',
   '/vehicles',
-  '/search',
   '/test-drive',
   '/service-booking',
   '/consultation',

@@ -150,21 +150,22 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6 space-y-2">
-          <Button 
-            variant="link" 
+        <div className="text-center mt-6 space-y-3">
+          <Button
+            variant="link"
             className="text-white hover:text-blue-200"
             onClick={() => router.push('/')}
           >
             العودة إلى الصفحة الرئيسية
           </Button>
-          <div>
-            <Button 
-              variant="link" 
-              className="text-white hover:text-blue-200 text-sm"
-              onClick={() => router.push('/create-admin')}
+          <div className="text-sm text-blue-100">
+            <span>لا تمتلك حسابًا؟</span>
+            <Button
+              variant="link"
+              className="text-white hover:text-blue-200 text-sm ml-1"
+              onClick={() => router.push('/register')}
             >
-              إنشاء حساب مشرف جديد
+              قم بالتسجيل الآن
             </Button>
           </div>
         </div>
