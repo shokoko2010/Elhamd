@@ -27,38 +27,31 @@ async function cleanupNavigation() {
         isVisible: true
       },
       {
-        id: 'nav-search',
-        label: 'بحث',
-        href: '/search',
-        order: 3,
-        isVisible: true
-      },
-      {
         id: 'nav-test-drive',
         label: 'قيادة تجريبية',
         href: '/test-drive',
-        order: 4,
+        order: 3,
         isVisible: true
       },
       {
         id: 'nav-service-booking',
         label: 'حجز خدمة',
         href: '/service-booking',
-        order: 5,
+        order: 4,
         isVisible: true
       },
       {
         id: 'nav-consultation',
         label: 'استشارة',
         href: '/consultation',
-        order: 6,
+        order: 5,
         isVisible: true
       },
       {
         id: 'nav-contact',
         label: 'اتصل بنا',
         href: '/contact',
-        order: 7,
+        order: 6,
         isVisible: true
       }
     ]

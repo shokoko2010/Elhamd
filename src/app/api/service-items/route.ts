@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest) {
       where: { id: user.id }
     })
 
-    if (!adminUser || adminUser.role !== 'ADMIN') {
+    if (!adminUser || (adminUser.role !== 'ADMIN' && adminUser.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }

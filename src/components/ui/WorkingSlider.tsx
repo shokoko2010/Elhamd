@@ -183,59 +183,61 @@ export function WorkingSlider({
         </div>
 
         {/* Content */}
-        <div className="relative z-20 h-full flex items-center">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto text-right">
-              {/* Badge */}
-              {currentItem.badge && (
-                <div className="mb-4">
-                  <Badge 
-                    className={`${currentItem.badgeColor || 'bg-blue-600'} text-white px-4 py-2 rounded-full shadow-lg`}
+        <div className="relative z-20 h-full">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
+            <div className="flex h-full items-center pt-16 md:pt-24 lg:pt-28">
+              <div className="max-w-4xl ml-auto text-right">
+                {/* Badge */}
+                {currentItem.badge && (
+                  <div className="mb-4">
+                    <Badge
+                      className={`${currentItem.badgeColor || 'bg-blue-600'} text-white px-4 py-2 rounded-full shadow-lg`}
+                    >
+                      {currentItem.badge}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Title */}
+                <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                  {currentItem.title}
+                </h1>
+
+                {/* Subtitle */}
+                <h2 className="text-xl md:text-2xl lg:text-3xl text-blue-200 mb-6 font-light">
+                  {currentItem.subtitle}
+                </h2>
+
+                {/* Description */}
+                <p className="text-lg md:text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl ml-auto">
+                  {currentItem.description}
+                </p>
+
+                {/* CTA Button */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    size="lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto justify-center"
+                    asChild
                   >
-                    {currentItem.badge}
-                  </Badge>
+                    <a href={currentItem.ctaLink}>
+                      {currentItem.ctaText}
+                      <ChevronLeft className="mr-2 h-5 w-5" />
+                    </a>
+                  </Button>
+
+                  {/* Secondary CTA */}
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="border-2 border-white text-white hover:bg-white hover:text-blue-900 text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 w-full sm:w-auto justify-center bg-transparent"
+                    asChild
+                  >
+                    <a href="/vehicles">
+                      عرض جميع السيارات
+                    </a>
+                  </Button>
                 </div>
-              )}
-              
-              {/* Title */}
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
-                {currentItem.title}
-              </h1>
-              
-              {/* Subtitle */}
-              <h2 className="text-xl md:text-2xl lg:text-3xl text-blue-200 mb-6 font-light">
-                {currentItem.subtitle}
-              </h2>
-              
-              {/* Description */}
-              <p className="text-lg md:text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl ml-auto">
-                {currentItem.description}
-              </p>
-              
-              {/* CTA Button */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto justify-center"
-                  asChild
-                >
-                  <a href={currentItem.ctaLink}>
-                    {currentItem.ctaText}
-                    <ChevronLeft className="mr-2 h-5 w-5" />
-                  </a>
-                </Button>
-                
-                {/* Secondary CTA */}
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-2 border-white text-white hover:bg-white hover:text-blue-900 text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 w-full sm:w-auto justify-center bg-transparent"
-                  asChild
-                >
-                  <a href="/vehicles">
-                    عرض جميع السيارات
-                  </a>
-                </Button>
               </div>
             </div>
           </div>

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useSession, signIn } from 'next-auth/react'
 import { toast } from 'sonner'
 import { ensureArray } from '@/lib/array-utils'
 import { Button } from '@/components/ui/button'
@@ -57,6 +59,7 @@ interface BookingFormData {
 }
 
 export default function TestDrivePage() {
+  const { status } = useSession()
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date>()
@@ -78,6 +81,8 @@ export default function TestDrivePage() {
   const [loading, setLoading] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [submitError, setSubmitError] = useState('')
+
+  const isAuthenticated = status === 'authenticated'
 
   // Form validation
   const formValidation = useFormValidation({
@@ -124,10 +129,19 @@ export default function TestDrivePage() {
   })
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setVehicles([])
+      setSelectedVehicle(null)
+      return
+    }
+
     // Fetch vehicles from API
     const fetchVehicles = async () => {
       try {
-        const response = await fetch('/api/vehicles?featured=true&limit=12')
+        const response = await fetch('/api/vehicles?limit=100')
+        if (!response.ok) {
+          throw new Error('Failed to load vehicles')
+        }
         const data = await response.json()
         if (data.vehicles) {
           setVehicles(data.vehicles)
@@ -139,9 +153,9 @@ export default function TestDrivePage() {
         setVehicles([])
       }
     }
-    
+
     fetchVehicles()
-  }, [])
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (selectedDate && selectedVehicle) {
@@ -243,6 +257,52 @@ export default function TestDrivePage() {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     return date < today || date > new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000) // Max 30 days ahead
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">جاري التحقق من حالة تسجيل الدخول...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-xl mx-auto">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold">يجب تسجيل الدخول لحجز تجربة قيادة</CardTitle>
+                <CardDescription className="text-gray-600">
+                  يرجى تسجيل الدخول للوصول إلى جميع موديلات السيارات المتاحة للحجز.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 text-center">
+                <Button className="w-full" onClick={() => signIn()}>
+                  تسجيل الدخول
+                </Button>
+                <p className="text-sm text-gray-500">
+                  ليس لديك حساب؟{' '}
+                  <Link href="/register" className="text-blue-600 hover:underline">
+                    إنشاء حساب جديد
+                  </Link>
+                </p>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/">العودة للرئيسية</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
