@@ -83,21 +83,8 @@ export function ModernVehicleCarousel({
   totalVehiclesCount
 }: ModernVehicleCarouselProps) {
   const displayVehicles = useMemo(() => vehicles ?? [], [vehicles])
-  const vehicleSlides = useMemo(() => {
-    if (!displayVehicles.length) {
-      return []
-    }
-
-    const slides: PublicVehicle[][] = []
-    for (let i = 0; i < displayVehicles.length; i += 3) {
-      slides.push(displayVehicles.slice(i, i + 3))
-    }
-
-    return slides
-  }, [displayVehicles])
-
-  const align = vehicleSlides.length > 1 ? 'start' : 'center'
-  const loop = vehicleSlides.length > 1
+  const align: 'start' | 'center' = displayVehicles.length > 1 ? 'start' : 'center'
+  const loop = displayVehicles.length > 3
 
   if (loading) {
     return (
@@ -148,76 +135,75 @@ export function ModernVehicleCarousel({
           }}
           className="w-full overflow-visible"
         >
-          <CarouselContent className="py-6 ml-0">
-            {vehicleSlides.map((slide, index) => (
-              <CarouselItem key={index} className="pl-0">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {slide.map((vehicle) => (
-                    <div key={vehicle.id} className="group h-full">
-                      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/80 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)]">
-                        <div className="relative overflow-hidden">
-                          <div className="relative aspect-[4/3] w-full">
-                            <VehicleImage
-                              vehicle={{
-                                id: vehicle.id,
-                                make: vehicle.make,
-                                model: vehicle.model,
-                                images: vehicle.images
-                              }}
-                              className="h-full w-full"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent" />
-                            <div className="absolute left-4 right-4 bottom-4 flex items-end justify-between text-white">
-                              <div>
-                                <p className="text-xs font-medium uppercase tracking-widest text-white/70">
-                                  {getVehicleCategory(vehicle)}
-                                </p>
-                                <h3 className="text-2xl font-bold leading-tight">
-                                  {vehicle.make} {vehicle.model}
-                                </h3>
-                              </div>
-                              <Badge className="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold text-white">
-                                {vehicle.year}
-                              </Badge>
-                            </div>
+          <CarouselContent className="py-6">
+            {displayVehicles.map((vehicle) => (
+              <CarouselItem
+                key={vehicle.id}
+                className="md:basis-1/2 xl:basis-1/3"
+              >
+                <div className="group h-full">
+                  <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/80 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)]">
+                    <div className="relative overflow-hidden">
+                      <div className="relative aspect-[4/3] w-full">
+                        <VehicleImage
+                          vehicle={{
+                            id: vehicle.id,
+                            make: vehicle.make,
+                            model: vehicle.model,
+                            images: vehicle.images
+                          }}
+                          className="h-full w-full"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent" />
+                        <div className="absolute left-4 right-4 bottom-4 flex items-end justify-between text-white">
+                          <div>
+                            <p className="text-xs font-medium uppercase tracking-widest text-white/70">
+                              {getVehicleCategory(vehicle)}
+                            </p>
+                            <h3 className="text-2xl font-bold leading-tight">
+                              {vehicle.make} {vehicle.model}
+                            </h3>
                           </div>
-                        </div>
-
-                        <div className="flex flex-1 flex-col justify-between gap-6 p-6">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <SpecPill icon={<Fuel className="h-4 w-4" />} label="نوع الوقود" value={getFuelType(vehicle)} />
-                            <SpecPill icon={<Settings2 className="h-4 w-4" />} label="ناقل الحركة" value={getTransmission(vehicle)} />
-                            <SpecPill icon={<Gauge className="h-4 w-4" />} label="عداد السير" value={vehicle.mileage ? `${vehicle.mileage.toLocaleString('ar-EG')} كم` : 'جديد تماماً'} />
-                            <SpecPill icon={<Droplets className="h-4 w-4" />} label="السعر" value={formatPrice(vehicle.price)} />
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-gray-500">السعر يبدأ من</p>
-                              <p className="text-2xl font-bold text-blue-600">{formatPrice(vehicle.price)}</p>
-                            </div>
-                            <Link href={`/vehicles/${vehicle.id}`}>
-                              <TouchButton
-                                variant="outline"
-                                size="md"
-                                className="border-blue-500 text-blue-600 hover:bg-blue-50"
-                                icon={<ArrowLeft className="h-4 w-4" />}
-                                iconPosition="right"
-                              >
-                                استكشف السيارة
-                              </TouchButton>
-                            </Link>
-                          </div>
+                          <Badge className="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold text-white">
+                            {vehicle.year}
+                          </Badge>
                         </div>
                       </div>
                     </div>
-                  ))}
+
+                    <div className="flex flex-1 flex-col justify-between gap-6 p-6">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <SpecPill icon={<Fuel className="h-4 w-4" />} label="نوع الوقود" value={getFuelType(vehicle)} />
+                        <SpecPill icon={<Settings2 className="h-4 w-4" />} label="ناقل الحركة" value={getTransmission(vehicle)} />
+                        <SpecPill icon={<Gauge className="h-4 w-4" />} label="عداد السير" value={vehicle.mileage ? `${vehicle.mileage.toLocaleString('ar-EG')} كم` : 'جديد تماماً'} />
+                        <SpecPill icon={<Droplets className="h-4 w-4" />} label="السعر" value={formatPrice(vehicle.price)} />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-500">السعر يبدأ من</p>
+                          <p className="text-2xl font-bold text-blue-600">{formatPrice(vehicle.price)}</p>
+                        </div>
+                        <Link href={`/vehicles/${vehicle.id}`}>
+                          <TouchButton
+                            variant="outline"
+                            size="md"
+                            className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                            icon={<ArrowLeft className="h-4 w-4" />}
+                            iconPosition="right"
+                          >
+                            استكشف السيارة
+                          </TouchButton>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CarouselItem>
             ))}
           </CarouselContent>
 
-          {vehicleSlides.length > 1 && (
+          {displayVehicles.length > 3 && (
             <>
               <CarouselPrevious className="hidden md:flex -left-2 lg:-left-6 h-12 w-12 translate-y-[-50%] rounded-full border-0 bg-white/80 text-blue-600 shadow-xl backdrop-blur" />
               <CarouselNext className="hidden md:flex -right-2 lg:-right-6 h-12 w-12 translate-y-[-50%] rounded-full border-0 bg-white/80 text-blue-600 shadow-xl backdrop-blur" />
