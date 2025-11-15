@@ -3,7 +3,38 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Car, Phone, Mail, MapPin, Calendar, Wrench, Star, ArrowLeft, ChevronLeft, ChevronRight, Play, Pause, AlertCircle, Package, Shield, Award, Users, Clock, Zap, Heart, Eye, Grid, List, Home as HomeIcon, Truck, Settings, Droplet, Facebook } from 'lucide-react'
+import {
+  Car,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  Wrench,
+  Star,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Pause,
+  AlertCircle,
+  Package,
+  Shield,
+  Award,
+  Users,
+  Clock,
+  Zap,
+  Heart,
+  Eye,
+  Grid,
+  List,
+  Home as HomeIcon,
+  Truck,
+  Settings,
+  Droplet,
+  Facebook
+} from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
 import { OptimizedImage, ResponsiveImage, BackgroundImage } from '@/components/ui/OptimizedImage'
@@ -93,6 +124,49 @@ const fallbackVehicles: PublicVehicle[] = [
     ]
   }
 ]
+
+const resolveServiceIcon = (iconName?: string): LucideIcon => {
+  if (!iconName) {
+    return Wrench
+  }
+
+  const trimmed = iconName.trim()
+  if (!trimmed) {
+    return Wrench
+  }
+
+  const directMatch = (LucideIcons as Record<string, LucideIcon | undefined>)[trimmed as keyof typeof LucideIcons]
+  if (directMatch) {
+    return directMatch
+  }
+
+  const pascalCase = trimmed
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join('')
+
+  const normalizedMatch = (LucideIcons as Record<string, LucideIcon | undefined>)[pascalCase as keyof typeof LucideIcons]
+
+  return normalizedMatch ?? Wrench
+}
+
+const resolveServiceLink = (rawLink?: string): string => {
+  if (!rawLink) {
+    return '/service-booking'
+  }
+
+  const trimmed = rawLink.trim()
+  if (!trimmed) {
+    return '/service-booking'
+  }
+
+  if (/^(https?:\/\/|mailto:|tel:|whatsapp:)/i.test(trimmed)) {
+    return trimmed
+  }
+
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+}
 
 const normalizeContactInfo = (data: any) => {
   if (!data) {
@@ -571,53 +645,65 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {serviceItems.map((service, index) => (
-                    <Card key={index} className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
-                      <CardHeader className="text-center pb-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                          <Wrench className="h-8 w-8 text-white" />
-                        </div>
-                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
-                          {service.title}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-center">
-                        <p className="text-gray-600 mb-6 leading-relaxed">
-                          {service.description}
-                        </p>
-                        {service.features && (
-                          <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
-                            {service.features.slice(0, 3).map((feature: string, idx: number) => (
-                              <li key={idx} className="flex items-center justify-end gap-2">
-                                <span>{feature}</span>
-                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-sm text-gray-500">المدة:</span>
-                          <span className="text-sm font-medium text-gray-700">{service.duration}</span>
-                        </div>
-                        {service.price && (
-                          <div className="flex items-center justify-between mb-6">
-                            <span className="text-sm text-gray-500">السعر:</span>
-                            <span className="text-lg font-bold text-green-600">
-                              {formatPrice(service.price)}
-                            </span>
+                  {serviceItems.map((service, index) => {
+                    const IconComponent = resolveServiceIcon(service.icon)
+                    const href = resolveServiceLink(service.link)
+
+                    return (
+                      <Card
+                        key={service?.id ?? `service-${index}`}
+                        className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm"
+                      >
+                        <CardHeader className="text-center pb-4">
+                          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <IconComponent className="h-8 w-8 text-white" />
                           </div>
-                        )}
-                        <Link href="/service-booking">
-                          <TouchButton 
-                            variant="outline" 
-                            className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
-                          >
-                            احجز الآن
-                          </TouchButton>
-                        </Link>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
+                            {service.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-center">
+                          {service.description && (
+                            <p className="text-gray-600 mb-6 leading-relaxed">
+                              {service.description}
+                            </p>
+                          )}
+                          {Array.isArray(service.features) && service.features.length > 0 && (
+                            <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
+                              {service.features.slice(0, 3).map((feature: string, idx: number) => (
+                                <li key={idx} className="flex items-center justify-end gap-2">
+                                  <span>{feature}</span>
+                                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {service.duration && (
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-sm text-gray-500">المدة:</span>
+                              <span className="text-sm font-medium text-gray-700">{service.duration}</span>
+                            </div>
+                          )}
+                          {service.price && (
+                            <div className="flex items-center justify-between mb-6">
+                              <span className="text-sm text-gray-500">السعر:</span>
+                              <span className="text-lg font-bold text-green-600">
+                                {formatPrice(service.price)}
+                              </span>
+                            </div>
+                          )}
+                          <Link href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+                            <TouchButton
+                              variant="outline"
+                              className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
+                            >
+                              {service.ctaText?.trim() || 'احجز الآن'}
+                            </TouchButton>
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
               </div>
             </section>
