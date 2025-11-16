@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS = {
   servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
   servicesCtaText: 'احجز الآن',
   facebookPageUrl: 'https://www.facebook.com/elhamdimport',
+  facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos',
   theme: 'LIGHT' as HomepageTheme
 }
 
@@ -98,6 +99,7 @@ export async function PUT(request: NextRequest) {
       servicesDescription: sanitizeString(payload.servicesDescription, DEFAULT_SETTINGS.servicesDescription),
       servicesCtaText: sanitizeString(payload.servicesCtaText, DEFAULT_SETTINGS.servicesCtaText),
       facebookPageUrl: sanitizeString(payload.facebookPageUrl, DEFAULT_SETTINGS.facebookPageUrl),
+      facebookVideoUrl: sanitizeString(payload.facebookVideoUrl, DEFAULT_SETTINGS.facebookVideoUrl),
       theme: sanitizeTheme(payload.theme)
     }
 

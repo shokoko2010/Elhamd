@@ -263,7 +263,8 @@ export default function Home() {
     servicesSubtitle: 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
     servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
     servicesCtaText: 'احجز الآن',
-    facebookPageUrl: 'https://www.facebook.com/elhamdimport'
+    facebookPageUrl: 'https://www.facebook.com/elhamdimport',
+    facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos'
   })
   const [loading, setLoading] = useState(true)
   const [sliderLoading, setSliderLoading] = useState(true)
@@ -280,6 +281,8 @@ export default function Home() {
     companyInfo?.socialMedia?.facebook ??
     companyInfo?.socialLinks?.facebook ??
     'https://www.facebook.com/elhamdimport'
+
+  const facebookVideoUrl = homepageSettings.facebookVideoUrl?.trim() || `${facebookPageUrl}/videos`
 
   const carouselVehicles = useMemo(() => {
     if (featuredVehicles.length > 0) {
@@ -319,7 +322,10 @@ export default function Home() {
               : 'احجز الآن',
             facebookPageUrl: typeof settingsData?.facebookPageUrl === 'string'
               ? settingsData.facebookPageUrl
-              : 'https://www.facebook.com/elhamdimport'
+              : 'https://www.facebook.com/elhamdimport',
+            facebookVideoUrl: typeof settingsData?.facebookVideoUrl === 'string'
+              ? settingsData.facebookVideoUrl
+              : 'https://www.facebook.com/elhamdimport/videos'
           })
           setIsAutoPlay(Boolean(settingsData?.autoPlaySlider))
           setSliderInterval(typeof settingsData?.sliderInterval === 'number' ? settingsData.sliderInterval : 5000)
@@ -1189,10 +1195,10 @@ export default function Home() {
                   أحدث ما ننشره على فيسبوك
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  تعرفوا على آخر الأخبار والعروض من خلال منشوراتنا وريلز فيسبوك.
+                  تعرفوا على آخر الأخبار والعروض من خلال فيديوهاتنا ومنشوراتنا على فيسبوك.
                 </p>
               </div>
-              <FacebookFeeds pageUrl={facebookPageUrl} />
+              <FacebookFeeds pageUrl={facebookPageUrl} videoUrl={facebookVideoUrl} />
             </div>
           </section>
         </EnhancedLazySection>

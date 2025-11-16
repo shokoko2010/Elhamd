@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = {
   servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
   servicesCtaText: 'احجز الآن',
   facebookPageUrl: 'https://www.facebook.com/elhamdimport',
+  facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos',
   theme: HomepageTheme.LIGHT
 }
 

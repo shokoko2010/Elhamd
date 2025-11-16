@@ -6,11 +6,13 @@ import { Facebook } from 'lucide-react'
 
 interface FacebookFeedsProps {
   pageUrl?: string | null
+  videoUrl?: string | null
 }
 
 const DEFAULT_PAGE_URL = 'https://www.facebook.com/elhamdimport'
+const DEFAULT_VIDEO_URL = `${DEFAULT_PAGE_URL}/videos`
 
-export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
+export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
   const [postsLoaded, setPostsLoaded] = useState(false)
   const [videosLoaded, setVideosLoaded] = useState(false)
   const [postsError, setPostsError] = useState(false)
@@ -23,6 +25,17 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
 
     return pageUrl.trim() || DEFAULT_PAGE_URL
   }, [pageUrl])
+
+  const normalizedVideoUrl = useMemo(() => {
+    if (videoUrl && typeof videoUrl === 'string') {
+      const trimmed = videoUrl.trim()
+      if (trimmed.length > 0) {
+        return trimmed
+      }
+    }
+
+    return `${normalizedPageUrl}/videos` || DEFAULT_VIDEO_URL
+  }, [normalizedPageUrl, videoUrl])
 
   const encodedPageUrl = useMemo(() => encodeURIComponent(normalizedPageUrl), [normalizedPageUrl])
 
@@ -51,11 +64,22 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
     [encodedPageUrl]
   )
 
-  const videosSrc = useMemo(
-    () =>
-      `https://www.facebook.com/plugins/page.php?href=${encodedPageUrl}&tabs=videos&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false`,
-    [encodedPageUrl]
-  )
+  const videoSrc = useMemo(() => {
+    const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID
+    const params = new URLSearchParams({
+      href: normalizedVideoUrl,
+      show_text: 'false',
+      width: '500',
+      height: '700',
+      adapt_container_width: 'true'
+    })
+
+    if (appId) {
+      params.append('appId', appId)
+    }
+
+    return `https://www.facebook.com/plugins/video.php?${params.toString()}`
+  }, [normalizedVideoUrl])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" dir="ltr">
@@ -86,7 +110,7 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
                 <p className="text-lg font-semibold text-gray-800">تعذر تحميل فيديوهات فيسبوك</p>
                 <p className="text-sm">تحقق من رابط الصفحة أو أعد المحاولة لاحقًا.</p>
                 <a
-                  href={normalizedPageUrl}
+                  href={normalizedVideoUrl || normalizedPageUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
@@ -96,15 +120,16 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
               </div>
             ) : (
               <iframe
-                key={videosSrc}
-                src={videosSrc}
+                key={videoSrc}
+                src={videoSrc}
                 title="أحدث فيديوهات فيسبوك"
                 width="100%"
                 height="700"
                 style={{ border: 'none', overflow: 'hidden' }}
                 scrolling="no"
                 frameBorder="0"
-                allow="encrypted-media"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                allowFullScreen
                 loading="lazy"
                 onLoad={() => setVideosLoaded(true)}
                 onError={() => setVideosError(true)}

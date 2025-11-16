@@ -92,6 +92,7 @@ interface HomepageSettings {
   servicesDescription: string
   servicesCtaText: string
   facebookPageUrl: string
+  facebookVideoUrl: string
   theme: 'light' | 'dark' | 'auto'
 }
 
@@ -117,6 +118,7 @@ function HomepageContent() {
     servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
     servicesCtaText: 'احجز الآن',
     facebookPageUrl: 'https://www.facebook.com/elhamdimport',
+    facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos',
     theme: 'light'
   })
   const [loading, setLoading] = useState(true)
@@ -258,6 +260,9 @@ function HomepageContent() {
           facebookPageUrl: typeof settingsData?.facebookPageUrl === 'string'
             ? settingsData.facebookPageUrl
             : 'https://www.facebook.com/elhamdimport',
+          facebookVideoUrl: typeof settingsData?.facebookVideoUrl === 'string'
+            ? settingsData.facebookVideoUrl
+            : 'https://www.facebook.com/elhamdimport/videos',
           theme: settingsData?.theme === 'dark' || settingsData?.theme === 'DARK'
             ? 'dark'
             : settingsData?.theme === 'auto' || settingsData?.theme === 'AUTO'
@@ -676,6 +681,7 @@ function HomepageContent() {
         servicesDescription: typeof data?.servicesDescription === 'string' ? data.servicesDescription : settings.servicesDescription,
         servicesCtaText: typeof data?.servicesCtaText === 'string' ? data.servicesCtaText : settings.servicesCtaText,
         facebookPageUrl: typeof data?.facebookPageUrl === 'string' ? data.facebookPageUrl : settings.facebookPageUrl,
+        facebookVideoUrl: typeof data?.facebookVideoUrl === 'string' ? data.facebookVideoUrl : settings.facebookVideoUrl,
         theme: data?.theme === 'DARK' ? 'dark' : data?.theme === 'AUTO' ? 'auto' : 'light'
       })
       setShowSettingsDialog(false)
@@ -924,6 +930,16 @@ function HomepageContent() {
                     onChange={(e) => setSettings({ ...settings, facebookPageUrl: e.target.value })}
                     placeholder="https://www.facebook.com/yourpage"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="facebookVideoUrl">رابط فيديو أو قائمة تشغيل فيسبوك</Label>
+                  <Input
+                    id="facebookVideoUrl"
+                    value={settings.facebookVideoUrl}
+                    onChange={(e) => setSettings({ ...settings, facebookVideoUrl: e.target.value })}
+                    placeholder="https://www.facebook.com/yourpage/videos/123456789"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">استخدم رابط فيديو مباشر أو قائمة تشغيل لضمان ظهور الفيديوهات.</p>
                 </div>
               </div>
             </CardContent>
