@@ -37,16 +37,29 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
     return `${normalizedPageUrl}/videos` || DEFAULT_VIDEO_URL
   }, [normalizedPageUrl, videoUrl])
 
-  const [forcePageTab, setForcePageTab] = useState(false)
+  const derivedVideoPageUrl = useMemo(() => {
+    try {
+      const url = new URL(normalizedVideoUrl)
+      if (url.hostname.includes('facebook.com')) {
+        const parts = url.pathname.split('/').filter(Boolean)
+        if (parts.length > 0) {
+          const pageSlug = parts[0]
+          return `${url.origin}/${pageSlug}`
+        }
+      }
+    } catch (error) {
+      // ignore parsing errors and fall back to page URL
+    }
+
+    return normalizedPageUrl
+  }, [normalizedPageUrl, normalizedVideoUrl])
 
   const encodedPageUrl = useMemo(() => encodeURIComponent(normalizedPageUrl), [normalizedPageUrl])
-
-  const useVideoPlugin = useMemo(() => /\/videos\//.test(normalizedVideoUrl), [normalizedVideoUrl])
+  const encodedVideoPageUrl = useMemo(() => encodeURIComponent(derivedVideoPageUrl), [derivedVideoPageUrl])
 
   useEffect(() => {
     setVideosLoaded(false)
     setVideosError(false)
-    setForcePageTab(false)
   }, [normalizedVideoUrl, normalizedPageUrl])
 
   useEffect(() => {
@@ -68,37 +81,17 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
     }
   }, [postsLoaded, videosLoaded])
 
-  useEffect(() => {
-    setVideosLoaded(false)
-    setVideosError(false)
-  }, [forcePageTab])
-
   const postsSrc = useMemo(
     () =>
       `https://www.facebook.com/plugins/page.php?href=${encodedPageUrl}&tabs=timeline&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true`,
     [encodedPageUrl]
   )
 
-  const videoSrc = useMemo(() => {
-    if (forcePageTab || !useVideoPlugin) {
-      return `https://www.facebook.com/plugins/page.php?href=${encodedPageUrl}&tabs=videos&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true`
-    }
-
-    const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID
-    const params = new URLSearchParams({
-      href: normalizedVideoUrl,
-      show_text: 'false',
-      width: '500',
-      height: '700',
-      adapt_container_width: 'true'
-    })
-
-    if (appId) {
-      params.append('appId', appId)
-    }
-
-    return `https://www.facebook.com/plugins/video.php?${params.toString()}`
-  }, [encodedPageUrl, forcePageTab, normalizedVideoUrl, useVideoPlugin])
+  const videoSrc = useMemo(
+    () =>
+      `https://www.facebook.com/plugins/page.php?href=${encodedVideoPageUrl}&tabs=videos&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true`,
+    [encodedVideoPageUrl]
+  )
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" dir="ltr">
@@ -151,14 +144,7 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
                 allowFullScreen
                 loading="lazy"
                 onLoad={() => setVideosLoaded(true)}
-                onError={() => {
-                  if (useVideoPlugin && !forcePageTab) {
-                    setForcePageTab(true)
-                    return
-                  }
-
-                  setVideosError(true)
-                }}
+                onError={() => setVideosError(true)}
               ></iframe>
             )}
           </div>
