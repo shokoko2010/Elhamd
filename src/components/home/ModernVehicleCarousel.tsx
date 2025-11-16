@@ -86,18 +86,9 @@ export function ModernVehicleCarousel({
     () => (vehicles ?? []).filter((vehicle): vehicle is PublicVehicle => Boolean(vehicle?.id)),
     [vehicles]
   )
-  const vehicleSlides = useMemo(() => {
-    const slides: PublicVehicle[][] = []
-    for (let i = 0; i < displayVehicles.length; i += 3) {
-      const group = displayVehicles.slice(i, i + 3)
-      if (group.length > 0) {
-        slides.push(group)
-      }
-    }
-    return slides
-  }, [displayVehicles])
-  const align: 'start' | 'center' = vehicleSlides.length > 1 ? 'start' : 'center'
-  const loop = vehicleSlides.length > 1
+  const slidesCount = displayVehicles.length
+  const align: 'start' | 'center' = slidesCount > 1 ? 'start' : 'center'
+  const loop = slidesCount > 1
 
   if (loading) {
     return (
@@ -148,19 +139,18 @@ export function ModernVehicleCarousel({
           }}
           className="w-full overflow-visible"
         >
-          <CarouselContent className="py-6">
-            {vehicleSlides.map((group, slideIndex) => (
-              <CarouselItem key={slideIndex}>
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {group.map((vehicle) => (
-                    <VehicleCard key={vehicle.id} vehicle={vehicle} />
-                  ))}
-                </div>
+          <CarouselContent className="py-6 -ml-2 md:-ml-4">
+            {displayVehicles.map((vehicle) => (
+              <CarouselItem
+                key={vehicle.id}
+                className="pl-2 md:pl-4 basis-full md:basis-1/2 xl:basis-1/3"
+              >
+                <VehicleCard vehicle={vehicle} />
               </CarouselItem>
             ))}
           </CarouselContent>
 
-          {vehicleSlides.length > 1 && (
+          {slidesCount > 1 && (
             <>
               <CarouselPrevious className="hidden md:flex -left-2 lg:-left-6 h-12 w-12 translate-y-[-50%] rounded-full border-0 bg-white/80 text-blue-600 shadow-xl backdrop-blur" />
               <CarouselNext className="hidden md:flex -right-2 lg:-right-6 h-12 w-12 translate-y-[-50%] rounded-full border-0 bg-white/80 text-blue-600 shadow-xl backdrop-blur" />
