@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Facebook } from 'lucide-react'
 
@@ -13,6 +13,8 @@ const DEFAULT_PAGE_URL = 'https://www.facebook.com/elhamdimport'
 export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
   const [postsLoaded, setPostsLoaded] = useState(false)
   const [reelsLoaded, setReelsLoaded] = useState(false)
+  const [postsError, setPostsError] = useState(false)
+  const [reelsError, setReelsError] = useState(false)
 
   const normalizedPageUrl = useMemo(() => {
     if (!pageUrl || typeof pageUrl !== 'string') {
@@ -23,6 +25,25 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
   }, [pageUrl])
 
   const encodedPageUrl = useMemo(() => encodeURIComponent(normalizedPageUrl), [normalizedPageUrl])
+
+  useEffect(() => {
+    const postsTimeout = window.setTimeout(() => {
+      if (!postsLoaded) {
+        setPostsError(true)
+      }
+    }, 8000)
+
+    const reelsTimeout = window.setTimeout(() => {
+      if (!reelsLoaded) {
+        setReelsError(true)
+      }
+    }, 8000)
+
+    return () => {
+      window.clearTimeout(postsTimeout)
+      window.clearTimeout(reelsTimeout)
+    }
+  }, [postsLoaded, reelsLoaded])
 
   const postsSrc = useMemo(
     () =>
@@ -52,7 +73,7 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
         </CardHeader>
         <CardContent>
           <div className="relative rounded-2xl overflow-hidden shadow-inner border border-gray-100">
-            {!postsLoaded && (
+            {!postsLoaded && !postsError && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80">
                 <div className="text-center">
                   <div className="h-10 w-10 mx-auto mb-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
@@ -60,19 +81,35 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
                 </div>
               </div>
             )}
-            <iframe
-              key={postsSrc}
-              src={postsSrc}
-              title="آخر منشورات فيسبوك"
-              width="100%"
-              height="700"
-              style={{ border: 'none', overflow: 'hidden' }}
-              scrolling="no"
-              frameBorder="0"
-              allow="encrypted-media"
-              loading="lazy"
-              onLoad={() => setPostsLoaded(true)}
-            ></iframe>
+            {postsError ? (
+              <div className="p-8 text-center text-gray-600 space-y-3">
+                <p className="text-lg font-semibold text-gray-800">تعذر تحميل منشورات فيسبوك</p>
+                <p className="text-sm">تحقق من رابط الصفحة أو أعد المحاولة لاحقًا.</p>
+                <a
+                  href={normalizedPageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+                >
+                  زيارة الصفحة على فيسبوك
+                </a>
+              </div>
+            ) : (
+              <iframe
+                key={postsSrc}
+                src={postsSrc}
+                title="آخر منشورات فيسبوك"
+                width="100%"
+                height="700"
+                style={{ border: 'none', overflow: 'hidden' }}
+                scrolling="no"
+                frameBorder="0"
+                allow="encrypted-media"
+                loading="lazy"
+                onLoad={() => setPostsLoaded(true)}
+                onError={() => setPostsError(true)}
+              ></iframe>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -91,7 +128,7 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
         </CardHeader>
         <CardContent>
           <div className="relative rounded-2xl overflow-hidden shadow-inner border border-gray-100">
-            {!reelsLoaded && (
+            {!reelsLoaded && !reelsError && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80">
                 <div className="text-center">
                   <div className="h-10 w-10 mx-auto mb-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
@@ -99,19 +136,35 @@ export function FacebookFeeds({ pageUrl }: FacebookFeedsProps) {
                 </div>
               </div>
             )}
-            <iframe
-              key={reelsSrc}
-              src={reelsSrc}
-              title="أحدث ريلز فيسبوك"
-              width="100%"
-              height="700"
-              style={{ border: 'none', overflow: 'hidden' }}
-              scrolling="no"
-              frameBorder="0"
-              allow="encrypted-media"
-              loading="lazy"
-              onLoad={() => setReelsLoaded(true)}
-            ></iframe>
+            {reelsError ? (
+              <div className="p-8 text-center text-gray-600 space-y-3">
+                <p className="text-lg font-semibold text-gray-800">تعذر تحميل ريلز فيسبوك</p>
+                <p className="text-sm">تحقق من رابط الصفحة أو أعد المحاولة لاحقًا.</p>
+                <a
+                  href={normalizedPageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+                >
+                  زيارة الصفحة على فيسبوك
+                </a>
+              </div>
+            ) : (
+              <iframe
+                key={reelsSrc}
+                src={reelsSrc}
+                title="أحدث ريلز فيسبوك"
+                width="100%"
+                height="700"
+                style={{ border: 'none', overflow: 'hidden' }}
+                scrolling="no"
+                frameBorder="0"
+                allow="encrypted-media"
+                loading="lazy"
+                onLoad={() => setReelsLoaded(true)}
+                onError={() => setReelsError(true)}
+              ></iframe>
+            )}
           </div>
         </CardContent>
       </Card>
