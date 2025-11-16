@@ -95,10 +95,9 @@ export function ModernVehicleCarousel({
 
       const width = window.innerWidth
 
-      if (width >= 1600) return setSlidesPerView(4)
-      if (width >= 1280) return setSlidesPerView(3)
-      if (width >= 960) return setSlidesPerView(2.5)
-      if (width >= 768) return setSlidesPerView(2)
+      if (width >= 1280) return setSlidesPerView(4)
+      if (width >= 1024) return setSlidesPerView(3)
+      if (width >= 640) return setSlidesPerView(2)
 
       setSlidesPerView(1)
     }
@@ -108,9 +107,9 @@ export function ModernVehicleCarousel({
     return () => window.removeEventListener('resize', updateSlidesPerView)
   }, [])
 
-  const slideWidth = useMemo(() => `${100 / slidesPerView}%`, [slidesPerView])
   const align: 'start' | 'center' = slidesCount > 1 ? 'start' : 'center'
   const loop = slidesCount > slidesPerView
+  const slidesToScroll = slidesPerView >= 3 ? 2 : 1
 
   if (loading) {
     return (
@@ -155,59 +154,51 @@ export function ModernVehicleCarousel({
 
   return (
     <div className="space-y-10">
-      <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white/80 shadow-[0_25px_80px_-45px_rgba(15,23,42,0.45)] backdrop-blur-xl">
-        <div className="pointer-events-none absolute inset-0 opacity-40">
-          <div className="absolute -left-24 top-10 h-48 w-48 rounded-full bg-blue-100 blur-3xl" />
-          <div className="absolute -right-16 bottom-0 h-40 w-40 rounded-full bg-orange-100 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[36px] border border-white/20 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 text-white shadow-[0_50px_120px_-60px_rgba(15,23,42,0.85)]">
+        <div className="pointer-events-none absolute inset-0 opacity-70">
+          <div className="absolute -left-40 top-12 h-64 w-64 rounded-full bg-blue-500/30 blur-[120px]" />
+          <div className="absolute -right-32 bottom-0 h-56 w-56 rounded-full bg-cyan-400/30 blur-[120px]" />
         </div>
 
         <Carousel
           opts={{
             align,
             loop,
-            slidesToScroll: Math.max(1, Math.floor(slidesPerView)),
-            dragFree: true
+            dragFree: true,
+            slidesToScroll
           }}
-          className="relative w-full overflow-visible"
+          className="relative w-full"
         >
-          <div className="relative flex flex-col gap-4 px-4 pb-2 pt-4 md:flex-row md:items-center md:justify-between md:px-6">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">معرض السيارات</p>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">
-                  {slidesCount} سيارة متاحة
-                </span>
-                <span className="rounded-full bg-slate-50 px-3 py-1">يعرض {visibleNow} سيارة في كل شريحة</span>
-              </div>
+          <div className="relative flex flex-col gap-6 px-6 pb-4 pt-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.4em] text-cyan-300">المعرض المتنقل</p>
+              <h3 className="text-2xl font-bold leading-tight md:text-3xl">
+                أحدث سيارات شركة الحمد للاستيراد
+              </h3>
+              <p className="text-sm text-slate-300">
+                يعرض الكاروسيل {visibleNow} سيارات في كل شريحة ويتضمن جميع السيارات المتاحة حالياً ({slidesCount}).
+              </p>
             </div>
 
             {slidesCount > 1 && (
-              <div className="hidden items-center gap-3 md:flex">
-                <CarouselPrevious className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
-                <CarouselNext className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
+              <div className="flex items-center gap-4">
+                <CarouselPrevious className="relative h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/20" />
+                <CarouselNext className="relative h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/20" />
               </div>
             )}
           </div>
 
-          <div className="relative px-2 pb-6 sm:px-3 md:px-6">
-            <CarouselContent className="-ml-2 py-4 md:-ml-3 md:py-6 lg:-ml-4">
+          <div className="relative px-2 pb-10 sm:px-4 lg:px-8">
+            <CarouselContent className="-ml-2 py-2 sm:-ml-4">
               {displayVehicles.map((vehicle) => (
                 <CarouselItem
                   key={vehicle.id}
-                  style={{ flex: `0 0 ${slideWidth}` }}
-                  className="pl-2 md:pl-3 lg:pl-4"
+                  className="basis-full pl-2 sm:basis-1/2 sm:pl-4 lg:basis-1/3 xl:basis-1/4"
                 >
                   <VehicleCard vehicle={vehicle} />
                 </CarouselItem>
               ))}
             </CarouselContent>
-
-            {slidesCount > 1 && (
-              <div className="flex items-center justify-center gap-4 pb-4 pt-2 md:hidden">
-                <CarouselPrevious className="relative h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
-                <CarouselNext className="relative h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
-              </div>
-            )}
           </div>
         </Carousel>
       </div>
@@ -237,7 +228,7 @@ interface SpecPillProps {
 
 function SpecPill({ icon, label, value }: SpecPillProps) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/70 px-4 py-3 text-right shadow-sm">
+    <div className="flex items-center justify-between rounded-2xl border border-slate-100/70 bg-white/80 px-4 py-3 text-right shadow-sm">
       <div className="flex flex-col">
         <span className="text-xs text-gray-500">{label}</span>
         <span className="text-sm font-semibold text-gray-700">{value}</span>
@@ -256,57 +247,54 @@ interface VehicleCardProps {
 function VehicleCard({ vehicle }: VehicleCardProps) {
   return (
     <div className="group h-full">
-      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/40 bg-gradient-to-b from-white via-white/90 to-white/70 shadow-[0_25px_60px_-35px_rgba(15,23,42,0.5)] transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_35px_90px_-40px_rgba(15,23,42,0.65)]">
-        <div className="relative overflow-hidden">
-          <div className="relative aspect-[16/9] w-full rounded-[28px] bg-slate-100">
-            <VehicleImage
-              vehicle={{
-                id: vehicle.id,
-                make: vehicle.make,
-                model: vehicle.model,
-                images: vehicle.images
-              }}
-              className="h-full w-full"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent" />
-            <div className="absolute left-4 right-4 bottom-4 flex items-end justify-between text-white">
+      <div className="flex h-full flex-col overflow-hidden rounded-[32px] border border-white/30 bg-white/95 text-slate-900 shadow-[0_35px_90px_-50px_rgba(15,23,42,0.85)] transition duration-500 group-hover:-translate-y-2">
+        <div className="relative aspect-[4/3] overflow-hidden">
+          <VehicleImage
+            vehicle={{
+              id: vehicle.id,
+              make: vehicle.make,
+              model: vehicle.model,
+              images: vehicle.images
+            }}
+            className="h-full w-full"
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-5 text-white">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-widest text-white/70">
-                  {getVehicleCategory(vehicle)}
-                </p>
-                <h3 className="text-2xl font-bold leading-tight">
+                <p className="text-xs font-semibold text-white/70">{getVehicleCategory(vehicle)}</p>
+                <h4 className="text-xl font-bold">
                   {vehicle.make} {vehicle.model}
-                </h3>
+                </h4>
               </div>
-              <Badge className="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold text-white">
-                {vehicle.year}
+              <Badge className="rounded-full bg-white/20 px-4 py-1 text-base text-white">
+                {vehicle.year ?? 'بدون سنة'}
               </Badge>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col justify-between gap-6 p-6">
+        <div className="flex flex-1 flex-col gap-5 p-6">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <SpecPill icon={<Fuel className="h-4 w-4" />} label="نوع الوقود" value={getFuelType(vehicle)} />
             <SpecPill icon={<Settings2 className="h-4 w-4" />} label="ناقل الحركة" value={getTransmission(vehicle)} />
-            <SpecPill icon={<Gauge className="h-4 w-4" />} label="عداد السير" value={vehicle.mileage ? `${vehicle.mileage.toLocaleString('ar-EG')} كم` : 'جديد تماماً'} />
+            <SpecPill icon={<Gauge className="h-4 w-4" />} label="عدد الكيلومترات" value={vehicle.mileage ? `${vehicle.mileage.toLocaleString('ar-EG')} كم` : 'جديدة بالكامل'} />
             <SpecPill icon={<Droplets className="h-4 w-4" />} label="السعر" value={formatPrice(vehicle.price)} />
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
             <div>
-              <p className="text-xs text-gray-500">السعر يبدأ من</p>
+              <p className="text-xs text-slate-500">السعر يبدأ من</p>
               <p className="text-2xl font-bold text-blue-600">{formatPrice(vehicle.price)}</p>
             </div>
             <Link href={`/vehicles/${vehicle.id}`}>
               <TouchButton
-                variant="outline"
+                variant="default"
                 size="md"
-                className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                className="bg-blue-600 text-white hover:bg-blue-700"
                 icon={<ArrowLeft className="h-4 w-4" />}
                 iconPosition="right"
               >
-                استكشف السيارة
+                تفاصيل أكثر
               </TouchButton>
             </Link>
           </div>
