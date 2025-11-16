@@ -245,7 +245,8 @@ const normalizeContactInfo = (data: any) => {
 
 export default function Home() {
   const deviceInfo = useDeviceInfo()
-  const [featuredVehicles, setFeaturedVehicles] = useState<Vehicle[]>([])
+  const [featuredVehicles, setFeaturedVehicles] = useState<PublicVehicle[]>([])
+  const [totalVehiclesCount, setTotalVehiclesCount] = useState<number | null>(null)
   const [sliderItems, setSliderItems] = useState<SliderItem[]>([])
   const [companyInfo, setCompanyInfo] = useState<any>(null)
   const [serviceItems, setServiceItems] = useState<any[]>([])
@@ -291,7 +292,12 @@ export default function Home() {
 
     return fallbackVehicles
   }, [featuredVehicles])
-  const totalVehiclesCount = featuredVehicles.length > 0 ? featuredVehicles.length : carouselVehicles.length
+  const resolvedVehiclesCount =
+    typeof totalVehiclesCount === 'number'
+      ? totalVehiclesCount
+      : featuredVehicles.length > 0
+        ? featuredVehicles.length
+        : carouselVehicles.length
 
   useEffect(() => {
     console.log('🚀 Component mounted, starting data fetch...')
@@ -437,13 +443,18 @@ export default function Home() {
         }
 
         // Fetch vehicles
-        const vehiclesResponse = await fetch('/api/public/vehicles?limit=8')
+        const vehiclesResponse = await fetch('/api/public/vehicles?limit=1000&page=1')
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
           const normalizedVehicles = Array.isArray(vehiclesData?.vehicles)
-            ? vehiclesData.vehicles.map((vehicle: Vehicle) => normalizeBrandingObject(vehicle))
+            ? vehiclesData.vehicles.map((vehicle: PublicVehicle) => normalizeBrandingObject(vehicle))
             : []
           setFeaturedVehicles(normalizedVehicles)
+          setTotalVehiclesCount(
+            typeof vehiclesData?.pagination?.total === 'number'
+              ? vehiclesData.pagination.total
+              : normalizedVehicles.length
+          )
 
           if (!vehiclesData?.vehicles || vehiclesData.vehicles.length === 0) {
             toast.info('لا توجد سيارات متاحة حالياً')
@@ -635,7 +646,7 @@ export default function Home() {
                 loading={loading}
                 error={error}
                 onRetry={() => window.location.reload()}
-                totalVehiclesCount={totalVehiclesCount}
+                totalVehiclesCount={resolvedVehiclesCount}
               />
             </div>
           </section>
