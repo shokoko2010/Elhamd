@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import type { ChangeEvent } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,10 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { 
-  Car, Plus, Edit, Trash2, Search, Filter, Eye, 
+import {
+  Car, Plus, Edit, Trash2, Search, Filter, Eye,
   MoreHorizontal, X, Check, AlertCircle, Image as ImageIcon,
-  Calendar, DollarSign, Settings, Package
+  Calendar, DollarSign, Settings, Package, Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -24,6 +25,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
+interface VehicleImageFormData {
+  id?: string
+  imageUrl: string
+  altText?: string | null
+  isPrimary?: boolean
+  order?: number
+}
 
 interface Vehicle {
   id: string
@@ -44,7 +53,7 @@ interface Vehicle {
   featured: boolean
   createdAt: string
   updatedAt: string
-  images: { id: string; imageUrl: string; isPrimary: boolean; order: number }[]
+  images: { id: string; imageUrl: string; altText?: string | null; isPrimary: boolean; order: number }[]
   specifications: { id: string; key: string; label: string; value: string; category: string }[]
   pricing?: {
     basePrice: number
@@ -69,6 +78,25 @@ interface VehicleStats {
   reserved: number
   maintenance: number
   totalValue: number
+}
+
+interface VehicleFormState {
+  make: string
+  model: string
+  year: number
+  price: number
+  stockNumber: string
+  stockQuantity: number
+  vin: string
+  description: string
+  category: string
+  fuelType: string
+  transmission: string
+  mileage: number
+  color: string
+  status: string
+  featured: boolean
+  images: VehicleImageFormData[]
 }
 
 const VEHICLE_CATEGORIES = [
@@ -96,6 +124,25 @@ const TRANSMISSION_TYPES = [
   { value: 'SEMI_AUTOMATIC', label: 'شبه أوتوماتيك' }
 ]
 
+const createInitialFormState = (): VehicleFormState => ({
+  make: 'Tata Motors',
+  model: '',
+  year: new Date().getFullYear(),
+  price: 0,
+  stockNumber: '',
+  stockQuantity: 0,
+  vin: '',
+  description: '',
+  category: 'SEDAN',
+  fuelType: 'PETROL',
+  transmission: 'MANUAL',
+  mileage: 0,
+  color: '',
+  status: 'AVAILABLE',
+  featured: false,
+  images: []
+})
+
 const VEHICLE_STATUSES = [
   { value: 'AVAILABLE', label: 'متاح', color: 'bg-green-100 text-green-800' },
   { value: 'SOLD', label: 'مباع', color: 'bg-red-100 text-red-800' },
@@ -121,25 +168,258 @@ export default function AdminVehiclesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
-  
+
   // Form states
-  const [formData, setFormData] = useState({
-    make: 'Tata Motors',
-    model: '',
-    year: new Date().getFullYear(),
-    price: 0,
-    stockNumber: '',
-    stockQuantity: 0,
-    vin: '',
-    description: '',
-    category: 'SEDAN', // Default value instead of empty string
-    fuelType: 'PETROL', // Default value instead of empty string
-    transmission: 'MANUAL', // Default value instead of empty string
-    mileage: 0,
-    color: '',
-    status: 'AVAILABLE',
-    featured: false
-  })
+  const [formData, setFormData] = useState<VehicleFormState>(() => createInitialFormState())
+  const [imageInputs, setImageInputs] = useState({ create: '', edit: '' })
+  const [imageUploadLoading, setImageUploadLoading] = useState({ create: false, edit: false })
+  const createUploadInputRef = useRef<HTMLInputElement | null>(null)
+  const editUploadInputRef = useRef<HTMLInputElement | null>(null)
+
+  const normalizeFormImages = (images: VehicleImageFormData[] = []) => {
+    if (!Array.isArray(images) || images.length === 0) {
+      return []
+    }
+
+    const trimmed = images
+      .map((image, index) => ({
+        ...image,
+        imageUrl: (image.imageUrl || '').trim(),
+        order: typeof image.order === 'number' ? image.order : index
+      }))
+      .filter(image => image.imageUrl.length > 0)
+
+    if (trimmed.length === 0) {
+      return []
+    }
+
+    trimmed.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    let hasPrimary = trimmed.some(image => image.isPrimary)
+
+    return trimmed.map((image, index) => {
+      const isPrimary = hasPrimary ? Boolean(image.isPrimary && image.imageUrl) : index === 0
+      if (!hasPrimary && index === 0) {
+        hasPrimary = true
+      }
+
+      return {
+        ...image,
+        altText: image.altText?.trim() || undefined,
+        isPrimary,
+        order: index
+      }
+    })
+  }
+
+  const updateImagesState = (mutator: (images: VehicleImageFormData[]) => VehicleImageFormData[]) => {
+    setFormData(prev => {
+      const nextImages = normalizeFormImages(mutator(prev.images))
+      return { ...prev, images: nextImages }
+    })
+  }
+
+  const handleImageInputChange = (context: 'create' | 'edit', value: string) => {
+    setImageInputs(prev => ({ ...prev, [context]: value }))
+  }
+
+  const handleAddImage = (context: 'create' | 'edit') => {
+    const value = imageInputs[context].trim()
+    if (!value) {
+      toast.error('يرجى إدخال رابط صورة صالح')
+      return
+    }
+
+    if (formData.images.some(image => image.imageUrl === value)) {
+      toast.info('هذه الصورة موجودة بالفعل في القائمة')
+      return
+    }
+
+    updateImagesState(images => [...images, { imageUrl: value, isPrimary: images.length === 0 }])
+    setImageInputs(prev => ({ ...prev, [context]: '' }))
+  }
+
+  const handleRemoveImage = (index: number) => {
+    updateImagesState(images => images.filter((_, idx) => idx !== index))
+  }
+
+  const handleSetPrimaryImage = (index: number) => {
+    updateImagesState(images => images.map((image, idx) => ({
+      ...image,
+      isPrimary: idx === index
+    })))
+  }
+
+  const uploadImageFile = async (context: 'create' | 'edit', file: File) => {
+    setImageUploadLoading(prev => ({ ...prev, [context]: true }))
+    try {
+      const payload = new FormData()
+      payload.append('file', file)
+      payload.append('type', 'vehicle')
+      payload.append('entityId', context === 'edit' && selectedVehicle ? selectedVehicle.id : 'new-vehicle')
+
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: payload,
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'فشل في رفع الصورة')
+      }
+
+      const data = await response.json()
+      const uploadedUrl = typeof data?.url === 'string'
+        ? data.url
+        : typeof data?.originalUrl === 'string'
+          ? data.originalUrl
+          : ''
+
+      if (!uploadedUrl) {
+        throw new Error('لم يتم الحصول على رابط الصورة بعد الرفع')
+      }
+
+      updateImagesState(images => [...images, { imageUrl: uploadedUrl, isPrimary: images.length === 0 }])
+      toast.success('تم رفع الصورة وإضافتها بنجاح')
+    } catch (error) {
+      console.error('Image upload error:', error)
+      toast.error(error instanceof Error ? error.message : 'فشل في رفع الصورة')
+    } finally {
+      setImageUploadLoading(prev => ({ ...prev, [context]: false }))
+    }
+  }
+
+  const handleImageUploadSelection = async (context: 'create' | 'edit', event: ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files?.length) {
+      return
+    }
+
+    const file = event.target.files[0]
+    await uploadImageFile(context, file)
+    event.target.value = ''
+  }
+
+  const buildVehiclePayload = () => {
+    const { images, ...rest } = formData
+    const normalized = normalizeFormImages(images)
+
+    return {
+      ...rest,
+      images: normalized.length
+        ? normalized.map((image, index) => ({
+            imageUrl: image.imageUrl,
+            altText: image.altText,
+            isPrimary: image.isPrimary ?? index === 0,
+            order: index
+          }))
+        : undefined
+    }
+  }
+
+  const handleCreateDialogChange = (open: boolean) => {
+    if (!open) {
+      resetForm()
+      setSelectedVehicle(null)
+    }
+    setIsCreateDialogOpen(open)
+  }
+
+  const handleEditDialogChange = (open: boolean) => {
+    if (!open) {
+      setSelectedVehicle(null)
+      resetForm()
+    }
+    setIsEditDialogOpen(open)
+  }
+
+  const renderImageManager = (context: 'create' | 'edit') => (
+    <div className="space-y-3">
+      <Label>صور المركبة</Label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          placeholder="أدخل رابط الصورة (https://...)"
+          value={imageInputs[context]}
+          onChange={(event) => handleImageInputChange(context, event.target.value)}
+          dir="ltr"
+        />
+        <Button type="button" onClick={() => handleAddImage(context)} className="shrink-0">
+          إضافة الرابط
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          disabled={imageUploadLoading[context]}
+          onClick={() => (context === 'create' ? createUploadInputRef : editUploadInputRef).current?.click()}
+        >
+          {imageUploadLoading[context] ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              جاري الرفع
+            </span>
+          ) : (
+            'رفع صورة'
+          )}
+        </Button>
+        <input
+          type="file"
+          accept="image/*"
+          ref={context === 'create' ? createUploadInputRef : editUploadInputRef}
+          className="hidden"
+          onChange={(event) => handleImageUploadSelection(context, event)}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        يمكنك لصق رابط صورة مباشر أو رفع صورة جديدة لتظهر في واجهة الموقع.
+      </p>
+      {formData.images.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+          لم يتم إضافة صور بعد. يرجى إضافة صورة واحدة على الأقل لإظهار المركبة بشكل جذاب.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {formData.images.map((image, index) => (
+            <div key={(image.id || image.imageUrl) + index} className="relative overflow-hidden rounded-lg border bg-white">
+              <div className="relative h-32 w-full">
+                <img
+                  src={image.imageUrl}
+                  alt={`صورة ${index + 1}`}
+                  className="h-full w-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.src = '/api/placeholder/vehicle'
+                  }}
+                />
+                <div className="absolute top-2 right-2 flex gap-2">
+                  {image.isPrimary ? (
+                    <Badge className="bg-emerald-600 hover:bg-emerald-600">الصورة الرئيسية</Badge>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleSetPrimaryImage(index)}
+                      className="rounded-full bg-white/80 px-2 py-1 text-xs font-semibold text-gray-700 shadow"
+                    >
+                      تعيين كصورة أساسية
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="rounded-full bg-white/80 p-1 text-gray-700 shadow transition hover:bg-white"
+                    aria-label="حذف الصورة"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                {image.imageUrl}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 
   // Fetch vehicles
   const fetchVehicles = async () => {
@@ -164,7 +444,15 @@ export default function AdminVehiclesPage() {
       const vehiclesData = Array.isArray(data.vehicles) ? data.vehicles.map(vehicle => ({
         ...vehicle,
         stockQuantity: typeof vehicle.stockQuantity === 'number' ? vehicle.stockQuantity : 0,
-        images: Array.isArray(vehicle.images) ? vehicle.images : [],
+        images: Array.isArray(vehicle.images)
+          ? [...vehicle.images]
+              .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+              .map((image, index) => ({
+                ...image,
+                altText: image.altText ?? null,
+                order: typeof image.order === 'number' ? image.order : index
+              }))
+          : [],
         specifications: Array.isArray(vehicle.specifications) ? vehicle.specifications : [],
         _count: vehicle._count || { testDriveBookings: 0, serviceBookings: 0 }
       })) : []
@@ -225,10 +513,12 @@ export default function AdminVehiclesPage() {
         return
       }
 
+      const payload = buildVehiclePayload()
+
       const response = await fetch('/api/admin/vehicles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
       
       if (!response.ok) {
@@ -237,8 +527,7 @@ export default function AdminVehiclesPage() {
       }
       
       toast.success('تم إنشاء المركبة بنجاح')
-      setIsCreateDialogOpen(false)
-      resetForm()
+      handleCreateDialogChange(false)
       fetchVehicles()
     } catch (error) {
       console.error('Error creating vehicle:', error)
@@ -269,10 +558,12 @@ export default function AdminVehiclesPage() {
         return
       }
 
+      const payload = buildVehiclePayload()
+
       const response = await fetch(`/api/admin/vehicles/${selectedVehicle.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
       
       if (!response.ok) {
@@ -281,9 +572,7 @@ export default function AdminVehiclesPage() {
       }
       
       toast.success('تم تحديث المركبة بنجاح')
-      setIsEditDialogOpen(false)
-      setSelectedVehicle(null)
-      resetForm()
+      handleEditDialogChange(false)
       fetchVehicles()
     } catch (error) {
       console.error('Error updating vehicle:', error)
@@ -317,28 +606,28 @@ export default function AdminVehiclesPage() {
 
   // Reset form
   const resetForm = () => {
-    setFormData({
-      make: 'Tata Motors',
-      model: '',
-      year: new Date().getFullYear(),
-      price: 0,
-      stockNumber: '',
-      stockQuantity: 0,
-      vin: '',
-      description: '',
-      category: 'SEDAN', // Default value instead of empty string
-      fuelType: 'PETROL', // Default value instead of empty string
-      transmission: 'MANUAL', // Default value instead of empty string
-      mileage: 0,
-      color: '',
-      status: 'AVAILABLE',
-      featured: false
-    })
+    setFormData(createInitialFormState())
+    setImageInputs({ create: '', edit: '' })
+    setImageUploadLoading({ create: false, edit: false })
   }
 
   // Open edit dialog
   const openEditDialog = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle)
+    const sortedImages = Array.isArray(vehicle.images)
+      ? [...vehicle.images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      : []
+
+    const mappedImages = normalizeFormImages(
+      sortedImages.map(image => ({
+        id: image.id,
+        imageUrl: image.imageUrl,
+        altText: image.altText ?? undefined,
+        isPrimary: image.isPrimary,
+        order: image.order
+      }))
+    )
+
+    setSelectedVehicle({ ...vehicle, images: sortedImages })
     setFormData({
       make: vehicle.make || 'Tata Motors',
       model: vehicle.model || '',
@@ -354,8 +643,10 @@ export default function AdminVehiclesPage() {
       mileage: vehicle.mileage || 0,
       color: vehicle.color || '',
       status: vehicle.status || 'AVAILABLE',
-      featured: vehicle.featured || false
+      featured: vehicle.featured || false,
+      images: mappedImages
     })
+    setImageInputs(prev => ({ ...prev, edit: '' }))
     setIsEditDialogOpen(true)
   }
 
@@ -729,7 +1020,7 @@ export default function AdminVehiclesPage() {
       </Card>
 
       {/* Create Vehicle Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>إضافة مركبة جديدة</DialogTitle>
@@ -906,9 +1197,12 @@ export default function AdminVehiclesPage() {
                 <Label htmlFor="featured">مركبة مميزة</Label>
               </div>
             </div>
+            <div className="space-y-4 border-t pt-4">
+              {renderImageManager('create')}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleCreateDialogChange(false)}>
               إلغاء
             </Button>
             <Button onClick={handleCreateVehicle}>
@@ -919,7 +1213,7 @@ export default function AdminVehiclesPage() {
       </Dialog>
 
       {/* Edit Vehicle Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>تعديل المركبة</DialogTitle>
@@ -1096,9 +1390,12 @@ export default function AdminVehiclesPage() {
                 <Label htmlFor="edit-featured">مركبة مميزة</Label>
               </div>
             </div>
+            <div className="space-y-4 border-t pt-4">
+              {renderImageManager('edit')}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleEditDialogChange(false)}>
               إلغاء
             </Button>
             <Button onClick={handleUpdateVehicle}>
