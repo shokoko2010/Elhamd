@@ -454,60 +454,29 @@ export default function Home() {
           setSliderItems(sliders.map((item) => normalizeBrandingObject(item)))
         }
 
-        // Fetch vehicles with pagination to guarantee all records are loaded
-        const limit = 12
+        // Fetch all vehicles at once to render the full carousel dataset
         const statusParam = 'all'
         const vehiclesResponse = await fetch(
-          `/api/public/vehicles?limit=${limit}&page=1&status=${statusParam}`,
+          `/api/public/vehicles?status=${statusParam}&all=true`,
           { cache: 'no-store' }
         )
 
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
+
+          const normalizedVehicles = dedupeVehicles(
+            (Array.isArray(vehiclesData?.vehicles) ? vehiclesData.vehicles : []).map(
+              (vehicle: PublicVehicle) => normalizeBrandingObject(vehicle)
+            )
+          )
+
           const totalVehicles =
             typeof vehiclesData?.pagination?.total === 'number'
               ? vehiclesData.pagination.total
-              : Array.isArray(vehiclesData?.vehicles)
-                ? vehiclesData.vehicles.length
-                : 0
-          const totalPages = Math.max(
-            typeof vehiclesData?.pagination?.totalPages === 'number'
-              ? vehiclesData.pagination.totalPages
-              : Math.ceil(totalVehicles / limit),
-            1
-          )
-
-          let allVehicles: PublicVehicle[] = Array.isArray(vehiclesData?.vehicles)
-            ? vehiclesData.vehicles
-            : []
-
-          if (totalPages > 1) {
-            const pageFetches = []
-
-            for (let page = 2; page <= totalPages; page++) {
-              pageFetches.push(
-                fetch(`/api/public/vehicles?limit=${limit}&page=${page}&status=${statusParam}`, {
-                  cache: 'no-store'
-                })
-                  .then((res) => (res.ok ? res.json() : null))
-                  .catch(() => null)
-              )
-            }
-
-            const pageResults = await Promise.all(pageFetches)
-            pageResults.forEach((pageData) => {
-              if (Array.isArray(pageData?.vehicles)) {
-                allVehicles = allVehicles.concat(pageData.vehicles)
-              }
-            })
-          }
-
-          const normalizedVehicles = dedupeVehicles(
-            allVehicles.map((vehicle: PublicVehicle) => normalizeBrandingObject(vehicle))
-          )
+              : normalizedVehicles.length
 
           setFeaturedVehicles(normalizedVehicles)
-          setTotalVehiclesCount(totalVehicles || normalizedVehicles.length)
+          setTotalVehiclesCount(totalVehicles)
 
           if (normalizedVehicles.length === 0) {
             toast.info('لا توجد سيارات متاحة حالياً')

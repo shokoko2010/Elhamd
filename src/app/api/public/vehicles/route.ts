@@ -6,14 +6,17 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category') || ''
-    const limit = parseInt(searchParams.get('limit') || '12')
+    const limitParam = searchParams.get('limit') || '12'
+    const limit = limitParam === 'all' ? 0 : parseInt(limitParam)
     const page = parseInt(searchParams.get('page') || '1')
     const search = searchParams.get('search') || ''
     const fuelType = searchParams.get('fuelType') || ''
     const transmission = searchParams.get('transmission') || ''
     const status = searchParams.get('status') || 'AVAILABLE'
 
-    const skip = (page - 1) * limit
+    const fetchAll = searchParams.get('all') === 'true' || limitParam === 'all'
+    const effectiveLimit = fetchAll ? undefined : limit
+    const skip = fetchAll ? undefined : (page - 1) * limit
 
     // Build where clause - only show available vehicles to public
     const where: any = {}
@@ -63,7 +66,7 @@ export async function GET(request: NextRequest) {
           { createdAt: 'desc' }
         ],
         skip,
-        take: limit
+        take: effectiveLimit
       }),
       db.vehicle.count({ where })
     ])
@@ -73,8 +76,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         total,
         page,
-        limit,
-        totalPages: Math.ceil(total / limit)
+        limit: fetchAll ? total : limit,
+        totalPages: fetchAll ? 1 : Math.ceil(total / limit)
       }
     })
   } catch (error) {
