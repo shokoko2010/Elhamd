@@ -233,7 +233,10 @@ function HomepageContent() {
       }
 
       // Fetch homepage settings
-      const settingsResponse = await fetch('/api/admin/homepage/settings', { cache: 'no-store' })
+      const settingsResponse = await fetch('/api/admin/homepage/settings', {
+        cache: 'no-store',
+        credentials: 'include'
+      })
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json()
         setSettings({
@@ -585,6 +588,7 @@ function HomepageContent() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       })
 
@@ -646,6 +650,7 @@ function HomepageContent() {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           ...settings,
           theme: settings.theme.toUpperCase()
