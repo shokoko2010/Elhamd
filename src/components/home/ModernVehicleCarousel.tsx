@@ -161,35 +161,35 @@ export function ModernVehicleCarousel({
           <div className="absolute -right-16 bottom-0 h-40 w-40 rounded-full bg-orange-100 blur-3xl" />
         </div>
 
-        <div className="relative flex flex-col gap-4 px-4 pb-2 pt-4 md:flex-row md:items-center md:justify-between md:px-6">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">معرض السيارات</p>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-              <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">
-                {slidesCount} سيارة متاحة
-              </span>
-              <span className="rounded-full bg-slate-50 px-3 py-1">يعرض {visibleNow} سيارة في كل شريحة</span>
+        <Carousel
+          opts={{
+            align,
+            loop,
+            slidesToScroll: Math.max(1, Math.floor(slidesPerView)),
+            dragFree: true
+          }}
+          className="relative w-full overflow-visible"
+        >
+          <div className="relative flex flex-col gap-4 px-4 pb-2 pt-4 md:flex-row md:items-center md:justify-between md:px-6">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">معرض السيارات</p>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">
+                  {slidesCount} سيارة متاحة
+                </span>
+                <span className="rounded-full bg-slate-50 px-3 py-1">يعرض {visibleNow} سيارة في كل شريحة</span>
+              </div>
             </div>
+
+            {slidesCount > 1 && (
+              <div className="hidden items-center gap-3 md:flex">
+                <CarouselPrevious className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
+                <CarouselNext className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
+              </div>
+            )}
           </div>
 
-          {slidesCount > 1 && (
-            <div className="hidden items-center gap-3 md:flex">
-              <CarouselPrevious className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
-              <CarouselNext className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
-            </div>
-          )}
-        </div>
-
-        <div className="relative px-2 pb-6 sm:px-3 md:px-6">
-          <Carousel
-            opts={{
-              align,
-              loop,
-              slidesToScroll: Math.max(1, Math.floor(slidesPerView)),
-              dragFree: true
-            }}
-            className="w-full overflow-visible"
-          >
+          <div className="relative px-2 pb-6 sm:px-3 md:px-6">
             <CarouselContent className="-ml-2 py-4 md:-ml-3 md:py-6 lg:-ml-4">
               {displayVehicles.map((vehicle) => (
                 <CarouselItem
@@ -208,8 +208,8 @@ export function ModernVehicleCarousel({
                 <CarouselNext className="relative h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
               </div>
             )}
-          </Carousel>
-        </div>
+          </div>
+        </Carousel>
       </div>
 
       {typeof totalVehiclesCount === 'number' && totalVehiclesCount > 0 && (
