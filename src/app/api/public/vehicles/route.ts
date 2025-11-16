@@ -11,12 +11,15 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const fuelType = searchParams.get('fuelType') || ''
     const transmission = searchParams.get('transmission') || ''
+    const status = searchParams.get('status') || 'AVAILABLE'
 
     const skip = (page - 1) * limit
 
     // Build where clause - only show available vehicles to public
-    const where: any = {
-      status: 'AVAILABLE'
+    const where: any = {}
+
+    if (status !== 'all') {
+      where.status = 'AVAILABLE'
     }
 
     if (category && category !== 'all') {

@@ -443,7 +443,7 @@ export default function Home() {
         }
 
         // Fetch vehicles
-        const vehiclesResponse = await fetch('/api/public/vehicles?limit=1000&page=1')
+        const vehiclesResponse = await fetch('/api/public/vehicles?limit=1000&page=1&status=all')
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
           const normalizedVehicles = Array.isArray(vehiclesData?.vehicles)

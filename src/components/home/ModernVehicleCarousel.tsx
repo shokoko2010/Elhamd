@@ -82,11 +82,17 @@ export function ModernVehicleCarousel({
   onRetry,
   totalVehiclesCount
 }: ModernVehicleCarouselProps) {
-  const displayVehicles = useMemo(() => vehicles ?? [], [vehicles])
+  const displayVehicles = useMemo(
+    () => (vehicles ?? []).filter((vehicle): vehicle is PublicVehicle => Boolean(vehicle?.id)),
+    [vehicles]
+  )
   const vehicleSlides = useMemo(() => {
     const slides: PublicVehicle[][] = []
     for (let i = 0; i < displayVehicles.length; i += 3) {
-      slides.push(displayVehicles.slice(i, i + 3))
+      const group = displayVehicles.slice(i, i + 3)
+      if (group.length > 0) {
+        slides.push(group)
+      }
     }
     return slides
   }, [displayVehicles])
