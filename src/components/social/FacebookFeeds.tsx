@@ -37,7 +37,17 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
     return `${normalizedPageUrl}/videos` || DEFAULT_VIDEO_URL
   }, [normalizedPageUrl, videoUrl])
 
+  const [forcePageTab, setForcePageTab] = useState(false)
+
   const encodedPageUrl = useMemo(() => encodeURIComponent(normalizedPageUrl), [normalizedPageUrl])
+
+  const useVideoPlugin = useMemo(() => /\/videos\//.test(normalizedVideoUrl), [normalizedVideoUrl])
+
+  useEffect(() => {
+    setVideosLoaded(false)
+    setVideosError(false)
+    setForcePageTab(false)
+  }, [normalizedVideoUrl, normalizedPageUrl])
 
   useEffect(() => {
     const postsTimeout = window.setTimeout(() => {
@@ -58,6 +68,11 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
     }
   }, [postsLoaded, videosLoaded])
 
+  useEffect(() => {
+    setVideosLoaded(false)
+    setVideosError(false)
+  }, [forcePageTab])
+
   const postsSrc = useMemo(
     () =>
       `https://www.facebook.com/plugins/page.php?href=${encodedPageUrl}&tabs=timeline&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true`,
@@ -65,6 +80,10 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
   )
 
   const videoSrc = useMemo(() => {
+    if (forcePageTab || !useVideoPlugin) {
+      return `https://www.facebook.com/plugins/page.php?href=${encodedPageUrl}&tabs=videos&width=500&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true`
+    }
+
     const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID
     const params = new URLSearchParams({
       href: normalizedVideoUrl,
@@ -79,7 +98,7 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
     }
 
     return `https://www.facebook.com/plugins/video.php?${params.toString()}`
-  }, [normalizedVideoUrl])
+  }, [encodedPageUrl, forcePageTab, normalizedVideoUrl, useVideoPlugin])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" dir="ltr">
@@ -132,7 +151,14 @@ export function FacebookFeeds({ pageUrl, videoUrl }: FacebookFeedsProps) {
                 allowFullScreen
                 loading="lazy"
                 onLoad={() => setVideosLoaded(true)}
-                onError={() => setVideosError(true)}
+                onError={() => {
+                  if (useVideoPlugin && !forcePageTab) {
+                    setForcePageTab(true)
+                    return
+                  }
+
+                  setVideosError(true)
+                }}
               ></iframe>
             )}
           </div>
