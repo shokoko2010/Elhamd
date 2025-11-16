@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Carousel,
   CarouselContent,
@@ -87,8 +87,30 @@ export function ModernVehicleCarousel({
     [vehicles]
   )
   const slidesCount = displayVehicles.length
+  const [slidesPerView, setSlidesPerView] = useState(1)
+
+  useEffect(() => {
+    const updateSlidesPerView = () => {
+      if (typeof window === 'undefined') return
+
+      const width = window.innerWidth
+
+      if (width >= 1600) return setSlidesPerView(4)
+      if (width >= 1280) return setSlidesPerView(3)
+      if (width >= 960) return setSlidesPerView(2.5)
+      if (width >= 768) return setSlidesPerView(2)
+
+      setSlidesPerView(1)
+    }
+
+    updateSlidesPerView()
+    window.addEventListener('resize', updateSlidesPerView)
+    return () => window.removeEventListener('resize', updateSlidesPerView)
+  }, [])
+
+  const slideWidth = useMemo(() => `${100 / slidesPerView}%`, [slidesPerView])
   const align: 'start' | 'center' = slidesCount > 1 ? 'start' : 'center'
-  const loop = slidesCount > 1
+  const loop = slidesCount > slidesPerView
 
   if (loading) {
     return (
@@ -129,50 +151,81 @@ export function ModernVehicleCarousel({
     )
   }
 
+  const visibleNow = Math.min(slidesCount, Math.max(1, Math.round(slidesPerView)))
+
   return (
-    <>
-      <div className="relative px-2 sm:px-4 lg:px-6">
-        <Carousel
-          opts={{
-            align,
-            loop
-          }}
-          className="w-full overflow-visible"
-        >
-          <CarouselContent className="py-6 -ml-2 md:-ml-4">
-            {displayVehicles.map((vehicle) => (
-              <CarouselItem
-                key={vehicle.id}
-                className="pl-2 md:pl-4 basis-full md:basis-1/2 xl:basis-1/3"
-              >
-                <VehicleCard vehicle={vehicle} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
+    <div className="space-y-10">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white/80 shadow-[0_25px_80px_-45px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-0 opacity-40">
+          <div className="absolute -left-24 top-10 h-48 w-48 rounded-full bg-blue-100 blur-3xl" />
+          <div className="absolute -right-16 bottom-0 h-40 w-40 rounded-full bg-orange-100 blur-3xl" />
+        </div>
+
+        <div className="relative flex flex-col gap-4 px-4 pb-2 pt-4 md:flex-row md:items-center md:justify-between md:px-6">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">معرض السيارات</p>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+              <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">
+                {slidesCount} سيارة متاحة
+              </span>
+              <span className="rounded-full bg-slate-50 px-3 py-1">يعرض {visibleNow} سيارة في كل شريحة</span>
+            </div>
+          </div>
 
           {slidesCount > 1 && (
-            <>
-              <CarouselPrevious className="hidden md:flex -left-2 lg:-left-6 h-12 w-12 translate-y-[-50%] rounded-full border-0 bg-white/80 text-blue-600 shadow-xl backdrop-blur" />
-              <CarouselNext className="hidden md:flex -right-2 lg:-right-6 h-12 w-12 translate-y-[-50%] rounded-full border-0 bg-white/80 text-blue-600 shadow-xl backdrop-blur" />
-            </>
+            <div className="hidden items-center gap-3 md:flex">
+              <CarouselPrevious className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
+              <CarouselNext className="static h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
+            </div>
           )}
-        </Carousel>
+        </div>
+
+        <div className="relative px-2 pb-6 sm:px-3 md:px-6">
+          <Carousel
+            opts={{
+              align,
+              loop,
+              slidesToScroll: Math.max(1, Math.floor(slidesPerView)),
+              dragFree: true
+            }}
+            className="w-full overflow-visible"
+          >
+            <CarouselContent className="-ml-2 py-4 md:-ml-3 md:py-6 lg:-ml-4">
+              {displayVehicles.map((vehicle) => (
+                <CarouselItem
+                  key={vehicle.id}
+                  style={{ flex: `0 0 ${slideWidth}` }}
+                  className="pl-2 md:pl-3 lg:pl-4"
+                >
+                  <VehicleCard vehicle={vehicle} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+
+            {slidesCount > 1 && (
+              <div className="flex items-center justify-center gap-4 pb-4 pt-2 md:hidden">
+                <CarouselPrevious className="relative h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
+                <CarouselNext className="relative h-12 w-12 rounded-full border-0 bg-white text-blue-600 shadow-lg hover:-translate-y-0.5 hover:bg-blue-50" />
+              </div>
+            )}
+          </Carousel>
+        </div>
       </div>
 
       {typeof totalVehiclesCount === 'number' && totalVehiclesCount > 0 && (
-        <div className="mt-12 text-center">
+        <div className="text-center">
           <Link href="/vehicles">
             <TouchButton
               variant="outline"
               size="xl"
-              className="border-blue-200 bg-white text-blue-600 hover:border-blue-300 hover:bg-blue-50"
+              className="border-blue-200 bg-white text-blue-600 shadow-sm hover:border-blue-300 hover:bg-blue-50"
             >
               استعرض جميع السيارات ({totalVehiclesCount})
             </TouchButton>
           </Link>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
@@ -203,9 +256,9 @@ interface VehicleCardProps {
 function VehicleCard({ vehicle }: VehicleCardProps) {
   return (
     <div className="group h-full">
-      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/80 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)]">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/40 bg-gradient-to-b from-white via-white/90 to-white/70 shadow-[0_25px_60px_-35px_rgba(15,23,42,0.5)] transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_35px_90px_-40px_rgba(15,23,42,0.65)]">
         <div className="relative overflow-hidden">
-          <div className="relative aspect-[4/3] w-full">
+          <div className="relative aspect-[16/9] w-full rounded-[28px] bg-slate-100">
             <VehicleImage
               vehicle={{
                 id: vehicle.id,
