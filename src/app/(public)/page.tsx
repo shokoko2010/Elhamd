@@ -275,7 +275,7 @@ export default function Home() {
   const { handleError, clearError } = useErrorHandler()
 
   const facebookPageUrl =
-    homepageSettings.facebookPageUrl ||
+    homepageSettings.facebookPageUrl ??
     contactInfo?.socialMedia?.facebook ??
     companyInfo?.socialMedia?.facebook ??
     companyInfo?.socialLinks?.facebook ??
