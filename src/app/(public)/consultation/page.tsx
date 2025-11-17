@@ -109,7 +109,7 @@ export default function ConsultationPage() {
                     size={deviceInfo.isMobile ? "lg" : "xl"}
                     fullWidth
                     hapticFeedback={true}
-                    className="bg-orange-600 hover:bg-orange-700 text-white text-lg font-semibold py-4 border-orange-600"
+                    className="bg-orange-600 hover:bg-orange-700 text-white text-lg font-semibold py-4 border-orange-600 flex-1"
                   >
                     {loadingAction === 'call' ? (
                       <div className="flex items-center justify-center">
@@ -130,7 +130,7 @@ export default function ConsultationPage() {
                     size={deviceInfo.isMobile ? "lg" : "xl"}
                     fullWidth
                     hapticFeedback={true}
-                    className="border-green-600 text-green-700 hover:bg-green-50"
+                    className="border-green-600 text-green-700 hover:bg-green-50 flex-1"
                   >
                     {loadingAction === 'whatsapp' ? (
                       <div className="flex items-center justify-center">

@@ -11,6 +11,12 @@ const DEFAULT_SETTINGS = {
   featuredVehiclesCount: 6,
   showServices: true,
   showCompanyInfo: true,
+  servicesTitle: 'خدماتنا المتكاملة',
+  servicesSubtitle: 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
+  servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
+  servicesCtaText: 'احجز الآن',
+  facebookPageUrl: 'https://www.facebook.com/elhamdimport',
+  facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos',
   theme: 'LIGHT' as HomepageTheme
 }
 
@@ -29,6 +35,14 @@ const sanitizeNumber = (value: unknown, fallback: number, options?: { min?: numb
   if (options?.min !== undefined && parsed < options.min) return options.min
   if (options?.max !== undefined && parsed > options.max) return options.max
   return parsed
+}
+
+const sanitizeString = (value: unknown, fallback: string) => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : fallback
+  }
+  return fallback
 }
 
 const sanitizeTheme = (value: unknown): HomepageTheme => {
@@ -80,6 +94,12 @@ export async function PUT(request: NextRequest) {
       featuredVehiclesCount: sanitizeNumber(payload.featuredVehiclesCount, DEFAULT_SETTINGS.featuredVehiclesCount, { min: 1, max: 12 }),
       showServices: sanitizeBoolean(payload.showServices, DEFAULT_SETTINGS.showServices),
       showCompanyInfo: sanitizeBoolean(payload.showCompanyInfo, DEFAULT_SETTINGS.showCompanyInfo),
+      servicesTitle: sanitizeString(payload.servicesTitle, DEFAULT_SETTINGS.servicesTitle),
+      servicesSubtitle: sanitizeString(payload.servicesSubtitle, DEFAULT_SETTINGS.servicesSubtitle),
+      servicesDescription: sanitizeString(payload.servicesDescription, DEFAULT_SETTINGS.servicesDescription),
+      servicesCtaText: sanitizeString(payload.servicesCtaText, DEFAULT_SETTINGS.servicesCtaText),
+      facebookPageUrl: sanitizeString(payload.facebookPageUrl, DEFAULT_SETTINGS.facebookPageUrl),
+      facebookVideoUrl: sanitizeString(payload.facebookVideoUrl, DEFAULT_SETTINGS.facebookVideoUrl),
       theme: sanitizeTheme(payload.theme)
     }
 

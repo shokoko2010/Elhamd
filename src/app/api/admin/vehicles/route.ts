@@ -9,6 +9,13 @@ import { InvoiceStatus, UserRole, VehicleStatus, VehicleCategory, FuelType, Tran
 import { z } from 'zod'
 import { PERMISSIONS } from '@/lib/permissions'
 
+const imageInputSchema = z.object({
+  imageUrl: z.string().min(1, 'رابط الصورة مطلوب'),
+  altText: z.string().optional(),
+  isPrimary: z.boolean().optional(),
+  order: z.number().int().min(0).optional()
+})
+
 const baseVehicleSchema = z.object({
   make: z.string().min(1, 'الماركة مطلوبة'),
   model: z.string().min(1, 'الموديل مطلوب'),
@@ -27,8 +34,12 @@ const baseVehicleSchema = z.object({
   featured: z.boolean().optional()
 })
 
-const createVehicleSchema = baseVehicleSchema
-const updateVehicleSchema = baseVehicleSchema.partial()
+const createVehicleSchema = baseVehicleSchema.extend({
+  images: z.array(imageInputSchema).optional()
+})
+const updateVehicleSchema = baseVehicleSchema.partial().extend({
+  images: z.array(imageInputSchema).optional()
+})
 
 const sanitizeVehiclePayload = <T extends Partial<z.infer<typeof baseVehicleSchema>>>(
   payload: T,
@@ -65,6 +76,42 @@ const sanitizeVehiclePayload = <T extends Partial<z.infer<typeof baseVehicleSche
   }
 
   return data as T
+}
+
+const normalizeImagePayload = (images?: z.infer<typeof imageInputSchema>[]) => {
+  if (!Array.isArray(images) || images.length === 0) {
+    return []
+  }
+
+  const cleaned = images
+    .map((image, index) => ({
+      imageUrl: typeof image.imageUrl === 'string' ? image.imageUrl.trim() : '',
+      altText: typeof image.altText === 'string' ? image.altText.trim() : undefined,
+      isPrimary: image.isPrimary,
+      order: typeof image.order === 'number' ? image.order : index
+    }))
+    .filter(image => image.imageUrl.length > 0)
+
+  if (cleaned.length === 0) {
+    return []
+  }
+
+  cleaned.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  let hasPrimary = cleaned.some(image => image.isPrimary)
+
+  return cleaned.map((image, index) => {
+    const isPrimary = hasPrimary ? Boolean(image.isPrimary && image.imageUrl) : index === 0
+    if (!hasPrimary && index === 0) {
+      hasPrimary = true
+    }
+
+    return {
+      imageUrl: image.imageUrl,
+      altText: image.altText,
+      isPrimary,
+      order: index
+    }
+  })
 }
 
 // GET /api/admin/vehicles - List all vehicles
@@ -238,7 +285,9 @@ export async function POST(request: NextRequest) {
     
     // Validate input
     const validatedData = createVehicleSchema.parse(body)
-    const sanitizedData = sanitizeVehiclePayload(validatedData, { applyDefaults: true })
+    const { images: imagePayload, ...vehiclePayload } = validatedData
+    const sanitizedData = sanitizeVehiclePayload(vehiclePayload, { applyDefaults: true })
+    const normalizedImages = normalizeImagePayload(imagePayload)
 
     // Check if stock number already exists
     const existingVehicle = await db.vehicle.findUnique({
@@ -271,6 +320,16 @@ export async function POST(request: NextRequest) {
     const vehicle = await db.vehicle.create({
       data: {
         ...sanitizedData,
+        images: normalizedImages.length
+          ? {
+              create: normalizedImages.map(image => ({
+                imageUrl: image.imageUrl,
+                altText: image.altText,
+                isPrimary: image.isPrimary,
+                order: image.order
+              }))
+            }
+          : undefined,
         pricing: {
           create: {
             basePrice: sanitizedData.price,

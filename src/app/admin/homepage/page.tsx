@@ -87,6 +87,12 @@ interface HomepageSettings {
   featuredVehiclesCount: number
   showServices: boolean
   showCompanyInfo: boolean
+  servicesTitle: string
+  servicesSubtitle: string
+  servicesDescription: string
+  servicesCtaText: string
+  facebookPageUrl: string
+  facebookVideoUrl: string
   theme: 'light' | 'dark' | 'auto'
 }
 
@@ -107,6 +113,12 @@ function HomepageContent() {
     featuredVehiclesCount: 6,
     showServices: true,
     showCompanyInfo: true,
+    servicesTitle: 'خدماتنا المتكاملة',
+    servicesSubtitle: 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
+    servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
+    servicesCtaText: 'احجز الآن',
+    facebookPageUrl: 'https://www.facebook.com/elhamdimport',
+    facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos',
     theme: 'light'
   })
   const [loading, setLoading] = useState(true)
@@ -223,7 +235,10 @@ function HomepageContent() {
       }
 
       // Fetch homepage settings
-      const settingsResponse = await fetch('/api/admin/homepage/settings', { cache: 'no-store' })
+      const settingsResponse = await fetch('/api/admin/homepage/settings', {
+        cache: 'no-store',
+        credentials: 'include'
+      })
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json()
         setSettings({
@@ -234,6 +249,20 @@ function HomepageContent() {
           featuredVehiclesCount: typeof settingsData?.featuredVehiclesCount === 'number' ? settingsData.featuredVehiclesCount : 6,
           showServices: Boolean(settingsData?.showServices),
           showCompanyInfo: Boolean(settingsData?.showCompanyInfo),
+          servicesTitle: typeof settingsData?.servicesTitle === 'string' ? settingsData.servicesTitle : 'خدماتنا المتكاملة',
+          servicesSubtitle: typeof settingsData?.servicesSubtitle === 'string'
+            ? settingsData.servicesSubtitle
+            : 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
+          servicesDescription: typeof settingsData?.servicesDescription === 'string'
+            ? settingsData.servicesDescription
+            : 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
+          servicesCtaText: typeof settingsData?.servicesCtaText === 'string' ? settingsData.servicesCtaText : 'احجز الآن',
+          facebookPageUrl: typeof settingsData?.facebookPageUrl === 'string'
+            ? settingsData.facebookPageUrl
+            : 'https://www.facebook.com/elhamdimport',
+          facebookVideoUrl: typeof settingsData?.facebookVideoUrl === 'string'
+            ? settingsData.facebookVideoUrl
+            : 'https://www.facebook.com/elhamdimport/videos',
           theme: settingsData?.theme === 'dark' || settingsData?.theme === 'DARK'
             ? 'dark'
             : settingsData?.theme === 'auto' || settingsData?.theme === 'AUTO'
@@ -564,6 +593,7 @@ function HomepageContent() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       })
 
@@ -625,6 +655,7 @@ function HomepageContent() {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           ...settings,
           theme: settings.theme.toUpperCase()
@@ -645,6 +676,12 @@ function HomepageContent() {
         featuredVehiclesCount: typeof data?.featuredVehiclesCount === 'number' ? data.featuredVehiclesCount : settings.featuredVehiclesCount,
         showServices: Boolean(data?.showServices),
         showCompanyInfo: Boolean(data?.showCompanyInfo),
+        servicesTitle: typeof data?.servicesTitle === 'string' ? data.servicesTitle : settings.servicesTitle,
+        servicesSubtitle: typeof data?.servicesSubtitle === 'string' ? data.servicesSubtitle : settings.servicesSubtitle,
+        servicesDescription: typeof data?.servicesDescription === 'string' ? data.servicesDescription : settings.servicesDescription,
+        servicesCtaText: typeof data?.servicesCtaText === 'string' ? data.servicesCtaText : settings.servicesCtaText,
+        facebookPageUrl: typeof data?.facebookPageUrl === 'string' ? data.facebookPageUrl : settings.facebookPageUrl,
+        facebookVideoUrl: typeof data?.facebookVideoUrl === 'string' ? data.facebookVideoUrl : settings.facebookVideoUrl,
         theme: data?.theme === 'DARK' ? 'dark' : data?.theme === 'AUTO' ? 'auto' : 'light'
       })
       setShowSettingsDialog(false)
@@ -827,6 +864,87 @@ function HomepageContent() {
 
         {/* Services */}
         <TabsContent value="services" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>إعدادات قسم الخدمات</CardTitle>
+                  <CardDescription>
+                    تحكم في النصوص والرابط الخاص بقسم "خدماتنا المتكاملة" على الواجهة الرئيسية وجميع الصفحات المرتبطة به
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={handleSaveSettings}>
+                  <Save className="ml-2 h-4 w-4" />
+                  حفظ الإعدادات
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="servicesTitle">عنوان القسم</Label>
+                  <Input
+                    id="servicesTitle"
+                    value={settings.servicesTitle}
+                    onChange={(e) => setSettings({ ...settings, servicesTitle: e.target.value })}
+                    placeholder="خدماتنا المتكاملة"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="servicesSubtitle">وصف مختصر</Label>
+                  <Input
+                    id="servicesSubtitle"
+                    value={settings.servicesSubtitle}
+                    onChange={(e) => setSettings({ ...settings, servicesSubtitle: e.target.value })}
+                    placeholder="نقدم مجموعة شاملة من الخدمات"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="servicesDescription">تفاصيل إضافية</Label>
+                <Textarea
+                  id="servicesDescription"
+                  value={settings.servicesDescription}
+                  onChange={(e) => setSettings({ ...settings, servicesDescription: e.target.value })}
+                  placeholder="أضف نصاً تفصيلياً يظهر أسفل العنوان"
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="servicesCtaText">نص زر الدعوة لاتخاذ إجراء</Label>
+                  <Input
+                    id="servicesCtaText"
+                    value={settings.servicesCtaText}
+                    onChange={(e) => setSettings({ ...settings, servicesCtaText: e.target.value })}
+                    placeholder="احجز الآن"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="facebookPageUrl">رابط صفحة فيسبوك لعرض الـ Feed</Label>
+                  <Input
+                    id="facebookPageUrl"
+                    value={settings.facebookPageUrl}
+                    onChange={(e) => setSettings({ ...settings, facebookPageUrl: e.target.value })}
+                    placeholder="https://www.facebook.com/yourpage"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="facebookVideoUrl">رابط فيديو أو قائمة تشغيل فيسبوك</Label>
+                  <Input
+                    id="facebookVideoUrl"
+                    value={settings.facebookVideoUrl}
+                    onChange={(e) => setSettings({ ...settings, facebookVideoUrl: e.target.value })}
+                    placeholder="https://www.facebook.com/yourpage/videos/123456789"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">استخدم رابط فيديو مباشر أو قائمة تشغيل لضمان ظهور الفيديوهات.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

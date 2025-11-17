@@ -29,37 +29,54 @@ export function SliderImageManager({ currentImage, onImageChange }: SliderImageM
   const loadAvailableImages = async () => {
     setLoading(true)
     try {
-      // Get all images from public directory
-      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-      const imageFiles = [
-        // Slider images
-        '/slider-nexon.jpg',
-        '/slider-punch.jpg', 
-        '/slider-tiago.jpg',
-        '/slider-offer.jpg',
-        '/slider-service.jpg',
-        // Vehicle images
-        '/uploads/vehicles/1/nexon-front.jpg',
-        '/uploads/vehicles/1/nexon-side.jpg',
-        '/uploads/vehicles/2/punch-front.jpg',
-        '/uploads/vehicles/3/tiago-front.jpg',
-        // Banner images
-        '/uploads/banners/nexon-banner.jpg',
-        '/uploads/banners/punch-banner.jpg',
-        '/uploads/banners/tiago-electric-banner.jpg',
-        '/uploads/banners/electric-banner.jpg',
-        '/uploads/banners/adventure-banner.jpg',
-        '/uploads/banners/showroom-banner.jpg',
-        '/uploads/banners/service-banner.jpg',
-        // Logo and other images
-        '/uploads/logo/alhamd-cars-logo.png',
-        '/uploads/showroom-luxury.jpg',
-        '/uploads/dealership-exterior.jpg',
-      ]
-      
-      setAvailableImages(imageFiles)
+      const response = await fetch('/api/media-files?folder=slider&recursive=true', {
+        cache: 'no-store',
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const files = Array.isArray(data?.data?.files) ? data.data.files : []
+        const mediaImages = files
+          .map((file: any) => (typeof file?.url === 'string' ? file.url : ''))
+          .filter(Boolean)
+
+        // Include a small curated fallback set so the picker never empties
+        const fallbackImages = [
+          '/slider-nexon.jpg',
+          '/slider-punch.jpg',
+          '/slider-tiago.jpg',
+          '/slider-offer.jpg',
+          '/slider-service.jpg',
+          '/uploads/vehicles/1/nexon-front.jpg',
+          '/uploads/vehicles/2/punch-front.jpg',
+          '/uploads/banners/showroom-banner.jpg'
+        ]
+
+        const merged = Array.from(new Set([...mediaImages, ...fallbackImages]))
+        setAvailableImages(merged)
+      } else {
+        console.error('Failed to load media files for slider images')
+        setAvailableImages([
+          '/slider-nexon.jpg',
+          '/slider-punch.jpg',
+          '/slider-tiago.jpg',
+          '/slider-offer.jpg',
+          '/slider-service.jpg',
+          '/uploads/vehicles/1/nexon-front.jpg',
+          '/uploads/vehicles/2/punch-front.jpg',
+          '/uploads/banners/showroom-banner.jpg'
+        ])
+      }
     } catch (error) {
       console.error('Error loading images:', error)
+      setAvailableImages([
+        '/slider-nexon.jpg',
+        '/slider-punch.jpg',
+        '/slider-tiago.jpg',
+        '/slider-offer.jpg',
+        '/slider-service.jpg'
+      ])
     } finally {
       setLoading(false)
     }
@@ -71,39 +88,39 @@ export function SliderImageManager({ currentImage, onImageChange }: SliderImageM
 
     setUploading(true)
     try {
-      // Create a simple file upload simulation
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('type', 'general')
+      formData.append('entityId', 'slider')
 
-      // For now, simulate upload by creating a local URL
-      // In production, you would upload to your server
-      const fileName = `slider-${Date.now()}.${file.name.split('.').pop()}`
-      const imageUrl = `/${fileName}`
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      })
 
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'فشل في رفع الصورة')
+      }
 
-      // Instead of using the generated filename, use one of the existing images
-      // This prevents 404 errors for non-existent files
-      const existingImages = [
-        '/slider-nexon.jpg',
-        '/slider-punch.jpg', 
-        '/slider-tiago.jpg',
-        '/slider-offer.jpg',
-        '/slider-service.jpg'
-      ]
-      
-      // Use a random existing image instead of the uploaded one
-      const randomImage = existingImages[Math.floor(Math.random() * existingImages.length)]
-      
-      onImageChange(randomImage)
+      const data = await response.json()
+      const uploadedUrl = typeof data?.url === 'string'
+        ? data.url
+        : typeof data?.originalUrl === 'string'
+          ? data.originalUrl
+          : ''
+
+      if (!uploadedUrl) {
+        throw new Error('لم يتم استلام رابط الصورة بعد الرفع')
+      }
+
+      onImageChange(uploadedUrl)
+      setAvailableImages((prev) => Array.from(new Set([uploadedUrl, ...prev])))
       setIsUploadDialogOpen(false)
-      
-      // Add to available images
-      setAvailableImages(prev => [...prev, randomImage])
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('فشل في رفع الصورة')
+      alert(error instanceof Error ? error.message : 'فشل في رفع الصورة')
     } finally {
       setUploading(false)
     }

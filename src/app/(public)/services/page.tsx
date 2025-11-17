@@ -32,6 +32,12 @@ interface Service {
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
+  const [serviceCopy, setServiceCopy] = useState({
+    title: 'خدماتنا',
+    subtitle: 'نقدم مجموعة شاملة من خدمات الصيانة والإصلاح لضمان أداء سيارتك المثالي',
+    description: '',
+    ctaText: 'احجز الآن'
+  })
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -40,6 +46,20 @@ export default function ServicesPage() {
         if (response.ok) {
           const data = await response.json()
           setServices(Array.isArray(data) ? data : [])
+        }
+
+        const settingsResponse = await fetch('/api/homepage-settings')
+        if (settingsResponse.ok) {
+          const settings = await settingsResponse.json()
+          setServiceCopy({
+            title: typeof settings?.servicesTitle === 'string' ? settings.servicesTitle : 'خدماتنا',
+            subtitle:
+              typeof settings?.servicesSubtitle === 'string'
+                ? settings.servicesSubtitle
+                : 'نقدم مجموعة شاملة من خدمات الصيانة والإصلاح لضمان أداء سيارتك المثالي',
+            description: typeof settings?.servicesDescription === 'string' ? settings.servicesDescription : '',
+            ctaText: typeof settings?.servicesCtaText === 'string' ? settings.servicesCtaText : 'احجز الآن'
+          })
         }
       } catch (error) {
         console.error('Error fetching services:', error)
@@ -125,10 +145,11 @@ export default function ServicesPage() {
       <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
         <div className="container mx-auto px-4 py-16">
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">خدماتنا</h1>
-            <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-              نقدم مجموعة شاملة من خدمات الصيانة والإصلاح لضمان أداء سيارتك المثالي
-            </p>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">{serviceCopy.title}</h1>
+            <p className="text-xl text-blue-100 max-w-3xl mx-auto">{serviceCopy.subtitle}</p>
+            {serviceCopy.description && (
+              <p className="mt-4 text-blue-100/90 max-w-4xl mx-auto text-lg">{serviceCopy.description}</p>
+            )}
           </div>
         </div>
       </div>
@@ -178,7 +199,7 @@ export default function ServicesPage() {
                     )}
 
                     <Button className="w-full mt-4">
-                      احجز الآن
+                      {serviceCopy.ctaText}
                       <ArrowLeft className="mr-2 h-4 w-4" />
                     </Button>
                   </div>

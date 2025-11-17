@@ -31,7 +31,12 @@ import {
   Truck,
   Settings,
   Droplet,
-  Facebook
+  Facebook,
+  Instagram,
+  Linkedin,
+  Twitter,
+  Youtube,
+  MessageCircle
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -124,6 +129,18 @@ const fallbackVehicles: PublicVehicle[] = [
     ]
   }
 ]
+
+const dedupeVehicles = (vehicles: PublicVehicle[]): PublicVehicle[] => {
+  const seen = new Set<string>()
+
+  return vehicles.filter((vehicle) => {
+    if (!vehicle?.id) return false
+    if (seen.has(vehicle.id)) return false
+
+    seen.add(vehicle.id)
+    return true
+  })
+}
 
 const resolveServiceIcon = (iconName?: string): LucideIcon => {
   if (!iconName) {
@@ -240,7 +257,8 @@ const normalizeContactInfo = (data: any) => {
 
 export default function Home() {
   const deviceInfo = useDeviceInfo()
-  const [featuredVehicles, setFeaturedVehicles] = useState<Vehicle[]>([])
+  const [featuredVehicles, setFeaturedVehicles] = useState<PublicVehicle[]>([])
+  const [totalVehiclesCount, setTotalVehiclesCount] = useState<number | null>(null)
   const [sliderItems, setSliderItems] = useState<SliderItem[]>([])
   const [companyInfo, setCompanyInfo] = useState<any>(null)
   const [serviceItems, setServiceItems] = useState<any[]>([])
@@ -249,19 +267,35 @@ export default function Home() {
   const [companyFeatures, setCompanyFeatures] = useState<any[]>([])
   const [timelineEvents, setTimelineEvents] = useState<any[]>([])
   const [contactInfo, setContactInfo] = useState<any>(null)
+  const [homepageSettings, setHomepageSettings] = useState({
+    showHeroSlider: true,
+    autoPlaySlider: true,
+    sliderInterval: 5000,
+    showServices: true,
+    servicesTitle: 'خدماتنا المتكاملة',
+    servicesSubtitle: 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
+    servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
+    servicesCtaText: 'احجز الآن',
+    facebookPageUrl: 'https://www.facebook.com/elhamdimport',
+    facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos'
+  })
   const [loading, setLoading] = useState(true)
   const [sliderLoading, setSliderLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isAutoPlay, setIsAutoPlay] = useState(true)
+  const [sliderInterval, setSliderInterval] = useState(5000)
 
   const { handleError, clearError } = useErrorHandler()
 
   const facebookPageUrl =
+    homepageSettings.facebookPageUrl ??
     contactInfo?.socialMedia?.facebook ??
     companyInfo?.socialMedia?.facebook ??
     companyInfo?.socialLinks?.facebook ??
     'https://www.facebook.com/elhamdimport'
+
+  const facebookVideoUrl = homepageSettings.facebookVideoUrl?.trim() || `${facebookPageUrl}/videos`
 
   const carouselVehicles = useMemo(() => {
     if (featuredVehicles.length > 0) {
@@ -270,7 +304,12 @@ export default function Home() {
 
     return fallbackVehicles
   }, [featuredVehicles])
-  const totalVehiclesCount = featuredVehicles.length > 0 ? featuredVehicles.length : carouselVehicles.length
+  const resolvedVehiclesCount =
+    typeof totalVehiclesCount === 'number'
+      ? totalVehiclesCount
+      : featuredVehicles.length > 0
+        ? featuredVehicles.length
+        : carouselVehicles.length
 
   useEffect(() => {
     console.log('🚀 Component mounted, starting data fetch...')
@@ -278,6 +317,38 @@ export default function Home() {
     // Fetch all data from APIs
     const fetchAllData = async () => {
       try {
+        // Fetch homepage settings
+        const settingsResponse = await fetch('/api/homepage-settings', { cache: 'no-store' })
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json()
+          setHomepageSettings({
+            showHeroSlider: Boolean(settingsData?.showHeroSlider),
+            autoPlaySlider: Boolean(settingsData?.autoPlaySlider),
+            sliderInterval: typeof settingsData?.sliderInterval === 'number' ? settingsData.sliderInterval : 5000,
+            showServices: Boolean(settingsData?.showServices),
+            servicesTitle: typeof settingsData?.servicesTitle === 'string'
+              ? settingsData.servicesTitle
+              : 'خدماتنا المتكاملة',
+            servicesSubtitle: typeof settingsData?.servicesSubtitle === 'string'
+              ? settingsData.servicesSubtitle
+              : 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
+            servicesDescription: typeof settingsData?.servicesDescription === 'string'
+              ? settingsData.servicesDescription
+              : 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
+            servicesCtaText: typeof settingsData?.servicesCtaText === 'string'
+              ? settingsData.servicesCtaText
+              : 'احجز الآن',
+            facebookPageUrl: typeof settingsData?.facebookPageUrl === 'string'
+              ? settingsData.facebookPageUrl
+              : 'https://www.facebook.com/elhamdimport',
+            facebookVideoUrl: typeof settingsData?.facebookVideoUrl === 'string'
+              ? settingsData.facebookVideoUrl
+              : 'https://www.facebook.com/elhamdimport/videos'
+          })
+          setIsAutoPlay(Boolean(settingsData?.autoPlaySlider))
+          setSliderInterval(typeof settingsData?.sliderInterval === 'number' ? settingsData.sliderInterval : 5000)
+        }
+
         // Fetch company info
         const companyInfoResponse = await fetch('/api/company-info')
         if (companyInfoResponse.ok) {
@@ -383,16 +454,31 @@ export default function Home() {
           setSliderItems(sliders.map((item) => normalizeBrandingObject(item)))
         }
 
-        // Fetch vehicles
-        const vehiclesResponse = await fetch('/api/public/vehicles?limit=8')
+        // Fetch all vehicles at once to render the full carousel dataset
+        const statusParam = 'all'
+        const vehiclesResponse = await fetch(
+          `/api/public/vehicles?status=${statusParam}&all=true`,
+          { cache: 'no-store' }
+        )
+
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
-          const normalizedVehicles = Array.isArray(vehiclesData?.vehicles)
-            ? vehiclesData.vehicles.map((vehicle: Vehicle) => normalizeBrandingObject(vehicle))
-            : []
-          setFeaturedVehicles(normalizedVehicles)
 
-          if (!vehiclesData?.vehicles || vehiclesData.vehicles.length === 0) {
+          const normalizedVehicles = dedupeVehicles(
+            (Array.isArray(vehiclesData?.vehicles) ? vehiclesData.vehicles : []).map(
+              (vehicle: PublicVehicle) => normalizeBrandingObject(vehicle)
+            )
+          )
+
+          const totalVehicles =
+            typeof vehiclesData?.pagination?.total === 'number'
+              ? vehiclesData.pagination.total
+              : normalizedVehicles.length
+
+          setFeaturedVehicles(normalizedVehicles)
+          setTotalVehiclesCount(totalVehicles)
+
+          if (normalizedVehicles.length === 0) {
             toast.info('لا توجد سيارات متاحة حالياً')
           }
         }
@@ -417,11 +503,11 @@ export default function Home() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout
-    
+
     if (isAutoPlay && sliderItems.length > 0) {
       interval = setInterval(() => {
         setCurrentSlide((prev) => (prev < sliderItems.length - 1 ? prev + 1 : 0))
-      }, 5000)
+      }, sliderInterval)
     }
 
     return () => {
@@ -429,7 +515,7 @@ export default function Home() {
         clearInterval(interval)
       }
     }
-  }, [isAutoPlay, sliderItems.length])
+  }, [isAutoPlay, sliderItems.length, sliderInterval])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ar-EG', {
@@ -439,15 +525,20 @@ export default function Home() {
     }).format(price)
   }
 
+  const serviceSectionTitle = homepageSettings.servicesTitle?.trim() || 'خدماتنا المتكاملة'
+  const serviceSectionSubtitle = homepageSettings.servicesSubtitle?.trim() || 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا'
+  const serviceSectionDescription = homepageSettings.servicesDescription?.trim()
+  const serviceCtaText = homepageSettings.servicesCtaText?.trim() || 'احجز الآن'
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
       {/* Mobile-Optimized Slider Section */}
       <section className="relative w-full h-[70vh] md:h-[80vh]">
-        <WorkingSlider 
+        <WorkingSlider
           items={sliderItems}
           loading={sliderLoading}
           autoPlay={isAutoPlay}
-          autoPlayInterval={5000}
+          autoPlayInterval={sliderInterval}
           className="w-full h-full"
         />
       </section>
@@ -577,7 +668,7 @@ export default function Home() {
                 loading={loading}
                 error={error}
                 onRetry={() => window.location.reload()}
-                totalVehiclesCount={totalVehiclesCount}
+                totalVehiclesCount={resolvedVehiclesCount}
               />
             </div>
           </section>
@@ -627,7 +718,7 @@ export default function Home() {
         )}
 
         {/* Services Section */}
-        {serviceItems.length > 0 && (
+        {homepageSettings.showServices && serviceItems.length > 0 && (
           <EnhancedLazySection rootMargin="100px" preload={false}>
             <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 relative">
               <div className="max-w-7xl mx-auto px-4">
@@ -637,11 +728,16 @@ export default function Home() {
                     خدماتنا
                   </Badge>
                   <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-green-600 bg-clip-text text-transparent">
-                    خدماتنا المتكاملة
+                    {serviceSectionTitle}
                   </h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا
+                    {serviceSectionSubtitle}
                   </p>
+                  {serviceSectionDescription && (
+                    <p className="text-base text-gray-500 max-w-3xl mx-auto leading-relaxed mt-3">
+                      {serviceSectionDescription}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
@@ -697,7 +793,7 @@ export default function Home() {
                               variant="outline"
                               className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
                             >
-                              {service.ctaText?.trim() || 'احجز الآن'}
+                              {service.ctaText?.trim() || serviceCtaText}
                             </TouchButton>
                           </Link>
                         </CardContent>
@@ -1023,20 +1119,38 @@ export default function Home() {
                     </div>
                     <h3 className="text-xl font-bold mb-4">تابعنا</h3>
                     <div className="space-y-3">
-                      {contactInfo.socialMedia && Object.entries(contactInfo.socialMedia).map(([platform, url]) => (
-                        <a
-                          key={platform}
-                          href={url as string}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-blue-50 hover:text-white transition-colors"
-                        >
-                          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                            <Users className="h-4 w-4" />
-                          </div>
-                          <span className="capitalize">{platform}</span>
-                        </a>
-                      ))}
+                      {contactInfo.socialMedia &&
+                        Object.entries(contactInfo.socialMedia)
+                          .filter(([, url]) => typeof url === 'string' && url)
+                          .map(([platform, url]) => {
+                            const platformKey = platform.toLowerCase()
+                            const socialIconMap: Record<string, LucideIcon> = {
+                              facebook: Facebook,
+                              instagram: Instagram,
+                              linkedin: Linkedin,
+                              twitter: Twitter,
+                              youtube: Youtube,
+                              whatsapp: MessageCircle,
+                              messenger: MessageCircle,
+                              default: Users
+                            }
+                            const SocialIcon = socialIconMap[platformKey] || socialIconMap.default
+
+                            return (
+                              <a
+                                key={platform}
+                                href={url as string}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 text-blue-50 hover:text-white transition-colors"
+                              >
+                                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                                  <SocialIcon className="h-4 w-4" />
+                                </div>
+                                <span className="capitalize">{platform}</span>
+                              </a>
+                            )
+                          })}
                     </div>
                   </div>
                 </div>
@@ -1114,10 +1228,10 @@ export default function Home() {
                   أحدث ما ننشره على فيسبوك
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  تعرفوا على آخر الأخبار والعروض من خلال منشوراتنا وريلز فيسبوك.
+                  تعرفوا على آخر الأخبار والعروض من خلال فيديوهاتنا ومنشوراتنا على فيسبوك.
                 </p>
               </div>
-              <FacebookFeeds pageUrl={facebookPageUrl} />
+              <FacebookFeeds pageUrl={facebookPageUrl} videoUrl={facebookVideoUrl} />
             </div>
           </section>
         </EnhancedLazySection>

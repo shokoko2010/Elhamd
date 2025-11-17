@@ -640,6 +640,12 @@ model HomepageSettings {
   featuredVehiclesCount Int            @default(6)
   showServices          Boolean        @default(true)
   showCompanyInfo       Boolean        @default(true)
+  servicesTitle         String?
+  servicesSubtitle      String?
+  servicesDescription   String?
+  servicesCtaText       String?
+  facebookPageUrl       String?
+  facebookVideoUrl      String?
   theme                 HomepageTheme  @default(LIGHT)
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt

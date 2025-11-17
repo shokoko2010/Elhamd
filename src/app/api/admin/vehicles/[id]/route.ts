@@ -9,6 +9,13 @@ import { Prisma, UserRole, VehicleStatus, VehicleCategory, FuelType, Transmissio
 import { z } from 'zod'
 import { PERMISSIONS } from '@/lib/permissions'
 
+const imageInputSchema = z.object({
+  imageUrl: z.string().min(1, 'رابط الصورة مطلوب'),
+  altText: z.string().optional(),
+  isPrimary: z.boolean().optional(),
+  order: z.number().int().min(0).optional()
+})
+
 const updateVehicleSchema = z.object({
   make: z.string().min(1, 'الماركة مطلوبة').optional(),
   model: z.string().min(1, 'الموديل مطلوب').optional(),
@@ -24,10 +31,13 @@ const updateVehicleSchema = z.object({
   mileage: z.number().int().min(0).optional(),
   color: z.string().optional(),
   status: z.nativeEnum(VehicleStatus).optional(),
-  featured: z.boolean().optional()
+  featured: z.boolean().optional(),
+  images: z.array(imageInputSchema).optional()
 })
 
-const sanitizeVehiclePayload = (payload: z.infer<typeof updateVehicleSchema>) => {
+type UpdateVehicleFields = Omit<z.infer<typeof updateVehicleSchema>, 'images'>
+
+const sanitizeVehiclePayload = (payload: UpdateVehicleFields) => {
   const data: Record<string, unknown> = { ...payload }
 
   if (data.vin !== undefined) {
@@ -53,7 +63,43 @@ const sanitizeVehiclePayload = (payload: z.infer<typeof updateVehicleSchema>) =>
     data.stockQuantity = Number(data.stockQuantity)
   }
 
-  return data as z.infer<typeof updateVehicleSchema>
+  return data as UpdateVehicleFields
+}
+
+const normalizeImagePayload = (images?: z.infer<typeof imageInputSchema>[]) => {
+  if (!Array.isArray(images) || images.length === 0) {
+    return []
+  }
+
+  const cleaned = images
+    .map((image, index) => ({
+      imageUrl: typeof image.imageUrl === 'string' ? image.imageUrl.trim() : '',
+      altText: typeof image.altText === 'string' ? image.altText.trim() : undefined,
+      isPrimary: image.isPrimary,
+      order: typeof image.order === 'number' ? image.order : index
+    }))
+    .filter(image => image.imageUrl.length > 0)
+
+  if (cleaned.length === 0) {
+    return []
+  }
+
+  cleaned.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  let hasPrimary = cleaned.some(image => image.isPrimary)
+
+  return cleaned.map((image, index) => {
+    const isPrimary = hasPrimary ? Boolean(image.isPrimary && image.imageUrl) : index === 0
+    if (!hasPrimary && index === 0) {
+      hasPrimary = true
+    }
+
+    return {
+      imageUrl: image.imageUrl,
+      altText: image.altText,
+      isPrimary,
+      order: index
+    }
+  })
 }
 
 // GET /api/admin/vehicles/[id] - Get single vehicle
@@ -158,10 +204,12 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     const body = await request.json()
-    
+
     // Validate input
     const validatedData = updateVehicleSchema.parse(body)
-    const sanitizedData = sanitizeVehiclePayload(validatedData)
+    const { images: imagePayload, ...vehiclePayload } = validatedData
+    const sanitizedData = sanitizeVehiclePayload(vehiclePayload)
+    const normalizedImages = normalizeImagePayload(imagePayload)
 
     const updateData: Prisma.VehicleUpdateInput = {
       ...sanitizedData
@@ -256,7 +304,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     // Update vehicle
-    const vehicle = await db.vehicle.update({
+    let vehicle = await db.vehicle.update({
       where: { id },
       data: updateData,
       include: {
@@ -269,6 +317,31 @@ export async function PUT(request: NextRequest, context: RouteParams) {
         pricing: true
       }
     })
+
+    if (imagePayload !== undefined) {
+      await db.vehicleImage.deleteMany({ where: { vehicleId: id } })
+
+      if (normalizedImages.length) {
+        await db.vehicleImage.createMany({
+          data: normalizedImages.map(image => ({
+            vehicleId: id,
+            imageUrl: image.imageUrl,
+            altText: image.altText,
+            isPrimary: image.isPrimary,
+            order: image.order
+          }))
+        })
+      }
+
+      vehicle = await db.vehicle.findUnique({
+        where: { id },
+        include: {
+          images: { orderBy: { order: 'asc' } },
+          specifications: { orderBy: { category: 'asc' } },
+          pricing: true
+        }
+      }) as typeof vehicle
+    }
 
     return NextResponse.json(vehicle)
   } catch (error) {
