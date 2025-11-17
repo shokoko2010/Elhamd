@@ -119,27 +119,21 @@ export function ModernVehicleCarousel({
 
   const handleNext = () => {
     if (slidesCount === 0) return
-    const step = itemsPerView
-    setCurrentIndex(prev => {
-      const next = prev + step
-      return next >= slidesCount ? 0 : next
-    })
+    const maxIndex = Math.max(0, slidesCount - itemsPerView)
+    setCurrentIndex(prev => (prev >= maxIndex ? 0 : prev + 1))
   }
 
   const handlePrevious = () => {
     if (slidesCount === 0) return
-    const step = itemsPerView
-    setCurrentIndex(prev => {
-      const next = prev - step
-      return next < 0 ? Math.max(0, slidesCount - step) : next
-    })
+    const maxIndex = Math.max(0, slidesCount - itemsPerView)
+    setCurrentIndex(prev => (prev <= 0 ? maxIndex : prev - 1))
   }
 
   if (loading) {
     return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 md:gap-8">
         {[...Array(3)].map((_, index) => (
-          <div key={index} className="h-full min-h-[520px]">
+          <div key={index} className="h-full min-h-[440px]">
             <LoadingCard title="جاري تحميل السيارة..." className="h-full" />
           </div>
         ))}
@@ -172,8 +166,7 @@ export function ModernVehicleCarousel({
     )
   }
 
-  const trackWidth = `${(slidesCount / itemsPerView) * 100}%`
-  const translate = `translateX(-${(currentIndex / slidesCount) * 100}%)`
+  const translate = `translateX(-${(currentIndex * 100) / itemsPerView}%)`
   const heroVehicle = displayVehicles[currentIndex] ?? displayVehicles[0]
 
   return (
@@ -213,7 +206,7 @@ export function ModernVehicleCarousel({
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-inner">
+          <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-inner min-h-[420px]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(14,165,233,0.18),transparent_35%)]" />
 
             <div className="relative">
@@ -232,13 +225,13 @@ export function ModernVehicleCarousel({
               <div className="overflow-hidden">
                 <ul
                   className="flex gap-5 transition-transform duration-500 ease-in-out"
-                  style={{ width: trackWidth, transform: translate }}
+                  style={{ transform: translate }}
                 >
                   {displayVehicles.map(vehicle => (
                     <li
                       key={vehicle.id}
-                      className="min-w-0 flex-1"
-                      style={{ minWidth: `${100 / itemsPerView}%` }}
+                      className="min-w-0 flex-shrink-0"
+                      style={{ width: `${100 / itemsPerView}%` }}
                     >
                       <VehicleCard vehicle={vehicle} onOpen={() => setCurrentIndex(displayVehicles.indexOf(vehicle))} />
                     </li>
