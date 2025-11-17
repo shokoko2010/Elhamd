@@ -166,7 +166,8 @@ export function ModernVehicleCarousel({
     )
   }
 
-  const translate = `translateX(-${(currentIndex * 100) / itemsPerView}%)`
+  const trackWidth = `${(displayVehicles.length * 100) / itemsPerView}%`
+  const translate = `translateX(-${(currentIndex * 100) / displayVehicles.length}%)`
   const heroVehicle = displayVehicles[currentIndex] ?? displayVehicles[0]
 
   return (
@@ -225,7 +226,7 @@ export function ModernVehicleCarousel({
               <div className="overflow-hidden">
                 <ul
                   className="flex gap-5 transition-transform duration-500 ease-in-out"
-                  style={{ transform: translate }}
+                  style={{ width: trackWidth, transform: translate }}
                 >
                   {displayVehicles.map(vehicle => (
                     <li
