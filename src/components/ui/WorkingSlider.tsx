@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, TouchEvent } from 'react'
+import type { CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +18,11 @@ interface WorkingSliderProps {
     badge?: string
     badgeColor?: string
     contentPosition?: 'left' | 'center' | 'right'
+    contentSize?: 'sm' | 'md' | 'lg'
+    contentColor?: string
+    contentShadow?: boolean
+    contentStrokeColor?: string
+    contentStrokeWidth?: number
   }>
   autoPlay?: boolean
   autoPlayInterval?: number
@@ -128,10 +134,47 @@ export function WorkingSlider({
 
   const currentItem = items[currentIndex]
   const contentPosition = currentItem.contentPosition || 'right'
+  const contentColor = currentItem.contentColor || '#ffffff'
+  const contentShadow = currentItem.contentShadow !== false
+  const contentStrokeColor = currentItem.contentStrokeColor || '#000000'
+  const contentStrokeWidth =
+    typeof currentItem.contentStrokeWidth === 'number' && currentItem.contentStrokeWidth >= 0
+      ? currentItem.contentStrokeWidth
+      : 0
   const alignmentClass =
     contentPosition === 'left' ? 'justify-start' : contentPosition === 'center' ? 'justify-center' : 'justify-end'
   const textAlignmentClass =
     contentPosition === 'left' ? 'text-left mr-auto' : contentPosition === 'center' ? 'text-center mx-auto' : 'text-right ml-auto'
+
+  const typographyScale: Record<NonNullable<typeof currentItem.contentSize>, {
+    title: string
+    subtitle: string
+    description: string
+  }> = {
+    sm: {
+      title: 'text-2xl md:text-4xl lg:text-5xl',
+      subtitle: 'text-lg md:text-xl lg:text-2xl',
+      description: 'text-base md:text-lg'
+    },
+    md: {
+      title: 'text-3xl md:text-5xl lg:text-6xl',
+      subtitle: 'text-xl md:text-2xl lg:text-3xl',
+      description: 'text-lg md:text-xl'
+    },
+    lg: {
+      title: 'text-4xl md:text-6xl lg:text-7xl',
+      subtitle: 'text-2xl md:text-3xl lg:text-4xl',
+      description: 'text-xl md:text-2xl'
+    }
+  }
+
+  const sizeKey = (currentItem.contentSize || 'lg') as NonNullable<typeof currentItem.contentSize>
+  const typography = typographyScale[sizeKey] || typographyScale.lg
+  const textStyle: CSSProperties = {
+    color: contentColor,
+    textShadow: contentShadow ? '0 8px 30px rgba(0,0,0,0.45)' : undefined,
+    WebkitTextStroke: contentStrokeWidth > 0 ? `${contentStrokeWidth}px ${contentStrokeColor}` : undefined
+  }
 
   return (
     <div className={`relative w-full overflow-hidden ${className}`}>
@@ -205,17 +248,20 @@ export function WorkingSlider({
                 )}
 
                 {/* Title */}
-                <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                <h1 className={`${typography.title} font-bold mb-4 leading-tight`} style={textStyle}>
                   {currentItem.title}
                 </h1>
 
                 {/* Subtitle */}
-                <h2 className="text-xl md:text-2xl lg:text-3xl text-blue-200 mb-6 font-light">
+                <h2 className={`${typography.subtitle} mb-6 font-light`} style={textStyle}>
                   {currentItem.subtitle}
                 </h2>
 
                 {/* Description */}
-                <p className={`text-lg md:text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl ${textAlignmentClass}`}>
+                <p
+                  className={`${typography.description} mb-8 leading-relaxed max-w-2xl ${textAlignmentClass}`}
+                  style={textStyle}
+                >
                   {currentItem.description}
                 </p>
 

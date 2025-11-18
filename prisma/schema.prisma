@@ -756,6 +756,12 @@ model Slider {
   ctaLink     String?
   badge       String?
   badgeColor  String?  @default("bg-blue-500")
+  contentPosition   String? @default("right")
+  contentSize       String? @default("lg")
+  contentColor      String? @default("#ffffff")
+  contentShadow     Boolean? @default(true)
+  contentStrokeColor String? @default("#000000")
+  contentStrokeWidth Int?    @default(0)
   order       Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())

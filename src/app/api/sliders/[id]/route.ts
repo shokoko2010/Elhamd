@@ -57,6 +57,12 @@ export async function PUT(
       ctaLink,
       badge,
       badgeColor,
+      contentPosition,
+      contentSize,
+      contentColor,
+      contentShadow,
+      contentStrokeColor,
+      contentStrokeWidth,
       order,
       isActive
     } = body
@@ -85,6 +91,14 @@ export async function PUT(
         ...(ctaLink !== undefined && { ctaLink: ctaLink || null }),
         ...(badge !== undefined && { badge: badge || null }),
         ...(badgeColor !== undefined && { badgeColor: badgeColor || 'bg-blue-500' }),
+        ...(contentPosition !== undefined && { contentPosition: contentPosition || 'right' }),
+        ...(contentSize !== undefined && { contentSize: contentSize || 'lg' }),
+        ...(contentColor !== undefined && { contentColor: contentColor || '#ffffff' }),
+        ...(contentShadow !== undefined && { contentShadow: contentShadow !== false }),
+        ...(contentStrokeColor !== undefined && { contentStrokeColor: contentStrokeColor || '#000000' }),
+        ...(contentStrokeWidth !== undefined && {
+          contentStrokeWidth: typeof contentStrokeWidth === 'number' && contentStrokeWidth >= 0 ? contentStrokeWidth : 0
+        }),
         ...(order !== undefined && { order }),
         ...(isActive !== undefined && { isActive })
       }

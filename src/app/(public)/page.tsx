@@ -74,6 +74,11 @@ interface SliderItem {
   badge?: string
   badgeColor?: string
   contentPosition?: 'left' | 'center' | 'right'
+  contentSize?: 'sm' | 'md' | 'lg'
+  contentColor?: string
+  contentShadow?: boolean
+  contentStrokeColor?: string
+  contentStrokeWidth?: number
 }
 
 const arabicDayLabels: Record<string, string> = {
@@ -456,6 +461,14 @@ export default function Home() {
             sliders.map((item, index) => ({
               ...normalizeBrandingObject(item),
               contentPosition: item?.contentPosition || 'right',
+              contentSize: item?.contentSize || 'lg',
+              contentColor: item?.contentColor || '#ffffff',
+              contentShadow: item?.contentShadow !== false,
+              contentStrokeColor: item?.contentStrokeColor || '#000000',
+              contentStrokeWidth:
+                typeof item?.contentStrokeWidth === 'number' && item.contentStrokeWidth >= 0
+                  ? item.contentStrokeWidth
+                  : 0,
               order: typeof item?.order === 'number' ? item.order : index
             }))
           )

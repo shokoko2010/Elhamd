@@ -63,6 +63,12 @@ export async function POST(request: NextRequest) {
       ctaLink,
       badge,
       badgeColor,
+      contentPosition,
+      contentSize,
+      contentColor,
+      contentShadow,
+      contentStrokeColor,
+      contentStrokeWidth,
       order,
       isActive
     } = body
@@ -94,6 +100,13 @@ export async function POST(request: NextRequest) {
         ctaLink: ctaLink || null,
         badge: badge || null,
         badgeColor: badgeColor || 'bg-blue-500',
+        contentPosition: contentPosition || 'right',
+        contentSize: contentSize || 'lg',
+        contentColor: contentColor || '#ffffff',
+        contentShadow: contentShadow !== false,
+        contentStrokeColor: contentStrokeColor || '#000000',
+        contentStrokeWidth:
+          typeof contentStrokeWidth === 'number' && contentStrokeWidth >= 0 ? contentStrokeWidth : 0,
         order: finalOrder,
         isActive: isActive !== undefined ? isActive : true
       }
