@@ -14,12 +14,20 @@ const normalizeContentPosition = (position?: string): SliderContentPosition => {
     case 'bottom-center':
     case 'top-left':
     case 'bottom-left':
+    case 'middle-left':
+    case 'middle-center':
+    case 'middle-right':
       return position
     case 'left':
-      return 'top-left'
+      return 'middle-left'
     case 'center':
-      return 'top-center'
+      return 'middle-center'
     case 'right':
+      return 'middle-right'
+    case 'top':
+      return 'top-center'
+    case 'bottom':
+      return 'bottom-center'
     default:
       return 'top-right'
   }
@@ -32,6 +40,9 @@ type SliderContentPosition =
   | 'bottom-center'
   | 'top-left'
   | 'bottom-left'
+  | 'middle-left'
+  | 'middle-center'
+  | 'middle-right'
 
 interface WorkingSliderProps {
   items: Array<{
@@ -169,11 +180,15 @@ export function WorkingSlider({
       ? currentItem.contentStrokeWidth
       : 0
   const [verticalAlign, horizontalAlign] = contentPosition.split('-') as [
-    'top' | 'bottom',
+    'top' | 'middle' | 'bottom',
     'right' | 'center' | 'left'
   ]
   const verticalClass =
-    verticalAlign === 'top' ? 'justify-start' : verticalAlign === 'bottom' ? 'justify-end' : 'justify-center'
+    verticalAlign === 'top'
+      ? 'justify-start'
+      : verticalAlign === 'middle'
+        ? 'justify-center'
+        : 'justify-end'
   const horizontalAlignmentClass =
     horizontalAlign === 'left'
       ? 'items-start text-left'
@@ -186,6 +201,18 @@ export function WorkingSlider({
       : horizontalAlign === 'center'
         ? 'text-center'
         : 'text-right'
+
+  const gridPositionClass: Record<SliderContentPosition, string> = {
+    'top-left': 'row-start-1 col-start-1',
+    'top-center': 'row-start-1 col-start-2',
+    'top-right': 'row-start-1 col-start-3',
+    'middle-left': 'row-start-2 col-start-1',
+    'middle-center': 'row-start-2 col-start-2',
+    'middle-right': 'row-start-2 col-start-3',
+    'bottom-left': 'row-start-3 col-start-1',
+    'bottom-center': 'row-start-3 col-start-2',
+    'bottom-right': 'row-start-3 col-start-3'
+  }
 
   const typographyScale: Record<NonNullable<typeof currentItem.contentSize>, {
     title: string
@@ -275,10 +302,10 @@ export function WorkingSlider({
         {/* Content */}
         <div className="relative z-20 h-full">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
-            <div
-              className={`flex h-full flex-col ${verticalClass} pt-16 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20`}
-            >
-              <div className={`max-w-4xl flex flex-col gap-4 md:gap-6 ${horizontalAlignmentClass}`}>
+            <div className="grid h-full grid-cols-3 grid-rows-3 pt-16 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20">
+              <div
+                className={`${gridPositionClass[contentPosition]} flex flex-col gap-4 md:gap-6 ${horizontalAlignmentClass} ${verticalClass}`}
+              >
                 {/* Badge */}
                 {currentItem.badge && (
                   <div className="mb-4">

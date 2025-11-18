@@ -37,6 +37,9 @@ type SliderContentPosition =
   | 'bottom-center'
   | 'top-left'
   | 'bottom-left'
+  | 'middle-left'
+  | 'middle-center'
+  | 'middle-right'
 
 interface SliderItem {
   id: string
@@ -174,12 +177,20 @@ function HomepageContent() {
       case 'bottom-center':
       case 'top-left':
       case 'bottom-left':
+      case 'middle-left':
+      case 'middle-center':
+      case 'middle-right':
         return position
       case 'left':
-        return 'top-left'
+        return 'middle-left'
       case 'center':
-        return 'top-center'
+        return 'middle-center'
       case 'right':
+        return 'middle-right'
+      case 'top':
+        return 'top-center'
+      case 'bottom':
+        return 'bottom-center'
       default:
         return 'top-right'
     }
@@ -1510,16 +1521,19 @@ function HomepageContent() {
                 <SelectTrigger>
                   <SelectValue placeholder="اختر موضع المحتوى" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="top-right">أعلى اليمين</SelectItem>
-                  <SelectItem value="bottom-right">أسفل اليمين</SelectItem>
-                  <SelectItem value="top-center">أعلى الوسط</SelectItem>
-                  <SelectItem value="bottom-center">أسفل الوسط</SelectItem>
-                  <SelectItem value="top-left">أعلى اليسار</SelectItem>
-                  <SelectItem value="bottom-left">أسفل اليسار</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <SelectContent>
+                <SelectItem value="top-right">أعلى اليمين</SelectItem>
+                <SelectItem value="middle-right">منتصف اليمين</SelectItem>
+                <SelectItem value="bottom-right">أسفل اليمين</SelectItem>
+                <SelectItem value="top-center">أعلى الوسط</SelectItem>
+                <SelectItem value="middle-center">منتصف الوسط</SelectItem>
+                <SelectItem value="bottom-center">أسفل الوسط</SelectItem>
+                <SelectItem value="top-left">أعلى اليسار</SelectItem>
+                <SelectItem value="middle-left">منتصف اليسار</SelectItem>
+                <SelectItem value="bottom-left">أسفل اليسار</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

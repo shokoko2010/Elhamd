@@ -14,12 +14,20 @@ const normalizeContentPosition = (position?: string) => {
     case 'bottom-center':
     case 'top-left':
     case 'bottom-left':
+    case 'middle-left':
+    case 'middle-center':
+    case 'middle-right':
       return position
     case 'left':
-      return 'top-left'
+      return 'middle-left'
     case 'center':
-      return 'top-center'
+      return 'middle-center'
     case 'right':
+      return 'middle-right'
+    case 'top':
+      return 'top-center'
+    case 'bottom':
+      return 'bottom-center'
     default:
       return 'top-right'
   }
