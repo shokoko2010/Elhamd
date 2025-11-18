@@ -117,7 +117,7 @@ export function ModernVehicleCarousel({
   }
 
   return (
-    <div className="space-y-6">
+    <Carousel opts={{ loop: true, align: 'start' }} className="group space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <Badge className="w-fit bg-blue-100 text-blue-700 border-blue-200">مجموعة السيارات</Badge>
@@ -132,8 +132,7 @@ export function ModernVehicleCarousel({
         </div>
       </div>
 
-      <Carousel opts={{ loop: true, align: 'start' }} className="group">
-        <CarouselContent className="-ml-0">
+      <CarouselContent className="-ml-0">
           {displayVehicles.map((vehicle, index) => {
             const imageUrl = getPrimaryImageUrl(vehicle)
 
@@ -217,13 +216,12 @@ export function ModernVehicleCarousel({
               </CarouselItem>
             )
           })}
-        </CarouselContent>
+      </CarouselContent>
 
-        <div className="mt-4 flex items-center justify-center gap-4 md:hidden">
-          <CarouselPrevious className="static translate-y-0 border-blue-200 text-blue-600 hover:bg-blue-50" />
-          <CarouselNext className="static translate-y-0 border-blue-200 text-blue-600 hover:bg-blue-50" />
-        </div>
-      </Carousel>
-    </div>
+      <div className="mt-4 flex items-center justify-center gap-4 md:hidden">
+        <CarouselPrevious className="static translate-y-0 border-blue-200 text-blue-600 hover:bg-blue-50" />
+        <CarouselNext className="static translate-y-0 border-blue-200 text-blue-600 hover:bg-blue-50" />
+      </div>
+    </Carousel>
   )
 }
