@@ -16,6 +16,7 @@ interface WorkingSliderProps {
     ctaLink: string
     badge?: string
     badgeColor?: string
+    contentPosition?: 'left' | 'center' | 'right'
   }>
   autoPlay?: boolean
   autoPlayInterval?: number
@@ -126,6 +127,11 @@ export function WorkingSlider({
   }
 
   const currentItem = items[currentIndex]
+  const contentPosition = currentItem.contentPosition || 'right'
+  const alignmentClass =
+    contentPosition === 'left' ? 'justify-start' : contentPosition === 'center' ? 'justify-center' : 'justify-end'
+  const textAlignmentClass =
+    contentPosition === 'left' ? 'text-left mr-auto' : contentPosition === 'center' ? 'text-center mx-auto' : 'text-right ml-auto'
 
   return (
     <div className={`relative w-full overflow-hidden ${className}`}>
@@ -185,8 +191,8 @@ export function WorkingSlider({
         {/* Content */}
         <div className="relative z-20 h-full">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
-            <div className="flex h-full items-center pt-16 md:pt-24 lg:pt-28">
-              <div className="max-w-4xl ml-auto text-right">
+            <div className={`flex h-full items-center pt-16 md:pt-24 lg:pt-28 ${alignmentClass}`}>
+              <div className={`max-w-4xl ${textAlignmentClass}`}>
                 {/* Badge */}
                 {currentItem.badge && (
                   <div className="mb-4">
@@ -209,7 +215,7 @@ export function WorkingSlider({
                 </h2>
 
                 {/* Description */}
-                <p className="text-lg md:text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl ml-auto">
+                <p className={`text-lg md:text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl ${textAlignmentClass}`}>
                   {currentItem.description}
                 </p>
 

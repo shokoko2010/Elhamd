@@ -73,6 +73,7 @@ interface SliderItem {
   ctaLink: string
   badge?: string
   badgeColor?: string
+  contentPosition?: 'left' | 'center' | 'right'
 }
 
 const arabicDayLabels: Record<string, string> = {
@@ -451,7 +452,13 @@ export default function Home() {
           } else if (Array.isArray(slidersData)) {
             sliders = slidersData
           }
-          setSliderItems(sliders.map((item) => normalizeBrandingObject(item)))
+          setSliderItems(
+            sliders.map((item, index) => ({
+              ...normalizeBrandingObject(item),
+              contentPosition: item?.contentPosition || 'right',
+              order: typeof item?.order === 'number' ? item.order : index
+            }))
+          )
         }
 
         // Fetch all vehicles at once to render the full carousel dataset

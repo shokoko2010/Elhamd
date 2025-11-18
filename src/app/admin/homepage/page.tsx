@@ -40,6 +40,7 @@ interface SliderItem {
   ctaLink: string
   badge?: string
   badgeColor?: string
+  contentPosition?: 'left' | 'center' | 'right'
   order: number
   isActive: boolean
 }
@@ -184,7 +185,17 @@ function HomepageContent() {
       const slidersResponse = await fetch('/api/sliders', { cache: 'no-store' })
       if (slidersResponse.ok) {
         const slidersData = await slidersResponse.json()
-        setSliderItems(Array.isArray(slidersData?.sliders) ? slidersData.sliders : [])
+        const normalizedSliders = Array.isArray(slidersData?.sliders)
+          ? slidersData.sliders
+          : []
+
+        setSliderItems(
+          normalizedSliders.map((slider, index) => ({
+            ...slider,
+            contentPosition: slider?.contentPosition || 'right',
+            order: typeof slider?.order === 'number' ? slider.order : index
+          }))
+        )
       } else {
         console.error('Failed to fetch sliders')
         // Use empty array on error
@@ -291,6 +302,7 @@ function HomepageContent() {
       ctaLink: '',
       badge: '',
       badgeColor: 'bg-blue-500',
+      contentPosition: 'right',
       order: sliderItems.length,
       isActive: true
     })
@@ -370,7 +382,7 @@ function HomepageContent() {
   }
 
   const handleEditSlider = (item: SliderItem) => {
-    setSliderForm(item)
+    setSliderForm({ ...item, contentPosition: item.contentPosition || 'right' })
     setEditingSlider(item)
     setShowSliderDialog(true)
   }
@@ -443,12 +455,17 @@ function HomepageContent() {
 
   const handleSaveSlider = async () => {
     try {
+      const payload = {
+        ...sliderForm,
+        contentPosition: sliderForm.contentPosition || 'right'
+      }
+
       const response = await fetch(editingSlider ? `/api/sliders/${editingSlider.id}` : '/api/sliders', {
         method: editingSlider ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(sliderForm),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -1419,6 +1436,25 @@ function HomepageContent() {
                 onChange={(e) => setSliderForm({...sliderForm, ctaLink: e.target.value})}
                 placeholder="/example-link"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="contentPosition">موضع المحتوى</Label>
+              <Select
+                value={sliderForm.contentPosition || 'right'}
+                onValueChange={(value) =>
+                  setSliderForm({ ...sliderForm, contentPosition: value as SliderItem['contentPosition'] })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر موضع المحتوى" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="right">يمين</SelectItem>
+                  <SelectItem value="center">وسط</SelectItem>
+                  <SelectItem value="left">يسار</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
