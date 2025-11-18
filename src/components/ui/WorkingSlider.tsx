@@ -6,6 +6,33 @@ import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
+const normalizeContentPosition = (position?: string): SliderContentPosition => {
+  switch (position) {
+    case 'top-right':
+    case 'bottom-right':
+    case 'top-center':
+    case 'bottom-center':
+    case 'top-left':
+    case 'bottom-left':
+      return position
+    case 'left':
+      return 'top-left'
+    case 'center':
+      return 'top-center'
+    case 'right':
+    default:
+      return 'top-right'
+  }
+}
+
+type SliderContentPosition =
+  | 'top-right'
+  | 'bottom-right'
+  | 'top-center'
+  | 'bottom-center'
+  | 'top-left'
+  | 'bottom-left'
+
 interface WorkingSliderProps {
   items: Array<{
     id: string
@@ -17,7 +44,7 @@ interface WorkingSliderProps {
     ctaLink: string
     badge?: string
     badgeColor?: string
-    contentPosition?: 'left' | 'center' | 'right'
+    contentPosition?: SliderContentPosition
     contentSize?: 'sm' | 'md' | 'lg'
     contentColor?: string
     contentShadow?: boolean
@@ -133,7 +160,7 @@ export function WorkingSlider({
   }
 
   const currentItem = items[currentIndex]
-  const contentPosition = currentItem.contentPosition || 'right'
+  const contentPosition = normalizeContentPosition(currentItem.contentPosition)
   const contentColor = currentItem.contentColor || '#ffffff'
   const contentShadow = currentItem.contentShadow !== false
   const contentStrokeColor = currentItem.contentStrokeColor || '#000000'
@@ -141,10 +168,24 @@ export function WorkingSlider({
     typeof currentItem.contentStrokeWidth === 'number' && currentItem.contentStrokeWidth >= 0
       ? currentItem.contentStrokeWidth
       : 0
-  const alignmentClass =
-    contentPosition === 'left' ? 'justify-start' : contentPosition === 'center' ? 'justify-center' : 'justify-end'
+  const [verticalAlign, horizontalAlign] = contentPosition.split('-') as [
+    'top' | 'bottom',
+    'right' | 'center' | 'left'
+  ]
+  const verticalClass =
+    verticalAlign === 'top' ? 'justify-start' : verticalAlign === 'bottom' ? 'justify-end' : 'justify-center'
+  const horizontalAlignmentClass =
+    horizontalAlign === 'left'
+      ? 'items-start text-left'
+      : horizontalAlign === 'center'
+        ? 'items-center text-center'
+        : 'items-end text-right'
   const textAlignmentClass =
-    contentPosition === 'left' ? 'text-left mr-auto' : contentPosition === 'center' ? 'text-center mx-auto' : 'text-right ml-auto'
+    horizontalAlign === 'left'
+      ? 'text-left'
+      : horizontalAlign === 'center'
+        ? 'text-center'
+        : 'text-right'
 
   const typographyScale: Record<NonNullable<typeof currentItem.contentSize>, {
     title: string
@@ -234,8 +275,10 @@ export function WorkingSlider({
         {/* Content */}
         <div className="relative z-20 h-full">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
-            <div className={`flex h-full items-center pt-16 md:pt-24 lg:pt-28 ${alignmentClass}`}>
-              <div className={`max-w-4xl ${textAlignmentClass}`}>
+            <div
+              className={`flex h-full flex-col ${verticalClass} pt-16 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20`}
+            >
+              <div className={`max-w-4xl flex flex-col gap-4 md:gap-6 ${horizontalAlignmentClass}`}>
                 {/* Badge */}
                 {currentItem.badge && (
                   <div className="mb-4">
@@ -266,7 +309,15 @@ export function WorkingSlider({
                 </p>
 
                 {/* CTA Button */}
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div
+                  className={`flex flex-col sm:flex-row gap-4 ${
+                    horizontalAlign === 'left'
+                      ? 'sm:justify-start'
+                      : horizontalAlign === 'center'
+                        ? 'sm:justify-center'
+                        : 'sm:justify-end'
+                  }`}
+                >
                   <Button
                     size="lg"
                     className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto justify-center"

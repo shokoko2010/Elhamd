@@ -30,6 +30,14 @@ import {
 import { toast } from 'sonner'
 import { SliderImageManager } from '@/components/admin/SliderImageManager'
 
+type SliderContentPosition =
+  | 'top-right'
+  | 'bottom-right'
+  | 'top-center'
+  | 'bottom-center'
+  | 'top-left'
+  | 'bottom-left'
+
 interface SliderItem {
   id: string
   title: string
@@ -40,7 +48,7 @@ interface SliderItem {
   ctaLink: string
   badge?: string
   badgeColor?: string
-  contentPosition?: 'left' | 'center' | 'right'
+  contentPosition?: SliderContentPosition
   contentSize?: 'sm' | 'md' | 'lg'
   contentColor?: string
   contentShadow?: boolean
@@ -158,6 +166,25 @@ function HomepageContent() {
     ctaButtons: []
   }
 
+  const normalizeContentPosition = (position?: string): SliderContentPosition => {
+    switch (position) {
+      case 'top-right':
+      case 'bottom-right':
+      case 'top-center':
+      case 'bottom-center':
+      case 'top-left':
+      case 'bottom-left':
+        return position
+      case 'left':
+        return 'top-left'
+      case 'center':
+        return 'top-center'
+      case 'right':
+      default:
+        return 'top-right'
+    }
+  }
+
   const adaptCompanyInfo = (payload: any): CompanyInfo => {
     return {
       id: typeof payload?.id === 'string' ? payload.id : 'company-info',
@@ -197,7 +224,7 @@ function HomepageContent() {
         setSliderItems(
           normalizedSliders.map((slider, index) => ({
             ...slider,
-            contentPosition: slider?.contentPosition || 'right',
+            contentPosition: normalizeContentPosition(slider?.contentPosition),
             contentSize: slider?.contentSize || 'lg',
             contentColor: slider?.contentColor || '#ffffff',
             contentShadow: slider?.contentShadow !== false,
@@ -315,7 +342,7 @@ function HomepageContent() {
       ctaLink: '',
       badge: '',
       badgeColor: 'bg-blue-500',
-      contentPosition: 'right',
+      contentPosition: 'top-right',
       contentSize: 'lg',
       contentColor: '#ffffff',
       contentShadow: true,
@@ -402,7 +429,7 @@ function HomepageContent() {
   const handleEditSlider = (item: SliderItem) => {
     setSliderForm({
       ...item,
-      contentPosition: item.contentPosition || 'right',
+      contentPosition: normalizeContentPosition(item.contentPosition),
       contentSize: item.contentSize || 'lg',
       contentColor: item.contentColor || '#ffffff',
       contentShadow: item.contentShadow !== false,
@@ -483,7 +510,7 @@ function HomepageContent() {
     try {
       const payload = {
         ...sliderForm,
-        contentPosition: sliderForm.contentPosition || 'right',
+        contentPosition: normalizeContentPosition(sliderForm.contentPosition),
         contentSize: sliderForm.contentSize || 'lg',
         contentColor: sliderForm.contentColor || '#ffffff',
         contentShadow: sliderForm.contentShadow !== false,
@@ -1475,7 +1502,7 @@ function HomepageContent() {
             <div>
               <Label htmlFor="contentPosition">موضع المحتوى</Label>
               <Select
-                value={sliderForm.contentPosition || 'right'}
+                value={normalizeContentPosition(sliderForm.contentPosition)}
                 onValueChange={(value) =>
                   setSliderForm({ ...sliderForm, contentPosition: value as SliderItem['contentPosition'] })
                 }
@@ -1484,9 +1511,12 @@ function HomepageContent() {
                   <SelectValue placeholder="اختر موضع المحتوى" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="right">يمين</SelectItem>
-                  <SelectItem value="center">وسط</SelectItem>
-                  <SelectItem value="left">يسار</SelectItem>
+                  <SelectItem value="top-right">أعلى اليمين</SelectItem>
+                  <SelectItem value="bottom-right">أسفل اليمين</SelectItem>
+                  <SelectItem value="top-center">أعلى الوسط</SelectItem>
+                  <SelectItem value="bottom-center">أسفل الوسط</SelectItem>
+                  <SelectItem value="top-left">أعلى اليسار</SelectItem>
+                  <SelectItem value="bottom-left">أسفل اليسار</SelectItem>
                 </SelectContent>
               </Select>
             </div>

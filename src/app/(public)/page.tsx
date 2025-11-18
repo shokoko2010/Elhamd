@@ -63,6 +63,14 @@ import { FacebookFeeds } from '@/components/social/FacebookFeeds'
 import { ModernVehicleCarousel } from '@/components/home/ModernVehicleCarousel'
 import type { PublicVehicle } from '@/types/public-vehicle'
 
+type SliderContentPosition =
+  | 'top-right'
+  | 'bottom-right'
+  | 'top-center'
+  | 'bottom-center'
+  | 'top-left'
+  | 'bottom-left'
+
 interface SliderItem {
   id: string
   title: string
@@ -73,7 +81,7 @@ interface SliderItem {
   ctaLink: string
   badge?: string
   badgeColor?: string
-  contentPosition?: 'left' | 'center' | 'right'
+  contentPosition?: SliderContentPosition
   contentSize?: 'sm' | 'md' | 'lg'
   contentColor?: string
   contentShadow?: boolean
@@ -89,6 +97,25 @@ const arabicDayLabels: Record<string, string> = {
   Wednesday: 'الأربعاء',
   Thursday: 'الخميس',
   Friday: 'الجمعة'
+}
+
+const normalizeContentPosition = (position?: string): SliderContentPosition => {
+  switch (position) {
+    case 'top-right':
+    case 'bottom-right':
+    case 'top-center':
+    case 'bottom-center':
+    case 'top-left':
+    case 'bottom-left':
+      return position
+    case 'left':
+      return 'top-left'
+    case 'center':
+      return 'top-center'
+    case 'right':
+    default:
+      return 'top-right'
+  }
 }
 
 const fallbackVehicles: PublicVehicle[] = [
@@ -460,7 +487,7 @@ export default function Home() {
           setSliderItems(
             sliders.map((item, index) => ({
               ...normalizeBrandingObject(item),
-              contentPosition: item?.contentPosition || 'right',
+              contentPosition: normalizeContentPosition(item?.contentPosition),
               contentSize: item?.contentSize || 'lg',
               contentColor: item?.contentColor || '#ffffff',
               contentShadow: item?.contentShadow !== false,

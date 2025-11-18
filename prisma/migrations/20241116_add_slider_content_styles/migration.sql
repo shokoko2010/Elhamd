@@ -920,7 +920,7 @@ CREATE TABLE "sliders" (
     "ctaLink" TEXT,
     "badge" TEXT,
     "badgeColor" TEXT DEFAULT 'bg-blue-500',
-    "contentPosition" TEXT DEFAULT 'right',
+    "contentPosition" TEXT DEFAULT 'top-right',
     "contentSize" TEXT DEFAULT 'lg',
     "contentColor" TEXT DEFAULT '#ffffff',
     "contentShadow" BOOLEAN DEFAULT true,

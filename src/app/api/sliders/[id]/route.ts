@@ -6,6 +6,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
 
+const normalizeContentPosition = (position?: string) => {
+  switch (position) {
+    case 'top-right':
+    case 'bottom-right':
+    case 'top-center':
+    case 'bottom-center':
+    case 'top-left':
+    case 'bottom-left':
+      return position
+    case 'left':
+      return 'top-left'
+    case 'center':
+      return 'top-center'
+    case 'right':
+    default:
+      return 'top-right'
+  }
+}
+
 // GET single slider (public)
 export async function GET(
   request: NextRequest,
@@ -91,7 +110,7 @@ export async function PUT(
         ...(ctaLink !== undefined && { ctaLink: ctaLink || null }),
         ...(badge !== undefined && { badge: badge || null }),
         ...(badgeColor !== undefined && { badgeColor: badgeColor || 'bg-blue-500' }),
-        ...(contentPosition !== undefined && { contentPosition: contentPosition || 'right' }),
+        ...(contentPosition !== undefined && { contentPosition: normalizeContentPosition(contentPosition) }),
         ...(contentSize !== undefined && { contentSize: contentSize || 'lg' }),
         ...(contentColor !== undefined && { contentColor: contentColor || '#ffffff' }),
         ...(contentShadow !== undefined && { contentShadow: contentShadow !== false }),
