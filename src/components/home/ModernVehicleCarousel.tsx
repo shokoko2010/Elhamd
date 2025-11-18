@@ -117,7 +117,7 @@ export function ModernVehicleCarousel({
   }
 
   return (
-    <Carousel opts={{ loop: true, align: 'start' }} className="group space-y-6">
+    <Carousel opts={{ loop: displayVehicles.length > 1, align: 'start' }} className="group space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <Badge className="w-fit bg-blue-100 text-blue-700 border-blue-200">مجموعة السيارات</Badge>
@@ -132,90 +132,90 @@ export function ModernVehicleCarousel({
         </div>
       </div>
 
-      <CarouselContent className="-ml-0">
-          {displayVehicles.map((vehicle, index) => {
-            const imageUrl = getPrimaryImageUrl(vehicle)
+      <CarouselContent>
+        {displayVehicles.map((vehicle, index) => {
+          const imageUrl = getPrimaryImageUrl(vehicle)
 
-            return (
-              <CarouselItem key={vehicle.id} className="basis-full">
-                <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-slate-900 text-white shadow-[0_30px_90px_-45px_rgba(15,23,42,0.6)]">
-                  <div className="relative aspect-[16/7] w-full">
-                    <Image
-                      src={imageUrl}
-                      alt={`${vehicle.make} ${vehicle.model}`}
-                      fill
-                      sizes="(min-width: 1280px) 1100px, (min-width: 768px) 90vw, 100vw"
-                      className="object-cover"
-                      priority={index === 0}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-l from-slate-900/85 via-slate-900/55 to-black/10" />
+          return (
+            <CarouselItem key={vehicle.id} className="basis-full">
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-[0_30px_80px_-50px_rgba(15,23,42,0.55)]">
+                <div className="relative aspect-[16/7] w-full">
+                  <Image
+                    src={imageUrl}
+                    alt={`${vehicle.make} ${vehicle.model}`}
+                    fill
+                    sizes="(min-width: 1280px) 1100px, (min-width: 768px) 90vw, 100vw"
+                    className="object-cover"
+                    priority={index < 2}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-900/65 to-black/5" />
+                </div>
+
+                <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-8 lg:p-12">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Badge className="bg-white/15 text-white backdrop-blur-sm">
+                      السيارة {index + 1} / {displayVehicles.length}
+                    </Badge>
+                    <Badge className="border border-blue-300/30 bg-blue-500/20 text-blue-100">{getCategory(vehicle)}</Badge>
+                    {vehicle.year && (
+                      <Badge className="border border-emerald-300/30 bg-emerald-500/20 text-emerald-100">موديل {vehicle.year}</Badge>
+                    )}
                   </div>
 
-                  <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-8 lg:p-12">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Badge className="bg-white/15 text-white backdrop-blur-sm">
-                        السيارة {index + 1} / {displayVehicles.length}
-                      </Badge>
-                      <Badge className="bg-blue-500/20 text-blue-100 border border-blue-300/30">{getCategory(vehicle)}</Badge>
-                      {vehicle.year && (
-                        <Badge className="bg-emerald-500/20 text-emerald-100 border border-emerald-300/30">موديل {vehicle.year}</Badge>
-                      )}
+                  <div className="grid gap-6 lg:grid-cols-[2fr,1fr] lg:items-end">
+                    <div className="max-w-3xl space-y-4">
+                      <h4 className="text-3xl font-bold leading-tight md:text-4xl">
+                        {vehicle.make} {vehicle.model}
+                      </h4>
+                      <p className="text-lg text-slate-200">
+                        تصميم عصري، مساحة مريحة، وأداء موثوق لرحلاتك اليومية والبعيدة.
+                      </p>
+                      <div className="flex flex-wrap gap-3 text-sm">
+                        <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
+                          <Fuel className="h-4 w-4" />
+                          <span>الوقود: {getFuelType(vehicle)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
+                          <Settings2 className="h-4 w-4" />
+                          <span>ناقل الحركة: {getTransmission(vehicle)}</span>
+                        </div>
+                        {typeof vehicle.mileage === 'number' && (
+                          <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
+                            <Gauge className="h-4 w-4" />
+                            <span>المسافة: {vehicle.mileage.toLocaleString('ar-EG')} كم</span>
+                          </div>
+                        )}
+                        {vehicle.category && (
+                          <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
+                            <Droplets className="h-4 w-4" />
+                            <span>الفئة: {getCategory(vehicle)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="grid gap-6 lg:grid-cols-[2fr,1fr] lg:items-end">
-                      <div className="space-y-4 max-w-3xl">
-                        <h4 className="text-3xl md:text-4xl font-bold leading-tight">
-                          {vehicle.make} {vehicle.model}
-                        </h4>
-                        <p className="text-lg text-slate-200">
-                          تصميم عصري، مساحة مريحة، وأداء موثوق لرحلاتك اليومية والبعيدة.
-                        </p>
-                        <div className="flex flex-wrap gap-3 text-sm">
-                          <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
-                            <Fuel className="h-4 w-4" />
-                            <span>الوقود: {getFuelType(vehicle)}</span>
-                          </div>
-                          <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
-                            <Settings2 className="h-4 w-4" />
-                            <span>ناقل الحركة: {getTransmission(vehicle)}</span>
-                          </div>
-                          {typeof vehicle.mileage === 'number' && (
-                            <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
-                              <Gauge className="h-4 w-4" />
-                              <span>المسافة: {vehicle.mileage.toLocaleString('ar-EG')} كم</span>
-                            </div>
-                          )}
-                          {vehicle.category && (
-                            <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
-                              <Droplets className="h-4 w-4" />
-                              <span>الفئة: {getCategory(vehicle)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-start gap-3 rounded-2xl bg-white/10 p-6 backdrop-blur">
-                        <div className="text-sm text-slate-200">السعر</div>
-                        <div className="text-3xl font-semibold text-white">{formatPrice(vehicle.price)}</div>
-                        <div className="flex flex-wrap gap-2">
-                          <Link href={`/vehicles/${vehicle.id}`}>
-                            <Button size="lg" variant="secondary" className="bg-white text-slate-900 hover:bg-slate-100">
-                              التفاصيل والحجز
-                            </Button>
-                          </Link>
-                          <Link href="/tata-motors">
-                            <Button size="lg" variant="ghost" className="text-white hover:bg-white/10">
-                              جميع السيارات
-                            </Button>
-                          </Link>
-                        </div>
+                    <div className="flex flex-col items-start gap-3 rounded-2xl bg-white/10 p-6 backdrop-blur">
+                      <div className="text-sm text-slate-200">السعر</div>
+                      <div className="text-3xl font-semibold text-white">{formatPrice(vehicle.price)}</div>
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/vehicles/${vehicle.id}`}>
+                          <Button size="lg" variant="secondary" className="bg-white text-slate-900 hover:bg-slate-100">
+                            التفاصيل والحجز
+                          </Button>
+                        </Link>
+                        <Link href="/tata-motors">
+                          <Button size="lg" variant="ghost" className="text-white hover:bg-white/10">
+                            جميع السيارات
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </div>
                 </div>
-              </CarouselItem>
-            )
-          })}
+              </div>
+            </CarouselItem>
+          )
+        })}
       </CarouselContent>
 
       <div className="mt-4 flex items-center justify-center gap-4 md:hidden">
