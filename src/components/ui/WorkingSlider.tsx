@@ -302,9 +302,13 @@ export function WorkingSlider({
         {/* Content */}
         <div className="relative z-20 h-full">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
-            <div className="grid h-full grid-cols-3 grid-rows-3 pt-16 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20">
+            <div
+              className="grid h-full grid-cols-3 grid-rows-3 pt-16 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20"
+              dir="ltr"
+            >
               <div
                 className={`${gridPositionClass[contentPosition]} flex flex-col gap-4 md:gap-6 ${horizontalAlignmentClass} ${verticalClass}`}
+                dir="rtl"
               >
                 {/* Badge */}
                 {currentItem.badge && (
