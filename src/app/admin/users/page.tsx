@@ -125,6 +125,8 @@ const STATUS_OPTIONS = [
   { label: 'غير نشط', value: 'false' },
 ]
 
+const NO_TEMPLATE_VALUE = 'none'
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat('ar-EG').format(value)
 }
@@ -161,7 +163,7 @@ function UsersDashboard() {
   const [permissionSearch, setPermissionSearch] = useState('')
   const [editState, setEditState] = useState({
     role: UserRole.STAFF as UserRole,
-    roleTemplateId: '' as string | null,
+    roleTemplateId: null as string | null,
     applyRoleTemplate: false,
     preserveManualPermissions: false,
     permissions: [] as string[],
@@ -707,30 +709,30 @@ function UsersDashboard() {
 
               <div className="space-y-2">
                 <Label>قالب الدور</Label>
-                <Select
-                  value={editState.roleTemplateId ?? ''}
-                  onValueChange={(value) =>
-                    setEditState((prev) => ({
-                      ...prev,
-                      roleTemplateId: value || null,
-                    }))
-                  }
-                  disabled={userDialogLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر قالب الدور" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">بدون قالب</SelectItem>
-                    {roleTemplates
-                      .filter((template) => template.isActive || selectedUser?.role === UserRole.SUPER_ADMIN)
-                      .map((template) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          {template.name} ({template.role})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                  <Select
+                    value={editState.roleTemplateId ?? NO_TEMPLATE_VALUE}
+                    onValueChange={(value) =>
+                      setEditState((prev) => ({
+                        ...prev,
+                        roleTemplateId: value === NO_TEMPLATE_VALUE ? null : value,
+                      }))
+                    }
+                    disabled={userDialogLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر قالب الدور" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_TEMPLATE_VALUE}>بدون قالب</SelectItem>
+                      {roleTemplates
+                        .filter((template) => template.isActive || selectedUser?.role === UserRole.SUPER_ADMIN)
+                        .map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name} ({template.role})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Checkbox
                     id="apply-template"
