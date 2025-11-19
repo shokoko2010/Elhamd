@@ -1241,12 +1241,16 @@ function HomepageContent() {
               </div>
 
               <div>
-                <Label htmlFor="company-image">رابط الصورة الرئيسية</Label>
-                <Input
-                  id="company-image"
-                  value={companyForm.imageUrl}
-                  onChange={(e) => setCompanyForm({ ...companyForm, imageUrl: e.target.value })}
-                  placeholder="/uploads/company.jpg"
+                <SliderImageManager
+                  label="صورة معلومات الشركة"
+                  currentImage={companyForm.imageUrl || ''}
+                  onImageChange={(imageUrl) => setCompanyForm({ ...companyForm, imageUrl })}
+                  mediaFolder="branding"
+                  uploadEntity="company-info"
+                  filenameHint={[companyForm.title, companyForm.subtitle]
+                    .filter((part): part is string => Boolean(part && part.trim()))
+                    .join(' ')
+                    .trim() || undefined}
                 />
               </div>
 

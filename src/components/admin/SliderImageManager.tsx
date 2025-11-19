@@ -14,9 +14,19 @@ interface SliderImageManagerProps {
   currentImage: string
   onImageChange: (imageUrl: string) => void
   filenameHint?: string
+  label?: string
+  mediaFolder?: string
+  uploadEntity?: string
 }
 
-export function SliderImageManager({ currentImage, onImageChange, filenameHint }: SliderImageManagerProps) {
+export function SliderImageManager({
+  currentImage,
+  onImageChange,
+  filenameHint,
+  label = 'صورة السلايدر',
+  mediaFolder = 'slider',
+  uploadEntity = 'slider'
+}: SliderImageManagerProps) {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [isSelectDialogOpen, setIsSelectDialogOpen] = useState(false)
   const [availableImages, setAvailableImages] = useState<string[]>([])
@@ -30,7 +40,8 @@ export function SliderImageManager({ currentImage, onImageChange, filenameHint }
   const loadAvailableImages = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/media-files?folder=slider&recursive=true', {
+      const params = new URLSearchParams({ folder: mediaFolder, recursive: 'true' })
+      const response = await fetch(`/api/media-files?${params.toString()}`, {
         cache: 'no-store',
         credentials: 'include'
       })
@@ -92,7 +103,7 @@ export function SliderImageManager({ currentImage, onImageChange, filenameHint }
       const formData = new FormData()
       formData.append('file', file)
       formData.append('type', 'general')
-      formData.append('entityId', 'slider')
+      formData.append('entityId', uploadEntity)
       const normalizedHint = filenameHint?.trim()
       if (normalizedHint) {
         formData.append('filenameHint', normalizedHint)
@@ -138,7 +149,7 @@ export function SliderImageManager({ currentImage, onImageChange, filenameHint }
 
   return (
     <div className="space-y-3">
-      <Label>صورة السلايدر</Label>
+      <Label>{label}</Label>
       
       {/* Current Image Preview */}
       {currentImage && (
