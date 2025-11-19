@@ -114,8 +114,8 @@ export async function PUT(
       )
     }
 
-    // Check if email is already taken by another user
-    if (email !== existingUser.email) {
+    // Check if email is already taken by another user when explicitly provided
+    if (typeof email === 'string' && email !== existingUser.email) {
       const emailTaken = await db.user.findFirst({
         where: {
           email,
