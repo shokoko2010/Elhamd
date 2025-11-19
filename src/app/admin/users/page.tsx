@@ -41,6 +41,11 @@ import {
 import { PermissionCategory, UserRole } from '@prisma/client'
 import { formatDistanceToNow } from 'date-fns'
 import { ar } from 'date-fns/locale'
+import {
+  getPermissionCategoryLabelAr,
+  getPermissionDescriptionAr,
+  getPermissionLabelAr
+} from '@/lib/permission-translations'
 
 interface ApiPermission {
   permission: {
@@ -78,6 +83,8 @@ interface PermissionRecord {
   name: string
   description?: string | null
   category: PermissionCategory
+  label?: string
+  categoryLabel?: string
 }
 
 interface RoleTemplate {
@@ -235,7 +242,16 @@ function UsersDashboard() {
       const permissionsPayload = await permissionsRes.json()
 
       setRoleTemplates(Array.isArray(templatesPayload.templates) ? templatesPayload.templates : [])
-      setPermissionsCatalog(Array.isArray(permissionsPayload.permissions) ? permissionsPayload.permissions : [])
+      const rawPermissions: PermissionRecord[] = Array.isArray(permissionsPayload.permissions)
+        ? permissionsPayload.permissions
+        : []
+      const localizedPermissions = rawPermissions.map((permission) => ({
+        ...permission,
+        label: getPermissionLabelAr(permission.name),
+        description: getPermissionDescriptionAr(permission.name, permission.description ?? undefined),
+        categoryLabel: getPermissionCategoryLabelAr(permission.category),
+      }))
+      setPermissionsCatalog(localizedPermissions)
       setCatalogError(null)
     } catch (err) {
       console.error(err)
@@ -244,7 +260,7 @@ function UsersDashboard() {
   }, [catalogError, permissionsCatalog.length, roleTemplates.length])
 
   const metrics = useMemo(() => data?.metrics, [data])
-  const permissionGroups = useMemo(() => {
+  const permissionGroups: { category: PermissionCategory; categoryLabel?: string; permissions: PermissionRecord[] }[] = useMemo(() => {
     const groups = new Map<PermissionCategory, PermissionRecord[]>()
     permissionsCatalog.forEach((permission) => {
       const existing = groups.get(permission.category) ?? []
@@ -258,12 +274,14 @@ function UsersDashboard() {
         if (!query) return true
         return (
           permission.name.toLowerCase().includes(query) ||
+          permission.label?.toLowerCase().includes(query) ||
           (permission.description ?? '').toLowerCase().includes(query)
         )
       })
 
       return {
         category,
+        categoryLabel: items[0]?.categoryLabel || getPermissionCategoryLabelAr(category),
         permissions: items,
       }
     })
@@ -581,7 +599,7 @@ function UsersDashboard() {
                             ) : (
                               user.permissions.slice(0, 4).map((permission) => (
                                 <Badge key={permission.permission.id} variant="outline">
-                                  {permission.permission.name}
+                                  {getPermissionLabelAr(permission.permission.name)}
                                 </Badge>
                               ))
                             )}
@@ -783,7 +801,7 @@ function UsersDashboard() {
                 {permissionGroups.map((group) => (
                   <div key={group.category} className="rounded-md border p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="font-semibold">{group.category}</p>
+                      <p className="font-semibold">{group.categoryLabel ?? group.category}</p>
                       <Badge variant="secondary">{group.permissions.length}</Badge>
                     </div>
                     {group.permissions.length === 0 ? (
@@ -792,6 +810,9 @@ function UsersDashboard() {
                       <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                         {group.permissions.map((permission) => {
                           const checked = editState.permissions.includes(permission.name)
+                          const label = permission.label ?? getPermissionLabelAr(permission.name)
+                          const description =
+                            permission.description ?? getPermissionDescriptionAr(permission.name)
                           return (
                             <label
                               key={permission.id}
@@ -805,7 +826,7 @@ function UsersDashboard() {
                               />
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium">{permission.name}</span>
+                                  <span className="font-medium">{label}</span>
                                   {checked ? (
                                     <Badge variant="outline" className="text-green-600">
                                       <Check className="ml-1 h-3 w-3" /> مفعلة
@@ -816,8 +837,8 @@ function UsersDashboard() {
                                     </Badge>
                                   )}
                                 </div>
-                                {permission.description && (
-                                  <p className="text-xs text-muted-foreground">{permission.description}</p>
+                                {description && (
+                                  <p className="text-xs text-muted-foreground">{description}</p>
                                 )}
                               </div>
                             </label>
