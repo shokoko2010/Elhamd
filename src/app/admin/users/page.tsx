@@ -648,23 +648,23 @@ function UsersDashboard() {
           }
         }}
       >
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="flex max-h-[85vh] max-w-6xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>إدارة المستخدم</DialogTitle>
             <DialogDescription>تعديل الدور، قالب الدور، والصلاحيات للمستخدم المحدد.</DialogDescription>
           </DialogHeader>
 
-          {saveError && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200">{saveError}</div>
-          )}
-          {saveSuccess && (
-            <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 border border-green-200">{saveSuccess}</div>
-          )}
-          {catalogError && (
-            <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 border border-amber-200">{catalogError}</div>
-          )}
+          <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+            {saveError && (
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200">{saveError}</div>
+            )}
+            {saveSuccess && (
+              <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 border border-green-200">{saveSuccess}</div>
+            )}
+            {catalogError && (
+              <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 border border-amber-200">{catalogError}</div>
+            )}
 
-          <div className="space-y-4">
             <div className="rounded-md border p-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -674,7 +674,7 @@ function UsersDashboard() {
                     <p className="text-xs text-muted-foreground">{selectedUser.phone}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{selectedUser?.role ?? '—'}</Badge>
                   <Badge variant={selectedUser?.isActive ? 'default' : 'secondary'}>
                     {selectedUser?.isActive ? 'نشط' : 'غير نشط'}
