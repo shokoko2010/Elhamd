@@ -13,9 +13,10 @@ import Image from 'next/image'
 interface SliderImageManagerProps {
   currentImage: string
   onImageChange: (imageUrl: string) => void
+  filenameHint?: string
 }
 
-export function SliderImageManager({ currentImage, onImageChange }: SliderImageManagerProps) {
+export function SliderImageManager({ currentImage, onImageChange, filenameHint }: SliderImageManagerProps) {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [isSelectDialogOpen, setIsSelectDialogOpen] = useState(false)
   const [availableImages, setAvailableImages] = useState<string[]>([])
@@ -92,6 +93,10 @@ export function SliderImageManager({ currentImage, onImageChange }: SliderImageM
       formData.append('file', file)
       formData.append('type', 'general')
       formData.append('entityId', 'slider')
+      const normalizedHint = filenameHint?.trim()
+      if (normalizedHint) {
+        formData.append('filenameHint', normalizedHint)
+      }
 
       const response = await fetch('/api/upload/image', {
         method: 'POST',

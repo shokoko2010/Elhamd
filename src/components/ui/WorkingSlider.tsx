@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { buildSliderImageAlt } from '@/lib/media-utils'
 
 const normalizeContentPosition = (position?: string): SliderContentPosition => {
   switch (position) {
@@ -171,6 +172,15 @@ export function WorkingSlider({
   }
 
   const currentItem = items[currentIndex]
+  const heroAlt = buildSliderImageAlt(
+    {
+      title: currentItem.title,
+      subtitle: currentItem.subtitle,
+      description: currentItem.description,
+      badge: currentItem.badge
+    },
+    { index: currentIndex }
+  )
   const contentPosition = normalizeContentPosition(currentItem.contentPosition)
   const contentColor = currentItem.contentColor || '#ffffff'
   const contentShadow = currentItem.contentShadow !== false
@@ -257,7 +267,7 @@ export function WorkingSlider({
         <div className="absolute inset-0">
           <img
             src={currentItem.imageUrl}
-            alt={`${currentItem.title} - ${currentItem.subtitle}`}
+            alt={heroAlt}
             className="w-full h-full object-cover"
             style={{
               position: 'absolute',
@@ -471,7 +481,15 @@ export function WorkingSlider({
             >
               <img
                 src={item.imageUrl}
-                alt={item.title}
+                alt={buildSliderImageAlt(
+                  {
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    description: item.description,
+                    badge: item.badge
+                  },
+                  { index }
+                )}
                 className="w-full h-full object-cover"
                 style={{
                   position: 'absolute',

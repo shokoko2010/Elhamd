@@ -1637,6 +1637,10 @@ function HomepageContent() {
             <SliderImageManager
               currentImage={sliderForm.imageUrl || ''}
               onImageChange={(imageUrl) => setSliderForm({...sliderForm, imageUrl})}
+              filenameHint={[sliderForm.title, sliderForm.subtitle, sliderForm.badge]
+                .filter((part): part is string => Boolean(part && part.trim()))
+                .join(' ')
+                .trim() || undefined}
             />
             
             <div className="flex items-center gap-2">

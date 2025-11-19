@@ -5,6 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { ImageOptimizationService } from '@/lib/image-optimization'
 import { getAuthUser, UserRole } from '@/lib/auth-server'
+import { slugifyForFilename } from '@/lib/media-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +35,8 @@ export async function POST(request: NextRequest) {
     const order = parseInt(formData.get('order') as string) || 0
     const type = formData.get('type') as 'vehicle' | 'service' | 'general' || 'vehicle'
     const entityId = formData.get('entityId') as string || formData.get('vehicleId') as string || 'general'
+    const filenameHintEntry = formData.get('filenameHint')
+    const filenameHint = typeof filenameHintEntry === 'string' ? filenameHintEntry : undefined
 
     console.log('Form data:', { file: !!file, type, entityId, vehicleId, isPrimary, order })
 
@@ -59,8 +62,12 @@ export async function POST(request: NextRequest) {
       // Generate unique filename
       const timestamp = Date.now()
       const randomId = Math.random().toString(36).substring(2, 15)
-      const extension = file.name.split('.').pop()
-      const filename = `${type}_${entityId}_${timestamp}_${randomId}.${extension}`
+      const extension = file.name.split('.').pop() || file.type.split('/').pop() || 'jpg'
+      const baseName = slugifyForFilename(
+        filenameHint || file.name.replace(/\.[^/.]+$/, '') || `${type}-${entityId}`,
+        `${type}-${entityId}`
+      )
+      const filename = `${baseName}-${timestamp}.${extension}`
 
       // Create data URL
       const mimeType = file.type
@@ -87,12 +94,12 @@ export async function POST(request: NextRequest) {
 
       let result
       if (type === 'vehicle') {
-        result = await imageService.saveVehicleImage(file, entityId, isPrimary, order)
+        result = await imageService.saveVehicleImage(file, entityId, isPrimary, order, filenameHint)
       } else if (type === 'service') {
-        result = await imageService.saveServiceImage(file, entityId)
+        result = await imageService.saveServiceImage(file, entityId, filenameHint)
       } else if (type === 'general') {
         // For general uploads, just save to a general folder
-        result = await imageService.saveGeneralImage(file, entityId)
+        result = await imageService.saveGeneralImage(file, entityId, filenameHint)
       } else {
         console.log('Invalid upload type:', type)
         return NextResponse.json({ error: 'Invalid upload type' }, { status: 400 })
@@ -126,8 +133,12 @@ export async function POST(request: NextRequest) {
       
       const timestamp = Date.now()
       const randomId = Math.random().toString(36).substring(2, 15)
-      const extension = file.name.split('.').pop()
-      const filename = `${type}_${entityId}_${timestamp}_${randomId}.${extension}`
+      const extension = file.name.split('.').pop() || file.type.split('/').pop() || 'jpg'
+      const baseName = slugifyForFilename(
+        filenameHint || file.name.replace(/\.[^/.]+$/, '') || `${type}-${entityId}`,
+        `${type}-${entityId}`
+      )
+      const filename = `${baseName}-${timestamp}.${extension}`
 
       const mimeType = file.type
       const dataUrl = `data:${mimeType};base64,${base64}`

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { Car } from 'lucide-react'
+import { buildVehicleImageAlt } from '@/lib/media-utils'
 
 interface VehicleImageProps {
   vehicle: {
@@ -32,6 +33,13 @@ export function VehicleImage({
   
   // Construct the image URL
   const imageUrl = primaryImage?.imageUrl ? encodeURI(primaryImage.imageUrl) : null
+  const heroAlt = buildVehicleImageAlt(
+    {
+      make: vehicle.make,
+      model: vehicle.model
+    },
+    { context: 'صورة تفصيلية للمركبة' }
+  )
   
   // Fallback placeholder URL
   const placeholderUrl = `/api/placeholder/${width}/${height}?text=${encodeURIComponent(vehicle.make + ' ' + vehicle.model)}`
@@ -57,7 +65,7 @@ export function VehicleImage({
       {imageUrl && !imageError ? (
         <img
           src={imageUrl}
-          alt={primaryImage?.altText || `${vehicle.make} ${vehicle.model}`}
+          alt={primaryImage?.altText || heroAlt}
           width={width}
           height={height}
           className={`w-full h-full object-cover transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
@@ -68,7 +76,7 @@ export function VehicleImage({
       ) : (
         <img
           src={placeholderUrl}
-          alt={`${vehicle.make} ${vehicle.model}`}
+          alt={heroAlt}
           width={width}
           height={height}
           className="w-full h-full object-cover"

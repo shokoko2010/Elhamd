@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { Car, Droplets, Fuel, Gauge, Settings2 } from 'lucide-react'
+import { buildVehicleImageAlt } from '@/lib/media-utils'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -131,6 +132,15 @@ export function ModernVehicleCarousel({
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {displayVehicles.map((vehicle, index) => {
           const imageUrl = getPrimaryImageUrl(vehicle)
+          const altText = buildVehicleImageAlt(
+            {
+              make: vehicle.make,
+              model: vehicle.model,
+              year: vehicle.year,
+              category: getCategory(vehicle)
+            },
+            { context: 'عرض سيارات شركة الحمد' }
+          )
 
           return (
             <div
@@ -140,7 +150,7 @@ export function ModernVehicleCarousel({
               <div className="relative aspect-video w-full bg-slate-100">
                 <Image
                   src={imageUrl}
-                  alt={`${vehicle.make} ${vehicle.model}`}
+                  alt={altText}
                   fill
                   sizes="(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw"
                   className="object-cover"
