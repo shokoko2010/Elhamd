@@ -394,7 +394,9 @@ export default function Home() {
         }
 
         // Fetch company info
-        const companyInfoResponse = await fetch('/api/company-info')
+        const companyInfoResponse = await fetch('/api/company-info', {
+          cache: 'no-store'
+        })
         if (companyInfoResponse.ok) {
           const companyData = await companyInfoResponse.json()
           setCompanyInfo(normalizeBrandingObject(companyData))

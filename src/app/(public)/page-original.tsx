@@ -74,7 +74,9 @@ export default function Home() {
     // Fetch company info from API with simple fetch
     const fetchCompanyInfo = async () => {
       try {
-        const response = await fetch('/api/company-info')
+        const response = await fetch('/api/company-info', {
+          cache: 'no-store'
+        })
         const data = await response.json()
         if (data) {
           setCompanyInfo(data)

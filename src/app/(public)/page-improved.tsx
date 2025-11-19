@@ -77,7 +77,9 @@ export default function Home() {
     const fetchAllData = async () => {
       try {
         // Fetch company info
-        const companyInfoResponse = await fetch('/api/company-info')
+        const companyInfoResponse = await fetch('/api/company-info', {
+          cache: 'no-store'
+        })
         if (companyInfoResponse.ok) {
           const companyData = await companyInfoResponse.json()
           setCompanyInfo(companyData)
