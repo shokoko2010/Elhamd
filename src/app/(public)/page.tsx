@@ -408,9 +408,9 @@ export default function Home() {
     const fetchAllData = async () => {
       try {
         // Fetch homepage settings
-        const settingsResponse = await fetch('/api/homepage-settings', { cache: 'no-store' })
-        if (settingsResponse.ok) {
-          const settingsData = await settingsResponse.json()
+        const homepageSettingsResponse = await fetch('/api/homepage-settings', { cache: 'no-store' })
+        if (homepageSettingsResponse.ok) {
+          const settingsData = await homepageSettingsResponse.json()
           setHomepageSettings({
             showHeroSlider: Boolean(settingsData?.showHeroSlider),
             autoPlaySlider: Boolean(settingsData?.autoPlaySlider),
@@ -534,11 +534,11 @@ export default function Home() {
         }
 
         // Fetch public site settings (for social links)
-        const settingsResponse = await fetch('/api/public/site-settings', {
+        const siteSettingsResponse = await fetch('/api/public/site-settings', {
           cache: 'no-store'
         })
-        if (settingsResponse.ok) {
-          const settingsData = await settingsResponse.json()
+        if (siteSettingsResponse.ok) {
+          const settingsData = await siteSettingsResponse.json()
           setSiteSettings(settingsData)
         }
 
