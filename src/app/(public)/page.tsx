@@ -341,6 +341,50 @@ export default function Home() {
 
   const facebookVideoUrl = homepageSettings.facebookVideoUrl?.trim() || `${facebookPageUrl}/videos`
 
+  const socialLinks = useMemo(() => {
+    const priorityOrder = [
+      'facebook',
+      'instagram',
+      'whatsapp',
+      'twitter',
+      'linkedin',
+      'youtube',
+      'tiktok',
+      'snapchat',
+      'telegram',
+      'messenger'
+    ]
+
+    const collected: Record<string, string> = {}
+
+    const addLinks = (source?: Record<string, any>) => {
+      if (!source || typeof source !== 'object') return
+
+      Object.entries(source).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim()) {
+          const normalizedKey = key.trim().toLowerCase()
+          if (!collected[normalizedKey]) {
+            collected[normalizedKey] = value.trim()
+          }
+        }
+      })
+    }
+
+    addLinks(contactInfo?.socialMedia)
+    addLinks(companyInfo?.socialMedia)
+    addLinks(companyInfo?.socialLinks)
+
+    const prioritized = priorityOrder
+      .map((platform) => ({ platform, url: collected[platform] }))
+      .filter((item) => Boolean(item.url))
+
+    const remaining = Object.entries(collected)
+      .filter(([platform]) => !priorityOrder.includes(platform))
+      .map(([platform, url]) => ({ platform, url }))
+
+    return [...prioritized, ...remaining]
+  }, [companyInfo, contactInfo])
+
   const carouselVehicles = useMemo(() => {
     if (featuredVehicles.length > 0) {
       return featuredVehicles
@@ -1178,40 +1222,55 @@ export default function Home() {
                       <Users className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-4">تابعنا</h3>
-                    <div className="space-y-3">
-                      {contactInfo.socialMedia &&
-                        Object.entries(contactInfo.socialMedia)
-                          .filter(([, url]) => typeof url === 'string' && url)
-                          .map(([platform, url]) => {
-                            const platformKey = platform.toLowerCase()
-                            const socialIconMap: Record<string, LucideIcon> = {
-                              facebook: Facebook,
-                              instagram: Instagram,
-                              linkedin: Linkedin,
-                              twitter: Twitter,
-                              youtube: Youtube,
-                              whatsapp: MessageCircle,
-                              messenger: MessageCircle,
-                              default: Users
-                            }
-                            const SocialIcon = socialIconMap[platformKey] || socialIconMap.default
+                    <div className="flex flex-wrap gap-3" aria-label="روابط التواصل الاجتماعي">
+                      {socialLinks.map(({ platform, url }) => {
+                        const platformKey = platform.toLowerCase()
+                        const socialIconMap: Record<string, LucideIcon> = {
+                          facebook: Facebook,
+                          instagram: Instagram,
+                          linkedin: Linkedin,
+                          twitter: Twitter,
+                          youtube: Youtube,
+                          whatsapp: MessageCircle,
+                          messenger: MessageCircle,
+                          tiktok: Youtube,
+                          snapchat: MessageCircle,
+                          telegram: MessageCircle,
+                          default: Users
+                        }
+                        const platformLabels: Record<string, string> = {
+                          facebook: 'فيسبوك',
+                          instagram: 'إنستجرام',
+                          linkedin: 'لينكدإن',
+                          twitter: 'تويتر',
+                          youtube: 'يوتيوب',
+                          whatsapp: 'واتساب',
+                          messenger: 'ماسنجر',
+                          tiktok: 'تيك توك',
+                          snapchat: 'سناب شات',
+                          telegram: 'تليجرام'
+                        }
+                        const SocialIcon = socialIconMap[platformKey] || socialIconMap.default
+                        const label = platformLabels[platformKey] || platform
 
-                            return (
-                              <a
-                                key={platform}
-                                href={url as string}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 text-blue-50 hover:text-white transition-colors"
-                              >
-                                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                  <SocialIcon className="h-4 w-4" />
-                                </div>
-                                <span className="capitalize">{platform}</span>
-                              </a>
-                            )
-                          })}
+                        return (
+                          <a
+                            key={platform}
+                            href={url as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`تابعنا على ${label}`}
+                            className="w-11 h-11 rounded-xl bg-white/20 border border-white/20 text-blue-50 hover:text-white hover:bg-white/30 transition flex items-center justify-center"
+                          >
+                            <SocialIcon className="h-5 w-5" />
+                            <span className="sr-only">{label}</span>
+                          </a>
+                        )
+                      })}
                     </div>
+                    {socialLinks.length === 0 && (
+                      <p className="text-blue-50/80">لم يتم إضافة روابط تواصل بعد.</p>
+                    )}
                   </div>
                 </div>
 
