@@ -1401,17 +1401,33 @@ function PermissionsDashboard() {
             </Card>
           ))}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleSaveTemplate}
-              disabled={isSystemTemplateLocked || isSavingTemplate}
-            >
-              <Save className="ml-2 h-4 w-4" />
-              {isSavingTemplate ? 'جاري الحفظ...' : 'حفظ القالب'}
-            </Button>
+          <DialogFooter className="flex flex-wrap justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleSaveTemplate}
+                disabled={isSystemTemplateLocked || isSavingTemplate}
+              >
+                <Save className="ml-2 h-4 w-4" />
+                {isSavingTemplate ? 'جاري الحفظ...' : 'حفظ القالب'}
+              </Button>
+            </div>
+            {allowRoleTemplateManagement && selectedTemplate && !selectedTemplate.isSystem && (
+              <Button
+                variant="destructive"
+                className="w-full sm:w-auto"
+                disabled={isSavingTemplate}
+                onClick={() => {
+                  setIsEditTemplateModalOpen(false)
+                  setTemplatePendingDelete(selectedTemplate)
+                }}
+              >
+                <Trash2 className="ml-2 h-4 w-4" />
+                حذف القالب
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
