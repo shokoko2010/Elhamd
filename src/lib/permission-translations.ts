@@ -212,6 +212,36 @@ export const PERMISSION_CATEGORY_LABELS_AR: Record<string, string> = {
   MARKETING_MANAGEMENT: 'التسويق والتواصل'
 }
 
+export const ROLE_LABELS_AR: Record<string, string> = {
+  SUPER_ADMIN: 'مسؤول رئيسي',
+  ADMIN: 'مسؤول نظام',
+  ACCOUNTANT: 'محاسب',
+  BRANCH_MANAGER: 'مدير فرع',
+  STAFF: 'موظف',
+  CUSTOMER: 'عميل',
+}
+
+export const ROLE_DESCRIPTIONS_AR: Record<string, string> = {
+  SUPER_ADMIN: 'صلاحيات كاملة لإدارة كل أجزاء النظام.',
+  ADMIN: 'صلاحيات واسعة لإدارة المنصة والمستخدمين والإعدادات.',
+  ACCOUNTANT: 'التحكم في المهام المالية مثل الفواتير والمدفوعات والتقارير.',
+  BRANCH_MANAGER: 'إدارة الفرع، الموظفين، المخزون، والحجوزات الخاصة بالفرع.',
+  STAFF: 'مهام تشغيلية حسب الصلاحيات الممنوحة، مثل المبيعات أو الخدمات.',
+  CUSTOMER: 'الوصول إلى الخدمات المخصصة للعملاء فقط.',
+}
+
+export const ROLE_TEMPLATE_LABELS_AR: Record<string, string> = {
+  'Super Admin': 'مسؤول رئيسي',
+  'Admin': 'مسؤول نظام',
+  'Branch Manager': 'مدير فرع',
+  'Sales Manager': 'مدير مبيعات',
+  'Service Manager': 'مدير خدمة',
+  'Sales Employee': 'موظف مبيعات',
+  'Service Employee': 'موظف خدمة',
+  'Accountant': 'محاسب',
+  'Customer': 'عميل',
+}
+
 export function getPermissionLabelAr(permission: string) {
   return PERMISSION_LABELS_AR[permission] || permission
 }
@@ -222,4 +252,24 @@ export function getPermissionDescriptionAr(permission: string, fallback?: string
 
 export function getPermissionCategoryLabelAr(category: string) {
   return PERMISSION_CATEGORY_LABELS_AR[category] || category
+}
+
+export function getRoleLabelAr(role: string) {
+  return ROLE_LABELS_AR[role] || role
+}
+
+export function getRoleDescriptionAr(role: string, fallback?: string | null) {
+  return ROLE_DESCRIPTIONS_AR[role] || fallback || role
+}
+
+export function getRoleTemplateNameAr(name: string, role?: string) {
+  if (ROLE_TEMPLATE_LABELS_AR[name]) return ROLE_TEMPLATE_LABELS_AR[name]
+  if (role && ROLE_LABELS_AR[role]) return ROLE_LABELS_AR[role]
+  return name
+}
+
+export function getRoleTemplateDescriptionAr(description?: string | null, role?: string) {
+  if (description) return description
+  if (role) return ROLE_DESCRIPTIONS_AR[role] || description || null
+  return description || null
 }

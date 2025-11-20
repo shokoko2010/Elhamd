@@ -7,6 +7,7 @@ import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
 import { PermissionService, Permission } from '@/lib/permissions'
 import { Prisma } from '@prisma/client'
+import { getRoleLabelAr, getRoleTemplateNameAr } from '@/lib/permission-translations'
 
 export async function GET(
   request: NextRequest,
@@ -54,7 +55,18 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ user })
+    return NextResponse.json({
+      user: {
+        ...user,
+        roleLabel: getRoleLabelAr(user.role),
+        roleTemplateNameAr: user.roleTemplate
+          ? getRoleTemplateNameAr(user.roleTemplate.name, user.roleTemplate.role)
+          : null,
+        roleTemplateRoleLabel: user.roleTemplate?.role
+          ? getRoleLabelAr(user.roleTemplate.role)
+          : null,
+      },
+    })
   } catch (error) {
     console.error('Error fetching user:', error)
     return NextResponse.json(

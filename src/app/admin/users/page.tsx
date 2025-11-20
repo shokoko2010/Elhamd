@@ -44,7 +44,10 @@ import { ar } from 'date-fns/locale'
 import {
   getPermissionCategoryLabelAr,
   getPermissionDescriptionAr,
-  getPermissionLabelAr
+  getPermissionLabelAr,
+  getRoleLabelAr,
+  getRoleTemplateDescriptionAr,
+  getRoleTemplateNameAr,
 } from '@/lib/permission-translations'
 
 interface ApiPermission {
@@ -61,6 +64,7 @@ interface ApiUser {
   email: string
   phone?: string | null
   role: UserRole
+  roleLabel?: string | null
   isActive: boolean
   lastLoginAt?: string | null
   createdAt: string
@@ -72,10 +76,14 @@ interface ApiUser {
   roleTemplate?: {
     id: string
     name: string
+    nameAr?: string | null
     role: UserRole
+    roleLabel?: string | null
     isSystem: boolean
     isActive: boolean
   } | null
+  roleTemplateNameAr?: string | null
+  roleTemplateRoleLabel?: string | null
 }
 
 interface PermissionRecord {
@@ -90,10 +98,16 @@ interface PermissionRecord {
 interface RoleTemplate {
   id: string
   name: string
+  nameAr?: string | null
   description?: string | null
+  descriptionAr?: string | null
   role: UserRole
+  roleLabel?: string | null
   isSystem: boolean
   isActive: boolean
+  permissions?: string[]
+  userCount?: number
+  permissionsMeta?: { name: string; label: string; description?: string | null }[]
 }
 
 interface Metrics {
@@ -119,11 +133,12 @@ interface UsersResponse {
 
 const ROLE_OPTIONS: { label: string; value: string }[] = [
   { label: 'جميع الأدوار', value: 'all' },
-  { label: 'العملاء', value: UserRole.CUSTOMER },
-  { label: 'موظفو الفروع', value: UserRole.BRANCH_MANAGER },
-  { label: 'الموظفون', value: UserRole.STAFF },
-  { label: 'المسؤولون', value: UserRole.ADMIN },
-  { label: 'المسؤول الأعلى', value: UserRole.SUPER_ADMIN },
+  { label: getRoleLabelAr(UserRole.CUSTOMER), value: UserRole.CUSTOMER },
+  { label: getRoleLabelAr(UserRole.BRANCH_MANAGER), value: UserRole.BRANCH_MANAGER },
+  { label: getRoleLabelAr(UserRole.STAFF), value: UserRole.STAFF },
+  { label: getRoleLabelAr(UserRole.ACCOUNTANT), value: UserRole.ACCOUNTANT },
+  { label: getRoleLabelAr(UserRole.ADMIN), value: UserRole.ADMIN },
+  { label: getRoleLabelAr(UserRole.SUPER_ADMIN), value: UserRole.SUPER_ADMIN },
 ]
 
 const STATUS_OPTIONS = [
@@ -209,7 +224,22 @@ function UsersDashboard() {
       }
 
       const payload = (await response.json()) as UsersResponse
-      setData(payload)
+
+      const localizedUsers = (payload.users ?? []).map((user) => ({
+        ...user,
+        roleLabel: user.roleLabel ?? getRoleLabelAr(user.role),
+        roleTemplateNameAr:
+          user.roleTemplateNameAr ??
+          (user.roleTemplate ? getRoleTemplateNameAr(user.roleTemplate.name, user.roleTemplate.role) : null),
+        roleTemplateRoleLabel:
+          user.roleTemplateRoleLabel ??
+          (user.roleTemplate?.role ? getRoleLabelAr(user.roleTemplate.role) : null),
+      }))
+
+      setData({
+        ...payload,
+        users: localizedUsers,
+      })
     } catch (err) {
       console.error(err)
       setError('تعذر تحميل بيانات المستخدمين. يرجى المحاولة لاحقاً.')
@@ -241,7 +271,18 @@ function UsersDashboard() {
       const templatesPayload = await templatesRes.json()
       const permissionsPayload = await permissionsRes.json()
 
-      setRoleTemplates(Array.isArray(templatesPayload.templates) ? templatesPayload.templates : [])
+      const normalizedTemplates: RoleTemplate[] = Array.isArray(templatesPayload.templates)
+        ? templatesPayload.templates.map((template: RoleTemplate) => ({
+            ...template,
+            nameAr: template.nameAr ?? getRoleTemplateNameAr(template.name, template.role),
+            descriptionAr:
+              template.descriptionAr ?? getRoleTemplateDescriptionAr(template.description, template.role),
+            roleLabel: template.roleLabel ?? getRoleLabelAr(template.role),
+            permissionsMeta: template.permissionsMeta,
+          }))
+        : []
+
+      setRoleTemplates(normalizedTemplates)
       const rawPermissions: PermissionRecord[] = Array.isArray(permissionsPayload.permissions)
         ? permissionsPayload.permissions
         : []
@@ -693,12 +734,17 @@ function UsersDashboard() {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">{selectedUser?.role ?? '—'}</Badge>
+                  <Badge variant="secondary">
+                    {selectedUser?.roleLabel || (selectedUser?.role ? getRoleLabelAr(selectedUser.role) : '—')}
+                  </Badge>
                   <Badge variant={selectedUser?.isActive ? 'default' : 'secondary'}>
                     {selectedUser?.isActive ? 'نشط' : 'غير نشط'}
                   </Badge>
                   {selectedUser?.roleTemplate && (
-                    <Badge variant="outline">قالب: {selectedUser.roleTemplate.name}</Badge>
+                    <Badge variant="outline">
+                      قالب: {selectedUser.roleTemplate.nameAr || selectedUser.roleTemplate.name}{' '}
+                      {selectedUser.roleTemplate.role && `(${selectedUser.roleTemplate.roleLabel || getRoleLabelAr(selectedUser.roleTemplate.role)})`}
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -746,7 +792,7 @@ function UsersDashboard() {
                         .filter((template) => template.isActive || selectedUser?.role === UserRole.SUPER_ADMIN)
                         .map((template) => (
                           <SelectItem key={template.id} value={template.id}>
-                            {template.name} ({template.role})
+                            {template.nameAr || template.name} ({template.roleLabel || getRoleLabelAr(template.role)})
                           </SelectItem>
                         ))}
                     </SelectContent>
