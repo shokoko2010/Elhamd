@@ -305,6 +305,7 @@ export default function Home() {
   const [totalVehiclesCount, setTotalVehiclesCount] = useState<number | null>(null)
   const [sliderItems, setSliderItems] = useState<SliderItem[]>([])
   const [companyInfo, setCompanyInfo] = useState<any>(null)
+  const [siteSettings, setSiteSettings] = useState<any>(null)
   const [serviceItems, setServiceItems] = useState<any[]>([])
   const [companyStats, setCompanyStats] = useState<any[]>([])
   const [companyValues, setCompanyValues] = useState<any[]>([])
@@ -373,6 +374,7 @@ export default function Home() {
     addLinks(contactInfo?.socialMedia)
     addLinks(companyInfo?.socialMedia)
     addLinks(companyInfo?.socialLinks)
+    addLinks(siteSettings?.socialLinks)
 
     const prioritized = priorityOrder
       .map((platform) => ({ platform, url: collected[platform] }))
@@ -383,7 +385,7 @@ export default function Home() {
       .map(([platform, url]) => ({ platform, url }))
 
     return [...prioritized, ...remaining]
-  }, [companyInfo, contactInfo])
+  }, [companyInfo, contactInfo, siteSettings])
 
   const carouselVehicles = useMemo(() => {
     if (featuredVehicles.length > 0) {
@@ -529,6 +531,15 @@ export default function Home() {
         if (contactResponse.ok) {
           const contactData = await contactResponse.json()
           setContactInfo(normalizeContactInfo(normalizeBrandingObject(contactData)))
+        }
+
+        // Fetch public site settings (for social links)
+        const settingsResponse = await fetch('/api/public/site-settings', {
+          cache: 'no-store'
+        })
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json()
+          setSiteSettings(settingsData)
         }
 
         // Fetch sliders
