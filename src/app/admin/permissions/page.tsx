@@ -1131,16 +1131,24 @@ function PermissionsDashboard() {
                                 <Copy className="ml-1 h-4 w-4" />
                                 نسخ
                               </Button>
-                              {!template.isSystem && (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => setTemplatePendingDelete(template)}
-                                >
-                                  <Trash2 className="ml-1 h-4 w-4" />
-                                  حذف
-                                </Button>
-                              )}
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={template.isSystem && !allowSystemTemplateEditing}
+                                title={
+                                  template.isSystem
+                                    ? 'لا يمكن حذف قالب نظامي'
+                                    : 'حذف القالب المحدد'
+                                }
+                                onClick={() =>
+                                  !template.isSystem || allowSystemTemplateEditing
+                                    ? setTemplatePendingDelete(template)
+                                    : undefined
+                                }
+                              >
+                                <Trash2 className="ml-1 h-4 w-4" />
+                                حذف
+                              </Button>
                             </div>
                           )}
                         </div>
