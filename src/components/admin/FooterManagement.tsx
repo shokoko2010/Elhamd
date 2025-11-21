@@ -881,14 +881,14 @@ export default function FooterManagement() {
                               const start = textarea.selectionStart
                               const end = textarea.selectionEnd
                               const selectedText = textarea.value.substring(start, end)
-                              const newText = `<span style="color: #3B82F6">${selectedText}</span>`
+                              const newText = `<span style=\"color: #0A1A3F\">${selectedText}</span>`
                               textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
                               setContent(prev => ({ ...prev, copyrightText: textarea.value }))
                               textarea.focus()
                               textarea.setSelectionRange(start + 25, start + 25 + selectedText.length)
                             }
                           }}
-                          className="text-blue-500"
+                          className="text-[#0A1A3F]"
                         >
                           A
                         </Button>

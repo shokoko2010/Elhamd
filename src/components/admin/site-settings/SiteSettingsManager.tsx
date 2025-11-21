@@ -35,6 +35,9 @@ interface SiteSettings {
   primaryColor: string
   secondaryColor: string
   accentColor: string
+  neutralDarkColor?: string
+  neutralLightColor?: string
+  surfaceColor?: string
   fontFamily: string
   siteTitle: string
   siteDescription: string
@@ -103,9 +106,12 @@ interface SiteSettings {
 export default function SiteSettingsManager() {
   const { toast } = useToast()
   const [settings, setSettings] = useState<SiteSettings>({
-    primaryColor: '#3B82F6',
-    secondaryColor: '#10B981',
-    accentColor: '#F59E0B',
+    primaryColor: '#0A1A3F',
+    secondaryColor: '#C1272D',
+    accentColor: '#C9C9C9',
+    neutralDarkColor: '#1F1F1F',
+    neutralLightColor: '#EEEEEE',
+    surfaceColor: '#FFFFFF',
     fontFamily: 'Inter',
     siteTitle: 'Al-Hamd Cars',
     siteDescription: 'Premium Car Dealership in Egypt',
@@ -526,7 +532,7 @@ export default function SiteSettingsManager() {
                     <Input
                       value={settings.primaryColor}
                       onChange={(e) => updateSettings(['primaryColor'], e.target.value)}
-                      placeholder="#3B82F6"
+                      placeholder="#0A1A3F"
                     />
                   </div>
                 </div>
@@ -543,7 +549,7 @@ export default function SiteSettingsManager() {
                     <Input
                       value={settings.secondaryColor}
                       onChange={(e) => updateSettings(['secondaryColor'], e.target.value)}
-                      placeholder="#10B981"
+                      placeholder="#C1272D"
                     />
                   </div>
                 </div>
@@ -560,7 +566,58 @@ export default function SiteSettingsManager() {
                     <Input
                       value={settings.accentColor}
                       onChange={(e) => updateSettings(['accentColor'], e.target.value)}
-                      placeholder="#F59E0B"
+                      placeholder="#C9C9C9"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="neutralDarkColor">Dark Gray</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="neutralDarkColor"
+                      type="color"
+                      value={settings.neutralDarkColor || '#1F1F1F'}
+                      onChange={(e) => updateSettings(['neutralDarkColor'], e.target.value)}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={settings.neutralDarkColor || '#1F1F1F'}
+                      onChange={(e) => updateSettings(['neutralDarkColor'], e.target.value)}
+                      placeholder="#1F1F1F"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="neutralLightColor">Light Gray</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="neutralLightColor"
+                      type="color"
+                      value={settings.neutralLightColor || '#EEEEEE'}
+                      onChange={(e) => updateSettings(['neutralLightColor'], e.target.value)}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={settings.neutralLightColor || '#EEEEEE'}
+                      onChange={(e) => updateSettings(['neutralLightColor'], e.target.value)}
+                      placeholder="#EEEEEE"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="surfaceColor">Surface / Background</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="surfaceColor"
+                      type="color"
+                      value={settings.surfaceColor || '#FFFFFF'}
+                      onChange={(e) => updateSettings(['surfaceColor'], e.target.value)}
+                      className="w-16 h-10 p-1"
+                    />
+                    <Input
+                      value={settings.surfaceColor || '#FFFFFF'}
+                      onChange={(e) => updateSettings(['surfaceColor'], e.target.value)}
+                      placeholder="#FFFFFF"
                     />
                   </div>
                 </div>

@@ -75,6 +75,10 @@ interface SiteSettings {
   favicon?: string
   primaryColor: string
   secondaryColor: string
+  accentColor?: string
+  neutralDarkColor?: string
+  neutralLightColor?: string
+  surfaceColor?: string
   contactEmail: string
   contactPhone: string
   contactAddress: string
@@ -174,8 +178,12 @@ function ContentContent() {
             siteUrl: settingsData.siteUrl || window.location.origin,
             logo: settingsData.logoUrl || settingsData.logo,
             favicon: settingsData.favicon,
-            primaryColor: settingsData.primaryColor || '#3B82F6',
-            secondaryColor: settingsData.secondaryColor || '#10B981',
+            primaryColor: settingsData.primaryColor || '#0A1A3F',
+            secondaryColor: settingsData.secondaryColor || '#C1272D',
+            accentColor: settingsData.accentColor || '#C9C9C9',
+            neutralDarkColor: settingsData.neutralDarkColor || '#1F1F1F',
+            neutralLightColor: settingsData.neutralLightColor || '#EEEEEE',
+            surfaceColor: settingsData.surfaceColor || '#FFFFFF',
             contactEmail: settingsData.contactEmail || '',
             contactPhone: settingsData.contactPhone || '',
             contactAddress: settingsData.contactAddress || '',
@@ -191,8 +199,12 @@ function ContentContent() {
           siteName: 'Elhamd Import',
           siteDescription: 'متخصصون في استيراد وبيع أفضل الشاحنات التجارية',
           siteUrl: window.location.origin,
-          primaryColor: '#3B82F6',
-          secondaryColor: '#10B981',
+          primaryColor: '#0A1A3F',
+          secondaryColor: '#C1272D',
+          accentColor: '#C9C9C9',
+          neutralDarkColor: '#1F1F1F',
+          neutralLightColor: '#EEEEEE',
+          surfaceColor: '#FFFFFF',
           contactEmail: 'info@elhamdimport.com',
           contactPhone: '+966 50 123 4567',
           contactAddress: 'الرياض، المملكة العربية السعودية',
