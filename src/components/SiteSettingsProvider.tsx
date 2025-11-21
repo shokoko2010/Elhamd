@@ -57,6 +57,57 @@ interface SiteSettingsContextType {
   loading: boolean
 }
 
+const FONT_OPTIONS: { value: string; label: string; href?: string; stack?: string }[] = [
+  {
+    value: 'Inter',
+    label: 'Inter',
+    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+    stack: 'Inter, var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+  },
+  {
+    value: 'Cairo',
+    label: 'Cairo (Arabic)',
+    href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap',
+    stack: 'Cairo, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Tajawal',
+    label: 'Tajawal (Arabic)',
+    href: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap',
+    stack: 'Tajawal, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Noto Sans Arabic',
+    label: 'Noto Sans Arabic',
+    href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap',
+    stack: '"Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Rubik',
+    label: 'Rubik',
+    href: 'https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap',
+    stack: 'Rubik, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'IBM Plex Sans Arabic',
+    label: 'IBM Plex Sans Arabic',
+    href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap',
+    stack: '"IBM Plex Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Poppins',
+    label: 'Poppins',
+    href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
+    stack: 'Poppins, var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+  },
+  {
+    value: 'Montserrat',
+    label: 'Montserrat',
+    href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap',
+    stack: 'Montserrat, var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+  }
+]
+
 const defaultSettings: SiteSettings = normalizeBrandingObject({
   primaryColor: '#0A1A3F',
   secondaryColor: '#C1272D',
@@ -294,9 +345,27 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
     setScaleVariables('brand-secondary', secondary)
     setScaleVariables('brand-accent', accent)
 
-    // Apply font family
-    if (settings.fontFamily && settings.fontFamily !== 'Inter') {
-      root.style.setProperty('--font-family', settings.fontFamily)
+    // Apply font family and load Google font when available
+    const fontOption = FONT_OPTIONS.find((font) => font.value === settings.fontFamily)
+    const fontStack =
+      fontOption?.stack ||
+      `${settings.fontFamily || 'Inter'}, var(--font-geist-sans), system-ui, -apple-system, sans-serif`
+
+    root.style.setProperty('--font-family', fontStack)
+
+    const existingFontLink = document.getElementById('site-settings-font') as HTMLLinkElement | null
+    if (fontOption?.href) {
+      if (existingFontLink) {
+        existingFontLink.href = fontOption.href
+      } else {
+        const link = document.createElement('link')
+        link.id = 'site-settings-font'
+        link.rel = 'stylesheet'
+        link.href = fontOption.href
+        document.head.appendChild(link)
+      }
+    } else if (existingFontLink) {
+      existingFontLink.remove()
     }
 
     // Update favicon

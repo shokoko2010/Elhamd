@@ -515,8 +515,11 @@ export default function AdminSiteSettingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Inter">Inter</SelectItem>
-                    <SelectItem value="Roboto">Roboto</SelectItem>
-                    <SelectItem value="Open Sans">Open Sans</SelectItem>
+                    <SelectItem value="Cairo">Cairo (Arabic)</SelectItem>
+                    <SelectItem value="Tajawal">Tajawal (Arabic)</SelectItem>
+                    <SelectItem value="Noto Sans Arabic">Noto Sans Arabic</SelectItem>
+                    <SelectItem value="Rubik">Rubik</SelectItem>
+                    <SelectItem value="IBM Plex Sans Arabic">IBM Plex Sans Arabic</SelectItem>
                     <SelectItem value="Poppins">Poppins</SelectItem>
                     <SelectItem value="Montserrat">Montserrat</SelectItem>
                   </SelectContent>
