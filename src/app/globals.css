@@ -43,7 +43,7 @@
 }
 
 :root {
-  --font-family: var(--font-geist-sans);
+  --font-family: Cairo, Tajawal, var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   --radius: 0.625rem;
   --background: 0 0% 100%;
   --foreground: 0 0% 12%;

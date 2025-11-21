@@ -121,7 +121,7 @@ export async function PUT(request: NextRequest) {
         primaryColor: '#0A1A3F',
         secondaryColor: '#C1272D',
         accentColor: '#F59E0B',
-        fontFamily: 'Inter',
+        fontFamily: 'Cairo',
         contactEmail: primaryEmail,
         headerSettings: {},
         footerSettings: {},

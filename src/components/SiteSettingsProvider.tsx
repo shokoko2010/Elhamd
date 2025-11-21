@@ -67,14 +67,14 @@ const FONT_OPTIONS: { value: string; label: string; href?: string; stack?: strin
   {
     value: 'Cairo',
     label: 'Cairo (Arabic)',
-    href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap',
-    stack: 'Cairo, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+    href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap',
+    stack: 'Cairo, Tajawal, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
   },
   {
     value: 'Tajawal',
     label: 'Tajawal (Arabic)',
-    href: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap',
-    stack: 'Tajawal, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+    href: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=Cairo:wght@400;500;600;700&display=swap',
+    stack: 'Tajawal, Cairo, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
   },
   {
     value: 'Noto Sans Arabic',
@@ -115,7 +115,7 @@ const defaultSettings: SiteSettings = normalizeBrandingObject({
   neutralDarkColor: '#1F1F1F',
   neutralLightColor: '#EEEEEE',
   surfaceColor: '#FFFFFF',
-  fontFamily: 'Inter',
+  fontFamily: 'Cairo',
   siteTitle: 'شركة الحمد لاستيراد السيارات',
   siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
   contactEmail: 'info@elhamdimport.online',
@@ -347,9 +347,8 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
 
     // Apply font family and load Google font when available
     const fontOption = FONT_OPTIONS.find((font) => font.value === settings.fontFamily)
-    const fontStack =
-      fontOption?.stack ||
-      `${settings.fontFamily || 'Inter'}, var(--font-geist-sans), system-ui, -apple-system, sans-serif`
+    const baseFallbackStack = 'Cairo, Tajawal, "Noto Sans Arabic", var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+    const fontStack = fontOption?.stack || `${settings.fontFamily || 'Cairo'}, ${baseFallbackStack}`
 
     root.style.setProperty('--font-family', fontStack)
 

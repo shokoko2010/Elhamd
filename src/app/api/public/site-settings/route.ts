@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         neutralDarkColor: '#1F1F1F',
         neutralLightColor: '#EEEEEE',
         surfaceColor: '#FFFFFF',
-        fontFamily: 'Inter',
+        fontFamily: 'Cairo',
         siteTitle: 'شركة الحمد لاستيراد السيارات',
         siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
         contactEmail: 'info@elhamdimport.online',

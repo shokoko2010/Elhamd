@@ -85,7 +85,7 @@ export default function AdminSiteSettingsPage() {
     neutralDarkColor: '#1F1F1F',
     neutralLightColor: '#EEEEEE',
     surfaceColor: '#FFFFFF',
-    fontFamily: 'Inter',
+    fontFamily: 'Cairo',
     siteTitle: 'Al-Hamd Cars',
     siteDescription: 'Premium Car Dealership in Egypt',
     contactEmail: 'info@elhamdimport.com',
@@ -509,7 +509,7 @@ export default function AdminSiteSettingsPage() {
               
               <div>
                 <Label htmlFor="fontFamily">نوع الخط</Label>
-                <Select value={settings.fontFamily || 'Inter'} onValueChange={(value) => updateSettings(['fontFamily'], value)}>
+                <Select value={settings.fontFamily || 'Cairo'} onValueChange={(value) => updateSettings(['fontFamily'], value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر نوع الخط" />
                   </SelectTrigger>

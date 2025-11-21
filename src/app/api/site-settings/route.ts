@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         neutralDarkColor: '#1F1F1F',
         neutralLightColor: '#EEEEEE',
         surfaceColor: '#FFFFFF',
-        fontFamily: 'Inter',
+        fontFamily: 'Cairo',
         siteTitle: 'Elhamd Import',
         siteDescription: 'متخصصون في استيراد وبيع أفضل الشاحنات التجارية',
         contactEmail: 'info@elhamdimport.com',

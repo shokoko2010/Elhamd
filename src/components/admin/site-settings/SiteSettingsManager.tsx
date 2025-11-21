@@ -112,7 +112,7 @@ export default function SiteSettingsManager() {
     neutralDarkColor: '#1F1F1F',
     neutralLightColor: '#EEEEEE',
     surfaceColor: '#FFFFFF',
-    fontFamily: 'Inter',
+    fontFamily: 'Cairo',
     siteTitle: 'Al-Hamd Cars',
     siteDescription: 'Premium Car Dealership in Egypt',
     contactEmail: 'info@elhamdimport.com',

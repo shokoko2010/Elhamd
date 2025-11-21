@@ -611,7 +611,7 @@ model SiteSettings {
   neutralDarkColor    String   @default("#1F1F1F")
   neutralLightColor   String   @default("#EEEEEE")
   surfaceColor        String   @default("#FFFFFF")
-  fontFamily          String   @default("Inter")
+  fontFamily          String   @default("Cairo")
   siteTitle           String
   siteDescription     String
   contactEmail        String
