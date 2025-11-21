@@ -112,17 +112,31 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Apply defaults immediately so the UI theme matches the configured palette
+    applySettingsToDOM(defaultSettings)
     loadSiteSettings()
   }, [])
 
+  useEffect(() => {
+    if (!loading) {
+      applySettingsToDOM(settings)
+    }
+  }, [settings, loading])
+
   const loadSiteSettings = async () => {
     try {
-      const response = await fetch('/api/public/site-settings')
+      const response = await fetch('/api/public/site-settings', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
-        const normalized = normalizeBrandingObject(data)
+        const normalized = normalizeBrandingObject({
+          ...defaultSettings,
+          ...data,
+          socialLinks: { ...defaultSettings.socialLinks, ...(data?.socialLinks || {}) },
+          seoSettings: { ...defaultSettings.seoSettings, ...(data?.seoSettings || {}) },
+          headerSettings: { ...defaultSettings.headerSettings, ...(data?.headerSettings || {}) },
+          footerSettings: { ...defaultSettings.footerSettings, ...(data?.footerSettings || {}) },
+        })
         setSettings(normalized)
-        applySettingsToDOM(normalized)
       } else {
         console.warn('Failed to load site settings, using defaults')
       }
