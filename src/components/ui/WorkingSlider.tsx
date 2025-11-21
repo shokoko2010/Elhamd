@@ -150,7 +150,12 @@ export function WorkingSlider({
 
   if (loading) {
     return (
-      <div className="relative w-full h-[70vh] md:h-[80vh] bg-gradient-to-br from-blue-900 to-blue-700">
+      <div
+        className="relative w-full h-[70vh] md:h-[80vh]"
+        style={{
+          background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
+        }}
+      >
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-white text-center">
             <div className="w-8 h-8 border-2 border-white border-t-blue-300 rounded-full animate-spin mx-auto mb-4"></div>
@@ -163,7 +168,12 @@ export function WorkingSlider({
 
   if (!items.length) {
     return (
-      <div className="relative w-full h-[70vh] md:h-[80vh] bg-gradient-to-br from-gray-900 to-gray-700 flex items-center justify-center">
+      <div
+        className="relative w-full h-[70vh] md:h-[80vh] flex items-center justify-center"
+        style={{
+          background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-700, #061028))'
+        }}
+      >
         <div className="text-center text-white">
           <p className="text-lg">لا توجد عروض متاحة حالياً</p>
         </div>
@@ -301,9 +311,14 @@ export function WorkingSlider({
               }
             }}
           />
-          
+
           {/* Fallback background color */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-blue-700 z-0" />
+          <div
+            className="absolute inset-0 z-0"
+            style={{
+              background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
+            }}
+          />
           
           {/* Enhanced gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50 z-10" />
@@ -323,9 +338,9 @@ export function WorkingSlider({
                 {/* Badge */}
                 {currentItem.badge && (
                   <div className="mb-4">
-                    <Badge
-                      className={`${currentItem.badgeColor || 'bg-blue-600'} text-white px-4 py-2 rounded-full shadow-lg`}
-                    >
+                    <Badge className="text-white px-4 py-2 rounded-full shadow-lg" style={{
+                      backgroundColor: currentItem.badgeColor || 'var(--brand-secondary, #C1272D)'
+                    }}>
                       {currentItem.badge}
                     </Badge>
                   </div>
@@ -361,7 +376,7 @@ export function WorkingSlider({
                 >
                   <Button
                     size="lg"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto justify-center"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto justify-center"
                     asChild
                   >
                     <a href={currentItem.ctaLink}>
@@ -374,7 +389,7 @@ export function WorkingSlider({
                   <Button
                     variant="outline"
                     size="lg"
-                    className="border-2 border-white text-white hover:bg-white hover:text-blue-900 text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 w-full sm:w-auto justify-center bg-transparent"
+                    className="border-2 border-white text-white hover:bg-white hover:text-[color:var(--brand-primary-900,#030815)] text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 w-full sm:w-auto justify-center bg-transparent"
                     asChild
                   >
                     <a href="/vehicles">

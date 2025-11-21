@@ -143,6 +143,55 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
     const neutralLight = settings.neutralLightColor || '#EEEEEE'
     const surface = settings.surfaceColor || '#FFFFFF'
 
+    const hexToRgb = (hex: string) => {
+      const normalized = hex.replace('#', '')
+      if (normalized.length !== 6) return { r: 0, g: 0, b: 0 }
+
+      return {
+        r: parseInt(normalized.substring(0, 2), 16),
+        g: parseInt(normalized.substring(2, 4), 16),
+        b: parseInt(normalized.substring(4, 6), 16)
+      }
+    }
+
+    const mixHex = (hex: string, mixWith: string, amount: number) => {
+      const base = hexToRgb(hex)
+      const target = hexToRgb(mixWith)
+      const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value)))
+
+      const r = clamp(base.r + (target.r - base.r) * amount)
+      const g = clamp(base.g + (target.g - base.g) * amount)
+      const b = clamp(base.b + (target.b - base.b) * amount)
+
+      const toHex = (value: number) => value.toString(16).padStart(2, '0')
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+    }
+
+    const buildScale = (hex: string) => ({
+      50: mixHex(hex, '#ffffff', 0.92),
+      100: mixHex(hex, '#ffffff', 0.85),
+      200: mixHex(hex, '#ffffff', 0.75),
+      300: mixHex(hex, '#ffffff', 0.6),
+      400: mixHex(hex, '#ffffff', 0.4),
+      500: hex,
+      600: mixHex(hex, '#000000', 0.08),
+      700: mixHex(hex, '#000000', 0.18),
+      800: mixHex(hex, '#000000', 0.28),
+      900: mixHex(hex, '#000000', 0.38)
+    })
+
+    const setScaleVariables = (prefix: string, hex: string) => {
+      const scale = buildScale(hex)
+      Object.entries(scale).forEach(([key, value]) => {
+        const rgb = hexToRgb(value as string)
+        root.style.setProperty(`--${prefix}-${key}`, value as string)
+        root.style.setProperty(`--${prefix}-${key}-rgb`, `${rgb.r} ${rgb.g} ${rgb.b}`)
+      })
+      const baseRgb = hexToRgb(hex)
+      root.style.setProperty(`--${prefix}`, hex)
+      root.style.setProperty(`--${prefix}-rgb`, `${baseRgb.r} ${baseRgb.g} ${baseRgb.b}`)
+    }
+
     const toHsl = (hex: string) => {
       const result = hex.replace('#', '')
       if (result.length !== 6) return ''
@@ -225,6 +274,11 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
     root.style.setProperty('--neutral-dark-color', neutralDark)
     root.style.setProperty('--neutral-light-color', neutralLight)
     root.style.setProperty('--surface-color', surface)
+
+    // Brand palette (hex + RGB) for CSS overrides
+    setScaleVariables('brand-primary', primary)
+    setScaleVariables('brand-secondary', secondary)
+    setScaleVariables('brand-accent', accent)
 
     // Apply font family
     if (settings.fontFamily && settings.fontFamily !== 'Inter') {
