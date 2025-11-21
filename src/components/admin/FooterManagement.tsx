@@ -409,7 +409,11 @@ export default function FooterManagement() {
     if (!file) return
 
     const formData = new FormData()
-    formData.append('image', file)
+    // Upload as a general asset with a descriptive filename so footer logo saves correctly
+    formData.append('file', file)
+    formData.append('type', 'general')
+    formData.append('entityId', 'footer-logo')
+    formData.append('filenameHint', content.logoText || 'footer-logo')
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
