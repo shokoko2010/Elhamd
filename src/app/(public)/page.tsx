@@ -644,6 +644,12 @@ export default function Home() {
   const serviceSectionSubtitle = homepageSettings.servicesSubtitle?.trim() || 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا'
   const serviceSectionDescription = homepageSettings.servicesDescription?.trim()
   const serviceCtaText = homepageSettings.servicesCtaText?.trim() || 'احجز الآن'
+  const brandHeroGradient =
+    'linear-gradient(135deg, var(--brand-primary-600, #081432) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-500, #C1272D) 100%)'
+  const brandContactGradient =
+    'linear-gradient(135deg, var(--brand-primary-800, #050c1f) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-600, #a41f25) 100%)'
+  const brandTextGradient =
+    'linear-gradient(90deg, var(--brand-neutral-dark, #1F1F1F) 0%, var(--brand-primary-500, #0A1A3F) 55%, var(--brand-secondary-500, #C1272D) 100%)'
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
@@ -660,7 +666,10 @@ export default function Home() {
 
       <div className="w-full">
         {/* Company Introduction Section */}
-        <section className="py-16 md:py-24 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white relative overflow-hidden">
+        <section
+          className="py-16 md:py-24 text-white relative overflow-hidden"
+          style={{ background: brandHeroGradient }}
+        >
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
@@ -770,7 +779,10 @@ export default function Home() {
                   <Car className="ml-2 h-4 w-4" />
                   {companyInfo?.features?.[0] || 'سياراتنا'}
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+                <h2
+                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                  style={{ backgroundImage: brandTextGradient }}
+                >
                   {companyInfo?.title || 'استعرض سيارات تاتا'}
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -1162,7 +1174,10 @@ export default function Home() {
         {/* Contact Section */}
         {contactInfo && (
           <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-br from-gray-900 to-blue-900 text-white relative overflow-hidden">
+            <section
+              className="py-16 md:py-24 text-white relative overflow-hidden"
+              style={{ background: brandContactGradient }}
+            >
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
               </div>
@@ -1354,7 +1369,10 @@ export default function Home() {
                   <Facebook className="ml-2 h-4 w-4" />
                   تابعونا على فيسبوك
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+                <h2
+                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                  style={{ backgroundImage: brandTextGradient }}
+                >
                   أحدث ما ننشره على فيسبوك
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">

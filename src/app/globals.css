@@ -106,6 +106,54 @@
   --brand-primary-700-rgb: 6 16 40;
   --brand-primary-800-rgb: 5 12 31;
   --brand-primary-900-rgb: 3 8 21;
+
+  /* Secondary fallbacks */
+  --brand-secondary: #C1272D;
+  --brand-secondary-rgb: 193 39 45;
+  --brand-secondary-50: #fbecec;
+  --brand-secondary-100: #f7d8d9;
+  --brand-secondary-200: #f0b1b3;
+  --brand-secondary-300: #e4757a;
+  --brand-secondary-400: #d64853;
+  --brand-secondary-500: #C1272D;
+  --brand-secondary-600: #a41f25;
+  --brand-secondary-700: #871a1f;
+  --brand-secondary-800: #6b1519;
+  --brand-secondary-900: #4f0f13;
+  --brand-secondary-50-rgb: 251 236 236;
+  --brand-secondary-100-rgb: 247 216 217;
+  --brand-secondary-200-rgb: 240 177 179;
+  --brand-secondary-300-rgb: 228 117 122;
+  --brand-secondary-400-rgb: 214 72 83;
+  --brand-secondary-500-rgb: 193 39 45;
+  --brand-secondary-600-rgb: 164 31 37;
+  --brand-secondary-700-rgb: 135 26 31;
+  --brand-secondary-800-rgb: 107 21 25;
+  --brand-secondary-900-rgb: 79 15 19;
+
+  /* Accent fallbacks */
+  --brand-accent: #C9C9C9;
+  --brand-accent-rgb: 201 201 201;
+  --brand-accent-50: #f8f8f8;
+  --brand-accent-100: #f3f3f3;
+  --brand-accent-200: #e6e6e6;
+  --brand-accent-300: #d4d4d4;
+  --brand-accent-400: #c0c0c0;
+  --brand-accent-500: #C9C9C9;
+  --brand-accent-600: #a3a3a3;
+  --brand-accent-700: #818181;
+  --brand-accent-800: #666666;
+  --brand-accent-900: #4d4d4d;
+  --brand-accent-50-rgb: 248 248 248;
+  --brand-accent-100-rgb: 243 243 243;
+  --brand-accent-200-rgb: 230 230 230;
+  --brand-accent-300-rgb: 212 212 212;
+  --brand-accent-400-rgb: 192 192 192;
+  --brand-accent-500-rgb: 201 201 201;
+  --brand-accent-600-rgb: 163 163 163;
+  --brand-accent-700-rgb: 129 129 129;
+  --brand-accent-800-rgb: 102 102 102;
+  --brand-accent-900-rgb: 77 77 77;
 }
 
 .dark {
