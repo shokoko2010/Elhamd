@@ -285,7 +285,7 @@ export default function Footer() {
                 <img
                   src={footerContent?.logoUrl || settings.logoUrl}
                   alt={footerContent?.logoText || settings.siteTitle}
-                  className="h-14 w-auto drop-shadow-[0_10px_25px_rgba(0,0,0,0.35)] md:h-16"
+                  className="h-14 w-auto rounded-md bg-transparent md:h-16"
                 />
               ) : (
                 <Car className="h-12 w-12" style={{ color: settings.primaryColor }} />
