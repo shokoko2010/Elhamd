@@ -12,12 +12,14 @@ const cairo = Cairo({
   variable: "--font-cairo",
   subsets: ["arabic", "latin"],
   display: "swap",
+  weight: ["400", "700"],
 });
 
 const tajawal = Tajawal({
   variable: "--font-tajawal",
   subsets: ["arabic", "latin"],
   display: "swap",
+  weight: ["400", "700"],
 });
 
 const geistSans = Geist({
