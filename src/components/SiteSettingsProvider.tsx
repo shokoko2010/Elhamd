@@ -62,49 +62,49 @@ const FONT_OPTIONS: { value: string; label: string; href?: string; stack?: strin
     value: 'Inter',
     label: 'Inter',
     href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-    stack: 'Inter, var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+    stack: 'Inter, var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif'
   },
   {
     value: 'Cairo',
     label: 'Cairo (Arabic)',
     href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap',
-    stack: 'Cairo, Tajawal, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+    stack: 'var(--font-cairo), var(--font-tajawal), "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
   },
   {
     value: 'Tajawal',
     label: 'Tajawal (Arabic)',
     href: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=Cairo:wght@400;500;600;700&display=swap',
-    stack: 'Tajawal, Cairo, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+    stack: 'var(--font-tajawal), var(--font-cairo), "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
   },
   {
     value: 'Noto Sans Arabic',
     label: 'Noto Sans Arabic',
     href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap',
-    stack: '"Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+    stack: '"Noto Sans Arabic", var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif'
   },
   {
     value: 'Rubik',
     label: 'Rubik',
     href: 'https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap',
-    stack: 'Rubik, "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+    stack: 'Rubik, "Noto Sans Arabic", var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif'
   },
   {
     value: 'IBM Plex Sans Arabic',
     label: 'IBM Plex Sans Arabic',
     href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap',
-    stack: '"IBM Plex Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+    stack: '"IBM Plex Sans Arabic", var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif'
   },
   {
     value: 'Poppins',
     label: 'Poppins',
     href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
-    stack: 'Poppins, var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+    stack: 'Poppins, var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif'
   },
   {
     value: 'Montserrat',
     label: 'Montserrat',
     href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap',
-    stack: 'Montserrat, var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+    stack: 'Montserrat, var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif'
   }
 ]
 
@@ -347,8 +347,8 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
 
     // Apply font family and load Google font when available
     const fontOption = FONT_OPTIONS.find((font) => font.value === settings.fontFamily)
-    const baseFallbackStack = 'Cairo, Tajawal, "Noto Sans Arabic", var(--font-geist-sans), system-ui, -apple-system, sans-serif'
-    const fontStack = fontOption?.stack || `${settings.fontFamily || 'Cairo'}, ${baseFallbackStack}`
+    const baseFallbackStack = 'var(--font-cairo), var(--font-tajawal), "Noto Sans Arabic", var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+    const fontStack = fontOption?.stack || `${settings.fontFamily || 'var(--font-cairo)'}, ${baseFallbackStack}`
 
     root.style.setProperty('--font-family', fontStack)
 
