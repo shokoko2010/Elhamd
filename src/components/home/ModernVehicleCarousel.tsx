@@ -121,7 +121,7 @@ export function ModernVehicleCarousel({
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <Badge className="w-fit bg-blue-100 text-blue-700 border-blue-200">مجموعة السيارات</Badge>
-          <h3 className="text-2xl md:text-3xl font-bold text-slate-900">عرض سيارات بسيط وواضح</h3>
+          <h3 className="text-2xl md:text-3xl font-bold text-slate-900">عرض سيارات واضح ومتوازن</h3>
           <p className="text-slate-600">
             استكشف تشكيلتنا الكاملة من سيارات تاتا ببطاقات واضحة وسهلة التصفح. {totalVehiclesCount ?? displayVehicles.length}{' '}
             سيارة جاهزة للاستعراض.
