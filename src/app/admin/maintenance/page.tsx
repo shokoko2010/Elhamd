@@ -492,7 +492,7 @@ export default function MaintenancePage() {
                         </div>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm">تعديل</Button>
-                          <Button variant="outline" size="sm">حذف</Button>
+                          <Button variant="destructive" size="sm">حذف</Button>
                         </div>
                       </div>
                     </CardContent>
@@ -552,7 +552,7 @@ export default function MaintenancePage() {
                         </div>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm">تعديل</Button>
-                          <Button variant="outline" size="sm">حذف</Button>
+                          <Button variant="destructive" size="sm">حذف</Button>
                         </div>
                       </div>
                     </CardContent>
@@ -602,7 +602,7 @@ export default function MaintenancePage() {
                         </div>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm">تعديل</Button>
-                          <Button variant="outline" size="sm">حذف</Button>
+                          <Button variant="destructive" size="sm">حذف</Button>
                         </div>
                       </div>
                     </CardContent>
@@ -649,7 +649,7 @@ export default function MaintenancePage() {
                         </div>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm">تعديل</Button>
-                          <Button variant="outline" size="sm">حذف</Button>
+                          <Button variant="destructive" size="sm">حذف</Button>
                         </div>
                       </div>
                     </CardContent>
