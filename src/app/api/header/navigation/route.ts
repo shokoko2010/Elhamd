@@ -92,10 +92,10 @@ export async function PUT(request: NextRequest) {
         id: 'default',
         siteTitle: 'Al-Hamd Cars',
         siteDescription: 'Your Trusted Car Dealership',
-        primaryColor: '#3B82F6',
-        secondaryColor: '#10B981',
+        primaryColor: '#0A1A3F',
+        secondaryColor: '#C1272D',
         accentColor: '#F59E0B',
-        fontFamily: 'Inter',
+        fontFamily: 'Cairo',
         contactEmail: 'info@elhamdimport.com',
         headerSettings: {
           navigation

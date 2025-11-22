@@ -7,6 +7,11 @@ import { db } from '@/lib/db'
 import { PermissionCategory } from '@prisma/client'
 import { getAuthUser } from '@/lib/auth-server'
 import { PermissionService } from '@/lib/permissions'
+import {
+  getPermissionCategoryLabelAr,
+  getPermissionDescriptionAr,
+  getPermissionLabelAr
+} from '@/lib/permission-translations'
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +44,14 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    return NextResponse.json({ permissions })
+    const localizedPermissions = permissions.map((permission) => ({
+      ...permission,
+      label: getPermissionLabelAr(permission.name),
+      description: getPermissionDescriptionAr(permission.name, permission.description ?? undefined),
+      categoryLabel: getPermissionCategoryLabelAr(permission.category)
+    }))
+
+    return NextResponse.json({ permissions: localizedPermissions })
   } catch (error) {
     console.error('Error fetching permissions:', error)
     return NextResponse.json(

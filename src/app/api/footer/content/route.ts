@@ -3,9 +3,26 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser, UserRole } from '@/lib/auth-server'
+import { authorize, UserRole } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { normalizeBrandingObject } from '@/lib/branding'
+
+const ALLOWED_FIELDS = [
+  'logoUrl',
+  'logoText',
+  'tagline',
+  'primaryPhone',
+  'secondaryPhone',
+  'primaryEmail',
+  'secondaryEmail',
+  'address',
+  'workingHours',
+  'copyrightText',
+  'newsletterText',
+  'backToTopText'
+] as const
+
+type FooterContentPayload = Partial<Record<(typeof ALLOWED_FIELDS)[number], string | null>>
 
 export async function GET() {
   try {
@@ -39,36 +56,36 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    if (!user) {
-      return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
-    }
-    
-    // Check if user has required role or permissions
-    const hasAccess = user.role === UserRole.ADMIN || 
-                      user.role === UserRole.SUPER_ADMIN
+    const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
 
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
+    if (auth.error) {
+      return auth.error
     }
-    
-    const data = await request.json()
 
-    // Update or create footer content
-    const existingContent = await db.footerContent.findFirst()
-    
-    if (existingContent) {
-      const updatedContent = await db.footerContent.update({
-        where: { id: existingContent.id },
-        data
-      })
-      return NextResponse.json(normalizeBrandingObject(updatedContent))
-    } else {
-      const newContent = await db.footerContent.create({
-        data
-      })
-      return NextResponse.json(normalizeBrandingObject(newContent))
-    }
+    const payload = (await request.json()) as Record<string, any>
+
+    const sanitized: FooterContentPayload = Object.fromEntries(
+      ALLOWED_FIELDS.map((field) => {
+        const value = payload[field]
+
+        if (value === undefined) return [field, null]
+        if (value === null) return [field, null]
+
+        return [field, typeof value === 'string' ? value : String(value)]
+      }),
+    ) as FooterContentPayload
+
+    const normalizedData = normalizeBrandingObject(sanitized)
+    const existing = await db.footerContent.findFirst()
+    const contentId = existing?.id ?? 'footer-default'
+
+    const result = await db.footerContent.upsert({
+      create: { id: contentId, ...normalizedData },
+      update: normalizedData,
+      where: { id: contentId }
+    })
+
+    return NextResponse.json(normalizeBrandingObject(result))
   } catch (error) {
     console.error('Error updating footer content:', error)
     return NextResponse.json(

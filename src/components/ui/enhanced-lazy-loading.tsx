@@ -68,16 +68,26 @@ export function EnhancedLazyImage({
   // Generate progressive image sources
   const progressiveSrc = useMemo(() => {
     if (!src.startsWith('/')) return { low: src, medium: src, high: src }
-    
+
     const base = src.replace(/\.[^/.]+$/, '')
     const ext = src.includes('.') ? src.split('.').pop() : 'jpg'
-    
+
     return {
       low: `${base}-small.${ext}`,
       medium: `${base}-medium.${ext}`,
       high: src
     }
   }, [src])
+
+  // Reset internal state whenever the source changes so new images render immediately
+  useEffect(() => {
+    setImgSrc(src)
+    setRetryAttempt(0)
+    setHasError(false)
+    if (!priority && !eagerLoad) {
+      setIsLoading(true)
+    }
+  }, [src, priority, eagerLoad])
 
   // Detect mobile device for optimization
   const isMobile = useMemo(() => {

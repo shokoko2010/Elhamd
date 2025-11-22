@@ -30,6 +30,17 @@ import {
 import { toast } from 'sonner'
 import { SliderImageManager } from '@/components/admin/SliderImageManager'
 
+type SliderContentPosition =
+  | 'top-right'
+  | 'bottom-right'
+  | 'top-center'
+  | 'bottom-center'
+  | 'top-left'
+  | 'bottom-left'
+  | 'middle-left'
+  | 'middle-center'
+  | 'middle-right'
+
 interface SliderItem {
   id: string
   title: string
@@ -40,6 +51,12 @@ interface SliderItem {
   ctaLink: string
   badge?: string
   badgeColor?: string
+  contentPosition?: SliderContentPosition
+  contentSize?: 'sm' | 'md' | 'lg'
+  contentColor?: string
+  contentShadow?: boolean
+  contentStrokeColor?: string
+  contentStrokeWidth?: number
   order: number
   isActive: boolean
 }
@@ -152,6 +169,33 @@ function HomepageContent() {
     ctaButtons: []
   }
 
+  const normalizeContentPosition = (position?: string): SliderContentPosition => {
+    switch (position) {
+      case 'top-right':
+      case 'bottom-right':
+      case 'top-center':
+      case 'bottom-center':
+      case 'top-left':
+      case 'bottom-left':
+      case 'middle-left':
+      case 'middle-center':
+      case 'middle-right':
+        return position
+      case 'left':
+        return 'middle-left'
+      case 'center':
+        return 'middle-center'
+      case 'right':
+        return 'middle-right'
+      case 'top':
+        return 'top-center'
+      case 'bottom':
+        return 'bottom-center'
+      default:
+        return 'top-right'
+    }
+  }
+
   const adaptCompanyInfo = (payload: any): CompanyInfo => {
     return {
       id: typeof payload?.id === 'string' ? payload.id : 'company-info',
@@ -184,7 +228,25 @@ function HomepageContent() {
       const slidersResponse = await fetch('/api/sliders', { cache: 'no-store' })
       if (slidersResponse.ok) {
         const slidersData = await slidersResponse.json()
-        setSliderItems(Array.isArray(slidersData?.sliders) ? slidersData.sliders : [])
+        const normalizedSliders = Array.isArray(slidersData?.sliders)
+          ? slidersData.sliders
+          : []
+
+        setSliderItems(
+          normalizedSliders.map((slider, index) => ({
+            ...slider,
+            contentPosition: normalizeContentPosition(slider?.contentPosition),
+            contentSize: slider?.contentSize || 'lg',
+            contentColor: slider?.contentColor || '#ffffff',
+            contentShadow: slider?.contentShadow !== false,
+            contentStrokeColor: slider?.contentStrokeColor || '#000000',
+            contentStrokeWidth:
+              typeof slider?.contentStrokeWidth === 'number' && slider.contentStrokeWidth >= 0
+                ? slider.contentStrokeWidth
+                : 0,
+            order: typeof slider?.order === 'number' ? slider.order : index
+          }))
+        )
       } else {
         console.error('Failed to fetch sliders')
         // Use empty array on error
@@ -291,6 +353,12 @@ function HomepageContent() {
       ctaLink: '',
       badge: '',
       badgeColor: 'bg-blue-500',
+      contentPosition: 'top-right',
+      contentSize: 'lg',
+      contentColor: '#ffffff',
+      contentShadow: true,
+      contentStrokeColor: '#000000',
+      contentStrokeWidth: 0,
       order: sliderItems.length,
       isActive: true
     })
@@ -370,7 +438,15 @@ function HomepageContent() {
   }
 
   const handleEditSlider = (item: SliderItem) => {
-    setSliderForm(item)
+    setSliderForm({
+      ...item,
+      contentPosition: normalizeContentPosition(item.contentPosition),
+      contentSize: item.contentSize || 'lg',
+      contentColor: item.contentColor || '#ffffff',
+      contentShadow: item.contentShadow !== false,
+      contentStrokeColor: item.contentStrokeColor || '#000000',
+      contentStrokeWidth: typeof item.contentStrokeWidth === 'number' ? item.contentStrokeWidth : 0
+    })
     setEditingSlider(item)
     setShowSliderDialog(true)
   }
@@ -443,12 +519,25 @@ function HomepageContent() {
 
   const handleSaveSlider = async () => {
     try {
+      const payload = {
+        ...sliderForm,
+        contentPosition: normalizeContentPosition(sliderForm.contentPosition),
+        contentSize: sliderForm.contentSize || 'lg',
+        contentColor: sliderForm.contentColor || '#ffffff',
+        contentShadow: sliderForm.contentShadow !== false,
+        contentStrokeColor: sliderForm.contentStrokeColor || '#000000',
+        contentStrokeWidth:
+          typeof sliderForm.contentStrokeWidth === 'number'
+            ? sliderForm.contentStrokeWidth
+            : Number(sliderForm.contentStrokeWidth) || 0
+      }
+
       const response = await fetch(editingSlider ? `/api/sliders/${editingSlider.id}` : '/api/sliders', {
         method: editingSlider ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(sliderForm),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -1152,12 +1241,16 @@ function HomepageContent() {
               </div>
 
               <div>
-                <Label htmlFor="company-image">رابط الصورة الرئيسية</Label>
-                <Input
-                  id="company-image"
-                  value={companyForm.imageUrl}
-                  onChange={(e) => setCompanyForm({ ...companyForm, imageUrl: e.target.value })}
-                  placeholder="/uploads/company.jpg"
+                <SliderImageManager
+                  label="صورة معلومات الشركة"
+                  currentImage={companyForm.imageUrl || ''}
+                  onImageChange={(imageUrl) => setCompanyForm({ ...companyForm, imageUrl })}
+                  mediaFolder="branding"
+                  uploadEntity="company-info"
+                  filenameHint={[companyForm.title, companyForm.subtitle]
+                    .filter((part): part is string => Boolean(part && part.trim()))
+                    .join(' ')
+                    .trim() || undefined}
                 />
               </div>
 
@@ -1420,7 +1513,103 @@ function HomepageContent() {
                 placeholder="/example-link"
               />
             </div>
-            
+
+            <div>
+              <Label htmlFor="contentPosition">موضع المحتوى</Label>
+              <Select
+                value={normalizeContentPosition(sliderForm.contentPosition)}
+                onValueChange={(value) =>
+                  setSliderForm({ ...sliderForm, contentPosition: value as SliderItem['contentPosition'] })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر موضع المحتوى" />
+                </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="top-right">أعلى اليمين</SelectItem>
+                <SelectItem value="middle-right">منتصف اليمين</SelectItem>
+                <SelectItem value="bottom-right">أسفل اليمين</SelectItem>
+                <SelectItem value="top-center">أعلى الوسط</SelectItem>
+                <SelectItem value="middle-center">منتصف الوسط</SelectItem>
+                <SelectItem value="bottom-center">أسفل الوسط</SelectItem>
+                <SelectItem value="top-left">أعلى اليسار</SelectItem>
+                <SelectItem value="middle-left">منتصف اليسار</SelectItem>
+                <SelectItem value="bottom-left">أسفل اليسار</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="contentSize">حجم المحتوى</Label>
+                <Select
+                  value={sliderForm.contentSize || 'lg'}
+                  onValueChange={(value) =>
+                    setSliderForm({ ...sliderForm, contentSize: value as SliderItem['contentSize'] })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر حجم النص" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sm">صغير</SelectItem>
+                    <SelectItem value="md">متوسط</SelectItem>
+                    <SelectItem value="lg">كبير</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="contentColor">لون المحتوى</Label>
+                <Input
+                  id="contentColor"
+                  type="color"
+                  value={sliderForm.contentColor || '#ffffff'}
+                  onChange={(e) => setSliderForm({ ...sliderForm, contentColor: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">إظهار ظل للنص</p>
+                  <p className="text-xs text-muted-foreground">يساعد في وضوح المحتوى على الصور المضيئة</p>
+                </div>
+                <Switch
+                  id="contentShadow"
+                  checked={sliderForm.contentShadow !== false}
+                  onCheckedChange={(checked) => setSliderForm({ ...sliderForm, contentShadow: checked })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="contentStrokeColor">لون الحدود</Label>
+                  <Input
+                    id="contentStrokeColor"
+                    type="color"
+                    value={sliderForm.contentStrokeColor || '#000000'}
+                    onChange={(e) => setSliderForm({ ...sliderForm, contentStrokeColor: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="contentStrokeWidth">سُمك الحدود (بالبكسل)</Label>
+                  <Input
+                    id="contentStrokeWidth"
+                    type="number"
+                    min={0}
+                    max={8}
+                    step={1}
+                    value={sliderForm.contentStrokeWidth ?? 0}
+                    onChange={(e) =>
+                      setSliderForm({ ...sliderForm, contentStrokeWidth: Number(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="badge">الشارة (اختياري)</Label>
@@ -1452,6 +1641,10 @@ function HomepageContent() {
             <SliderImageManager
               currentImage={sliderForm.imageUrl || ''}
               onImageChange={(imageUrl) => setSliderForm({...sliderForm, imageUrl})}
+              filenameHint={[sliderForm.title, sliderForm.subtitle, sliderForm.badge]
+                .filter((part): part is string => Boolean(part && part.trim()))
+                .join(' ')
+                .trim() || undefined}
             />
             
             <div className="flex items-center gap-2">

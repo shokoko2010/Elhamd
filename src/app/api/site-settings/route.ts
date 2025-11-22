@@ -34,10 +34,13 @@ export async function GET(request: NextRequest) {
       // Return default settings if none exist
       const defaultSettings = {
         id: 'default',
-        primaryColor: '#3B82F6',
-        secondaryColor: '#10B981',
-        accentColor: '#F59E0B',
-        fontFamily: 'Inter',
+        primaryColor: '#0A1A3F',
+        secondaryColor: '#C1272D',
+        accentColor: '#C9C9C9',
+        neutralDarkColor: '#1F1F1F',
+        neutralLightColor: '#EEEEEE',
+        surfaceColor: '#FFFFFF',
+        fontFamily: 'Cairo',
         siteTitle: 'Elhamd Import',
         siteDescription: 'متخصصون في استيراد وبيع أفضل الشاحنات التجارية',
         contactEmail: 'info@elhamdimport.com',

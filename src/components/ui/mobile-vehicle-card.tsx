@@ -21,6 +21,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SimpleImage } from '@/components/ui/SimpleImage'
 import { EnhancedLoadingIndicator } from '@/components/ui/enhanced-loading'
 import Link from 'next/link'
+import { buildVehicleImageAlt } from '@/lib/media-utils'
 
 interface Vehicle {
   id: string
@@ -73,6 +74,15 @@ export function MobileVehicleCard({
 
   const primaryImage = vehicle.images.find(img => img.isPrimary) || vehicle.images[0]
   const hasMultipleImages = vehicle.images.length > 1
+  const heroAlt = buildVehicleImageAlt(
+    {
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      category: vehicle.category
+    },
+    { context: 'عرض المركبات للهاتف' }
+  )
 
   if (loading) {
     return (
@@ -97,7 +107,7 @@ export function MobileVehicleCard({
           <div className="relative h-32">
             <SimpleImage
               src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
-              alt={`${vehicle.make} ${vehicle.model}`}
+              alt={heroAlt}
               fill
               className="object-cover"
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
@@ -200,7 +210,7 @@ export function MobileVehicleCard({
         <div className="relative h-48">
           <SimpleImage
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
-            alt={`${vehicle.make} ${vehicle.model}`}
+            alt={heroAlt}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
@@ -365,7 +375,7 @@ export function MobileVehicleCard({
                 <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                   <SimpleImage
                     src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
-                    alt={`${vehicle.make} ${vehicle.model}`}
+                    alt={heroAlt}
                     fill
                     className="object-cover"
                   />
@@ -489,6 +499,15 @@ export function MobileComparisonCard({
   className = ''
 }: MobileComparisonCardProps) {
   const primaryImage = vehicle.images.find(img => img.isPrimary) || vehicle.images[0]
+  const comparisonAlt = buildVehicleImageAlt(
+    {
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      category: vehicle.category
+    },
+    { context: 'مقارنة المركبات' }
+  )
 
   return (
     <Card className={`overflow-hidden transition-all duration-300 ${
@@ -498,7 +517,7 @@ export function MobileComparisonCard({
         <div className="relative h-32">
           <SimpleImage
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
-            alt={`${vehicle.make} ${vehicle.model}`}
+            alt={comparisonAlt}
             fill
             className="object-cover"
             sizes="(max-width: 640px) 100vw, 200px"

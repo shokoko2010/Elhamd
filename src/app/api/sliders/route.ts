@@ -6,6 +6,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
 
+const normalizeContentPosition = (position?: string) => {
+  switch (position) {
+    case 'top-right':
+    case 'bottom-right':
+    case 'top-center':
+    case 'bottom-center':
+    case 'top-left':
+    case 'bottom-left':
+    case 'middle-left':
+    case 'middle-center':
+    case 'middle-right':
+      return position
+    case 'left':
+      return 'middle-left'
+    case 'center':
+      return 'middle-center'
+    case 'right':
+      return 'middle-right'
+    case 'top':
+      return 'top-center'
+    case 'bottom':
+      return 'bottom-center'
+    default:
+      return 'top-right'
+  }
+}
+
 // GET all sliders (public)
 export async function GET(request: NextRequest) {
   try {
@@ -63,6 +90,12 @@ export async function POST(request: NextRequest) {
       ctaLink,
       badge,
       badgeColor,
+      contentPosition,
+      contentSize,
+      contentColor,
+      contentShadow,
+      contentStrokeColor,
+      contentStrokeWidth,
       order,
       isActive
     } = body
@@ -94,6 +127,13 @@ export async function POST(request: NextRequest) {
         ctaLink: ctaLink || null,
         badge: badge || null,
         badgeColor: badgeColor || 'bg-blue-500',
+        contentPosition: normalizeContentPosition(contentPosition),
+        contentSize: contentSize || 'lg',
+        contentColor: contentColor || '#ffffff',
+        contentShadow: contentShadow !== false,
+        contentStrokeColor: contentStrokeColor || '#000000',
+        contentStrokeWidth:
+          typeof contentStrokeWidth === 'number' && contentStrokeWidth >= 0 ? contentStrokeWidth : 0,
         order: finalOrder,
         isActive: isActive !== undefined ? isActive : true
       }

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
+import { buildVehicleImageAlt } from '@/lib/media-utils'
 
 interface Vehicle {
   id: string
@@ -69,6 +70,15 @@ export function EnhancedVehicleCard({
 
   const primaryImage = vehicle.images.find(img => img.isPrimary) || vehicle.images[0]
   const hasMultipleImages = vehicle.images.length > 1
+  const heroAlt = buildVehicleImageAlt(
+    {
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      category: vehicle.category
+    },
+    { context: 'بطاقة مركبة' }
+  )
 
   if (loading) {
     return (
@@ -92,7 +102,7 @@ export function EnhancedVehicleCard({
         <div className="relative h-[22rem] md:h-[26rem] overflow-hidden bg-gray-100">
           <img
             src={primaryImage?.imageUrl || '/placeholder-car.jpg'}
-            alt={`${vehicle.make} ${vehicle.model}`}
+            alt={heroAlt}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => {
               const target = e.target as HTMLImageElement;

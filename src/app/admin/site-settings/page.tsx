@@ -39,6 +39,9 @@ interface SiteSettings {
   primaryColor: string
   secondaryColor: string
   accentColor: string
+  neutralDarkColor?: string
+  neutralLightColor?: string
+  surfaceColor?: string
   fontFamily: string
   siteTitle: string
   siteDescription: string
@@ -76,10 +79,13 @@ export default function AdminSiteSettingsPage() {
   const { user, loading, authenticated } = useAuth()
   
   const defaultSettings: SiteSettings = {
-    primaryColor: '#3B82F6',
-    secondaryColor: '#10B981',
-    accentColor: '#F59E0B',
-    fontFamily: 'Inter',
+    primaryColor: '#0A1A3F',
+    secondaryColor: '#C1272D',
+    accentColor: '#C9C9C9',
+    neutralDarkColor: '#1F1F1F',
+    neutralLightColor: '#EEEEEE',
+    surfaceColor: '#FFFFFF',
+    fontFamily: 'Cairo',
     siteTitle: 'Al-Hamd Cars',
     siteDescription: 'Premium Car Dealership in Egypt',
     contactEmail: 'info@elhamdimport.com',
@@ -450,7 +456,7 @@ export default function AdminSiteSettingsPage() {
                   <Input
                     id="primaryColor"
                     type="color"
-                    value={settings.primaryColor || '#3B82F6'}
+                    value={settings.primaryColor || '#0A1A3F'}
                     onChange={(e) => updateSettings(['primaryColor'], e.target.value)}
                   />
                 </div>
@@ -459,7 +465,7 @@ export default function AdminSiteSettingsPage() {
                   <Input
                     id="secondaryColor"
                     type="color"
-                    value={settings.secondaryColor || '#10B981'}
+                    value={settings.secondaryColor || '#C1272D'}
                     onChange={(e) => updateSettings(['secondaryColor'], e.target.value)}
                   />
                 </div>
@@ -468,22 +474,52 @@ export default function AdminSiteSettingsPage() {
                   <Input
                     id="accentColor"
                     type="color"
-                    value={settings.accentColor || '#F59E0B'}
+                    value={settings.accentColor || '#C9C9C9'}
                     onChange={(e) => updateSettings(['accentColor'], e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="neutralDarkColor">الرمادي الغامق</Label>
+                  <Input
+                    id="neutralDarkColor"
+                    type="color"
+                    value={settings.neutralDarkColor || '#1F1F1F'}
+                    onChange={(e) => updateSettings(['neutralDarkColor'], e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="neutralLightColor">الرمادي الفاتح</Label>
+                  <Input
+                    id="neutralLightColor"
+                    type="color"
+                    value={settings.neutralLightColor || '#EEEEEE'}
+                    onChange={(e) => updateSettings(['neutralLightColor'], e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="surfaceColor">لون الخلفية</Label>
+                  <Input
+                    id="surfaceColor"
+                    type="color"
+                    value={settings.surfaceColor || '#FFFFFF'}
+                    onChange={(e) => updateSettings(['surfaceColor'], e.target.value)}
                   />
                 </div>
               </div>
               
               <div>
                 <Label htmlFor="fontFamily">نوع الخط</Label>
-                <Select value={settings.fontFamily || 'Inter'} onValueChange={(value) => updateSettings(['fontFamily'], value)}>
+                <Select value={settings.fontFamily || 'Cairo'} onValueChange={(value) => updateSettings(['fontFamily'], value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر نوع الخط" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Inter">Inter</SelectItem>
-                    <SelectItem value="Roboto">Roboto</SelectItem>
-                    <SelectItem value="Open Sans">Open Sans</SelectItem>
+                    <SelectItem value="Cairo">Cairo (Arabic)</SelectItem>
+                    <SelectItem value="Tajawal">Tajawal (Arabic)</SelectItem>
+                    <SelectItem value="Noto Sans Arabic">Noto Sans Arabic</SelectItem>
+                    <SelectItem value="Rubik">Rubik</SelectItem>
+                    <SelectItem value="IBM Plex Sans Arabic">IBM Plex Sans Arabic</SelectItem>
                     <SelectItem value="Poppins">Poppins</SelectItem>
                     <SelectItem value="Montserrat">Montserrat</SelectItem>
                   </SelectContent>

@@ -27,6 +27,7 @@ import {
 import { format } from 'date-fns'
 import { bookingSchemas, validationUtils } from '@/lib/validation'
 import { useFormValidation } from '@/hooks/use-form-validation'
+import { buildVehicleImageAlt } from '@/lib/media-utils'
 
 interface Vehicle {
   id: string
@@ -392,7 +393,15 @@ export default function TestDrivePage() {
                             <div className="h-32 bg-gray-200 rounded-lg mb-4">
                               <img
                                 src={vehicle.images[0]?.imageUrl || '/uploads/vehicles/1/nexon-front-new.jpg'}
-                                alt={`${vehicle.make} ${vehicle.model}`}
+                                alt={buildVehicleImageAlt(
+                                  {
+                                    make: vehicle.make,
+                                    model: vehicle.model,
+                                    year: vehicle.year,
+                                    category: vehicle.category
+                                  },
+                                  { context: 'اختيار مركبة لتجربة القيادة' }
+                                )}
                                 className="w-full h-full object-cover rounded-lg"
                               />
                             </div>
@@ -420,7 +429,15 @@ export default function TestDrivePage() {
                             <div className="w-20 h-16 bg-gray-200 rounded-lg">
                               <img
                                 src={selectedVehicle.images[0]?.imageUrl || '/api/placeholder/400/300'}
-                                alt={`${selectedVehicle.make} ${selectedVehicle.model}`}
+                                alt={buildVehicleImageAlt(
+                                  {
+                                    make: selectedVehicle.make,
+                                    model: selectedVehicle.model,
+                                    year: selectedVehicle.year,
+                                    category: selectedVehicle.category
+                                  },
+                                  { context: 'المركبة المختارة' }
+                                )}
                                 className="w-full h-full object-cover rounded-lg"
                               />
                             </div>
@@ -464,7 +481,15 @@ export default function TestDrivePage() {
                             <div className="w-20 h-16 bg-gray-200 rounded-lg">
                               <img
                                 src={selectedVehicle?.images[0]?.imageUrl || '/api/placeholder/400/300'}
-                                alt={`${selectedVehicle?.make} ${selectedVehicle?.model}`}
+                                alt={buildVehicleImageAlt(
+                                  {
+                                    make: selectedVehicle?.make,
+                                    model: selectedVehicle?.model,
+                                    year: selectedVehicle?.year,
+                                    category: selectedVehicle?.category
+                                  },
+                                  { context: 'اختيار وقت تجربة القيادة' }
+                                )}
                                 className="w-full h-full object-cover rounded-lg"
                               />
                             </div>
@@ -509,7 +534,15 @@ export default function TestDrivePage() {
                             <div className="w-20 h-16 bg-gray-200 rounded-lg">
                               <img
                                 src={selectedVehicle?.images[0]?.imageUrl || '/api/placeholder/400/300'}
-                                alt={`${selectedVehicle?.make} ${selectedVehicle?.model}`}
+                                alt={buildVehicleImageAlt(
+                                  {
+                                    make: selectedVehicle?.make,
+                                    model: selectedVehicle?.model,
+                                    year: selectedVehicle?.year,
+                                    category: selectedVehicle?.category
+                                  },
+                                  { context: 'معلومات العميل لتجربة القيادة' }
+                                )}
                                 className="w-full h-full object-cover rounded-lg"
                               />
                             </div>

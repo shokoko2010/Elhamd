@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PERMISSIONS } from '@/lib/permissions'
+import { getPermissionLabelAr } from '@/lib/permission-translations'
 
 export default function FinanceDebugPage() {
   const { user, hasPermission, loading } = useAuth()
@@ -35,6 +36,7 @@ export default function FinanceDebugPage() {
 
     return requiredPermissions.map(permission => ({
       name: permission,
+      label: getPermissionLabelAr(permission),
       has: hasPermission(permission)
     }))
   }
@@ -103,7 +105,7 @@ export default function FinanceDebugPage() {
           <div className="space-y-2">
             {checkPermissions().map((perm, index) => (
               <div key={index} className="flex items-center justify-between">
-                <span className="font-mono text-sm">{perm.name}</span>
+                <span className="font-mono text-sm">{perm.label}</span>
                 <Badge variant={perm.has ? 'default' : 'destructive'}>
                   {perm.has ? 'Granted' : 'Missing'}
                 </Badge>

@@ -1,5 +1,6 @@
 import { db } from './db'
 import { UserRole as PrismaUserRole, PermissionCategory, Prisma } from '@prisma/client'
+import { PERMISSION_DESCRIPTIONS_AR } from './permission-translations'
 
 // Define UserRole enum locally to match Prisma enum
 export enum UserRole {
@@ -125,86 +126,8 @@ export const PERMISSIONS = {
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
 
-export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
-  [PERMISSIONS.VIEW_USERS]: 'View user list and details',
-  [PERMISSIONS.CREATE_USERS]: 'Create new users',
-  [PERMISSIONS.EDIT_USERS]: 'Edit user information',
-  [PERMISSIONS.DELETE_USERS]: 'Delete users',
-  [PERMISSIONS.MANAGE_USER_ROLES]: 'Manage user roles and assignments',
-  [PERMISSIONS.MANAGE_USER_PERMISSIONS]: 'Manage user permissions and access',
-  [PERMISSIONS.VIEW_VEHICLES]: 'View vehicle inventory and details',
-  [PERMISSIONS.CREATE_VEHICLES]: 'Add new vehicles to inventory',
-  [PERMISSIONS.EDIT_VEHICLES]: 'Edit vehicle information',
-  [PERMISSIONS.DELETE_VEHICLES]: 'Remove vehicles from inventory',
-  [PERMISSIONS.MANAGE_VEHICLE_INVENTORY]: 'Manage vehicle inventory levels',
-  [PERMISSIONS.VIEW_BOOKINGS]: 'View booking list and details',
-  [PERMISSIONS.CREATE_BOOKINGS]: 'Create new bookings',
-  [PERMISSIONS.EDIT_BOOKINGS]: 'Edit booking information',
-  [PERMISSIONS.DELETE_BOOKINGS]: 'Cancel or delete bookings',
-  [PERMISSIONS.MANAGE_BOOKING_STATUS]: 'Change booking statuses',
-  [PERMISSIONS.VIEW_SERVICES]: 'View service list and details',
-  [PERMISSIONS.CREATE_SERVICES]: 'Create new services',
-  [PERMISSIONS.EDIT_SERVICES]: 'Edit service information',
-  [PERMISSIONS.DELETE_SERVICES]: 'Delete services',
-  [PERMISSIONS.MANAGE_SERVICE_SCHEDULE]: 'Manage service schedules and time slots',
-  [PERMISSIONS.VIEW_INVENTORY]: 'View inventory items and stock levels',
-  [PERMISSIONS.CREATE_INVENTORY_ITEMS]: 'Add new inventory items',
-  [PERMISSIONS.EDIT_INVENTORY_ITEMS]: 'Edit inventory item information',
-  [PERMISSIONS.DELETE_INVENTORY_ITEMS]: 'Remove inventory items',
-  [PERMISSIONS.MANAGE_WAREHOUSES]: 'Manage warehouse information and settings',
-  [PERMISSIONS.MANAGE_SUPPLIERS]: 'Manage supplier information and relationships',
-  [PERMISSIONS.SYNC_VEHICLES_TO_INVENTORY]: 'Sync vehicles with inventory system',
-  [PERMISSIONS.INITIALIZE_INVENTORY_DATA]: 'Initialize inventory with default data',
-  [PERMISSIONS.VIEW_FINANCIALS]: 'View financial reports and data',
-  [PERMISSIONS.VIEW_INVOICES]: 'View invoice list and details',
-  [PERMISSIONS.CREATE_INVOICES]: 'Create new invoices',
-  [PERMISSIONS.EDIT_INVOICES]: 'Edit invoice information',
-  [PERMISSIONS.DELETE_INVOICES]: 'Delete invoices',
-  [PERMISSIONS.APPROVE_INVOICES]: 'Approve invoice validation',
-  [PERMISSIONS.SEND_INVOICES]: 'Send invoices to customers',
-  [PERMISSIONS.DOWNLOAD_INVOICES]: 'Download invoice PDFs',
-  [PERMISSIONS.MANAGE_QUOTATIONS]: 'Manage price quotations',
-  [PERMISSIONS.APPROVE_QUOTATIONS]: 'Approve price quotations',
-  [PERMISSIONS.CONVERT_QUOTATIONS]: 'Convert quotations to invoices',
-  [PERMISSIONS.MANAGE_PAYMENTS]: 'Manage payment processing and records',
-  [PERMISSIONS.PROCESS_OFFLINE_PAYMENTS]: 'Process offline/cash payments',
-  [PERMISSIONS.MANAGE_PAYMENT_METHODS]: 'Manage payment methods and gateways',
-  [PERMISSIONS.VIEW_PAYMENT_HISTORY]: 'View payment history and records',
-  [PERMISSIONS.REFUND_PAYMENTS]: 'Process payment refunds',
-  [PERMISSIONS.MANAGE_TAX_SETTINGS]: 'Configure tax settings and rates',
-  [PERMISSIONS.VIEW_REPORTS]: 'View financial reports and analytics',
-  [PERMISSIONS.EXPORT_FINANCIAL_DATA]: 'Export financial data',
-  [PERMISSIONS.VIEW_FINANCIAL_OVERVIEW]: 'View overall financial status',
-  [PERMISSIONS.ACCESS_FINANCE_DASHBOARD]: 'Access finance dashboard',
-  [PERMISSIONS.VIEW_BRANCHES]: 'View branch list and details',
-  [PERMISSIONS.CREATE_BRANCHES]: 'Create new branches',
-  [PERMISSIONS.EDIT_BRANCHES]: 'Edit branch information',
-  [PERMISSIONS.DELETE_BRANCHES]: 'Delete branches',
-  [PERMISSIONS.MANAGE_BRANCH_STAFF]: 'Manage staff assignments for branches',
-  [PERMISSIONS.MANAGE_BRANCH_BUDGET]: 'Manage branch budgets',
-  [PERMISSIONS.APPROVE_BRANCH_TRANSFERS]: 'Approve branch transfers',
-  [PERMISSIONS.VIEW_CUSTOMERS]: 'View customer list and details',
-  [PERMISSIONS.CREATE_CUSTOMERS]: 'Create new customer records',
-  [PERMISSIONS.EDIT_CUSTOMERS]: 'Edit customer information',
-  [PERMISSIONS.DELETE_CUSTOMERS]: 'Delete customer records',
-  [PERMISSIONS.MANAGE_CUSTOMER_PROFILES]: 'Manage customer profiles',
-  [PERMISSIONS.VIEW_CUSTOMER_HISTORY]: 'View customer interaction history',
-  [PERMISSIONS.VIEW_CAMPAIGNS]: 'View marketing campaigns',
-  [PERMISSIONS.CREATE_CAMPAIGNS]: 'Create marketing campaigns',
-  [PERMISSIONS.EDIT_CAMPAIGNS]: 'Edit marketing campaigns',
-  [PERMISSIONS.DELETE_CAMPAIGNS]: 'Delete marketing campaigns',
-  [PERMISSIONS.MANAGE_EMAIL_TEMPLATES]: 'Manage email templates',
-  [PERMISSIONS.VIEW_SYSTEM_SETTINGS]: 'View system settings',
-  [PERMISSIONS.MANAGE_SYSTEM_SETTINGS]: 'Manage system configuration',
-  [PERMISSIONS.MANAGE_ROLES_TEMPLATES]: 'Manage role templates',
-  [PERMISSIONS.VIEW_SYSTEM_LOGS]: 'View system logs',
-  [PERMISSIONS.MANAGE_BACKUPS]: 'Manage system backups',
-  [PERMISSIONS.GENERATE_REPORTS]: 'Generate analytical reports',
-  [PERMISSIONS.VIEW_ANALYTICS]: 'View analytics dashboards',
-  [PERMISSIONS.EXPORT_DATA]: 'Export platform data',
-  [PERMISSIONS.MANAGE_DASHBOARDS]: 'Manage dashboard layouts and widgets',
-  [PERMISSIONS.VIEW_DASHBOARD]: 'View dashboard insights'
-}
+export const PERMISSION_DESCRIPTIONS: Record<Permission, string> =
+  PERMISSION_DESCRIPTIONS_AR as Record<Permission, string>
 
 export function inferPermissionCategory(permission: Permission): PermissionCategory {
   if (permission.includes('user')) return PermissionCategory.USER_MANAGEMENT

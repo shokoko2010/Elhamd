@@ -1,7 +1,8 @@
 import sharp from 'sharp'
-import { writeFile, mkdir, unlink } from 'fs/promises'
+import { writeFile, mkdir, unlink, readdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { existsSync } from 'fs'
+import { slugifyForFilename } from '@/lib/media-utils'
 
 export interface ImageOptions {
   width?: number
@@ -138,7 +139,8 @@ export class ImageOptimizationService {
     file: File,
     vehicleId: string,
     isPrimary: boolean = false,
-    order: number = 0
+    order: number = 0,
+    filenameHint?: string
   ): Promise<{
     originalUrl: string
     optimizedUrl: string
@@ -155,12 +157,14 @@ export class ImageOptimizationService {
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(2, 15)
-    const imageId = `${vehicleId}_${timestamp}_${randomId}`
-    const extension = file.type.split('/')[1]
-    const filename = `${imageId}.${extension}`
+    const baseName = await this.generateSeoFilenameBase({
+      directory: join(this.uploadDir, 'vehicles', 'optimized'),
+      fallback: `vehicle-${vehicleId}`,
+      hint: filenameHint,
+      originalName: file.name
+    })
+    const extension = this.getOriginalExtension(file)
+    const filename = `${baseName}.${extension}`
 
     // Create paths
     const originalPath = join(this.uploadDir, 'vehicles', 'original', filename)
@@ -181,12 +185,12 @@ export class ImageOptimizationService {
       format: 'webp'
     })
 
-    const optimizedFilename = `${imageId}.webp`
+    const optimizedFilename = `${baseName}.webp`
     const optimizedFinalPath = join(this.uploadDir, 'vehicles', 'optimized', optimizedFilename)
     await writeFile(optimizedFinalPath, optimizedBuffer)
 
     // Generate thumbnails
-    const thumbnails = await this.generateThumbnails(buffer, imageId)
+    const thumbnails = await this.generateThumbnails(buffer, baseName)
 
     return {
       originalUrl: `/uploads/vehicles/original/${filename}`,
@@ -199,7 +203,8 @@ export class ImageOptimizationService {
 
   async saveServiceImage(
     file: File,
-    serviceId: string
+    serviceId: string,
+    filenameHint?: string
   ): Promise<{
     url: string
     thumbnails: { [key: string]: string }
@@ -215,14 +220,14 @@ export class ImageOptimizationService {
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(2, 15)
-    const imageId = `service_${serviceId}_${timestamp}_${randomId}`
-
-    // Create path
     const dirPath = join(this.uploadDir, 'services')
-    const filename = `${imageId}.webp`
+    const baseName = await this.generateSeoFilenameBase({
+      directory: dirPath,
+      fallback: `service-${serviceId}`,
+      hint: filenameHint,
+      originalName: file.name
+    })
+    const filename = `${baseName}.webp`
     const filepath = join(dirPath, filename)
 
     // Ensure directory exists
@@ -239,7 +244,7 @@ export class ImageOptimizationService {
     await writeFile(filepath, optimizedBuffer)
 
     // Generate thumbnails
-    const thumbnails = await this.generateThumbnails(buffer, imageId)
+    const thumbnails = await this.generateThumbnails(buffer, baseName)
 
     return {
       url: `/uploads/services/${filename}`,
@@ -251,7 +256,8 @@ export class ImageOptimizationService {
 
   async saveGeneralImage(
     file: File,
-    folderName: string = 'general'
+    folderName: string = 'general',
+    filenameHint?: string
   ): Promise<{
     url: string
     thumbnails: { [key: string]: string }
@@ -267,14 +273,14 @@ export class ImageOptimizationService {
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(2, 15)
-    const imageId = `general_${timestamp}_${randomId}`
-
-    // Create path
     const dirPath = join(this.uploadDir, folderName)
-    const filename = `${imageId}.webp`
+    const baseName = await this.generateSeoFilenameBase({
+      directory: dirPath,
+      fallback: `${folderName}-image`,
+      hint: filenameHint,
+      originalName: file.name
+    })
+    const filename = `${baseName}.webp`
     const filepath = join(dirPath, filename)
 
     // Ensure directory exists
@@ -291,7 +297,7 @@ export class ImageOptimizationService {
     await writeFile(filepath, optimizedBuffer)
 
     // Generate thumbnails
-    const thumbnails = await this.generateThumbnails(buffer, imageId)
+    const thumbnails = await this.generateThumbnails(buffer, baseName)
 
     return {
       url: `/uploads/${folderName}/${filename}`,
@@ -378,6 +384,69 @@ export class ImageOptimizationService {
         }
       })
     )
+  }
+
+  private getOriginalExtension(file: File): string {
+    if (file.type?.includes('/')) {
+      const [, ext = 'jpg'] = file.type.split('/')
+      if (ext) {
+        return ext.toLowerCase() === 'jpeg' ? 'jpg' : ext.toLowerCase()
+      }
+    }
+
+    const fromName = file.name?.split('.').pop()
+    if (fromName) {
+      return fromName.toLowerCase()
+    }
+
+    return 'jpg'
+  }
+
+  private stripExtension(name?: string): string {
+    if (!name) return ''
+    return name.replace(/\.[^/.]+$/, '')
+  }
+
+  private async generateSeoFilenameBase(options: {
+    directory: string
+    fallback: string
+    hint?: string | null
+    originalName?: string
+  }): Promise<string> {
+    const fallbackSlug = slugifyForFilename(options.fallback, 'image')
+    const hintSlug = options.hint ? slugifyForFilename(options.hint, fallbackSlug) : ''
+    const originalSlug = options.originalName
+      ? slugifyForFilename(this.stripExtension(options.originalName), fallbackSlug)
+      : ''
+
+    const baseName = hintSlug || originalSlug || fallbackSlug
+    return this.getNextSequentialBase(options.directory, baseName)
+  }
+
+  private async getNextSequentialBase(directory: string, baseName: string): Promise<string> {
+    await this.ensureDirectory(directory)
+
+    let entries: string[] = []
+    try {
+      entries = await readdir(directory)
+    } catch (error) {
+      console.error('Failed to read directory for filename generation:', error)
+    }
+
+    const regex = new RegExp(`^${this.escapeRegExp(baseName)}-(\\d+)`)
+    const maxIndex = entries.reduce((max, entry) => {
+      const match = entry.match(regex)
+      if (!match) return max
+      const value = parseInt(match[1], 10)
+      return Number.isNaN(value) ? max : Math.max(max, value)
+    }, 0)
+
+    const nextIndex = maxIndex + 1
+    return `${baseName}-${String(nextIndex).padStart(2, '0')}`
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   }
 
   private async ensureDirectory(dirPath: string): Promise<void> {

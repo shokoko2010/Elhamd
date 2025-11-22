@@ -126,6 +126,8 @@ function CreateInvoiceContent() {
     phone: '',
     company: ''
   })
+  const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FIXED'>('PERCENTAGE')
+  const [discountValue, setDiscountValue] = useState(0)
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false)
   const [enableInstallments, setEnableInstallments] = useState(false)
   const [installments, setInstallments] = useState<InstallmentForm[]>([])
@@ -402,9 +404,21 @@ function CreateInvoiceContent() {
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.totalPrice?.toString()) || 0), 0)
     const taxAmount = items.reduce((sum, item) => sum + (parseFloat(item.taxAmount?.toString()) || 0), 0)
-    const totalAmount = subtotal + taxAmount
 
-    return { subtotal, taxAmount, totalAmount }
+    const baseTotal = subtotal + taxAmount
+
+    const rawDiscount = (() => {
+      if (!Number.isFinite(discountValue) || discountValue <= 0) return 0
+      if (discountType === 'PERCENTAGE') {
+        return baseTotal * (discountValue / 100)
+      }
+      return discountValue
+    })()
+
+    const discountAmount = Math.min(baseTotal, rawDiscount)
+    const totalAmount = Math.max(baseTotal - discountAmount, 0)
+
+    return { subtotal, taxAmount, discountAmount, totalAmount }
   }
 
   const createInstallmentId = () => {
@@ -493,10 +507,10 @@ function CreateInvoiceContent() {
   }
 
   const createNewCustomer = async () => {
-    if (!newCustomer.email || !newCustomer.name) {
+    if (!newCustomer.name) {
       toast({
         title: 'خطأ',
-        description: 'يرجى إدخال اسم العميل والبريد الإلكتروني',
+        description: 'يرجى إدخال اسم العميل',
         variant: 'destructive'
       })
       return
@@ -512,7 +526,7 @@ function CreateInvoiceContent() {
         },
         body: JSON.stringify({
           name: newCustomer.name,
-          email: newCustomer.email,
+          email: newCustomer.email || undefined,
           phone: newCustomer.phone,
           segment: 'CUSTOMER',
           leadSource: 'OTHER'
@@ -557,7 +571,7 @@ function CreateInvoiceContent() {
     setLoading(true)
     
     try {
-      const { subtotal, taxAmount, totalAmount } = calculateTotals()
+    const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals()
       
       const derivedInvoiceType = items.some(item => item.itemType === 'VEHICLE') ? 'PRODUCT' : invoiceType
 
@@ -573,20 +587,38 @@ function CreateInvoiceContent() {
             }))
         : []
 
+      const invoiceItems = items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        taxRate: item.taxRate,
+        metadata: {
+          itemType: item.itemType,
+          inventoryItemId: item.inventoryItemId,
+          vehicleId: item.vehicleId,
+        }
+      }))
+
+      if (discountAmount > 0) {
+        invoiceItems.push({
+          description: discountType === 'PERCENTAGE'
+            ? `خصم (${discountValue.toFixed(2)}٪)`
+            : 'خصم على الفاتورة',
+          quantity: 1,
+          unitPrice: Number((-discountAmount).toFixed(2)),
+          taxRate: 0,
+          metadata: {
+            itemType: 'DISCOUNT',
+            discountType,
+            discountValue,
+          }
+        })
+      }
+
       const invoiceData: any = {
         customerId: selectedCustomer,
         type: derivedInvoiceType,
-        items: items.map(item => ({
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          taxRate: item.taxRate,
-          metadata: {
-            itemType: item.itemType,
-            inventoryItemId: item.inventoryItemId,
-            vehicleId: item.vehicleId,
-          }
-        })),
+        items: invoiceItems,
         issueDate,
         dueDate,
         notes,
@@ -648,7 +680,7 @@ function CreateInvoiceContent() {
     }
   }
 
-  const { subtotal, taxAmount, totalAmount } = calculateTotals()
+  const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals()
   const totalInstallmentAmount = installments.reduce((sum, installment) => sum + (Number.isFinite(installment.amount) ? installment.amount : 0), 0)
   const installmentDifference = totalInstallmentAmount - totalAmount
   const hasInstallmentMismatch = enableInstallments && Math.abs(installmentDifference) > 0.5
@@ -737,7 +769,7 @@ function CreateInvoiceContent() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="newCustomerEmail" className="text-sm">البريد الإلكتروني *</Label>
+                      <Label htmlFor="newCustomerEmail" className="text-sm">البريد الإلكتروني (اختياري)</Label>
                       <Input
                         id="newCustomerEmail"
                         type="email"
@@ -1111,6 +1143,30 @@ function CreateInvoiceContent() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <Label className="text-sm text-gray-700">الخصم</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={discountType} onValueChange={(value) => setDiscountType(value as 'PERCENTAGE' | 'FIXED')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="نوع الخصم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERCENTAGE">نسبة مئوية</SelectItem>
+                      <SelectItem value="FIXED">مبلغ ثابت</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={discountValue.toString()}
+                    onChange={(event) => setDiscountValue(Number(event.target.value) || 0)}
+                    placeholder={discountType === 'PERCENTAGE' ? '0%' : '0.00'}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">يمكنك تحديد نسبة أو قيمة ثابتة لتخفيض إجمالي الفاتورة.</p>
+              </div>
+
+              <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">الإجمالي الفرعي:</span>
                   <span className="font-medium">{(subtotal || 0).toFixed(2)} ج.م</span>
@@ -1119,6 +1175,12 @@ function CreateInvoiceContent() {
                   <span className="text-gray-600">الضريبة:</span>
                   <span className="font-medium">{(taxAmount || 0).toFixed(2)} ج.م</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-700">
+                    <span>الخصم المطبق:</span>
+                    <span>-{discountAmount.toFixed(2)} ج.م</span>
+                  </div>
+                )}
                 <div className="border-t pt-2">
                   <div className="flex justify-between text-lg font-bold">
                     <span>الإجمالي:</span>

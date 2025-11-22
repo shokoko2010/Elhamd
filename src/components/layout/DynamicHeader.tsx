@@ -29,6 +29,9 @@ interface SiteSettings {
   primaryColor: string
   secondaryColor: string
   accentColor: string
+  neutralDarkColor?: string
+  neutralLightColor?: string
+  surfaceColor?: string
   fontFamily: string
   siteTitle: string
   siteDescription: string

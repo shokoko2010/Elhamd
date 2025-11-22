@@ -222,6 +222,23 @@ export default function AdminVehiclesPage() {
     setImageInputs(prev => ({ ...prev, [context]: value }))
   }
 
+  const resolveVehicleFilenameHint = (context: 'create' | 'edit') => {
+    const base = context === 'edit' && selectedVehicle ? selectedVehicle : formData
+    const yearValue = (base as { year?: number | string } | null | undefined)?.year
+    const normalizedYear =
+      typeof yearValue === 'number'
+        ? yearValue.toString()
+        : typeof yearValue === 'string'
+          ? yearValue
+          : ''
+
+    const parts = [base?.make, base?.model, normalizedYear]
+    return parts
+      .filter((part): part is string => Boolean(part && part.trim()))
+      .join(' ')
+      .trim()
+  }
+
   const handleAddImage = (context: 'create' | 'edit') => {
     const value = imageInputs[context].trim()
     if (!value) {
@@ -256,6 +273,10 @@ export default function AdminVehiclesPage() {
       payload.append('file', file)
       payload.append('type', 'vehicle')
       payload.append('entityId', context === 'edit' && selectedVehicle ? selectedVehicle.id : 'new-vehicle')
+      const filenameHint = resolveVehicleFilenameHint(context)
+      if (filenameHint) {
+        payload.append('filenameHint', filenameHint)
+      }
 
       const response = await fetch('/api/upload/image', {
         method: 'POST',

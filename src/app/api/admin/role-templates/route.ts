@@ -6,6 +6,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { PermissionService } from '@/lib/permissions'
+import {
+  getPermissionDescriptionAr,
+  getPermissionLabelAr,
+  getRoleLabelAr,
+  getRoleTemplateDescriptionAr,
+  getRoleTemplateNameAr,
+} from '@/lib/permission-translations'
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,14 +55,22 @@ export async function GET(request: NextRequest) {
     const templatesWithPermissions = templates.map((template) => ({
       id: template.id,
       name: template.name,
+      nameAr: getRoleTemplateNameAr(template.name, template.role),
       description: template.description,
+      descriptionAr: getRoleTemplateDescriptionAr(template.description, template.role),
       role: template.role,
+      roleLabel: getRoleLabelAr(template.role),
       isActive: template.isActive,
       isSystem: template.isSystem,
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
       userCount: template._count.users,
-      permissions: template.roleTemplatePermissions.map((rtp) => rtp.permission.name)
+      permissions: template.roleTemplatePermissions.map((rtp) => rtp.permission.name),
+      permissionsMeta: template.roleTemplatePermissions.map((rtp) => ({
+        name: rtp.permission.name,
+        label: getPermissionLabelAr(rtp.permission.name),
+        description: getPermissionDescriptionAr(rtp.permission.name, rtp.permission.description ?? undefined),
+      })),
     }))
 
     return NextResponse.json({ templates: templatesWithPermissions })

@@ -63,6 +63,17 @@ import { FacebookFeeds } from '@/components/social/FacebookFeeds'
 import { ModernVehicleCarousel } from '@/components/home/ModernVehicleCarousel'
 import type { PublicVehicle } from '@/types/public-vehicle'
 
+type SliderContentPosition =
+  | 'top-right'
+  | 'bottom-right'
+  | 'top-center'
+  | 'bottom-center'
+  | 'top-left'
+  | 'bottom-left'
+  | 'middle-left'
+  | 'middle-center'
+  | 'middle-right'
+
 interface SliderItem {
   id: string
   title: string
@@ -73,6 +84,12 @@ interface SliderItem {
   ctaLink: string
   badge?: string
   badgeColor?: string
+  contentPosition?: SliderContentPosition
+  contentSize?: 'sm' | 'md' | 'lg'
+  contentColor?: string
+  contentShadow?: boolean
+  contentStrokeColor?: string
+  contentStrokeWidth?: number
 }
 
 const arabicDayLabels: Record<string, string> = {
@@ -83,6 +100,33 @@ const arabicDayLabels: Record<string, string> = {
   Wednesday: 'الأربعاء',
   Thursday: 'الخميس',
   Friday: 'الجمعة'
+}
+
+const normalizeContentPosition = (position?: string): SliderContentPosition => {
+  switch (position) {
+    case 'top-right':
+    case 'bottom-right':
+    case 'top-center':
+    case 'bottom-center':
+    case 'top-left':
+    case 'bottom-left':
+    case 'middle-left':
+    case 'middle-center':
+    case 'middle-right':
+      return position
+    case 'left':
+      return 'middle-left'
+    case 'center':
+      return 'middle-center'
+    case 'right':
+      return 'middle-right'
+    case 'top':
+      return 'top-center'
+    case 'bottom':
+      return 'bottom-center'
+    default:
+      return 'top-right'
+  }
 }
 
 const fallbackVehicles: PublicVehicle[] = [
@@ -261,6 +305,7 @@ export default function Home() {
   const [totalVehiclesCount, setTotalVehiclesCount] = useState<number | null>(null)
   const [sliderItems, setSliderItems] = useState<SliderItem[]>([])
   const [companyInfo, setCompanyInfo] = useState<any>(null)
+  const [siteSettings, setSiteSettings] = useState<any>(null)
   const [serviceItems, setServiceItems] = useState<any[]>([])
   const [companyStats, setCompanyStats] = useState<any[]>([])
   const [companyValues, setCompanyValues] = useState<any[]>([])
@@ -297,6 +342,51 @@ export default function Home() {
 
   const facebookVideoUrl = homepageSettings.facebookVideoUrl?.trim() || `${facebookPageUrl}/videos`
 
+  const socialLinks = useMemo(() => {
+    const priorityOrder = [
+      'facebook',
+      'instagram',
+      'whatsapp',
+      'twitter',
+      'linkedin',
+      'youtube',
+      'tiktok',
+      'snapchat',
+      'telegram',
+      'messenger'
+    ]
+
+    const collected: Record<string, string> = {}
+
+    const addLinks = (source?: Record<string, any>) => {
+      if (!source || typeof source !== 'object') return
+
+      Object.entries(source).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim()) {
+          const normalizedKey = key.trim().toLowerCase()
+          if (!collected[normalizedKey]) {
+            collected[normalizedKey] = value.trim()
+          }
+        }
+      })
+    }
+
+    addLinks(contactInfo?.socialMedia)
+    addLinks(companyInfo?.socialMedia)
+    addLinks(companyInfo?.socialLinks)
+    addLinks(siteSettings?.socialLinks)
+
+    const prioritized = priorityOrder
+      .map((platform) => ({ platform, url: collected[platform] }))
+      .filter((item) => Boolean(item.url))
+
+    const remaining = Object.entries(collected)
+      .filter(([platform]) => !priorityOrder.includes(platform))
+      .map(([platform, url]) => ({ platform, url }))
+
+    return [...prioritized, ...remaining]
+  }, [companyInfo, contactInfo, siteSettings])
+
   const carouselVehicles = useMemo(() => {
     if (featuredVehicles.length > 0) {
       return featuredVehicles
@@ -318,9 +408,9 @@ export default function Home() {
     const fetchAllData = async () => {
       try {
         // Fetch homepage settings
-        const settingsResponse = await fetch('/api/homepage-settings', { cache: 'no-store' })
-        if (settingsResponse.ok) {
-          const settingsData = await settingsResponse.json()
+        const homepageSettingsResponse = await fetch('/api/homepage-settings', { cache: 'no-store' })
+        if (homepageSettingsResponse.ok) {
+          const settingsData = await homepageSettingsResponse.json()
           setHomepageSettings({
             showHeroSlider: Boolean(settingsData?.showHeroSlider),
             autoPlaySlider: Boolean(settingsData?.autoPlaySlider),
@@ -350,7 +440,9 @@ export default function Home() {
         }
 
         // Fetch company info
-        const companyInfoResponse = await fetch('/api/company-info')
+        const companyInfoResponse = await fetch('/api/company-info', {
+          cache: 'no-store'
+        })
         if (companyInfoResponse.ok) {
           const companyData = await companyInfoResponse.json()
           setCompanyInfo(normalizeBrandingObject(companyData))
@@ -441,6 +533,15 @@ export default function Home() {
           setContactInfo(normalizeContactInfo(normalizeBrandingObject(contactData)))
         }
 
+        // Fetch public site settings (for social links)
+        const siteSettingsResponse = await fetch('/api/public/site-settings', {
+          cache: 'no-store'
+        })
+        if (siteSettingsResponse.ok) {
+          const settingsData = await siteSettingsResponse.json()
+          setSiteSettings(settingsData)
+        }
+
         // Fetch sliders
         const slidersResponse = await fetch('/api/sliders?activeOnly=true')
         if (slidersResponse.ok) {
@@ -451,7 +552,21 @@ export default function Home() {
           } else if (Array.isArray(slidersData)) {
             sliders = slidersData
           }
-          setSliderItems(sliders.map((item) => normalizeBrandingObject(item)))
+          setSliderItems(
+            sliders.map((item, index) => ({
+              ...normalizeBrandingObject(item),
+              contentPosition: normalizeContentPosition(item?.contentPosition),
+              contentSize: item?.contentSize || 'lg',
+              contentColor: item?.contentColor || '#ffffff',
+              contentShadow: item?.contentShadow !== false,
+              contentStrokeColor: item?.contentStrokeColor || '#000000',
+              contentStrokeWidth:
+                typeof item?.contentStrokeWidth === 'number' && item.contentStrokeWidth >= 0
+                  ? item.contentStrokeWidth
+                  : 0,
+              order: typeof item?.order === 'number' ? item.order : index
+            }))
+          )
         }
 
         // Fetch all vehicles at once to render the full carousel dataset
@@ -529,6 +644,12 @@ export default function Home() {
   const serviceSectionSubtitle = homepageSettings.servicesSubtitle?.trim() || 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا'
   const serviceSectionDescription = homepageSettings.servicesDescription?.trim()
   const serviceCtaText = homepageSettings.servicesCtaText?.trim() || 'احجز الآن'
+  const brandHeroGradient =
+    'linear-gradient(135deg, var(--brand-primary-600, #081432) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-500, #C1272D) 100%)'
+  const brandContactGradient =
+    'linear-gradient(135deg, var(--brand-primary-800, #050c1f) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-600, #a41f25) 100%)'
+  const brandTextGradient =
+    'linear-gradient(90deg, var(--brand-neutral-dark, #1F1F1F) 0%, var(--brand-primary-500, #0A1A3F) 55%, var(--brand-secondary-500, #C1272D) 100%)'
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
@@ -545,7 +666,10 @@ export default function Home() {
 
       <div className="w-full">
         {/* Company Introduction Section */}
-        <section className="py-16 md:py-24 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white relative overflow-hidden">
+        <section
+          className="py-16 md:py-24 text-white relative overflow-hidden"
+          style={{ background: brandHeroGradient }}
+        >
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
@@ -655,7 +779,10 @@ export default function Home() {
                   <Car className="ml-2 h-4 w-4" />
                   {companyInfo?.features?.[0] || 'سياراتنا'}
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+                <h2
+                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                  style={{ backgroundImage: brandTextGradient }}
+                >
                   {companyInfo?.title || 'استعرض سيارات تاتا'}
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -1047,7 +1174,10 @@ export default function Home() {
         {/* Contact Section */}
         {contactInfo && (
           <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-br from-gray-900 to-blue-900 text-white relative overflow-hidden">
+            <section
+              className="py-16 md:py-24 text-white relative overflow-hidden"
+              style={{ background: brandContactGradient }}
+            >
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
               </div>
@@ -1118,40 +1248,55 @@ export default function Home() {
                       <Users className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-4">تابعنا</h3>
-                    <div className="space-y-3">
-                      {contactInfo.socialMedia &&
-                        Object.entries(contactInfo.socialMedia)
-                          .filter(([, url]) => typeof url === 'string' && url)
-                          .map(([platform, url]) => {
-                            const platformKey = platform.toLowerCase()
-                            const socialIconMap: Record<string, LucideIcon> = {
-                              facebook: Facebook,
-                              instagram: Instagram,
-                              linkedin: Linkedin,
-                              twitter: Twitter,
-                              youtube: Youtube,
-                              whatsapp: MessageCircle,
-                              messenger: MessageCircle,
-                              default: Users
-                            }
-                            const SocialIcon = socialIconMap[platformKey] || socialIconMap.default
+                    <div className="flex flex-wrap gap-3" aria-label="روابط التواصل الاجتماعي">
+                      {socialLinks.map(({ platform, url }) => {
+                        const platformKey = platform.toLowerCase()
+                        const socialIconMap: Record<string, LucideIcon> = {
+                          facebook: Facebook,
+                          instagram: Instagram,
+                          linkedin: Linkedin,
+                          twitter: Twitter,
+                          youtube: Youtube,
+                          whatsapp: MessageCircle,
+                          messenger: MessageCircle,
+                          tiktok: Youtube,
+                          snapchat: MessageCircle,
+                          telegram: MessageCircle,
+                          default: Users
+                        }
+                        const platformLabels: Record<string, string> = {
+                          facebook: 'فيسبوك',
+                          instagram: 'إنستجرام',
+                          linkedin: 'لينكدإن',
+                          twitter: 'تويتر',
+                          youtube: 'يوتيوب',
+                          whatsapp: 'واتساب',
+                          messenger: 'ماسنجر',
+                          tiktok: 'تيك توك',
+                          snapchat: 'سناب شات',
+                          telegram: 'تليجرام'
+                        }
+                        const SocialIcon = socialIconMap[platformKey] || socialIconMap.default
+                        const label = platformLabels[platformKey] || platform
 
-                            return (
-                              <a
-                                key={platform}
-                                href={url as string}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 text-blue-50 hover:text-white transition-colors"
-                              >
-                                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                  <SocialIcon className="h-4 w-4" />
-                                </div>
-                                <span className="capitalize">{platform}</span>
-                              </a>
-                            )
-                          })}
+                        return (
+                          <a
+                            key={platform}
+                            href={url as string}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`تابعنا على ${label}`}
+                            className="w-11 h-11 rounded-xl bg-white/20 border border-white/20 text-blue-50 hover:text-white hover:bg-white/30 transition flex items-center justify-center"
+                          >
+                            <SocialIcon className="h-5 w-5" />
+                            <span className="sr-only">{label}</span>
+                          </a>
+                        )
+                      })}
                     </div>
+                    {socialLinks.length === 0 && (
+                      <p className="text-blue-50/80">لم يتم إضافة روابط تواصل بعد.</p>
+                    )}
                   </div>
                 </div>
 
@@ -1224,7 +1369,10 @@ export default function Home() {
                   <Facebook className="ml-2 h-4 w-4" />
                   تابعونا على فيسبوك
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+                <h2
+                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                  style={{ backgroundImage: brandTextGradient }}
+                >
                   أحدث ما ننشره على فيسبوك
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
