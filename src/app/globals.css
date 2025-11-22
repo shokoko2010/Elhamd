@@ -381,9 +381,12 @@
 
   .admin-surface [data-slot='button'] {
     background-image: linear-gradient(120deg, var(--admin-primary), var(--admin-secondary));
-    color: #fff !important;
     border-color: rgba(255, 255, 255, 0.5);
     box-shadow: 0 10px 30px rgba(10, 26, 63, 0.24), 0 4px 14px rgba(193, 39, 45, 0.18);
+  }
+
+  .admin-surface [data-slot='button']:not([data-variant='outline']):not([data-variant='ghost']) {
+    color: #fff !important;
   }
 
   .admin-surface [data-slot='button']:hover {
@@ -399,7 +402,7 @@
   .admin-surface [data-slot='button'][data-variant='outline'],
   .admin-surface [data-slot='button'][data-variant='ghost'] {
     background: rgba(255, 255, 255, 0.9);
-    color: var(--admin-primary);
+    color: var(--admin-primary) !important;
     border-color: rgba(10, 26, 63, 0.2);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 6px 18px rgba(10, 26, 63, 0.08);
   }
