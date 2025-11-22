@@ -171,22 +171,22 @@ function AuthAwareNavbar() {
           <div className="flex items-center">
             <Link
               href="/"
-              className="flex items-center space-x-2 rounded-full bg-white/70 px-3 py-1 shadow-[0_10px_40px_rgba(0,0,0,0.08)] backdrop-blur-md transition hover:shadow-[0_14px_50px_rgba(0,0,0,0.12)]"
+              className="flex items-center space-x-2 rounded-full bg-white/70 px-4 py-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.08)] backdrop-blur-md transition hover:shadow-[0_14px_50px_rgba(0,0,0,0.12)]"
             >
               {settings.logoUrl ? (
                 <img
                   src={settings.logoUrl}
                   alt={settings.siteTitle}
-                  className="h-10 w-auto drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]"
+                  className="h-12 w-auto drop-shadow-[0_0_16px_rgba(255,255,255,0.38)] md:h-14"
                 />
               ) : (
                 <Car
-                  className={`h-10 w-10 ${iconToneClass}`}
+                  className={`h-12 w-12 ${iconToneClass}`}
                   style={{ color: shouldUseTransparent ? undefined : settings.primaryColor }}
                 />
               )}
               <span
-                className={`text-2xl md:text-3xl font-extrabold tracking-tight transition-colors ${shouldUseTransparent ? 'text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.35)]' : ''}`}
+                className={`text-xl md:text-2xl font-bold tracking-tight transition-colors ${shouldUseTransparent ? 'text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.35)]' : ''}`}
                 style={!shouldUseTransparent ? { color: settings.primaryColor } : undefined}
               >
                 {settings.siteTitle}

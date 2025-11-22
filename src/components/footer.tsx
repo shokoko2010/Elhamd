@@ -285,12 +285,12 @@ export default function Footer() {
                 <img
                   src={footerContent?.logoUrl || settings.logoUrl}
                   alt={footerContent?.logoText || settings.siteTitle}
-                  className="h-12 w-auto drop-shadow-[0_10px_25px_rgba(0,0,0,0.35)]"
+                  className="h-14 w-auto drop-shadow-[0_10px_25px_rgba(0,0,0,0.35)] md:h-16"
                 />
               ) : (
                 <Car className="h-12 w-12" style={{ color: settings.primaryColor }} />
               )}
-              <span className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+              <span className="text-xl md:text-2xl font-semibold tracking-tight text-white">
                 {footerContent?.logoText || settings.siteTitle}
               </span>
             </div>
