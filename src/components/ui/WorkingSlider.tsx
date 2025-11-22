@@ -1,9 +1,49 @@
 'use client'
 
 import { useState, useEffect, useRef, TouchEvent } from 'react'
+import type { CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { buildSliderImageAlt } from '@/lib/media-utils'
+
+const normalizeContentPosition = (position?: string): SliderContentPosition => {
+  switch (position) {
+    case 'top-right':
+    case 'bottom-right':
+    case 'top-center':
+    case 'bottom-center':
+    case 'top-left':
+    case 'bottom-left':
+    case 'middle-left':
+    case 'middle-center':
+    case 'middle-right':
+      return position
+    case 'left':
+      return 'middle-left'
+    case 'center':
+      return 'middle-center'
+    case 'right':
+      return 'middle-right'
+    case 'top':
+      return 'top-center'
+    case 'bottom':
+      return 'bottom-center'
+    default:
+      return 'top-right'
+  }
+}
+
+type SliderContentPosition =
+  | 'top-right'
+  | 'bottom-right'
+  | 'top-center'
+  | 'bottom-center'
+  | 'top-left'
+  | 'bottom-left'
+  | 'middle-left'
+  | 'middle-center'
+  | 'middle-right'
 
 interface WorkingSliderProps {
   items: Array<{
@@ -16,6 +56,12 @@ interface WorkingSliderProps {
     ctaLink: string
     badge?: string
     badgeColor?: string
+    contentPosition?: SliderContentPosition
+    contentSize?: 'sm' | 'md' | 'lg'
+    contentColor?: string
+    contentShadow?: boolean
+    contentStrokeColor?: string
+    contentStrokeWidth?: number
   }>
   autoPlay?: boolean
   autoPlayInterval?: number
@@ -104,7 +150,12 @@ export function WorkingSlider({
 
   if (loading) {
     return (
-      <div className="relative w-full h-[70vh] md:h-[80vh] bg-gradient-to-br from-blue-900 to-blue-700">
+      <div
+        className="relative w-full h-[70vh] md:h-[80vh]"
+        style={{
+          background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
+        }}
+      >
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-white text-center">
             <div className="w-8 h-8 border-2 border-white border-t-blue-300 rounded-full animate-spin mx-auto mb-4"></div>
@@ -117,7 +168,12 @@ export function WorkingSlider({
 
   if (!items.length) {
     return (
-      <div className="relative w-full h-[70vh] md:h-[80vh] bg-gradient-to-br from-gray-900 to-gray-700 flex items-center justify-center">
+      <div
+        className="relative w-full h-[70vh] md:h-[80vh] flex items-center justify-center"
+        style={{
+          background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-700, #061028))'
+        }}
+      >
         <div className="text-center text-white">
           <p className="text-lg">لا توجد عروض متاحة حالياً</p>
         </div>
@@ -126,6 +182,87 @@ export function WorkingSlider({
   }
 
   const currentItem = items[currentIndex]
+  const heroAlt = buildSliderImageAlt(
+    {
+      title: currentItem.title,
+      subtitle: currentItem.subtitle,
+      description: currentItem.description,
+      badge: currentItem.badge
+    },
+    { index: currentIndex }
+  )
+  const contentPosition = normalizeContentPosition(currentItem.contentPosition)
+  const contentColor = currentItem.contentColor || '#ffffff'
+  const contentShadow = currentItem.contentShadow !== false
+  const contentStrokeColor = currentItem.contentStrokeColor || '#000000'
+  const contentStrokeWidth =
+    typeof currentItem.contentStrokeWidth === 'number' && currentItem.contentStrokeWidth >= 0
+      ? currentItem.contentStrokeWidth
+      : 0
+  const [verticalAlign, horizontalAlign] = contentPosition.split('-') as [
+    'top' | 'middle' | 'bottom',
+    'right' | 'center' | 'left'
+  ]
+  const verticalClass =
+    verticalAlign === 'top'
+      ? 'justify-start'
+      : verticalAlign === 'middle'
+        ? 'justify-center'
+        : 'justify-end'
+  const horizontalAlignmentClass =
+    horizontalAlign === 'left'
+      ? 'items-start text-left'
+      : horizontalAlign === 'center'
+        ? 'items-center text-center'
+        : 'items-end text-right'
+  const textAlignmentClass =
+    horizontalAlign === 'left'
+      ? 'text-left'
+      : horizontalAlign === 'center'
+        ? 'text-center'
+        : 'text-right'
+
+  const gridPositionClass: Record<SliderContentPosition, string> = {
+    'top-left': 'row-start-1 col-start-1',
+    'top-center': 'row-start-1 col-start-2',
+    'top-right': 'row-start-1 col-start-3',
+    'middle-left': 'row-start-2 col-start-1',
+    'middle-center': 'row-start-2 col-start-2',
+    'middle-right': 'row-start-2 col-start-3',
+    'bottom-left': 'row-start-3 col-start-1',
+    'bottom-center': 'row-start-3 col-start-2',
+    'bottom-right': 'row-start-3 col-start-3'
+  }
+
+  const typographyScale: Record<NonNullable<typeof currentItem.contentSize>, {
+    title: string
+    subtitle: string
+    description: string
+  }> = {
+    sm: {
+      title: 'text-2xl md:text-4xl lg:text-5xl',
+      subtitle: 'text-lg md:text-xl lg:text-2xl',
+      description: 'text-base md:text-lg'
+    },
+    md: {
+      title: 'text-3xl md:text-5xl lg:text-6xl',
+      subtitle: 'text-xl md:text-2xl lg:text-3xl',
+      description: 'text-lg md:text-xl'
+    },
+    lg: {
+      title: 'text-4xl md:text-6xl lg:text-7xl',
+      subtitle: 'text-2xl md:text-3xl lg:text-4xl',
+      description: 'text-xl md:text-2xl'
+    }
+  }
+
+  const sizeKey = (currentItem.contentSize || 'lg') as NonNullable<typeof currentItem.contentSize>
+  const typography = typographyScale[sizeKey] || typographyScale.lg
+  const textStyle: CSSProperties = {
+    color: contentColor,
+    textShadow: contentShadow ? '0 8px 30px rgba(0,0,0,0.45)' : undefined,
+    WebkitTextStroke: contentStrokeWidth > 0 ? `${contentStrokeWidth}px ${contentStrokeColor}` : undefined
+  }
 
   return (
     <div className={`relative w-full overflow-hidden ${className}`}>
@@ -140,7 +277,7 @@ export function WorkingSlider({
         <div className="absolute inset-0">
           <img
             src={currentItem.imageUrl}
-            alt={`${currentItem.title} - ${currentItem.subtitle}`}
+            alt={heroAlt}
             className="w-full h-full object-cover"
             style={{
               position: 'absolute',
@@ -174,9 +311,14 @@ export function WorkingSlider({
               }
             }}
           />
-          
+
           {/* Fallback background color */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-blue-700 z-0" />
+          <div
+            className="absolute inset-0 z-0"
+            style={{
+              background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
+            }}
+          />
           
           {/* Enhanced gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50 z-10" />
@@ -185,39 +327,56 @@ export function WorkingSlider({
         {/* Content */}
         <div className="relative z-20 h-full">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full">
-            <div className="flex h-full items-center pt-16 md:pt-24 lg:pt-28">
-              <div className="max-w-4xl ml-auto text-right">
+            <div
+              className="grid h-full grid-cols-3 grid-rows-3 pt-16 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-20"
+              dir="ltr"
+            >
+              <div
+                className={`${gridPositionClass[contentPosition]} flex flex-col gap-4 md:gap-6 ${horizontalAlignmentClass} ${verticalClass}`}
+                dir="rtl"
+              >
                 {/* Badge */}
                 {currentItem.badge && (
                   <div className="mb-4">
-                    <Badge
-                      className={`${currentItem.badgeColor || 'bg-blue-600'} text-white px-4 py-2 rounded-full shadow-lg`}
-                    >
+                    <Badge className="text-white px-4 py-2 rounded-full shadow-lg" style={{
+                      backgroundColor: currentItem.badgeColor || 'var(--brand-secondary, #C1272D)'
+                    }}>
                       {currentItem.badge}
                     </Badge>
                   </div>
                 )}
 
                 {/* Title */}
-                <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+                <h1 className={`${typography.title} font-bold mb-4 leading-tight`} style={textStyle}>
                   {currentItem.title}
                 </h1>
 
                 {/* Subtitle */}
-                <h2 className="text-xl md:text-2xl lg:text-3xl text-blue-200 mb-6 font-light">
+                <h2 className={`${typography.subtitle} mb-6 font-light`} style={textStyle}>
                   {currentItem.subtitle}
                 </h2>
 
                 {/* Description */}
-                <p className="text-lg md:text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl ml-auto">
+                <p
+                  className={`${typography.description} mb-8 leading-relaxed max-w-2xl ${textAlignmentClass}`}
+                  style={textStyle}
+                >
                   {currentItem.description}
                 </p>
 
                 {/* CTA Button */}
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div
+                  className={`flex flex-col sm:flex-row gap-4 ${
+                    horizontalAlign === 'left'
+                      ? 'sm:justify-start'
+                      : horizontalAlign === 'center'
+                        ? 'sm:justify-center'
+                        : 'sm:justify-end'
+                  }`}
+                >
                   <Button
                     size="lg"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto justify-center"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg w-full sm:w-auto justify-center"
                     asChild
                   >
                     <a href={currentItem.ctaLink}>
@@ -230,7 +389,7 @@ export function WorkingSlider({
                   <Button
                     variant="outline"
                     size="lg"
-                    className="border-2 border-white text-white hover:bg-white hover:text-blue-900 text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 w-full sm:w-auto justify-center bg-transparent"
+                    className="border-2 border-white text-white hover:bg-white hover:text-[color:var(--brand-primary-900,#030815)] text-lg px-8 py-4 rounded-lg font-semibold transition-all duration-300 w-full sm:w-auto justify-center bg-transparent"
                     asChild
                   >
                     <a href="/vehicles">
@@ -337,7 +496,15 @@ export function WorkingSlider({
             >
               <img
                 src={item.imageUrl}
-                alt={item.title}
+                alt={buildSliderImageAlt(
+                  {
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    description: item.description,
+                    badge: item.badge
+                  },
+                  { index }
+                )}
                 className="w-full h-full object-cover"
                 style={{
                   position: 'absolute',

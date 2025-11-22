@@ -11,6 +11,9 @@ interface SiteSettings {
   primaryColor: string
   secondaryColor: string
   accentColor: string
+  neutralDarkColor?: string
+  neutralLightColor?: string
+  surfaceColor?: string
   fontFamily: string
   siteTitle: string
   siteDescription: string
@@ -54,11 +57,65 @@ interface SiteSettingsContextType {
   loading: boolean
 }
 
+const FONT_OPTIONS: { value: string; label: string; href?: string; stack?: string }[] = [
+  {
+    value: 'Inter',
+    label: 'Inter',
+    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+    stack: 'Inter, var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+  },
+  {
+    value: 'Cairo',
+    label: 'Cairo (Arabic)',
+    href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap',
+    stack: 'var(--font-cairo), var(--font-tajawal), "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Tajawal',
+    label: 'Tajawal (Arabic)',
+    href: 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=Cairo:wght@400;500;600;700&display=swap',
+    stack: 'var(--font-tajawal), var(--font-cairo), "Noto Sans Arabic", var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Noto Sans Arabic',
+    label: 'Noto Sans Arabic',
+    href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap',
+    stack: '"Noto Sans Arabic", var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Rubik',
+    label: 'Rubik',
+    href: 'https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap',
+    stack: 'Rubik, "Noto Sans Arabic", var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'IBM Plex Sans Arabic',
+    label: 'IBM Plex Sans Arabic',
+    href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap',
+    stack: '"IBM Plex Sans Arabic", var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, sans-serif'
+  },
+  {
+    value: 'Poppins',
+    label: 'Poppins',
+    href: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
+    stack: 'Poppins, var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+  },
+  {
+    value: 'Montserrat',
+    label: 'Montserrat',
+    href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap',
+    stack: 'Montserrat, var(--font-cairo), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+  }
+]
+
 const defaultSettings: SiteSettings = normalizeBrandingObject({
-  primaryColor: '#3B82F6',
-  secondaryColor: '#10B981',
-  accentColor: '#F59E0B',
-  fontFamily: 'Inter',
+  primaryColor: '#0A1A3F',
+  secondaryColor: '#C1272D',
+  accentColor: '#C9C9C9',
+  neutralDarkColor: '#1F1F1F',
+  neutralLightColor: '#EEEEEE',
+  surfaceColor: '#FFFFFF',
+  fontFamily: 'Cairo',
   siteTitle: 'شركة الحمد لاستيراد السيارات',
   siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
   contactEmail: 'info@elhamdimport.online',
@@ -106,17 +163,31 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Apply defaults immediately so the UI theme matches the configured palette
+    applySettingsToDOM(defaultSettings)
     loadSiteSettings()
   }, [])
 
+  useEffect(() => {
+    if (!loading) {
+      applySettingsToDOM(settings)
+    }
+  }, [settings, loading])
+
   const loadSiteSettings = async () => {
     try {
-      const response = await fetch('/api/public/site-settings')
+      const response = await fetch('/api/public/site-settings', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
-        const normalized = normalizeBrandingObject(data)
+        const normalized = normalizeBrandingObject({
+          ...defaultSettings,
+          ...data,
+          socialLinks: { ...defaultSettings.socialLinks, ...(data?.socialLinks || {}) },
+          seoSettings: { ...defaultSettings.seoSettings, ...(data?.seoSettings || {}) },
+          headerSettings: { ...defaultSettings.headerSettings, ...(data?.headerSettings || {}) },
+          footerSettings: { ...defaultSettings.footerSettings, ...(data?.footerSettings || {}) },
+        })
         setSettings(normalized)
-        applySettingsToDOM(normalized)
       } else {
         console.warn('Failed to load site settings, using defaults')
       }
@@ -129,15 +200,176 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   }
 
   const applySettingsToDOM = (settings: SiteSettings) => {
-    // Apply CSS custom properties for colors
     const root = document.documentElement
-    root.style.setProperty('--primary-color', settings.primaryColor)
-    root.style.setProperty('--secondary-color', settings.secondaryColor)
-    root.style.setProperty('--accent-color', settings.accentColor)
-    
-    // Apply font family
-    if (settings.fontFamily && settings.fontFamily !== 'Inter') {
-      root.style.setProperty('--font-family', settings.fontFamily)
+    const primary = settings.primaryColor || defaultSettings.primaryColor
+    const secondary = settings.secondaryColor || defaultSettings.secondaryColor
+    const accent = settings.accentColor || defaultSettings.accentColor
+    const neutralDark = settings.neutralDarkColor || '#1F1F1F'
+    const neutralLight = settings.neutralLightColor || '#EEEEEE'
+    const surface = settings.surfaceColor || '#FFFFFF'
+
+    const hexToRgb = (hex: string) => {
+      const normalized = hex.replace('#', '')
+      if (normalized.length !== 6) return { r: 0, g: 0, b: 0 }
+
+      return {
+        r: parseInt(normalized.substring(0, 2), 16),
+        g: parseInt(normalized.substring(2, 4), 16),
+        b: parseInt(normalized.substring(4, 6), 16)
+      }
+    }
+
+    const mixHex = (hex: string, mixWith: string, amount: number) => {
+      const base = hexToRgb(hex)
+      const target = hexToRgb(mixWith)
+      const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value)))
+
+      const r = clamp(base.r + (target.r - base.r) * amount)
+      const g = clamp(base.g + (target.g - base.g) * amount)
+      const b = clamp(base.b + (target.b - base.b) * amount)
+
+      const toHex = (value: number) => value.toString(16).padStart(2, '0')
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+    }
+
+    const buildScale = (hex: string) => ({
+      50: mixHex(hex, '#ffffff', 0.92),
+      100: mixHex(hex, '#ffffff', 0.85),
+      200: mixHex(hex, '#ffffff', 0.75),
+      300: mixHex(hex, '#ffffff', 0.6),
+      400: mixHex(hex, '#ffffff', 0.4),
+      500: hex,
+      600: mixHex(hex, '#000000', 0.08),
+      700: mixHex(hex, '#000000', 0.18),
+      800: mixHex(hex, '#000000', 0.28),
+      900: mixHex(hex, '#000000', 0.38)
+    })
+
+    const setScaleVariables = (prefix: string, hex: string) => {
+      const scale = buildScale(hex)
+      Object.entries(scale).forEach(([key, value]) => {
+        const rgb = hexToRgb(value as string)
+        root.style.setProperty(`--${prefix}-${key}`, value as string)
+        root.style.setProperty(`--${prefix}-${key}-rgb`, `${rgb.r} ${rgb.g} ${rgb.b}`)
+      })
+      const baseRgb = hexToRgb(hex)
+      root.style.setProperty(`--${prefix}`, hex)
+      root.style.setProperty(`--${prefix}-rgb`, `${baseRgb.r} ${baseRgb.g} ${baseRgb.b}`)
+    }
+
+    const toHsl = (hex: string) => {
+      const result = hex.replace('#', '')
+      if (result.length !== 6) return ''
+
+      const r = parseInt(result.substring(0, 2), 16) / 255
+      const g = parseInt(result.substring(2, 4), 16) / 255
+      const b = parseInt(result.substring(4, 6), 16) / 255
+
+      const max = Math.max(r, g, b)
+      const min = Math.min(r, g, b)
+      let h = 0
+      let s = 0
+      const l = (max + min) / 2
+
+      if (max !== min) {
+        const d = max - min
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+        switch (max) {
+          case r:
+            h = (g - b) / d + (g < b ? 6 : 0)
+            break
+          case g:
+            h = (b - r) / d + 2
+            break
+          default:
+            h = (r - g) / d + 4
+            break
+        }
+        h /= 6
+      }
+
+      const hDeg = Math.round(h * 360)
+      const sPerc = Math.round(s * 100)
+      const lPerc = Math.round(l * 100)
+      return `${hDeg} ${sPerc}% ${lPerc}%`
+    }
+
+    const getContrastHex = (hex: string) => {
+      const normalized = hex.replace('#', '')
+      if (normalized.length !== 6) return '#FFFFFF'
+
+      const r = parseInt(normalized.substring(0, 2), 16) / 255
+      const g = parseInt(normalized.substring(2, 4), 16) / 255
+      const b = parseInt(normalized.substring(4, 6), 16) / 255
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+      return luminance > 0.6 ? '#1F1F1F' : '#FFFFFF'
+    }
+
+    // Brand CSS variables for Tailwind
+    root.style.setProperty('--primary', toHsl(primary))
+    root.style.setProperty('--primary-foreground', toHsl(getContrastHex(primary)))
+    root.style.setProperty('--secondary', toHsl(secondary))
+    root.style.setProperty('--secondary-foreground', toHsl(getContrastHex(secondary)))
+    root.style.setProperty('--accent', toHsl(accent))
+    root.style.setProperty('--accent-foreground', toHsl(getContrastHex(accent)))
+    root.style.setProperty('--muted', toHsl(neutralLight))
+    root.style.setProperty('--muted-foreground', toHsl(neutralDark))
+    root.style.setProperty('--background', toHsl(surface))
+    root.style.setProperty('--foreground', toHsl(neutralDark))
+    root.style.setProperty('--card', toHsl(surface))
+    root.style.setProperty('--card-foreground', toHsl(neutralDark))
+    root.style.setProperty('--popover', toHsl(surface))
+    root.style.setProperty('--popover-foreground', toHsl(neutralDark))
+    root.style.setProperty('--border', toHsl(neutralLight))
+    root.style.setProperty('--input', toHsl(neutralLight))
+    root.style.setProperty('--ring', toHsl(secondary))
+    root.style.setProperty('--sidebar', toHsl(surface))
+    root.style.setProperty('--sidebar-foreground', toHsl(neutralDark))
+    root.style.setProperty('--sidebar-primary', toHsl(primary))
+    root.style.setProperty('--sidebar-primary-foreground', toHsl(getContrastHex(primary)))
+    root.style.setProperty('--sidebar-accent', toHsl(neutralLight))
+    root.style.setProperty('--sidebar-accent-foreground', toHsl(neutralDark))
+    root.style.setProperty('--sidebar-border', toHsl(neutralLight))
+    root.style.setProperty('--sidebar-ring', toHsl(secondary))
+
+    // Preserve legacy custom props for components using raw hex values
+    root.style.setProperty('--primary-color', primary)
+    root.style.setProperty('--secondary-color', secondary)
+    root.style.setProperty('--accent-color', accent)
+    root.style.setProperty('--neutral-dark-color', neutralDark)
+    root.style.setProperty('--neutral-light-color', neutralLight)
+    root.style.setProperty('--surface-color', surface)
+
+    // Brand palette (hex + RGB) for CSS overrides
+    setScaleVariables('brand-primary', primary)
+    setScaleVariables('brand-secondary', secondary)
+    setScaleVariables('brand-accent', accent)
+
+    // Apply font family and load Google font when available
+    const fontOption = FONT_OPTIONS.find((font) => font.value === settings.fontFamily)
+    const baseFallbackStack = 'var(--font-cairo), var(--font-tajawal), "Noto Sans Arabic", var(--font-geist-sans), system-ui, -apple-system, sans-serif'
+    const resolvedFontStack = fontOption?.stack || baseFallbackStack
+
+    // Always prefer the branded Cairo/Tajawal stack when an unknown font slips through
+    const fontStack = fontOption?.stack
+      ? fontOption.stack
+      : `${settings.fontFamily && FONT_OPTIONS.some((font) => font.value === settings.fontFamily) ? settings.fontFamily : 'var(--font-cairo)'}, ${resolvedFontStack}`
+
+    root.style.setProperty('--font-family', fontStack)
+
+    const existingFontLink = document.getElementById('site-settings-font') as HTMLLinkElement | null
+    if (fontOption?.href) {
+      if (existingFontLink) {
+        existingFontLink.href = fontOption.href
+      } else {
+        const link = document.createElement('link')
+        link.id = 'site-settings-font'
+        link.rel = 'stylesheet'
+        link.href = fontOption.href
+        document.head.appendChild(link)
+      }
+    } else if (existingFontLink) {
+      existingFontLink.remove()
     }
 
     // Update favicon

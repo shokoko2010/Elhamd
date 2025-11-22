@@ -6,6 +6,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authorize, UserRole } from '@/lib/auth-server'
 
+const normalizeContentPosition = (position?: string) => {
+  switch (position) {
+    case 'top-right':
+    case 'bottom-right':
+    case 'top-center':
+    case 'bottom-center':
+    case 'top-left':
+    case 'bottom-left':
+    case 'middle-left':
+    case 'middle-center':
+    case 'middle-right':
+      return position
+    case 'left':
+      return 'middle-left'
+    case 'center':
+      return 'middle-center'
+    case 'right':
+      return 'middle-right'
+    case 'top':
+      return 'top-center'
+    case 'bottom':
+      return 'bottom-center'
+    default:
+      return 'top-right'
+  }
+}
+
 // GET single slider (public)
 export async function GET(
   request: NextRequest,
@@ -57,6 +84,12 @@ export async function PUT(
       ctaLink,
       badge,
       badgeColor,
+      contentPosition,
+      contentSize,
+      contentColor,
+      contentShadow,
+      contentStrokeColor,
+      contentStrokeWidth,
       order,
       isActive
     } = body
@@ -85,6 +118,14 @@ export async function PUT(
         ...(ctaLink !== undefined && { ctaLink: ctaLink || null }),
         ...(badge !== undefined && { badge: badge || null }),
         ...(badgeColor !== undefined && { badgeColor: badgeColor || 'bg-blue-500' }),
+        ...(contentPosition !== undefined && { contentPosition: normalizeContentPosition(contentPosition) }),
+        ...(contentSize !== undefined && { contentSize: contentSize || 'lg' }),
+        ...(contentColor !== undefined && { contentColor: contentColor || '#ffffff' }),
+        ...(contentShadow !== undefined && { contentShadow: contentShadow !== false }),
+        ...(contentStrokeColor !== undefined && { contentStrokeColor: contentStrokeColor || '#000000' }),
+        ...(contentStrokeWidth !== undefined && {
+          contentStrokeWidth: typeof contentStrokeWidth === 'number' && contentStrokeWidth >= 0 ? contentStrokeWidth : 0
+        }),
         ...(order !== undefined && { order }),
         ...(isActive !== undefined && { isActive })
       }

@@ -409,7 +409,11 @@ export default function FooterManagement() {
     if (!file) return
 
     const formData = new FormData()
-    formData.append('image', file)
+    // Upload as a general asset with a descriptive filename so footer logo saves correctly
+    formData.append('file', file)
+    formData.append('type', 'general')
+    formData.append('entityId', 'footer-logo')
+    formData.append('filenameHint', content.logoText || 'footer-logo')
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
@@ -881,14 +885,14 @@ export default function FooterManagement() {
                               const start = textarea.selectionStart
                               const end = textarea.selectionEnd
                               const selectedText = textarea.value.substring(start, end)
-                              const newText = `<span style="color: #3B82F6">${selectedText}</span>`
+                              const newText = `<span style=\"color: #0A1A3F\">${selectedText}</span>`
                               textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end)
                               setContent(prev => ({ ...prev, copyrightText: textarea.value }))
                               textarea.focus()
                               textarea.setSelectionRange(start + 25, start + 25 + selectedText.length)
                             }
                           }}
-                          className="text-blue-500"
+                          className="text-[#0A1A3F]"
                         >
                           A
                         </Button>

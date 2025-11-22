@@ -8,6 +8,7 @@ import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
 import { UserRole, Prisma } from '@prisma/client'
 import { PERMISSIONS, Permission, PermissionService } from '@/lib/permissions'
+import { getRoleLabelAr, getRoleTemplateNameAr } from '@/lib/permission-translations'
 
 export async function GET(request: NextRequest) {
   try {
@@ -139,6 +140,13 @@ export async function GET(request: NextRequest) {
     // Calculate additional fields for the frontend
     const usersWithStats = users.map(user => ({
       ...user,
+      roleLabel: getRoleLabelAr(user.role),
+      roleTemplateNameAr: user.roleTemplate
+        ? getRoleTemplateNameAr(user.roleTemplate.name, user.roleTemplate.role)
+        : null,
+      roleTemplateRoleLabel: user.roleTemplate?.role
+        ? getRoleLabelAr(user.roleTemplate.role)
+        : null,
       totalBookings: (user._count.testDriveBookings || 0) + (user._count.serviceBookings || 0),
       totalSpent: 0 // Calculate from bookings/invoices when implemented
     }))

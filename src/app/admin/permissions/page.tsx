@@ -23,6 +23,14 @@ import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/use-auth'
 import { PermissionCategory, UserRole } from '@prisma/client'
 import {
+  getPermissionCategoryLabelAr,
+  getPermissionDescriptionAr,
+  getPermissionLabelAr,
+  getRoleLabelAr,
+  getRoleTemplateDescriptionAr,
+  getRoleTemplateNameAr,
+} from '@/lib/permission-translations'
+import {
   Building,
   Edit,
   Key,
@@ -54,6 +62,7 @@ interface ApiUser {
   email: string
   name?: string | null
   role: UserRole
+  roleLabel?: string | null
   phone?: string | null
   isActive: boolean
   createdAt: string
@@ -65,10 +74,14 @@ interface ApiUser {
   roleTemplate?: {
     id: string
     name: string
+    nameAr?: string | null
     role: UserRole
+    roleLabel?: string | null
     isSystem: boolean
     isActive: boolean
   } | null
+  roleTemplateNameAr?: string | null
+  roleTemplateRoleLabel?: string | null
 }
 
 interface Metrics {
@@ -87,14 +100,18 @@ interface UsersResponse {
 interface RoleTemplate {
   id: string
   name: string
+  nameAr?: string | null
   description?: string | null
+  descriptionAr?: string | null
   role: UserRole
+  roleLabel?: string | null
   permissions: string[]
   isActive: boolean
   isSystem: boolean
   createdAt: string
   updatedAt: string
   userCount?: number
+  permissionsMeta?: { name: string; label: string; description?: string | null }[]
 }
 
 interface RoleTemplatesResponse {
@@ -110,6 +127,7 @@ interface UserWithPermissions {
   email: string
   name?: string | null
   role: UserRole
+  roleLabel?: string | null
   branchId?: string | null
   branchName?: string | null
   isActive: boolean
@@ -118,7 +136,9 @@ interface UserWithPermissions {
   permissionDetails: PermissionRecord[]
   roleTemplateId?: string | null
   roleTemplateName?: string | null
+  roleTemplateNameAr?: string | null
   roleTemplateRole?: UserRole | null
+  roleTemplateRoleLabel?: string | null
 }
 
 interface PermissionGroup {
@@ -176,16 +196,18 @@ const CATEGORY_META: Record<PermissionCategory, { title: string; description: st
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  [UserRole.SUPER_ADMIN]: 'مسؤول رئيسي',
-  [UserRole.ADMIN]: 'مسؤول نظام',
-  [UserRole.BRANCH_MANAGER]: 'مدير فرع',
-  [UserRole.STAFF]: 'موظف',
-  [UserRole.CUSTOMER]: 'عميل',
+  [UserRole.SUPER_ADMIN]: getRoleLabelAr(UserRole.SUPER_ADMIN),
+  [UserRole.ADMIN]: getRoleLabelAr(UserRole.ADMIN),
+  [UserRole.BRANCH_MANAGER]: getRoleLabelAr(UserRole.BRANCH_MANAGER),
+  [UserRole.STAFF]: getRoleLabelAr(UserRole.STAFF),
+  [UserRole.ACCOUNTANT]: getRoleLabelAr(UserRole.ACCOUNTANT),
+  [UserRole.CUSTOMER]: getRoleLabelAr(UserRole.CUSTOMER),
 }
 
 const ROLE_BADGE_STYLES: Record<UserRole, string> = {
   [UserRole.SUPER_ADMIN]: 'bg-red-100 text-red-800',
   [UserRole.ADMIN]: 'bg-purple-100 text-purple-800',
+  [UserRole.ACCOUNTANT]: 'bg-amber-100 text-amber-800',
   [UserRole.BRANCH_MANAGER]: 'bg-blue-100 text-blue-800',
   [UserRole.STAFF]: 'bg-green-100 text-green-800',
   [UserRole.CUSTOMER]: 'bg-gray-100 text-gray-800',
@@ -323,6 +345,7 @@ function PermissionsDashboard() {
             email: user.email,
             name: user.name,
             role: user.role,
+            roleLabel: user.roleLabel ?? getRoleLabelAr(user.role),
             branchId: user.branchId ?? undefined,
             branchName: user.branchName ?? undefined,
             isActive: user.isActive,
@@ -331,12 +354,22 @@ function PermissionsDashboard() {
             permissionDetails,
             roleTemplateId: user.roleTemplateId ?? undefined,
             roleTemplateName: user.roleTemplate?.name ?? undefined,
+            roleTemplateNameAr:
+              user.roleTemplateNameAr ??
+              (user.roleTemplate ? getRoleTemplateNameAr(user.roleTemplate.name, user.roleTemplate.role) : undefined),
             roleTemplateRole: user.roleTemplate?.role ?? undefined,
+            roleTemplateRoleLabel:
+              user.roleTemplateRoleLabel ??
+              (user.roleTemplate?.role ? getRoleLabelAr(user.roleTemplate.role) : undefined),
           }
         })
 
         const transformedTemplates = (templatesPayload.templates ?? []).map<RoleTemplate>((template) => ({
           ...template,
+          nameAr: template.nameAr ?? getRoleTemplateNameAr(template.name, template.role),
+          descriptionAr:
+            template.descriptionAr ?? getRoleTemplateDescriptionAr(template.description, template.role),
+          roleLabel: template.roleLabel ?? getRoleLabelAr(template.role),
           userCount: template.userCount ?? 0,
         }))
 
@@ -921,6 +954,7 @@ function PermissionsDashboard() {
                   <SelectItem value="all">جميع الأدوار</SelectItem>
                   <SelectItem value={UserRole.SUPER_ADMIN}>{ROLE_LABELS[UserRole.SUPER_ADMIN]}</SelectItem>
                   <SelectItem value={UserRole.ADMIN}>{ROLE_LABELS[UserRole.ADMIN]}</SelectItem>
+                  <SelectItem value={UserRole.ACCOUNTANT}>{ROLE_LABELS[UserRole.ACCOUNTANT]}</SelectItem>
                   <SelectItem value={UserRole.BRANCH_MANAGER}>{ROLE_LABELS[UserRole.BRANCH_MANAGER]}</SelectItem>
                   <SelectItem value={UserRole.STAFF}>{ROLE_LABELS[UserRole.STAFF]}</SelectItem>
                   <SelectItem value={UserRole.CUSTOMER}>{ROLE_LABELS[UserRole.CUSTOMER]}</SelectItem>
@@ -954,16 +988,18 @@ function PermissionsDashboard() {
                         <h3 className="font-semibold">{user.name || user.email}</h3>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <Badge className={formatRoleBadge(user.role)}>{ROLE_LABELS[user.role]}</Badge>
+                          <Badge className={formatRoleBadge(user.role)}>
+                            {user.roleLabel || ROLE_LABELS[user.role] || getRoleLabelAr(user.role)}
+                          </Badge>
                           {user.branchName && (
                             <Badge variant="outline" className="bg-blue-50 text-blue-700">
                               <Building className="ml-1 h-3 w-3" />
                               {user.branchName}
                             </Badge>
                           )}
-                          {user.roleTemplateName && (
+                          {(user.roleTemplateNameAr || user.roleTemplateName) && (
                             <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                              {user.roleTemplateName}
+                              {user.roleTemplateNameAr || user.roleTemplateName}
                             </Badge>
                           )}
                           <Badge variant={user.isActive ? 'default' : 'secondary'}>
@@ -1038,12 +1074,16 @@ function PermissionsDashboard() {
                             <Shield className="h-5 w-5 text-purple-600" />
                           </div>
                           <div>
-                            <h3 className="font-semibold">{template.name}</h3>
-                            {template.description && (
-                              <p className="text-sm text-muted-foreground">{template.description}</p>
+                            <h3 className="font-semibold">{template.nameAr || template.name}</h3>
+                            {(template.descriptionAr || template.description) && (
+                              <p className="text-sm text-muted-foreground">
+                                {template.descriptionAr || template.description}
+                              </p>
                             )}
                             <div className="mt-2 flex flex-wrap items-center gap-2">
-                              <Badge className={formatRoleBadge(template.role)}>{ROLE_LABELS[template.role]}</Badge>
+                              <Badge className={formatRoleBadge(template.role)}>
+                                {template.roleLabel || ROLE_LABELS[template.role]}
+                              </Badge>
                               <Badge variant={template.isActive ? 'default' : 'secondary'}>
                                 {template.isActive ? 'نشط' : 'غير نشط'}
                               </Badge>
@@ -1091,16 +1131,24 @@ function PermissionsDashboard() {
                                 <Copy className="ml-1 h-4 w-4" />
                                 نسخ
                               </Button>
-                              {!template.isSystem && (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => setTemplatePendingDelete(template)}
-                                >
-                                  <Trash2 className="ml-1 h-4 w-4" />
-                                  حذف
-                                </Button>
-                              )}
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={template.isSystem && !allowSystemTemplateEditing}
+                                title={
+                                  template.isSystem
+                                    ? 'لا يمكن حذف قالب نظامي'
+                                    : 'حذف القالب المحدد'
+                                }
+                                onClick={() =>
+                                  !template.isSystem || allowSystemTemplateEditing
+                                    ? setTemplatePendingDelete(template)
+                                    : undefined
+                                }
+                              >
+                                <Trash2 className="ml-1 h-4 w-4" />
+                                حذف
+                              </Button>
                             </div>
                           )}
                         </div>
@@ -1157,8 +1205,8 @@ function PermissionsDashboard() {
                   <SelectContent>
                     <SelectItem value="">بدون قالب</SelectItem>
                     {activeTemplateOptions.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name} ({ROLE_LABELS[template.role]})
+                    <SelectItem key={template.id} value={template.id}>
+                        {template.nameAr || template.name} ({template.roleLabel || ROLE_LABELS[template.role]})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1205,13 +1253,14 @@ function PermissionsDashboard() {
                   />
                 </div>
               </div>
-              {selectedUser.roleTemplateName && (
+              {(selectedUser.roleTemplateNameAr || selectedUser.roleTemplateName) && (
                 <Card className="sm:col-span-2">
                   <CardHeader className="py-3">
                     <CardTitle className="text-sm font-medium">القالب الحالي</CardTitle>
                     <CardDescription>
-                      {selectedUser.roleTemplateName} ({selectedUser.roleTemplateRole
-                        ? ROLE_LABELS[selectedUser.roleTemplateRole]
+                      {selectedUser.roleTemplateNameAr || selectedUser.roleTemplateName} (
+                      {selectedUser.roleTemplateRole
+                        ? selectedUser.roleTemplateRoleLabel || ROLE_LABELS[selectedUser.roleTemplateRole]
                         : 'غير محدد'})
                     </CardDescription>
                   </CardHeader>
@@ -1360,17 +1409,33 @@ function PermissionsDashboard() {
             </Card>
           ))}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleSaveTemplate}
-              disabled={isSystemTemplateLocked || isSavingTemplate}
-            >
-              <Save className="ml-2 h-4 w-4" />
-              {isSavingTemplate ? 'جاري الحفظ...' : 'حفظ القالب'}
-            </Button>
+          <DialogFooter className="flex flex-wrap justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setIsEditTemplateModalOpen(false)}>
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleSaveTemplate}
+                disabled={isSystemTemplateLocked || isSavingTemplate}
+              >
+                <Save className="ml-2 h-4 w-4" />
+                {isSavingTemplate ? 'جاري الحفظ...' : 'حفظ القالب'}
+              </Button>
+            </div>
+            {allowRoleTemplateManagement && selectedTemplate && !selectedTemplate.isSystem && (
+              <Button
+                variant="destructive"
+                className="w-full sm:w-auto"
+                disabled={isSavingTemplate}
+                onClick={() => {
+                  setIsEditTemplateModalOpen(false)
+                  setTemplatePendingDelete(selectedTemplate)
+                }}
+              >
+                <Trash2 className="ml-2 h-4 w-4" />
+                حذف القالب
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1604,7 +1669,7 @@ function PermissionsDashboard() {
                   <SelectItem value="">بدون قالب</SelectItem>
                   {activeTemplateOptions.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
-                      {template.name} ({ROLE_LABELS[template.role]})
+                      {template.nameAr || template.name} ({template.roleLabel || ROLE_LABELS[template.role]})
                     </SelectItem>
                   ))}
                 </SelectContent>

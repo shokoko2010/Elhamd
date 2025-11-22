@@ -605,10 +605,13 @@ model SiteSettings {
   id                  String   @id @default(cuid())
   logoUrl             String?
   faviconUrl          String?
-  primaryColor        String   @default("#3B82F6")
-  secondaryColor      String   @default("#10B981")
-  accentColor         String   @default("#F59E0B")
-  fontFamily          String   @default("Inter")
+  primaryColor        String   @default("#0A1A3F")
+  secondaryColor      String   @default("#C1272D")
+  accentColor         String   @default("#C9C9C9")
+  neutralDarkColor    String   @default("#1F1F1F")
+  neutralLightColor   String   @default("#EEEEEE")
+  surfaceColor        String   @default("#FFFFFF")
+  fontFamily          String   @default("Cairo")
   siteTitle           String
   siteDescription     String
   contactEmail        String

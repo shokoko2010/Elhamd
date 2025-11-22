@@ -23,6 +23,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { getPermissionLabelAr } from '@/lib/permission-translations'
 
 interface User {
   id: string
@@ -151,30 +152,7 @@ export function FinancePermissionsManager({ userId, onPermissionsUpdated }: Fina
   }
 
   const getPermissionDisplayName = (permission: string) => {
-    const names: Record<string, string> = {
-      'view_financials': 'عرض البيانات المالية',
-      'view_invoices': 'عرض الفواتير',
-      'create_invoices': 'إنشاء فواتير',
-      'edit_invoices': 'تعديل الفواتير',
-      'delete_invoices': 'حذف الفواتير',
-      'approve_invoices': 'الموافقة على الفواتير',
-      'send_invoices': 'إرسال الفواتير',
-      'download_invoices': 'تحميل الفواتير',
-      'manage_quotations': 'إدارة عروض الأسعار',
-      'approve_quotations': 'الموافقة على عروض الأسعار',
-      'convert_quotations': 'تحويل عروض الأسعار',
-      'manage_payments': 'إدارة المدفوعات',
-      'process_offline_payments': 'معالجة المدفوعات النقدية',
-      'manage_payment_methods': 'إدارة طرق الدفع',
-      'view_payment_history': 'عرض سجل المدفوعات',
-      'refund_payments': 'استرداد المدفوعات',
-      'manage_tax_settings': 'إدارة إعدادات الضريبة',
-      'view_reports': 'عرض التقارير',
-      'export_financial_data': 'تصدير البيانات المالية',
-      'view_financial_overview': 'عرض نظرة عامة مالية',
-      'access_finance_dashboard': 'الوصول للوحة التحكم المالية'
-    }
-    return names[permission] || permission
+    return getPermissionLabelAr(permission)
   }
 
   if (loading) {

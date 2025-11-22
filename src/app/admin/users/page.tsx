@@ -9,6 +9,16 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Separator } from '@/components/ui/separator'
+import {
   Table,
   TableBody,
   TableCell,
@@ -17,10 +27,28 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { LoadingIndicator, ErrorState, EmptyState } from '@/components/ui/LoadingIndicator'
-import { Users, UserCheck, UserX, Shield, RefreshCw, Search } from 'lucide-react'
-import { UserRole } from '@prisma/client'
+import {
+  Users,
+  UserCheck,
+  UserX,
+  Shield,
+  RefreshCw,
+  Search,
+  Settings,
+  Check,
+  Ban,
+} from 'lucide-react'
+import { PermissionCategory, UserRole } from '@prisma/client'
 import { formatDistanceToNow } from 'date-fns'
 import { ar } from 'date-fns/locale'
+import {
+  getPermissionCategoryLabelAr,
+  getPermissionDescriptionAr,
+  getPermissionLabelAr,
+  getRoleLabelAr,
+  getRoleTemplateDescriptionAr,
+  getRoleTemplateNameAr,
+} from '@/lib/permission-translations'
 
 interface ApiPermission {
   permission: {
@@ -36,6 +64,7 @@ interface ApiUser {
   email: string
   phone?: string | null
   role: UserRole
+  roleLabel?: string | null
   isActive: boolean
   lastLoginAt?: string | null
   createdAt: string
@@ -43,6 +72,42 @@ interface ApiUser {
   permissions: ApiPermission[]
   totalBookings?: number
   totalSpent?: number
+  roleTemplateId?: string | null
+  roleTemplate?: {
+    id: string
+    name: string
+    nameAr?: string | null
+    role: UserRole
+    roleLabel?: string | null
+    isSystem: boolean
+    isActive: boolean
+  } | null
+  roleTemplateNameAr?: string | null
+  roleTemplateRoleLabel?: string | null
+}
+
+interface PermissionRecord {
+  id: string
+  name: string
+  description?: string | null
+  category: PermissionCategory
+  label?: string
+  categoryLabel?: string
+}
+
+interface RoleTemplate {
+  id: string
+  name: string
+  nameAr?: string | null
+  description?: string | null
+  descriptionAr?: string | null
+  role: UserRole
+  roleLabel?: string | null
+  isSystem: boolean
+  isActive: boolean
+  permissions?: string[]
+  userCount?: number
+  permissionsMeta?: { name: string; label: string; description?: string | null }[]
 }
 
 interface Metrics {
@@ -68,11 +133,12 @@ interface UsersResponse {
 
 const ROLE_OPTIONS: { label: string; value: string }[] = [
   { label: 'جميع الأدوار', value: 'all' },
-  { label: 'العملاء', value: UserRole.CUSTOMER },
-  { label: 'موظفو الفروع', value: UserRole.BRANCH_MANAGER },
-  { label: 'الموظفون', value: UserRole.STAFF },
-  { label: 'المسؤولون', value: UserRole.ADMIN },
-  { label: 'المسؤول الأعلى', value: UserRole.SUPER_ADMIN },
+  { label: getRoleLabelAr(UserRole.CUSTOMER), value: UserRole.CUSTOMER },
+  { label: getRoleLabelAr(UserRole.BRANCH_MANAGER), value: UserRole.BRANCH_MANAGER },
+  { label: getRoleLabelAr(UserRole.STAFF), value: UserRole.STAFF },
+  { label: getRoleLabelAr(UserRole.ACCOUNTANT), value: UserRole.ACCOUNTANT },
+  { label: getRoleLabelAr(UserRole.ADMIN), value: UserRole.ADMIN },
+  { label: getRoleLabelAr(UserRole.SUPER_ADMIN), value: UserRole.SUPER_ADMIN },
 ]
 
 const STATUS_OPTIONS = [
@@ -80,6 +146,8 @@ const STATUS_OPTIONS = [
   { label: 'نشط', value: 'true' },
   { label: 'غير نشط', value: 'false' },
 ]
+
+const NO_TEMPLATE_VALUE = 'none'
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('ar-EG').format(value)
@@ -105,6 +173,23 @@ function UsersDashboard() {
   const [role, setRole] = useState('all')
   const [status, setStatus] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
+  const [roleTemplates, setRoleTemplates] = useState<RoleTemplate[]>([])
+  const [permissionsCatalog, setPermissionsCatalog] = useState<PermissionRecord[]>([])
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [selectedUser, setSelectedUser] = useState<ApiUser | null>(null)
+  const [userDialogOpen, setUserDialogOpen] = useState(false)
+  const [userDialogLoading, setUserDialogLoading] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
+  const [permissionSearch, setPermissionSearch] = useState('')
+  const [editState, setEditState] = useState({
+    role: UserRole.STAFF as UserRole,
+    roleTemplateId: null as string | null,
+    applyRoleTemplate: false,
+    preserveManualPermissions: false,
+    permissions: [] as string[],
+  })
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -139,7 +224,22 @@ function UsersDashboard() {
       }
 
       const payload = (await response.json()) as UsersResponse
-      setData(payload)
+
+      const localizedUsers = (payload.users ?? []).map((user) => ({
+        ...user,
+        roleLabel: user.roleLabel ?? getRoleLabelAr(user.role),
+        roleTemplateNameAr:
+          user.roleTemplateNameAr ??
+          (user.roleTemplate ? getRoleTemplateNameAr(user.roleTemplate.name, user.roleTemplate.role) : null),
+        roleTemplateRoleLabel:
+          user.roleTemplateRoleLabel ??
+          (user.roleTemplate?.role ? getRoleLabelAr(user.roleTemplate.role) : null),
+      }))
+
+      setData({
+        ...payload,
+        users: localizedUsers,
+      })
     } catch (err) {
       console.error(err)
       setError('تعذر تحميل بيانات المستخدمين. يرجى المحاولة لاحقاً.')
@@ -153,7 +253,80 @@ function UsersDashboard() {
     fetchUsers()
   }, [fetchUsers])
 
+  const hydrateCatalogs = useCallback(async () => {
+    if (roleTemplates.length && permissionsCatalog.length && !catalogError) return
+    try {
+      const [templatesRes, permissionsRes] = await Promise.all([
+        fetch('/api/admin/role-templates', { cache: 'no-store' }),
+        fetch('/api/admin/permissions?category=all', { cache: 'no-store' }),
+      ])
+
+      if (!templatesRes.ok) {
+        throw new Error('فشل تحميل قوالب الأدوار')
+      }
+      if (!permissionsRes.ok) {
+        throw new Error('فشل تحميل الصلاحيات')
+      }
+
+      const templatesPayload = await templatesRes.json()
+      const permissionsPayload = await permissionsRes.json()
+
+      const normalizedTemplates: RoleTemplate[] = Array.isArray(templatesPayload.templates)
+        ? templatesPayload.templates.map((template: RoleTemplate) => ({
+            ...template,
+            nameAr: template.nameAr ?? getRoleTemplateNameAr(template.name, template.role),
+            descriptionAr:
+              template.descriptionAr ?? getRoleTemplateDescriptionAr(template.description, template.role),
+            roleLabel: template.roleLabel ?? getRoleLabelAr(template.role),
+            permissionsMeta: template.permissionsMeta,
+          }))
+        : []
+
+      setRoleTemplates(normalizedTemplates)
+      const rawPermissions: PermissionRecord[] = Array.isArray(permissionsPayload.permissions)
+        ? permissionsPayload.permissions
+        : []
+      const localizedPermissions = rawPermissions.map((permission) => ({
+        ...permission,
+        label: getPermissionLabelAr(permission.name),
+        description: getPermissionDescriptionAr(permission.name, permission.description ?? undefined),
+        categoryLabel: getPermissionCategoryLabelAr(permission.category),
+      }))
+      setPermissionsCatalog(localizedPermissions)
+      setCatalogError(null)
+    } catch (err) {
+      console.error(err)
+      setCatalogError('تعذر تحميل بيانات القوالب والصلاحيات')
+    }
+  }, [catalogError, permissionsCatalog.length, roleTemplates.length])
+
   const metrics = useMemo(() => data?.metrics, [data])
+  const permissionGroups: { category: PermissionCategory; categoryLabel?: string; permissions: PermissionRecord[] }[] = useMemo(() => {
+    const groups = new Map<PermissionCategory, PermissionRecord[]>()
+    permissionsCatalog.forEach((permission) => {
+      const existing = groups.get(permission.category) ?? []
+      groups.set(permission.category, [...existing, permission])
+    })
+
+    const query = permissionSearch.trim().toLowerCase()
+
+    return (Object.values(PermissionCategory) as PermissionCategory[]).map((category) => {
+      const items = (groups.get(category) ?? []).filter((permission) => {
+        if (!query) return true
+        return (
+          permission.name.toLowerCase().includes(query) ||
+          permission.label?.toLowerCase().includes(query) ||
+          (permission.description ?? '').toLowerCase().includes(query)
+        )
+      })
+
+      return {
+        category,
+        categoryLabel: items[0]?.categoryLabel || getPermissionCategoryLabelAr(category),
+        permissions: items,
+      }
+    })
+  }, [permissionSearch, permissionsCatalog])
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -170,6 +343,115 @@ function UsersDashboard() {
   }, [fetchUsers])
 
   const pagination = data?.pagination
+
+  const openUserDialog = useCallback(
+    async (userId: string) => {
+      setUserDialogOpen(true)
+      setUserDialogLoading(true)
+      setSaveError(null)
+      setSaveSuccess(null)
+
+      try {
+        await hydrateCatalogs()
+
+        const response = await fetch(`/api/admin/users/${userId}`, { cache: 'no-store' })
+        if (!response.ok) {
+          throw new Error('تعذر جلب بيانات المستخدم')
+        }
+
+        const payload = await response.json()
+        const user: ApiUser | null = payload?.user ?? null
+
+        if (user) {
+          setSelectedUser(user)
+          const grantedPermissions = (user.permissions ?? [])
+            .map((edge) => edge.permission?.name)
+            .filter((name): name is string => Boolean(name))
+
+          setEditState({
+            role: user.role,
+            roleTemplateId: user.roleTemplateId ?? user.roleTemplate?.id ?? null,
+            applyRoleTemplate: false,
+            preserveManualPermissions: false,
+            permissions: grantedPermissions,
+          })
+        }
+      } catch (err) {
+        console.error(err)
+        setSaveError('تعذر تحميل بيانات المستخدم المحدد')
+      } finally {
+        setUserDialogLoading(false)
+      }
+    },
+    [hydrateCatalogs],
+  )
+
+  const closeUserDialog = useCallback(() => {
+    setUserDialogOpen(false)
+    setSelectedUser(null)
+    setEditState({
+      role: UserRole.STAFF,
+      roleTemplateId: null,
+      applyRoleTemplate: false,
+      preserveManualPermissions: false,
+      permissions: [],
+    })
+    setSaveError(null)
+    setSaveSuccess(null)
+    setPermissionSearch('')
+  }, [])
+
+  const togglePermission = useCallback((name: string) => {
+    setEditState((prev) => {
+      const exists = prev.permissions.includes(name)
+      return {
+        ...prev,
+        permissions: exists
+          ? prev.permissions.filter((permission) => permission !== name)
+          : [...prev.permissions, name],
+      }
+    })
+  }, [])
+
+  const handleSaveUser = useCallback(async () => {
+    if (!selectedUser) return
+    setSaveLoading(true)
+    setSaveError(null)
+    setSaveSuccess(null)
+
+    try {
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: editState.role,
+          roleTemplateId: editState.roleTemplateId || null,
+          applyRoleTemplate: editState.applyRoleTemplate,
+          preserveManualPermissions: editState.preserveManualPermissions,
+          permissions: editState.permissions,
+          additionalPermissions: editState.permissions,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.error ?? 'تعذر حفظ التغييرات')
+      }
+
+      const payload = await response.json().catch(() => ({ user: null }))
+      if (payload?.user) {
+        setSelectedUser(payload.user)
+      }
+
+      await fetchUsers()
+      setSaveSuccess('تم تحديث بيانات المستخدم بنجاح')
+    } catch (err) {
+      console.error(err)
+      setSaveError(err instanceof Error ? err.message : 'حدث خطأ أثناء الحفظ')
+    } finally {
+      setSaveLoading(false)
+    }
+  }, [editState, fetchUsers, selectedUser])
 
   if (loading && !data) {
     return (
@@ -328,6 +610,7 @@ function UsersDashboard() {
                       <TableHead>آخر تسجيل دخول</TableHead>
                       <TableHead>تاريخ الإنشاء</TableHead>
                       <TableHead className="text-left">الصلاحيات</TableHead>
+                      <TableHead className="text-left">إدارة</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -357,7 +640,7 @@ function UsersDashboard() {
                             ) : (
                               user.permissions.slice(0, 4).map((permission) => (
                                 <Badge key={permission.permission.id} variant="outline">
-                                  {permission.permission.name}
+                                  {getPermissionLabelAr(permission.permission.name)}
                                 </Badge>
                               ))
                             )}
@@ -365,6 +648,17 @@ function UsersDashboard() {
                               <Badge variant="secondary">+{user.permissions.length - 4}</Badge>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-left">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openUserDialog(user.id)}
+                            className="gap-2"
+                          >
+                            <Settings className="h-4 w-4" />
+                            إدارة المستخدم
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -404,6 +698,216 @@ function UsersDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={userDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeUserDialog()
+          }
+        }}
+      >
+        <DialogContent className="flex max-h-[85vh] max-w-6xl flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>إدارة المستخدم</DialogTitle>
+            <DialogDescription>تعديل الدور، قالب الدور، والصلاحيات للمستخدم المحدد.</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+            {saveError && (
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200">{saveError}</div>
+            )}
+            {saveSuccess && (
+              <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 border border-green-200">{saveSuccess}</div>
+            )}
+            {catalogError && (
+              <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800 border border-amber-200">{catalogError}</div>
+            )}
+
+            <div className="rounded-md border p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-semibold">{selectedUser?.name || '—'}</p>
+                  <p className="text-sm text-muted-foreground">{selectedUser?.email || '—'}</p>
+                  {selectedUser?.phone && (
+                    <p className="text-xs text-muted-foreground">{selectedUser.phone}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">
+                    {selectedUser?.roleLabel || (selectedUser?.role ? getRoleLabelAr(selectedUser.role) : '—')}
+                  </Badge>
+                  <Badge variant={selectedUser?.isActive ? 'default' : 'secondary'}>
+                    {selectedUser?.isActive ? 'نشط' : 'غير نشط'}
+                  </Badge>
+                  {selectedUser?.roleTemplate && (
+                    <Badge variant="outline">
+                      قالب: {selectedUser.roleTemplate.nameAr || selectedUser.roleTemplate.name}{' '}
+                      {selectedUser.roleTemplate.role && `(${selectedUser.roleTemplate.roleLabel || getRoleLabelAr(selectedUser.roleTemplate.role)})`}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>الدور</Label>
+                <Select
+                  value={editState.role}
+                  onValueChange={(value) => setEditState((prev) => ({ ...prev, role: value as UserRole }))}
+                  disabled={userDialogLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر الدور" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.filter((option) => option.value !== 'all').map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>قالب الدور</Label>
+                  <Select
+                    value={editState.roleTemplateId ?? NO_TEMPLATE_VALUE}
+                    onValueChange={(value) =>
+                      setEditState((prev) => ({
+                        ...prev,
+                        roleTemplateId: value === NO_TEMPLATE_VALUE ? null : value,
+                      }))
+                    }
+                    disabled={userDialogLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر قالب الدور" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_TEMPLATE_VALUE}>بدون قالب</SelectItem>
+                      {roleTemplates
+                        .filter((template) => template.isActive || selectedUser?.role === UserRole.SUPER_ADMIN)
+                        .map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.nameAr || template.name} ({template.roleLabel || getRoleLabelAr(template.role)})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Checkbox
+                    id="apply-template"
+                    checked={editState.applyRoleTemplate}
+                    onCheckedChange={(checked) =>
+                      setEditState((prev) => ({ ...prev, applyRoleTemplate: Boolean(checked) }))
+                    }
+                    disabled={userDialogLoading || !editState.roleTemplateId}
+                  />
+                  <Label htmlFor="apply-template" className="text-xs">
+                    تطبيق صلاحيات القالب مباشرة مع الحفظ
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Checkbox
+                    id="preserve-permissions"
+                    checked={editState.preserveManualPermissions}
+                    onCheckedChange={(checked) =>
+                      setEditState((prev) => ({ ...prev, preserveManualPermissions: Boolean(checked) }))
+                    }
+                    disabled={userDialogLoading}
+                  />
+                  <Label htmlFor="preserve-permissions" className="text-xs">
+                    الاحتفاظ بالصلاحيات اليدوية الحالية
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">الصلاحيات</h3>
+                  <p className="text-sm text-muted-foreground">امنح أو احذف صلاحيات محددة لهذا المستخدم.</p>
+                </div>
+                <Input
+                  placeholder="ابحث عن صلاحية..."
+                  value={permissionSearch}
+                  onChange={(event) => setPermissionSearch(event.target.value)}
+                  className="md:w-72"
+                  disabled={userDialogLoading}
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {permissionGroups.map((group) => (
+                  <div key={group.category} className="rounded-md border p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="font-semibold">{group.categoryLabel ?? group.category}</p>
+                      <Badge variant="secondary">{group.permissions.length}</Badge>
+                    </div>
+                    {group.permissions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">لا توجد صلاحيات مطابقة.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {group.permissions.map((permission) => {
+                          const checked = editState.permissions.includes(permission.name)
+                          const label = permission.label ?? getPermissionLabelAr(permission.name)
+                          const description =
+                            permission.description ?? getPermissionDescriptionAr(permission.name)
+                          return (
+                            <label
+                              key={permission.id}
+                              className="flex items-start gap-2 rounded-md border px-2 py-2 text-sm hover:bg-muted"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => togglePermission(permission.name)}
+                                disabled={userDialogLoading}
+                                className="mt-1"
+                              />
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{label}</span>
+                                  {checked ? (
+                                    <Badge variant="outline" className="text-green-600">
+                                      <Check className="ml-1 h-3 w-3" /> مفعلة
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-muted-foreground">
+                                      <Ban className="ml-1 h-3 w-3" /> غير مفعلة
+                                    </Badge>
+                                  )}
+                                </div>
+                                {description && (
+                                  <p className="text-xs text-muted-foreground">{description}</p>
+                                )}
+                              </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={closeUserDialog} disabled={saveLoading}>
+              إلغاء
+            </Button>
+            <Button onClick={handleSaveUser} disabled={saveLoading || userDialogLoading}>
+              {saveLoading ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

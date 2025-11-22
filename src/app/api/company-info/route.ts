@@ -3,7 +3,7 @@ interface RouteParams {
 }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthUser } from '@/lib/auth-server'
+import { authorize, UserRole } from '@/lib/auth-server'
 import { db } from '@/lib/db'
 import { normalizeBrandingObject } from '@/lib/branding'
 
@@ -89,25 +89,12 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getAuthUser()
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    // Check if user is admin
-    const adminUser = await db.user.findUnique({
-      where: { id: user.id }
+    const auth = await authorize(request, {
+      roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN]
     })
 
-    if (!adminUser || adminUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+    if ('error' in auth) {
+      return auth.error
     }
 
     const data = await request.json()
@@ -153,6 +140,9 @@ export async function PUT(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error updating company info:', error)
+    if (error instanceof Error && error.message.includes('Access denied')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     return NextResponse.json(
       { error: 'Failed to update company info' },
       { status: 500 }
