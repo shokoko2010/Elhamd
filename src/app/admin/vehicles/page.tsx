@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import {
   Car, Plus, Edit, Trash2, Search, Filter, Eye,
   MoreHorizontal, X, Check, AlertCircle, Image as ImageIcon,
-  Calendar, DollarSign, Settings, Package, Loader2
+  Calendar, DollarSign, Settings, Package, Loader2, RefreshCw
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -709,337 +709,399 @@ export default function AdminVehiclesPage() {
   }, [currentPage, search, category, status, sortBy, sortOrder])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">إدارة المركبات</h1>
-          <p className="text-gray-600 mt-2">إضافة وتعديل وحذف المركبات في النظام</p>
+    <div className="space-y-8">
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-blue-900 to-blue-700 p-6 text-white shadow-xl shadow-blue-200/50">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-blue-50">
+              <Car className="h-4 w-4" />
+              إدارة المركبات
+            </div>
+            <h1 className="text-3xl font-black leading-tight sm:text-4xl">قائمة المركبات والعمليات اللحظية</h1>
+            <p className="text-sm text-blue-50/80">إدارة دقيقة للمركبات مع وصول سريع للإجراءات، الفلاتر الذكية، ورؤية واضحة للمخزون والحجوزات.</p>
+            <div className="flex flex-wrap gap-3">
+              <Badge className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-blue-50">مزامنة مباشرة مع قاعدة البيانات</Badge>
+              <Badge className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-blue-50">قابلة للتحكم من لوحة الأدمن</Badge>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 self-start">
+            <Button
+              variant="outline"
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+              onClick={() => fetchVehicles()}
+            >
+              <RefreshCw className="ml-2 h-4 w-4" />
+              تحديث البيانات
+            </Button>
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100"
+            >
+              <Plus className="h-4 w-4" />
+              إضافة مركبة جديدة
+            </Button>
+          </div>
         </div>
-        <Button 
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          إضافة مركبة جديدة
-        </Button>
+        {stats && (
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[{
+              label: 'إجمالي المركبات',
+              value: stats.total,
+              description: 'جميع المركبات المسجلة',
+              accent: 'from-blue-500/80 to-blue-400/70',
+              icon: Car
+            }, {
+              label: 'المتاحة',
+              value: stats.available,
+              description: `${stats.total > 0 ? Math.round((stats.available / stats.total) * 100) : 0}% من الأسطول`,
+              accent: 'from-emerald-500/80 to-emerald-400/70',
+              icon: Eye
+            }, {
+              label: 'المباعة',
+              value: stats.sold,
+              description: 'المبيعات المؤكدة',
+              accent: 'from-indigo-500/80 to-indigo-400/70',
+              icon: DollarSign
+            }, {
+              label: 'قيمة المخزون',
+              value: formatPrice(stats.totalValue),
+              description: 'إجمالي الكميات × السعر',
+              accent: 'from-cyan-500/80 to-cyan-400/70',
+              icon: Package
+            }].map((item) => {
+              const Icon = item.icon
+              return (
+                <div key={item.label} className="rounded-2xl bg-white/10 p-4 shadow-inner shadow-blue-900/30">
+                  <div className="flex items-center justify-between text-sm text-blue-50/80">
+                    <span>{item.label}</span>
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}> 
+                      <Icon className="h-4 w-4 text-white" />
+                    </span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-white">{item.value}</p>
+                  <p className="text-xs text-blue-50/70">{item.description}</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">إجمالي المركبات</CardTitle>
-              <Car className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                جميع المركبات في النظام
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">المركبات المتاحة</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.available}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.total > 0 ? Math.round((stats.available / stats.total) * 100) : 0}% من إجمالي المركبات
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">المركبات المباعة</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.sold}</div>
-              <p className="text-xs text-muted-foreground">
-                هذا الشهر
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">قيمة المخزون</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(stats.totalValue)}</div>
-              <p className="text-xs text-muted-foreground">
-                إجمالي القيمة
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[{
+            title: 'إجمالي المركبات',
+            value: stats.total,
+            helper: 'جميع المركبات في النظام',
+            icon: Car,
+            badge: 'bg-blue-50 text-blue-700'
+          }, {
+            title: 'المركبات المتاحة',
+            value: stats.available,
+            helper: `${stats.total > 0 ? Math.round((stats.available / stats.total) * 100) : 0}% من إجمالي المركبات`,
+            icon: Eye,
+            badge: 'bg-emerald-50 text-emerald-700'
+          }, {
+            title: 'المركبات المباعة',
+            value: stats.sold,
+            helper: 'هذا الشهر',
+            icon: DollarSign,
+            badge: 'bg-indigo-50 text-indigo-700'
+          }, {
+            title: 'قيمة المخزون',
+            value: formatPrice(stats.totalValue),
+            helper: 'إجمالي القيمة',
+            icon: Package,
+            badge: 'bg-cyan-50 text-cyan-700'
+          }].map((card) => {
+            const Icon = card.icon
+            return (
+              <Card key={card.title} className="border-none bg-white/90 shadow-lg shadow-blue-50">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                  <div>
+                    <CardTitle className="text-sm font-semibold text-slate-900">{card.title}</CardTitle>
+                    <p className="text-xs text-gray-500">{card.helper}</p>
+                  </div>
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.badge}`}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-slate-900">{card.value}</div>
+                  <div className="mt-3 h-2 rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500" style={{ width: '80%' }} />
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
       {/* Search and Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>البحث والتصفية</CardTitle>
+      <Card className="border-none bg-white/90 shadow-lg shadow-blue-50">
+        <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <CardTitle className="text-lg font-semibold text-slate-900">البحث والتصفية</CardTitle>
+            <CardDescription>فلترة سريعة حسب الفئة، الحالة، السعر أو سنة الصنع</CardDescription>
+          </div>
+          <div className="flex gap-2 text-xs text-blue-600">
+            <Badge className="rounded-full bg-blue-50 text-blue-700">عرض 10 مركبات</Badge>
+            <Badge className="rounded-full bg-emerald-50 text-emerald-700">تحديث تلقائي</Badge>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-500" />
                 <Input
                   placeholder="البحث عن مركبة..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pr-10"
+                  className="rounded-full border-blue-100 bg-blue-50/40 pr-10 text-sm focus-visible:ring-blue-200"
                 />
               </div>
             </div>
-            <Select value={category || 'all'} onValueChange={setCategory}>
-              <SelectTrigger className="w-full lg:w-48">
-                <SelectValue placeholder="جميع الفئات" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الفئات</SelectItem>
-                {VEHICLE_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={status || 'all'} onValueChange={setStatus}>
-              <SelectTrigger className="w-full lg:w-48">
-                <SelectValue placeholder="جميع الحالات" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                {VEHICLE_STATUSES.map((stat) => (
-                  <SelectItem key={stat.value} value={stat.value}>
-                    {stat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full lg:w-48">
-                <SelectValue placeholder="ترتيب حسب" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="createdAt">تاريخ الإنشاء</SelectItem>
-                <SelectItem value="make">الماركة</SelectItem>
-                <SelectItem value="model">الموديل</SelectItem>
-                <SelectItem value="price">السعر</SelectItem>
-                <SelectItem value="year">السنة</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sortOrder} onValueChange={setSortOrder}>
-              <SelectTrigger className="w-full lg:w-32">
-                <SelectValue placeholder="الترتيب" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">الأحدث</SelectItem>
-                <SelectItem value="asc">الأقدم</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4">
+              <Select value={category || 'all'} onValueChange={setCategory}>
+                <SelectTrigger className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm">
+                  <SelectValue placeholder="جميع الفئات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الفئات</SelectItem>
+                  {VEHICLE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={status || 'all'} onValueChange={setStatus}>
+                <SelectTrigger className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm">
+                  <SelectValue placeholder="جميع الحالات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الحالات</SelectItem>
+                  {VEHICLE_STATUSES.map((stat) => (
+                    <SelectItem key={stat.value} value={stat.value}>
+                      {stat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm">
+                  <SelectValue placeholder="ترتيب حسب" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt">تاريخ الإنشاء</SelectItem>
+                  <SelectItem value="make">الماركة</SelectItem>
+                  <SelectItem value="model">الموديل</SelectItem>
+                  <SelectItem value="price">السعر</SelectItem>
+                  <SelectItem value="year">السنة</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger className="w-full rounded-xl border-slate-200 bg-slate-50 text-sm">
+                  <SelectValue placeholder="الترتيب" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">الأحدث</SelectItem>
+                  <SelectItem value="asc">الأقدم</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Vehicles List */}
-      <Card>
+      <Card className="border-none bg-white/90 shadow-lg shadow-blue-50">
         <CardHeader>
-          <CardTitle>قائمة المركبات</CardTitle>
+          <CardTitle className="text-xl font-semibold text-slate-900">قائمة المركبات</CardTitle>
           <CardDescription>عرض جميع المركبات في النظام</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-20 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
-                      <div className="h-3 bg-gray-200 rounded w-32 animate-pulse"></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
-                    <div className="flex space-x-2">
-                      <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <div className="mb-3 h-36 rounded-xl bg-slate-100" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-2/3 rounded bg-slate-100" />
+                    <div className="h-3 w-1/2 rounded bg-slate-100" />
+                    <div className="h-3 w-1/3 rounded bg-slate-100" />
                   </div>
                 </div>
               ))}
             </div>
           ) : vehicles.length === 0 ? (
-            <div className="text-center py-12">
-              <Car className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد مركبات</h3>
-              <p className="text-gray-600 mb-4">لم يتم العثور على أي مركبات مطابقة للبحث</p>
+            <div className="py-12 text-center">
+              <Car className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">لا توجد مركبات</h3>
+              <p className="mb-4 text-gray-600">لم يتم العثور على أي مركبات مطابقة للبحث</p>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 إضافة مركبة جديدة
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {vehicles.map((vehicle) => (
-                <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-20 h-16 bg-gray-200 rounded-lg overflow-hidden">
-                      {vehicle.images && vehicle.images.length > 0 ? (
-                        <img 
-                          src={vehicle.images.find(img => img.isPrimary)?.imageUrl || vehicle.images[0]?.imageUrl} 
-                          alt={`${vehicle.make} ${vehicle.model}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = '/api/placeholder/vehicle'
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                          <ImageIcon className="h-8 w-8 text-gray-400" />
-                        </div>
+                <div key={vehicle.id} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/95 shadow-sm transition hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl">
+                  <div className="relative h-40 w-full bg-slate-100">
+                    {vehicle.images && vehicle.images.length > 0 ? (
+                      <img
+                        src={vehicle.images.find(img => img.isPrimary)?.imageUrl || vehicle.images[0]?.imageUrl}
+                        alt={`${vehicle.make} ${vehicle.model}`}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/api/placeholder/vehicle'
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-50">
+                        <ImageIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                      <Badge className={`rounded-full bg-white/90 text-slate-900 ${getStatusBadge(vehicle.status)}`}>{getStatusLabel(vehicle.status)}</Badge>
+                      {vehicle.featured && (
+                        <Badge className="rounded-full bg-amber-50 text-amber-700">مميز</Badge>
                       )}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">
-                        {vehicle.make} {vehicle.model} {vehicle.year}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {getCategoryLabel(vehicle.category)} • {getFuelTypeLabel(vehicle.fuelType)} • {vehicle.color || 'غير محدد'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        الرقم: {vehicle.stockNumber} {vehicle.vin && `• VIN: ${vehicle.vin}`}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge className={getStatusBadge(vehicle.status)}>
-                          {getStatusLabel(vehicle.status)}
-                        </Badge>
-                        {vehicle.featured && (
-                          <Badge variant="secondary">مميز</Badge>
-                        )}
-                        {vehicle._count?.testDriveBookings > 0 && (
-                          <Badge variant="outline">{vehicle._count.testDriveBookings} قيادة تجريبية</Badge>
-                        )}
-                        {vehicle._count?.serviceBookings > 0 && (
-                          <Badge variant="outline">{vehicle._count.serviceBookings} حجز صيانة</Badge>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-3 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          {vehicle.make} {vehicle.model} {vehicle.year}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {getCategoryLabel(vehicle.category)} • {getFuelTypeLabel(vehicle.fuelType)} • {vehicle.color || 'غير محدد'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          الرقم: {vehicle.stockNumber} {vehicle.vin && `• VIN: ${vehicle.vin}`}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-emerald-600">{formatPrice(vehicle.pricing?.totalPrice || vehicle.price)}</p>
+                        {typeof vehicle.stockQuantity === 'number' && (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 flex items-center justify-center gap-1 rounded-full border-emerald-200 bg-emerald-50 px-2 text-emerald-700"
+                          >
+                            <Package className="h-3 w-3" />
+                            <span>المخزون: {vehicle.stockQuantity.toLocaleString('ar-EG')}</span>
+                          </Badge>
                         )}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right space-y-1">
-                      <p className="text-lg font-bold text-green-600">
-                        {formatPrice(vehicle.pricing?.totalPrice || vehicle.price)}
-                      </p>
-                      {typeof vehicle.stockQuantity === 'number' && (
-                        <Badge
-                          variant="outline"
-                          className="flex items-center justify-center gap-1 border-emerald-200 bg-emerald-50 text-emerald-700"
-                        >
-                          <Package className="h-3 w-3" />
-                          <span>
-                            المخزون: {vehicle.stockQuantity.toLocaleString('ar-EG')}
-                          </span>
+                    <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                      {vehicle._count?.testDriveBookings > 0 && (
+                        <Badge variant="outline" className="rounded-full border-blue-100 bg-blue-50 text-blue-700">
+                          {vehicle._count.testDriveBookings} قيادة تجريبية
+                        </Badge>
+                      )}
+                      {vehicle._count?.serviceBookings > 0 && (
+                        <Badge variant="outline" className="rounded-full border-cyan-100 bg-cyan-50 text-cyan-700">
+                          {vehicle._count.serviceBookings} حجز صيانة
                         </Badge>
                       )}
                       {vehicle.mileage && (
-                        <p className="text-xs text-gray-500">
-                          {vehicle.mileage.toLocaleString('ar-EG')} كم
-                        </p>
+                        <span className="rounded-full bg-slate-100 px-3 py-1">{vehicle.mileage.toLocaleString('ar-EG')} كم</span>
                       )}
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => window.open(`/vehicles/${vehicle.id}`, '_blank')}
-                        >
-                          <Eye className="ml-2 h-4 w-4" />
-                          عرض
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => openEditDialog(vehicle)}
-                        >
-                          <Edit className="ml-2 h-4 w-4" />
-                          تعديل
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedVehicle(vehicle)
-                            setIsDeleteDialogOpen(true)
-                          }}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="ml-2 h-4 w-4" />
-                          حذف
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span className="rounded-full bg-slate-50 px-3 py-1">{getStatusLabel(vehicle.status)}</span>
+                        <span className="rounded-full bg-slate-50 px-3 py-1">{getCategoryLabel(vehicle.category)}</span>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-9 w-9 rounded-full hover:bg-blue-50" aria-label="خيارات المركبة">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => window.open(`/vehicles/${vehicle.id}`, '_blank')}
+                          >
+                            <Eye className="ml-2 h-4 w-4" />
+                            عرض
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openEditDialog(vehicle)}
+                          >
+                            <Edit className="ml-2 h-4 w-4" />
+                            تعديل
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedVehicle(vehicle)
+                              setIsDeleteDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="ml-2 h-4 w-4" />
+                            حذف
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6">
-              <div className="text-sm text-gray-600">
-                صفحة {currentPage} من {totalPages}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  السابق
-                </Button>
-                <div className="flex items-center space-x-1">
-                  {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                    const page = i + 1
-                    return (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    )
-                  })}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  التالي
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            صفحة {currentPage} من {totalPages}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              السابق
+            </Button>
+            <div className="flex items-center space-x-1">
+              {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                const page = i + 1
+                return (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                )
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              التالي
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Create Vehicle Dialog */}
       {/* Create Vehicle Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
