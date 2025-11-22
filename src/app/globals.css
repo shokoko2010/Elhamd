@@ -381,7 +381,7 @@
 
   .admin-surface [data-slot='button'] {
     background-image: linear-gradient(120deg, var(--admin-primary), var(--admin-secondary));
-    color: #fff;
+    color: #fff !important;
     border-color: rgba(255, 255, 255, 0.5);
     box-shadow: 0 10px 30px rgba(10, 26, 63, 0.24), 0 4px 14px rgba(193, 39, 45, 0.18);
   }
@@ -393,7 +393,7 @@
 
   .admin-surface [data-slot='button'][data-variant='secondary'] {
     background-image: linear-gradient(120deg, rgba(10, 26, 63, 0.92), rgba(193, 39, 45, 0.92));
-    color: #fff;
+    color: #fff !important;
   }
 
   .admin-surface [data-slot='button'][data-variant='outline'],
@@ -413,7 +413,7 @@
 
   .admin-surface [data-slot='button'][data-variant='destructive'] {
     background: linear-gradient(120deg, rgba(193, 39, 45, 0.96), rgba(140, 16, 22, 0.94));
-    color: #fff;
+    color: #fff !important;
     border-color: rgba(193, 39, 45, 0.5);
     box-shadow: 0 12px 30px rgba(193, 39, 45, 0.25), 0 6px 18px rgba(10, 26, 63, 0.12);
   }
@@ -425,7 +425,7 @@
 
   .admin-surface [data-slot='badge'] {
     background-image: linear-gradient(120deg, rgba(10, 26, 63, 0.92), rgba(193, 39, 45, 0.92));
-    color: #fff;
+    color: #fff !important;
     border-color: transparent;
     box-shadow: 0 8px 18px rgba(10, 26, 63, 0.12);
   }
