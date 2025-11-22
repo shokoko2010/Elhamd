@@ -348,7 +348,12 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
     // Apply font family and load Google font when available
     const fontOption = FONT_OPTIONS.find((font) => font.value === settings.fontFamily)
     const baseFallbackStack = 'var(--font-cairo), var(--font-tajawal), "Noto Sans Arabic", var(--font-geist-sans), system-ui, -apple-system, sans-serif'
-    const fontStack = fontOption?.stack || `${settings.fontFamily || 'var(--font-cairo)'}, ${baseFallbackStack}`
+    const resolvedFontStack = fontOption?.stack || baseFallbackStack
+
+    // Always prefer the branded Cairo/Tajawal stack when an unknown font slips through
+    const fontStack = fontOption?.stack
+      ? fontOption.stack
+      : `${settings.fontFamily && FONT_OPTIONS.some((font) => font.value === settings.fontFamily) ? settings.fontFamily : 'var(--font-cairo)'}, ${resolvedFontStack}`
 
     root.style.setProperty('--font-family', fontStack)
 

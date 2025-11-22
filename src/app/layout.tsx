@@ -185,7 +185,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${cairo.variable} ${tajawal.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${cairo.className} ${cairo.variable} ${tajawal.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <AuthProvider>
           <AnalyticsProvider measurementId={measurementId}>

@@ -192,11 +192,15 @@
 }
 
 @layer base {
+  html {
+    font-family: var(--font-family, var(--font-cairo)), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    font-family: var(--font-family, var(--font-geist-sans)), system-ui, -apple-system, sans-serif;
+    font-family: var(--font-family, var(--font-cairo)), var(--font-tajawal), var(--font-geist-sans), system-ui, -apple-system, sans-serif;
     @apply bg-background text-foreground;
   }
 }
