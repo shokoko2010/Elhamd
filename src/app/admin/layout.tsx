@@ -15,7 +15,7 @@ export default function AdminLayout({
 }) {
   return (
     <AdminRoute>
-      <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-900">
+      <div className="admin-surface relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 text-slate-900">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.12),transparent_30%),linear-gradient(135deg,rgba(59,130,246,0.06)_0%,rgba(99,102,241,0.04)_40%,rgba(14,165,233,0.06)_100%)]" />
         <AdminHeader />
         <div className="relative flex flex-col md:flex-row">
