@@ -754,8 +754,8 @@ export default function Home() {
                   </div>
                 )}
                 {/* Decorative Elements */}
-                <div className="absolute -top-4 -left-4 w-24 h-24 bg-yellow-400 rounded-full opacity-20 blur-xl"></div>
-                <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-orange-400 rounded-full opacity-20 blur-xl"></div>
+                <div className="absolute -top-4 -left-4 w-24 h-24 rounded-full opacity-20 blur-xl bg-[color:var(--brand-secondary,#C1272D)]"></div>
+                <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-20 blur-xl bg-[color:var(--brand-primary-400,#798fb0)]"></div>
               </div>
             </div>
           </div>
@@ -769,8 +769,8 @@ export default function Home() {
           <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white relative w-full">
             {/* Background Decoration */}
             <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-100 rounded-full opacity-30 blur-3xl"></div>
-              <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-100 rounded-full opacity-30 blur-3xl"></div>
+              <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]"></div>
+              <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-secondary-100-rgb,247_216_217),1)]"></div>
             </div>
             
             <div className="max-w-7xl mx-auto px-4 relative z-10">
@@ -805,7 +805,7 @@ export default function Home() {
         {companyStats.length > 0 && (
           <EnhancedLazySection rootMargin="100px" preload={false}>
             <section className="py-16 md:py-20 bg-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-50"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] opacity-50"></div>
               <div className="max-w-7xl mx-auto px-4 relative z-10">
                 <div className="text-center mb-12">
                   <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
@@ -850,11 +850,16 @@ export default function Home() {
             <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 relative">
               <div className="max-w-7xl mx-auto px-4">
                 <div className="text-center mb-16">
-                  <Badge className="bg-green-100 text-green-700 border-green-200 mb-4">
+                  <Badge
+                    className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]"
+                  >
                     <Wrench className="ml-2 h-4 w-4" />
                     خدماتنا
                   </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-green-600 bg-clip-text text-transparent">
+                  <h2
+                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+                  >
                     {serviceSectionTitle}
                   </h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -878,10 +883,13 @@ export default function Home() {
                         className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm"
                       >
                         <CardHeader className="text-center pb-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                          <div
+                            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"
+                            style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
+                          >
                             <IconComponent className="h-8 w-8 text-white" />
                           </div>
-                          <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
+                          <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
                             {service.title}
                           </CardTitle>
                         </CardHeader>
@@ -896,7 +904,7 @@ export default function Home() {
                               {service.features.slice(0, 3).map((feature: string, idx: number) => (
                                 <li key={idx} className="flex items-center justify-end gap-2">
                                   <span>{feature}</span>
-                                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[color:var(--brand-secondary,#C1272D)]"></div>
                                 </li>
                               ))}
                             </ul>
@@ -910,7 +918,7 @@ export default function Home() {
                           {service.price && (
                             <div className="flex items-center justify-between mb-6">
                               <span className="text-sm text-gray-500">السعر:</span>
-                              <span className="text-lg font-bold text-green-600">
+                              <span className="text-lg font-bold text-[color:var(--brand-secondary,#C1272D)]">
                                 {formatPrice(service.price)}
                               </span>
                             </div>
@@ -918,7 +926,7 @@ export default function Home() {
                           <Link href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
                             <TouchButton
                               variant="outline"
-                              className="w-full border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
+                              className="w-full border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] text-[color:var(--brand-primary,#0A1A3F)] hover:bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] hover:border-[color:rgba(var(--brand-secondary-300-rgb,228_117_122),1)]"
                             >
                               {service.ctaText?.trim() || serviceCtaText}
                             </TouchButton>
@@ -935,7 +943,7 @@ export default function Home() {
 
         {/* Tata Motors Section */}
         <EnhancedLazySection rootMargin="100px" preload={false}>
-          <section className="py-16 md:py-24 bg-gradient-to-br from-red-50 via-orange-50 to-red-50 relative overflow-hidden">
+          <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] via-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] to-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] relative overflow-hidden">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-5">
               <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23dc2626\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
@@ -943,11 +951,14 @@ export default function Home() {
             
             <div className="max-w-7xl mx-auto px-4 relative z-10">
               <div className="text-center mb-16">
-                <Badge className="bg-red-100 text-red-700 border-red-200 mb-4">
+                <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
                   <Truck className="ml-2 h-4 w-4" />
                   Tata Motors
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                <h2
+                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                  style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+                >
                   تاتا موتورز
                 </h2>
                 <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
@@ -960,7 +971,10 @@ export default function Home() {
                 <div className="lg:col-span-1">
                   <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
                     <CardHeader className="text-center pb-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <div
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
+                      >
                         <Truck className="h-8 w-8 text-white" />
                       </div>
                       <CardTitle className="text-2xl font-bold text-gray-900">
@@ -972,8 +986,8 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="text-center">
                       <div className="space-y-3">
-                        <div className="bg-red-50 rounded-lg p-3">
-                          <div className="text-lg font-bold text-red-600">PRIMA 3328.K</div>
+                        <div className="rounded-lg p-3 bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)]">
+                          <div className="text-lg font-bold text-[color:var(--brand-secondary,#C1272D)]">PRIMA 3328.K</div>
                           <div className="text-sm text-gray-600">270 حصان | 970 نيوتن.متر</div>
                         </div>
                         <p className="text-gray-600 text-sm">
@@ -987,7 +1001,10 @@ export default function Home() {
                 <div className="lg:col-span-1">
                   <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
                     <CardHeader className="text-center pb-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <div
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'linear-gradient(135deg, var(--brand-primary-600,#081432), var(--brand-secondary,#C1272D))' }}
+                      >
                         <Package className="h-8 w-8 text-white" />
                       </div>
                       <CardTitle className="text-2xl font-bold text-gray-900">
@@ -999,8 +1016,8 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="text-center">
                       <div className="space-y-3">
-                        <div className="bg-orange-50 rounded-lg p-3">
-                          <div className="text-lg font-bold text-orange-600">ULTRA T.9</div>
+                        <div className="rounded-lg p-3 bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)]">
+                          <div className="text-lg font-bold text-[color:var(--brand-primary,#0A1A3F)]">ULTRA T.9</div>
                           <div className="text-sm text-gray-600">155 حصان | 450 نيوتن.متر</div>
                         </div>
                         <p className="text-gray-600 text-sm">
@@ -1014,7 +1031,10 @@ export default function Home() {
                 <div className="lg:col-span-1">
                   <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
                     <CardHeader className="text-center pb-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <div
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'linear-gradient(135deg, var(--brand-primary-500,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+                      >
                         <Truck className="h-8 w-8 text-white" />
                       </div>
                       <CardTitle className="text-2xl font-bold text-gray-900">
@@ -1026,8 +1046,8 @@ export default function Home() {
                     </CardHeader>
                     <CardContent className="text-center">
                       <div className="space-y-3">
-                        <div className="bg-yellow-50 rounded-lg p-3">
-                          <div className="text-lg font-bold text-yellow-600">XENON SC</div>
+                        <div className="rounded-lg p-3 bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)]">
+                          <div className="text-lg font-bold text-[color:var(--brand-primary,#0A1A3F)]">XENON SC</div>
                           <div className="text-sm text-gray-600">150 حصان | 320 نيوتن.متر</div>
                         </div>
                         <p className="text-gray-600 text-sm">
@@ -1051,9 +1071,12 @@ export default function Home() {
                   return (
                     <div key={index} className="text-center">
                       <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
-                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                          <Icon className="h-6 w-6 text-white" />
-                        </div>
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
+                      >
+                        <Icon className="h-6 w-6 text-white" />
+                      </div>
                         <h3 className="font-bold text-gray-900 mb-2">{feature.title}</h3>
                         <p className="text-sm text-gray-600">{feature.desc}</p>
                       </div>
@@ -1064,9 +1087,9 @@ export default function Home() {
 
               <div className="text-center">
                 <Link href="/tata-motors">
-                  <TouchButton 
+                  <TouchButton
                     size="xl"
-                    className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white text-lg font-semibold px-8 py-4 shadow-lg"
+                    className="text-lg font-semibold px-8 py-4 shadow-lg bg-gradient-to-r from-[color:var(--brand-primary-700,#061028)] via-[color:var(--brand-primary,#0A1A3F)] to-[color:var(--brand-secondary,#C1272D)] hover:from-[color:var(--brand-primary-800,#050c1f)] hover:to-[color:var(--brand-secondary-600,#a41f25)] text-white"
                   >
                     استعرض جميع موديلات تاتا
                     <ArrowLeft className="mr-3 h-5 w-5" />
@@ -1080,18 +1103,21 @@ export default function Home() {
         {/* Company Values */}
         {companyValues.length > 0 && (
           <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-br from-purple-50 to-white relative overflow-hidden">
+            <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-white relative overflow-hidden">
               <div className="absolute inset-0 opacity-5">
-                <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%239333EA\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
+                <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%230A1A3F\' fill-opacity=\'0.12\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
               </div>
-              
+
               <div className="max-w-7xl mx-auto px-4 relative z-10">
                 <div className="text-center mb-16">
-                  <Badge className="bg-purple-100 text-purple-700 border-purple-200 mb-4">
+                  <Badge className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]">
                     <Heart className="ml-2 h-4 w-4" />
                     قيمنا
                   </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent">
+                  <h2
+                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+                  >
                     قيمنا ومبادئنا
                   </h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -1102,11 +1128,14 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
                   {companyValues.map((value, index) => (
                     <div key={index} className="text-center group">
-                      <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-purple-100 group-hover:border-purple-200 h-full">
-                        <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                      <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)] group-hover:border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] h-full">
+                        <div
+                          className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform"
+                          style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
+                        >
                           <Award className="h-10 w-10 text-white" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
                           {value.title}
                         </h3>
                         <p className="text-gray-600 leading-relaxed">
@@ -1127,11 +1156,14 @@ export default function Home() {
             <section className="py-16 md:py-24 bg-white relative">
               <div className="max-w-7xl mx-auto px-4">
                 <div className="text-center mb-16">
-                  <Badge className="bg-orange-100 text-orange-700 border-orange-200 mb-4">
+                  <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
                     <Clock className="ml-2 h-4 w-4" />
                     رحلتنا
                   </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-orange-600 bg-clip-text text-transparent">
+                  <h2
+                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+                  >
                     قصة نجاحنا
                   </h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -1141,14 +1173,14 @@ export default function Home() {
 
                 <div className="relative">
                   {/* Timeline Line */}
-                  <div className="absolute right-1/2 transform translate-x-1/2 w-1 h-full bg-gradient-to-b from-orange-200 to-orange-400 rounded-full"></div>
+                  <div className="absolute right-1/2 transform translate-x-1/2 w-1 h-full rounded-full bg-gradient-to-b from-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] via-[color:rgba(var(--brand-primary-400-rgb,121_143_176),1)] to-[color:rgba(var(--brand-secondary-400-rgb,214_72_83),1)]"></div>
                   
                   <div className="space-y-12">
                     {timelineEvents.map((event, index) => (
                       <div key={index} className={`relative flex items-center ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
                         <div className={`w-5/12 ${index % 2 === 0 ? 'text-right pr-8' : 'text-left pl-8'}`}>
-                          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-orange-100">
-                            <div className="text-2xl font-bold text-orange-600 mb-2">
+                          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]">
+                            <div className="text-2xl font-bold text-[color:var(--brand-secondary,#C1272D)] mb-2">
                               {event.year}
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 mb-3">
@@ -1159,9 +1191,9 @@ export default function Home() {
                             </p>
                           </div>
                         </div>
-                        
+
                         {/* Timeline Dot */}
-                        <div className="absolute right-1/2 transform translate-x-1/2 w-6 h-6 bg-orange-500 rounded-full border-4 border-white shadow-lg"></div>
+                        <div className="absolute right-1/2 transform translate-x-1/2 w-6 h-6 rounded-full border-4 border-white shadow-lg bg-[color:var(--brand-secondary,#C1272D)]"></div>
                       </div>
                     ))}
                   </div>
@@ -1320,14 +1352,17 @@ export default function Home() {
         {/* Features Section */}
         {companyFeatures.length > 0 && (
           <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white">
+            <section className="py-16 md:py-24 bg-gradient-to-b from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-white">
               <div className="max-w-7xl mx-auto px-4">
                 <div className="text-center mb-16">
-                  <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 mb-4">
+                  <Badge className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]">
                     <Shield className="ml-2 h-4 w-4" />
                     مميزاتنا
                   </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-indigo-600 bg-clip-text text-transparent">
+                  <h2
+                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+                  >
                     لماذا تختار الحمد للسيارات؟
                   </h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -1338,13 +1373,16 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                   {companyFeatures.map((feature, index) => (
                     <div key={index} className="group">
-                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 group-hover:border-indigo-200 h-full">
+                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)] group-hover:border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] h-full">
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <div
+                            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"
+                            style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
+                          >
                             <Shield className="h-6 w-6 text-white" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
                               {feature.title}
                             </h3>
                             <p className="text-gray-600 leading-relaxed">
@@ -1386,18 +1424,21 @@ export default function Home() {
 
         {/* Testimonials Section - Using Customer Feedback */}
         <EnhancedLazySection rootMargin="100px" preload={false}>
-          <section className="py-16 md:py-24 bg-gradient-to-br from-green-50 to-white relative overflow-hidden">
+          <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-white relative overflow-hidden">
             <div className="absolute inset-0 opacity-5">
-              <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%2310B981\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
+              <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%230A1A3F\' fill-opacity=\'0.12\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
             </div>
-            
+
             <div className="max-w-7xl mx-auto px-4 relative z-10">
               <div className="text-center mb-16">
-                <Badge className="bg-green-100 text-green-700 border-green-200 mb-4">
+                <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
                   <Star className="ml-2 h-4 w-4" />
                   آراء العملاء
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-green-600 bg-clip-text text-transparent">
+                <h2
+                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                  style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+                >
                   تجارب حقيقية من عملاء سعداء
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -1429,10 +1470,10 @@ export default function Home() {
                     date: '2024'
                   }
                 ].map((testimonial, index) => (
-                  <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-green-100">
-                    <div className="flex items-center gap-1 mb-4">
+                  <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]">
+                    <div className="flex items-center gap-1 mb-4 text-[color:var(--brand-secondary,#C1272D)]">
                       {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                        <Star key={i} className="h-5 w-5 fill-current" />
                       ))}
                     </div>
                     <p className="text-gray-700 leading-relaxed mb-6 italic">
@@ -1443,7 +1484,7 @@ export default function Home() {
                         <div className="font-semibold text-gray-900">{testimonial.name}</div>
                         <div className="text-sm text-gray-500">{testimonial.car}</div>
                       </div>
-                      <div className="text-sm text-gray-400">{testimonial.date}</div>
+                      <div className="text-sm text-[color:var(--brand-secondary-600,#a41f25)]">{testimonial.date}</div>
                     </div>
                   </div>
                 ))}

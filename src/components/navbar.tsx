@@ -169,18 +169,24 @@ function AuthAwareNavbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link
+              href="/"
+              className="group flex items-center gap-3 rounded-full px-4 py-2 transition hover:scale-[1.01]"
+            >
               {settings.logoUrl ? (
                 <img
                   src={settings.logoUrl}
                   alt={settings.siteTitle}
-                  className="h-8 w-auto drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]"
+                  className="h-14 w-auto max-h-16 shrink-0 rounded-md bg-transparent md:h-16"
                 />
               ) : (
-                <Car className={`h-8 w-8 ${iconToneClass}`} style={{ color: shouldUseTransparent ? undefined : settings.primaryColor }} />
+                <Car
+                  className={`h-12 w-12 ${iconToneClass}`}
+                  style={{ color: shouldUseTransparent ? undefined : settings.primaryColor }}
+                />
               )}
               <span
-                className={`text-xl font-bold transition-colors ${shouldUseTransparent ? 'text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.35)]' : ''}`}
+                className={`text-lg md:text-xl font-semibold tracking-tight transition-colors ${shouldUseTransparent ? 'text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.35)]' : ''}`}
                 style={!shouldUseTransparent ? { color: settings.primaryColor } : undefined}
               >
                 {settings.siteTitle}

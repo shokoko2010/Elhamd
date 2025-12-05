@@ -274,33 +274,43 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-8">
+    <footer className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-slate-900 to-black text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.16),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_35%)]" />
+      <div className="relative container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           {/* Company Info */}
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-blue-950/30 backdrop-blur-xl lg:col-span-2">
+            <div className="flex items-center space-x-3 mb-6">
               {footerContent?.logoUrl || settings.logoUrl ? (
-                <img src={footerContent?.logoUrl || settings.logoUrl} alt={footerContent?.logoText || settings.siteTitle} className="h-8 w-auto" />
+                <img
+                  src={footerContent?.logoUrl || settings.logoUrl}
+                  alt={footerContent?.logoText || settings.siteTitle}
+                  className="h-14 w-auto rounded-md bg-transparent md:h-16"
+                />
               ) : (
-                <Car className="h-8 w-8" style={{ color: settings.primaryColor }} />
+                <Car className="h-12 w-12" style={{ color: settings.primaryColor }} />
               )}
-              <span className="text-xl font-bold">{footerContent?.logoText || settings.siteTitle}</span>
+              <span className="text-xl md:text-2xl font-semibold tracking-tight text-white">
+                {footerContent?.logoText || settings.siteTitle}
+              </span>
             </div>
-            <p className="text-gray-300 mb-4">
+            <p className="text-white/80 leading-relaxed mb-4">
               {footerContent?.tagline || settings.siteDescription}
             </p>
             {(footerSocial || settings.socialLinks) && (
-              <div className="flex space-x-4">
-                {footerSocial?.facebook && getSocialIcon('facebook', footerSocial.facebook)}
-                {footerSocial?.twitter && getSocialIcon('twitter', footerSocial.twitter)}
-                {footerSocial?.instagram && getSocialIcon('instagram', footerSocial.instagram)}
-                {footerSocial?.linkedin && getSocialIcon('linkedin', footerSocial.linkedin)}
-                {footerSocial?.youtube && getSocialIcon('youtube', footerSocial.youtube)}
-                {settings.socialLinks?.facebook && getSocialIcon('facebook', settings.socialLinks.facebook)}
-                {settings.socialLinks?.twitter && getSocialIcon('twitter', settings.socialLinks.twitter)}
-                {settings.socialLinks?.instagram && getSocialIcon('instagram', settings.socialLinks.instagram)}
-                {settings.socialLinks?.linkedin && getSocialIcon('linkedin', settings.socialLinks.linkedin)}
+              <div className="flex flex-wrap items-center gap-3 text-sm text-white/70">
+                <span className="text-xs uppercase tracking-[0.2em] text-white/50">تابعنا</span>
+                <div className="flex items-center gap-3">
+                  {footerSocial?.facebook && getSocialIcon('facebook', footerSocial.facebook)}
+                  {footerSocial?.twitter && getSocialIcon('twitter', footerSocial.twitter)}
+                  {footerSocial?.instagram && getSocialIcon('instagram', footerSocial.instagram)}
+                  {footerSocial?.linkedin && getSocialIcon('linkedin', footerSocial.linkedin)}
+                  {footerSocial?.youtube && getSocialIcon('youtube', footerSocial.youtube)}
+                  {settings.socialLinks?.facebook && getSocialIcon('facebook', settings.socialLinks.facebook)}
+                  {settings.socialLinks?.twitter && getSocialIcon('twitter', settings.socialLinks.twitter)}
+                  {settings.socialLinks?.instagram && getSocialIcon('instagram', settings.socialLinks.instagram)}
+                  {settings.socialLinks?.linkedin && getSocialIcon('linkedin', settings.socialLinks.linkedin)}
+                </div>
               </div>
             )}
           </div>
@@ -310,9 +320,15 @@ export default function Footer() {
             .filter(column => column.isVisible)
             .sort((a, b) => a.order - b.order)
             .map((column) => (
-              <div key={column.id}>
-                <h3 className="text-lg font-semibold mb-4">{column.title}</h3>
-                <ul className="space-y-2">
+              <div
+                key={column.id}
+                className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-blue-950/20 backdrop-blur"
+              >
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+                  {column.title}
+                </h3>
+                <ul className="space-y-2 text-white/80">
                   {parseContent(column.content).map((item, index) => (
                     <li key={index}>
                       {renderFooterItem(item, column.type)}
@@ -323,9 +339,9 @@ export default function Footer() {
             ))}
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-400 text-sm text-center md:text-right">
+        <div className="mt-10 rounded-2xl border border-white/5 bg-white/5 p-4 backdrop-blur">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="text-white/70 text-sm text-center md:text-right leading-relaxed">
               <span
                 dangerouslySetInnerHTML={{
                   __html: footerContent?.copyrightText || `© ${new Date().getFullYear()} ${settings.siteTitle}. جميع الحقوق محفوظة.`
@@ -335,7 +351,7 @@ export default function Footer() {
                 تم التطوير ويتم الإدارة بواسطة{' '}
                 <a
                   href="https://arab-web3.com"
-                  className="text-white hover:text-blue-200 underline decoration-dotted"
+                  className="text-white font-semibold hover:text-blue-200 underline decoration-dotted"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -343,14 +359,14 @@ export default function Footer() {
                 </a>
               </span>
             </div>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-white/80 justify-center md:justify-start">
+              <Link href="/privacy" className="transition hover:text-white">
                 سياسة الخصوصية
               </Link>
-              <Link href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
+              <Link href="/terms" className="transition hover:text-white">
                 الشروط والأحكام
               </Link>
-              <Link href="/contact" className="text-gray-400 hover:text-white text-sm transition-colors">
+              <Link href="/contact" className="transition hover:text-white">
                 اتصل بنا
               </Link>
             </div>

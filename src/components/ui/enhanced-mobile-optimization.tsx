@@ -198,15 +198,15 @@ export function TouchButton({
   const getVariantClasses = useCallback(() => {
     switch (variant) {
       case 'primary':
-        return 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
+        return 'bg-[var(--brand-primary,#0A1A3F)] text-white hover:bg-[color-mix(in_oklab,var(--brand-primary,#0A1A3F)_85%,white_15%)] active:bg-[color-mix(in_oklab,var(--brand-primary,#0A1A3F)_80%,black_20%)] shadow-[0_10px_30px_rgba(var(--brand-primary-500-rgb,10,26,63),0.2)]'
       case 'secondary':
-        return 'bg-gray-200 text-gray-800 hover:bg-gray-300 active:bg-gray-400'
+        return 'bg-[var(--brand-secondary-50,#fbecec)] text-[var(--brand-secondary,#C1272D)] hover:bg-[color-mix(in_oklab,var(--brand-secondary-50,#fbecec)_80%,white_20%)] active:bg-[color-mix(in_oklab,var(--brand-secondary-50,#fbecec)_70%,var(--brand-secondary,#C1272D)_30%)]'
       case 'outline':
-        return 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 active:bg-blue-100'
+        return 'border-2 border-[var(--brand-primary,#0A1A3F)] text-[var(--brand-primary,#0A1A3F)] hover:bg-[color-mix(in_oklab,var(--brand-primary,#0A1A3F)_10%,white_90%)] active:bg-[color-mix(in_oklab,var(--brand-primary,#0A1A3F)_14%,white_86%)]'
       case 'ghost':
-        return 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
+        return 'text-[var(--brand-primary-700,#061028)] hover:bg-[color-mix(in_oklab,var(--brand-primary-50,#eef1f6)_80%,white_20%)] active:bg-[color-mix(in_oklab,var(--brand-primary-50,#eef1f6)_70%,white_30%)]'
       default:
-        return 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
+        return 'bg-[var(--brand-primary,#0A1A3F)] text-white hover:bg-[color-mix(in_oklab,var(--brand-primary,#0A1A3F)_85%,white_15%)] active:bg-[color-mix(in_oklab,var(--brand-primary,#0A1A3F)_80%,black_20%)] shadow-[0_10px_30px_rgba(var(--brand-primary-500-rgb,10,26,63),0.2)]'
     }
   }, [variant])
 

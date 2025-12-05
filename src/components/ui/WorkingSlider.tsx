@@ -408,17 +408,17 @@ export function WorkingSlider({
             variant="ghost"
             size="sm"
             onClick={handlePrevious}
-            className="pointer-events-auto bg-white/20 hover:bg-white/30 text-white border-white/30 w-12 h-12 rounded-full backdrop-blur-sm"
+            className="pointer-events-auto w-12 h-12 rounded-full border border-white/15 bg-[color:rgba(var(--brand-primary-900-rgb,3_8_21),0.7)] text-white shadow-lg transition hover:bg-[color:rgba(var(--brand-primary-700-rgb,6_16_40),0.9)] hover:border-white/25"
             aria-label="السابق"
           >
             <ChevronRight className="w-6 h-6" />
           </Button>
-          
+
           <Button
             variant="ghost"
             size="sm"
             onClick={handleNext}
-            className="pointer-events-auto bg-white/20 hover:bg-white/30 text-white border-white/30 w-12 h-12 rounded-full backdrop-blur-sm"
+            className="pointer-events-auto w-12 h-12 rounded-full border border-white/15 bg-[color:rgba(var(--brand-primary-900-rgb,3_8_21),0.7)] text-white shadow-lg transition hover:bg-[color:rgba(var(--brand-primary-700-rgb,6_16_40),0.9)] hover:border-white/25"
             aria-label="التالي"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -427,15 +427,15 @@ export function WorkingSlider({
 
         {/* Interactive Dots */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
-          <div className="flex items-center gap-3 bg-black/30 backdrop-blur-sm px-4 py-3 rounded-full">
+          <div className="flex items-center gap-3 bg-[color:rgba(var(--brand-primary-900-rgb,3_8_21),0.6)] backdrop-blur-sm px-4 py-3 rounded-full border border-white/10 shadow-lg">
             {items.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
                 className={`transition-all duration-300 rounded-full ${
-                  currentIndex === index 
-                    ? 'bg-white w-10 h-3 shadow-lg' 
-                    : 'bg-white/40 w-3 h-3 hover:bg-white/60 hover:scale-110'
+                  currentIndex === index
+                    ? 'bg-[color:var(--brand-secondary,#C1272D)] w-10 h-3 shadow-lg'
+                    : 'bg-white/60 w-3 h-3 hover:bg-white/80 hover:scale-110'
                 }`}
                 aria-label={`الانتقال إلى الشريحة ${index + 1}`}
               />
@@ -458,10 +458,10 @@ export function WorkingSlider({
 
         {/* Progress Indicator */}
         <div className="absolute bottom-4 left-6 z-20">
-          <div className="bg-white/20 backdrop-blur-sm rounded-full h-2 w-36 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-blue-400 to-purple-400 h-full rounded-full transition-all duration-1000 ease-linear shadow-lg"
-              style={{ 
+          <div className="bg-white/25 backdrop-blur-sm rounded-full h-2 w-36 overflow-hidden border border-white/20 shadow">
+            <div
+              className="h-full rounded-full transition-all duration-1000 ease-linear shadow-lg bg-gradient-to-r from-[color:var(--brand-secondary,#C1272D)] via-[color:var(--brand-primary,#0A1A3F)] to-[color:var(--brand-primary-400,#798fb0)]"
+              style={{
                 width: isAutoPlay ? '100%' : '0%',
                 transitionDuration: `${autoPlayInterval}ms`
               }}
