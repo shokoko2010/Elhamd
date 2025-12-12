@@ -455,6 +455,14 @@ export default function HomeClient({ initialData = {} }: HomeClientProps) {
         : carouselVehicles.length
 
   useEffect(() => {
+    // If we have initial data (specifically sliders as a proxy for critical data), we don't need to fetch
+    if (initialData.sliders && initialData.sliders.length > 0) {
+      console.log('🚀 Using server-provided data, skipping client fetch')
+      setLoading(false)
+      setSliderLoading(false)
+      return
+    }
+
     console.log('🚀 Component mounted, starting data fetch...')
 
     // Fetch all data from APIs
