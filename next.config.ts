@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     if (!isServer) {
       config.resolve.fallback = { fs: false, path: false };
     }
-    
+
     // Disable preloading that causes warnings
     config.optimization = {
       ...config.optimization,
@@ -31,18 +31,17 @@ const nextConfig: NextConfig = {
         },
       },
     };
-    
+
     return config;
   },
   allowedDevOrigins: [
-  "preview-chat-6b323351-ce1b-4e1b-b225-cc99f0ec3948.space.z.ai",
-  "preview-chat-e452f205-fd1b-4a33-90d8-b739e1e8cf3c.space.z.ai"
-],
-  
+    "https://elhamdimport.com"
+  ],
+
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
-  
+
   // Image optimization
   images: {
     // Disable optimization for local images to prevent 400 errors
@@ -52,7 +51,7 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
   },
-  
+
   // Experimental features for performance
   experimental: {
     // Enable optimized package imports
@@ -62,10 +61,10 @@ const nextConfig: NextConfig = {
     // Disable other optimizations that cause preload warnings
     optimizeServerReact: true,
   },
-  
+
   // Server external packages
   serverExternalPackages: ['@prisma/client'],
-  
+
   // Headers for security and performance
   headers: async () => {
     return [
@@ -92,21 +91,21 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  
+
   // Redirects for SEO
   async redirects() {
     return [
       // Add any SEO redirects here
     ]
   },
-  
+
   // Rewrites for performance
   async rewrites() {
     return [
       // Add any performance rewrites here
     ]
   },
-  
+
   // Environment variables that should be available to the client
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
