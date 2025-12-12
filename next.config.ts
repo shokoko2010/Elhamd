@@ -39,21 +39,27 @@ const nextConfig: NextConfig = {
 
   // Image optimization
   images: {
-    // Disable optimization for local images to prevent 400 errors
-    unoptimized: true,
+    // Enable optimization for all images
+    unoptimized: false,
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
 
   // Experimental features for performance
   experimental: {
     // Enable optimized package imports
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // Disable CSS optimization to prevent preload warnings
-    optimizeCss: false,
-    // Disable other optimizations that cause preload warnings
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'date-fns', 'lodash'],
+    // Enable CSS optimization
+    optimizeCss: true,
+    // Enable other optimizations
     optimizeServerReact: true,
   },
 

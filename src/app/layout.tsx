@@ -7,6 +7,7 @@ import AnalyticsProvider from "@/components/analytics/AnalyticsProvider";
 import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
 import { HomepageSEO } from "@/components/seo/SEO";
 import { SessionManager } from "@/components/session-manager";
+import { PwaRegistry } from "@/components/pwa-registry";
 
 const cairo = Cairo({
   variable: "--font-cairo",
@@ -79,7 +80,7 @@ export default function RootLayout({
 }>) {
   const homepageSEO = HomepageSEO();
   const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || ''
-  
+
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
@@ -89,104 +90,11 @@ export default function RootLayout({
             __html: homepageSEO.structuredData
           }}
         />
-        {/* Service Worker Registration */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                      
-                      // Check for updates
-                      registration.addEventListener('updatefound', () => {
-                        const installingWorker = registration.installing;
-                        installingWorker.addEventListener('statechange', () => {
-                          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // New version available
-                            if (confirm('إصدار جديد متاح! هل تريد تحديث الصفحة؟')) {
-                              window.location.reload();
-                            }
-                          }
-                        });
-                      });
-                    })
-                    .catch(function(err) {
-                      console.log('ServiceWorker registration failed: ', err);
-                    });
-                });
-              }
-              
-              // PWA Install Prompt
-              let deferredPrompt;
-              window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                
-                // Show install button if desired
-                if (typeof document !== 'undefined') {
-                  const installButton = document.getElementById('pwa-install-button');
-                  if (installButton) {
-                    installButton.style.display = 'block';
-                    installButton.addEventListener('click', () => {
-                      deferredPrompt.prompt();
-                      deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                          console.log('User accepted the install prompt');
-                        } else {
-                          console.log('User dismissed the install prompt');
-                        }
-                        deferredPrompt = null;
-                      });
-                    });
-                  }
-                }
-              });
-              
-              // Handle app installed
-              window.addEventListener('appinstalled', (evt) => {
-                console.log('PWA was installed');
-                if (typeof document !== 'undefined') {
-                  const installButton = document.getElementById('pwa-install-button');
-                  if (installButton) {
-                    installButton.style.display = 'none';
-                  }
-                }
-              });
-              
-              // Handle online/offline status
-              window.addEventListener('online', () => {
-                console.log('App is online');
-                if (typeof document !== 'undefined' && document.body) {
-                  document.body.classList.remove('offline');
-                  document.body.classList.add('online');
-                }
-              });
-              
-              window.addEventListener('offline', () => {
-                console.log('App is offline');
-                if (typeof document !== 'undefined' && document.body) {
-                  document.body.classList.remove('online');
-                  document.body.classList.add('offline');
-                }
-              });
-              
-              // Check initial status
-              if (typeof document !== 'undefined' && document.body) {
-                if (navigator.onLine) {
-                  document.body.classList.add('online');
-                } else {
-                  document.body.classList.add('offline');
-                }
-              }
-            `
-          }}
-        />
       </head>
       <body
         className={`${cairo.className} ${cairo.variable} ${tajawal.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        <PwaRegistry />
         <AuthProvider>
           <AnalyticsProvider measurementId={measurementId}>
             <SiteSettingsProvider>
