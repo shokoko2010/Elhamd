@@ -7,11 +7,6 @@ const nextConfig: NextConfig = {
     tsconfigPath: './tsconfig.json',
   },
   reactStrictMode: true,
-  eslint: {
-    ignoreDuringBuilds: true,
-    // Exclude Firebase functions directory from ESLint
-    dirs: ['src'],
-  },
   // Exclude scripts directory from build
   webpack: (config, { isServer }) => {
     if (!isServer) {
