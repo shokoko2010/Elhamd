@@ -284,6 +284,7 @@ export function WorkingSlider({
             className="object-cover"
             sizes="100vw"
             quality={90}
+            unoptimized={currentItem.imageUrl.startsWith('/api/')} // Bypass optimization for API routes
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               if (!target.dataset.triedFallback) {

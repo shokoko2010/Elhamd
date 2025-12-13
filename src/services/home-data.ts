@@ -60,14 +60,39 @@ export async function getSliders(activeOnly = true) {
             return [
                 {
                     id: 'default-1',
-                    title: 'مجموعة سيارات تاتا المتكاملة',
-                    subtitle: 'الأولى في عالم السيارات',
-                    description: 'اكتشف أحدث موديلات الشاحنات والبيك أب',
-                    imageUrl: '/uploads/showroom-luxury.jpg',
+                    title: 'سيارات تاتا بانش',
+                    subtitle: 'قوة وأداء استثنائي',
+                    description: 'اكتشف تاتا بانش - سيارة SUV المدمجة الأكثر مبيعاً',
+                    imageUrl: '/slider-punch.jpg',
                     ctaText: 'استكشف الآن',
                     ctaLink: '/vehicles',
+                    order: 0,
+                    contentPosition: 'middle-right',
+                    isActive: true
+                },
+                {
+                    id: 'default-2',
+                    title: 'تاتا نيكسون',
+                    subtitle: 'تصميم عصري وتقنيات متقدمة',
+                    description: 'نيكسون - الخيار الأمثل للعائلات العصرية',
+                    imageUrl: '/slider-nexon.jpg',
+                    ctaText: 'تفاصيل أكثر',
+                    ctaLink: '/vehicles',
                     order: 1,
-                    contentPosition: 'middle-center'
+                    contentPosition: 'middle-right',
+                    isActive: true
+                },
+                {
+                    id: 'default-3',
+                    title: 'عروض خاصة',
+                    subtitle: 'خصومات حصرية لفترة محدودة',
+                    description: 'احصل على أفضل الأسعار وخدمات ما بعد البيع',
+                    imageUrl: '/slider-offer.jpg',
+                    ctaText: 'اطلع على العروض',
+                    ctaLink: '/special-offers',
+                    order: 2,
+                    contentPosition: 'middle-center',
+                    isActive: true
                 }
             ]
         }
@@ -76,15 +101,16 @@ export async function getSliders(activeOnly = true) {
         console.error('Error fetching sliders:', error)
         return [
             {
-                id: 'default-1',
-                title: 'مجموعة سيارات تاتا المتكاملة',
-                subtitle: 'الأولى في عالم السيارات',
-                description: 'اكتشف أحدث موديلات الشاحنات والبيك أب',
-                imageUrl: '/uploads/showroom-luxury.jpg',
-                ctaText: 'استكشف الآن',
+                id: 'fallback-1',
+                title: 'الحمد للسيارات',
+                subtitle: 'وكيل معتمد لسيارات تاتا',
+                description: 'جودة وخدمة تثق بها',
+                imageUrl: '/slider-punch.jpg',
+                ctaText: 'تصفح السيارات',
                 ctaLink: '/vehicles',
-                order: 1,
-                contentPosition: 'middle-center'
+                order: 0,
+                contentPosition: 'middle-center',
+                isActive: true
             }
         ]
     }
