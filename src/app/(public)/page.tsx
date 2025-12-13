@@ -229,7 +229,7 @@ export default async function Home() {
     getContactInfo(),
     getSiteSettings(),
     getSliders(true),
-    getPublicVehicles(0, 'AVAILABLE', undefined) // limit 0 for all if logic matches
+    getPublicVehicles(12, 'AVAILABLE', undefined) // limit 12 for home page performance
   ])
 
   // Normalize Data
@@ -327,7 +327,7 @@ export default async function Home() {
   if (Array.isArray(vehiclesRaw)) {
     // @ts-ignore
     featuredVehicles = dedupeVehicles(vehiclesRaw.map((v: any) => normalizeBrandingObject(v)))
-    totalVehiclesCount = vehiclesDataResponse?.total || featuredVehicles.length
+    totalVehiclesCount = vehiclesDataResponse?.total || 0
   }
 
   // Social Links Logic
