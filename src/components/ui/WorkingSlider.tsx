@@ -285,8 +285,13 @@ export function WorkingSlider({
             sizes="100vw"
             quality={90}
             onError={(e) => {
-              // Fallback logic handled by parent or simply fail gracefully to gradient
-              console.log('Image load failed, falling back to gradient')
+              const target = e.target as HTMLImageElement;
+              if (!target.dataset.triedFallback) {
+                target.dataset.triedFallback = 'true';
+                // Try fallback image
+                target.src = '/uploads/showroom-luxury.jpg';
+                console.log('Image load failed, switched to fallback:', currentItem.imageUrl);
+              }
             }}
           />
 
