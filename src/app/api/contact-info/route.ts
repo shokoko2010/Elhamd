@@ -12,7 +12,7 @@ export async function GET() {
     const contactInfo = await db.contactInfo.findFirst({
       where: { isActive: true }
     })
-    
+
     if (!contactInfo) {
       // Return default contact info if none exists
       return NextResponse.json({
@@ -29,23 +29,23 @@ export async function GET() {
           { day: 'الجمعة', hours: '2:00 م - 8:00 م' }
         ],
         departments: [
-          { 
-            value: 'sales', 
-            label: 'قسم المبيعات', 
-            icon: 'Car', 
-            description: 'للاستفسارات عن السيارات الجديدة والأسعار' 
+          {
+            value: 'sales',
+            label: 'قسم المبيعات',
+            icon: 'Car',
+            description: 'للاستفسارات عن السيارات الجديدة والأسعار'
           },
-          { 
-            value: 'service', 
-            label: 'قسم الخدمة', 
-            icon: 'Wrench', 
-            description: 'لحجز مواعيد الصيانة والاستفسارات الفنية' 
+          {
+            value: 'service',
+            label: 'قسم الخدمة',
+            icon: 'Wrench',
+            description: 'لحجز مواعيد الصيانة والاستفسارات الفنية'
           },
-          { 
-            value: 'support', 
-            label: 'قسم الدعم', 
-            icon: 'Users', 
-            description: 'للمساعدة العامة والدعم الفني' 
+          {
+            value: 'support',
+            label: 'قسم الدعم',
+            icon: 'Users',
+            description: 'للمساعدة العامة والدعم الفني'
           }
         ],
         isActive: true
@@ -65,7 +65,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const user = await getAuthUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -78,7 +78,7 @@ export async function PUT(request: NextRequest) {
       where: { id: user.id }
     })
 
-    if (!adminUser || adminUser.role !== 'ADMIN') {
+    if (!adminUser || (adminUser.role !== 'ADMIN' && adminUser.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -89,7 +89,7 @@ export async function PUT(request: NextRequest) {
 
     // Update or create contact info
     const existingInfo = await db.contactInfo.findFirst()
-    
+
     if (existingInfo) {
       const updatedInfo = await db.contactInfo.update({
         where: { id: existingInfo.id },

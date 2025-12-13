@@ -13,7 +13,7 @@ export async function GET() {
       where: { isActive: true },
       orderBy: { order: 'asc' }
     })
-    
+
     if (timelineEvents.length === 0) {
       // Return default timeline events if none exist
       return NextResponse.json([
@@ -76,15 +76,15 @@ export async function GET() {
 
     // Remove duplicates and ensure unique events
     const uniqueEvents = timelineEvents.reduce((acc, current) => {
-      const existingIndex = acc.findIndex(event => 
-        event.year === current.year && 
+      const existingIndex = acc.findIndex(event =>
+        event.year === current.year &&
         event.title === current.title
       )
-      
+
       if (existingIndex === -1) {
         acc.push(current)
       }
-      
+
       return acc
     }, [] as typeof timelineEvents)
 
@@ -101,7 +101,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const user = await getAuthUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -114,7 +114,7 @@ export async function PUT(request: NextRequest) {
       where: { id: user.id }
     })
 
-    if (!adminUser || adminUser.role !== 'ADMIN') {
+    if (!adminUser || (adminUser.role !== 'ADMIN' && adminUser.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
