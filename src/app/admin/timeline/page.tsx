@@ -124,6 +124,7 @@ export default function AdminTimelinePage() {
             const response = await fetch('/api/about/timeline', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(eventsToSave)
             })
 

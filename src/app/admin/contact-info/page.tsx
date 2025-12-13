@@ -66,6 +66,7 @@ export default function AdminContactInfoPage() {
             const response = await fetch('/api/contact-info', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(formData)
             })
 
