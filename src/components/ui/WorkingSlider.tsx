@@ -275,10 +275,18 @@ export function WorkingSlider({
       >
         {/* Background Image - Using standard img for better compatibility with dynamic sources */}
         <div className="absolute inset-0">
+          {/* Fallback background color */}
+          <div
+            className="absolute inset-0 z-0"
+            style={{
+              background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
+            }}
+          />
+
           <img
             src={currentItem.imageUrl}
             alt={heroAlt}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover z-5"
             loading="eager"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -288,14 +296,6 @@ export function WorkingSlider({
                 target.src = '/slider-punch.jpg';
                 console.log('Image load failed, switched to fallback:', currentItem.imageUrl);
               }
-            }}
-          />
-
-          {/* Fallback background color */}
-          <div
-            className="absolute inset-0 z-0"
-            style={{
-              background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
             }}
           />
 
