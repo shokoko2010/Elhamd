@@ -229,7 +229,7 @@ export default async function Home() {
     getContactInfo(),
     getSiteSettings(),
     getSliders(true),
-    getPublicVehicles(4, 'AVAILABLE', undefined) // limit 4 for home page performance
+    getPublicVehicles(6, 'AVAILABLE', undefined) // limit 6 for home page performance
   ])
 
   // Normalize Data
