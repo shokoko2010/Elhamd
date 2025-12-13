@@ -160,7 +160,7 @@ const fallbackVehicles: PublicVehicle[] = [
     transmission: 'AUTOMATIC',
     mileage: 0,
     images: [
-      { imageUrl: '/uploads/vehicles/1/tata-nexon-ev-1.jpg', isPrimary: true }
+      { imageUrl: '/slider-nexon.jpg', isPrimary: true }
     ]
   },
   {
@@ -174,7 +174,7 @@ const fallbackVehicles: PublicVehicle[] = [
     transmission: 'AUTOMATIC',
     mileage: 0,
     images: [
-      { imageUrl: '/uploads/vehicles/2/tata-punch-1.jpg', isPrimary: true }
+      { imageUrl: '/slider-punch.jpg', isPrimary: true }
     ]
   },
   {
@@ -188,7 +188,7 @@ const fallbackVehicles: PublicVehicle[] = [
     transmission: 'AUTOMATIC',
     mileage: 0,
     images: [
-      { imageUrl: '/uploads/vehicles/3/tata-tiago-1.jpg', isPrimary: true }
+      { imageUrl: '/slider-tiago.jpg', isPrimary: true }
     ]
   }
 ]

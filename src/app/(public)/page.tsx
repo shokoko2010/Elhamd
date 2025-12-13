@@ -2,6 +2,9 @@ import { db } from '@/lib/db'
 import HomeClient from './HomeClient'
 import { normalizeBrandingObject, DISTRIBUTOR_BRANDING } from '@/lib/branding'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // Replicate the normalization logic from the API
 const normalizeContentPosition = (position?: string) => {
     switch (position) {
