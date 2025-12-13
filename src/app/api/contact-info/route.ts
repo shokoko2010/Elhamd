@@ -120,12 +120,11 @@ export async function PUT(request: NextRequest) {
 
       return NextResponse.json(newInfo)
     }
-  }
   } catch (error) {
-  console.error('Error updating contact info:', error)
-  return NextResponse.json(
-    { error: 'Failed to update contact info' },
-    { status: 500 }
-  )
-}
+    console.error('Error updating contact info:', error)
+    return NextResponse.json(
+      { error: 'Failed to update contact info' },
+      { status: 500 }
+    )
+  }
 }
