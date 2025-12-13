@@ -724,59 +724,185 @@ export default async function Home() {
           </section>
         )}
 
-        {/* Timeline Section */}
+        {/* Timeline Section - Premium UI */}
         {timelineEvents.length > 0 && (
-          <section className="py-16 md:py-24 bg-white relative">
-            <div className="max-w-4xl mx-auto px-4 relative z-10">
-              <div className="text-center mb-16">
-                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
+          <section className="py-20 md:py-32 bg-slate-50 relative overflow-hidden">
+            {/* Background Elements */}
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent"></div>
+            <div className="absolute -left-64 top-1/3 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl"></div>
+            <div className="absolute -right-64 bottom-1/3 w-96 h-96 bg-red-100/50 rounded-full blur-3xl"></div>
+
+            <div className="max-w-7xl mx-auto px-4 relative z-10">
+              <div className="text-center mb-20">
+                <Badge className="bg-white text-blue-700 border-blue-100 shadow-sm mb-6 px-4 py-2 text-base">
                   <Clock className="ml-2 h-4 w-4" />
-                  تاريخنا
+                  تاريخنا العريق
                 </Badge>
-                <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900">مسيرة النجاح</h2>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto">محطات هامة في رحلة الحمد للسيارات</p>
+                <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900 tracking-tight">مسيرة النجاح المستمرة</h2>
+                <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                  منذ البداية وحتى اليوم، نسطر قصة نجاح مبنية على الثقة والابتكار
+                </p>
               </div>
 
-              <div className="relative border-r-2 border-blue-100 mr-4 md:mr-0 md:mx-auto space-y-12">
-                {timelineEvents.map((event: any, index: number) => (
-                  <div key={index} className="relative flex flex-col md:flex-row items-center gap-8 group">
-                    {/* Dot */}
-                    <div className="absolute -right-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-md group-hover:scale-125 transition-transform z-10"></div>
+              <div className="relative">
+                {/* Center Line */}
+                <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-px bg-gradient-to-b from-blue-200 via-blue-400 to-blue-200 hidden md:block"></div>
 
-                    {/* Year Badge */}
-                    <div className="md:w-1/4 text-right md:text-left md:pl-8">
-                      <span className="inline-block px-4 py-2 rounded-full bg-blue-50 text-blue-700 font-bold text-xl border border-blue-100">
-                        {event.year}
-                      </span>
-                    </div>
+                <div className="space-y-12 md:space-y-24">
+                  {timelineEvents.map((event: any, index: number) => {
+                    const isEven = index % 2 === 0
+                    return (
+                      <div key={index} className={`relative flex flex-col md:flex-row items-center ${isEven ? 'md:flex-row-reverse' : ''} gap-8 md:gap-0`}>
+                        {/* Content Side */}
+                        <div className="w-full md:w-1/2 flex justify-center md:block">
+                          <div className={`w-full max-w-lg ${isEven ? 'md:pr-12 lg:pr-16 text-right' : 'md:pl-12 lg:pl-16 text-left'}`}>
+                            <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group">
+                              <div className={`absolute top-0 ${isEven ? 'right-0' : 'left-0'} w-1 h-full bg-gradient-to-b from-blue-500 to-blue-600`}></div>
+                              <span className="block text-5xl font-bold text-slate-100 absolute top-4 right-4 z-0 opacity-50">{event.year}</span>
+                              <div className="relative z-10">
+                                <Badge className="mb-4 bg-blue-50 text-blue-700 border-0">{event.year}</Badge>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-3">{event.title}</h3>
+                                <p className="text-slate-600 leading-relaxed text-lg">{event.description}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
 
-                    {/* Content */}
-                    <div className="flex-1 mr-8 md:mr-0 md:w-3/4">
-                      <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 group-hover:border-blue-200 group-hover:bg-blue-50/30 transition-colors relative">
-                        <div className="absolute top-6 -right-2 w-4 h-4 bg-gray-50 transform rotate-45 border-r border-t border-gray-100 group-hover:border-blue-200 group-hover:bg-blue-50/30 md:hidden"></div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">{event.title}</h3>
-                        <p className="text-gray-600 leading-relaxed">{event.description}</p>
+                        {/* Center Point */}
+                        <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center justify-center hidden md:flex">
+                          <div className="w-12 h-12 bg-white rounded-full border-4 border-blue-500 shadow-lg z-10 flex items-center justify-center">
+                            <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                          </div>
+                        </div>
+
+                        {/* Empty Side for Balance */}
+                        <div className="w-full md:w-1/2 hidden md:block"></div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </section>
         )}
 
-        {/* Contact Selection */}
+        {/* Contact Section - Redesigned & Detailed */}
         {contactInfo && (
-          <section className="py-16 md:py-24 text-white relative" style={{ background: brandContactGradient }}>
+          <section className="py-20 md:py-28 relative overflow-hidden bg-[#0A1A3F] text-white">
+            {/* Background Map & Overlay */}
+            <div className="absolute inset-0 opacity-20 bg-[url('/grid-pattern.svg')]"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0A1A3F] via-[#0A1A3F]/90 to-[#061028]"></div>
+
             <div className="max-w-7xl mx-auto px-4 relative z-10">
-              <div className="text-center mb-16">
-                <h2 className="text-3xl font-bold mb-4">نحن هنا لمساعدتك</h2>
-                <div className="flex flex-wrap justify-center gap-4 mt-8">
-                  {socialLinks.map(({ platform, url }) => (
-                    <a key={platform} href={url} target="_blank" rel="noreferrer" className="text-white hover:text-blue-200">
-                      {platform}
-                    </a>
-                  ))}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">
+                {/* Text Content */}
+                <div>
+                  <Badge className="bg-blue-500/10 text-blue-200 border-blue-500/20 mb-6 px-4 py-2">
+                    تواصل معنا
+                  </Badge>
+                  <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white leading-tight">
+                    نحن هنا لخدمتك <span className="text-blue-400">في أي وقت</span>
+                  </h2>
+                  <p className="text-xl text-blue-100/80 mb-10 leading-relaxed max-w-lg">
+                    فريقنا جاهز للإجابة على استفساراتكم وتقديم أفضل خدمات الدعم والمبيعات. تفضل بزيارتنا أو اتصل بنا.
+                  </p>
+
+                  <div className="space-y-8">
+                    {/* Address */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 flex-shrink-0">
+                        <MapPin className="h-6 w-6 text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-white mb-1">المقر الرئيسي</h4>
+                        <p className="text-blue-100/70">{contactInfo.headquarters.address}</p>
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 flex-shrink-0">
+                        <Phone className="h-6 w-6 text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-white mb-1">اتصل بنا</h4>
+                        <Link href={`tel:${contactInfo.contactNumbers.primary}`} className="block text-blue-100/70 hover:text-white transition-colors dir-ltr text-right">
+                          {contactInfo.contactNumbers.primary}
+                        </Link>
+                        {contactInfo.contactNumbers.secondary && (
+                          <Link href={`tel:${contactInfo.contactNumbers.secondary}`} className="block text-blue-100/70 hover:text-white transition-colors dir-ltr text-right">
+                            {contactInfo.contactNumbers.secondary}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 flex-shrink-0">
+                        <Mail className="h-6 w-6 text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-semibold text-white mb-1">البريد الإلكتروني</h4>
+                        <Link href={`mailto:${contactInfo.headquarters.email}`} className="text-blue-100/70 hover:text-white transition-colors">
+                          {contactInfo.headquarters.email}
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Working Hours Card */}
+                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="p-2 bg-blue-500 rounded-lg">
+                      <Clock className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white">مواعيد العمل</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {contactInfo.workingHours.weekdays && (
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-blue-100">طوال أيام الأسبوع</span>
+                        <span className="text-white font-medium dir-ltr">{contactInfo.workingHours.weekdays}</span>
+                      </div>
+                    )}
+                    {contactInfo.workingHours.friday && (
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-blue-100">الجمعة</span>
+                        <span className="text-white font-medium dir-ltr">{contactInfo.workingHours.friday}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Social Links Grid */}
+                  <div className="mt-10 pt-8 border-t border-white/10">
+                    <p className="text-sm text-blue-200 mb-6 text-center">تابعنا على وسائل التواصل</p>
+                    <div className="flex flex-wrap justify-center gap-4">
+                      {socialLinks.map(({ platform, url }) => {
+                        // Simple mapping for icons
+                        const Icon = platform.includes('facebook') ? Facebook :
+                          platform.includes('instagram') ? Instagram :
+                            platform.includes('twitter') ? Twitter :
+                              platform.includes('linkedin') ? Linkedin :
+                                platform.includes('youtube') ? Youtube : MessageCircle
+
+                        return (
+                          <a
+                            key={platform}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-blue-600 hover:border-blue-500 transition-all duration-300 hover:scale-110 group"
+                            aria-label={platform}
+                          >
+                            <Icon className="h-5 w-5 text-white group-hover:text-white" />
+                          </a>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, TouchEvent } from 'react'
+import Image from 'next/image'
 import type { CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -81,7 +82,7 @@ export function WorkingSlider({
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
-  
+
   const intervalRef = useRef<NodeJS.Timeout>()
 
   // Handle auto-play
@@ -267,48 +268,25 @@ export function WorkingSlider({
   return (
     <div className={`relative w-full overflow-hidden ${className}`}>
       {/* Full viewport height */}
-      <div 
+      <div
         className="relative w-full h-[70vh] md:h-[80vh]"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Background Image */}
+        {/* Background Image - Optimized with next/image */}
         <div className="absolute inset-0">
-          <img
+          <Image
             src={currentItem.imageUrl}
             alt={heroAlt}
-            className="w-full h-full object-cover"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              zIndex: 1
-            }}
-            onLoad={() => {
-              console.log('✅ Image loaded successfully:', currentItem.imageUrl)
-            }}
+            fill
+            priority={true} // LCP Critical: Always prioritize hero image
+            className="object-cover"
+            sizes="100vw"
+            quality={90}
             onError={(e) => {
-              console.log('❌ Image failed to load:', currentItem.imageUrl)
-              const target = e.target as HTMLImageElement
-              
-              // Only try fallback once to prevent infinite loop
-              if (!target.dataset.triedFallback) {
-                target.dataset.triedFallback = 'true'
-                console.log('🔄 Trying fallback with absolute URL...')
-                // Try with absolute URL if relative fails
-                if (currentItem.imageUrl.startsWith('/')) {
-                  target.src = currentItem.imageUrl
-                } else {
-                  target.src = `/${currentItem.imageUrl}`
-                }
-              } else {
-                console.log('💥 All fallbacks failed, hiding image')
-                target.style.display = 'none'
-              }
+              // Fallback logic handled by parent or simply fail gracefully to gradient
+              console.log('Image load failed, falling back to gradient')
             }}
           />
 
@@ -319,7 +297,7 @@ export function WorkingSlider({
               background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
             }}
           />
-          
+
           {/* Enhanced gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50 z-10" />
         </div>
@@ -366,13 +344,12 @@ export function WorkingSlider({
 
                 {/* CTA Button */}
                 <div
-                  className={`flex flex-col sm:flex-row gap-4 ${
-                    horizontalAlign === 'left'
-                      ? 'sm:justify-start'
-                      : horizontalAlign === 'center'
-                        ? 'sm:justify-center'
-                        : 'sm:justify-end'
-                  }`}
+                  className={`flex flex-col sm:flex-row gap-4 ${horizontalAlign === 'left'
+                    ? 'sm:justify-start'
+                    : horizontalAlign === 'center'
+                      ? 'sm:justify-center'
+                      : 'sm:justify-end'
+                    }`}
                 >
                   <Button
                     size="lg"
@@ -432,11 +409,10 @@ export function WorkingSlider({
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`transition-all duration-300 rounded-full ${
-                  currentIndex === index
-                    ? 'bg-[color:var(--brand-secondary,#C1272D)] w-10 h-3 shadow-lg'
-                    : 'bg-white/60 w-3 h-3 hover:bg-white/80 hover:scale-110'
-                }`}
+                className={`transition-all duration-300 rounded-full ${currentIndex === index
+                  ? 'bg-[color:var(--brand-secondary,#C1272D)] w-10 h-3 shadow-lg'
+                  : 'bg-white/60 w-3 h-3 hover:bg-white/80 hover:scale-110'
+                  }`}
                 aria-label={`الانتقال إلى الشريحة ${index + 1}`}
               />
             ))}
@@ -486,11 +462,10 @@ export function WorkingSlider({
             <button
               key={item.id}
               onClick={() => goToSlide(index)}
-              className={`flex-shrink-0 relative rounded-lg overflow-hidden transition-all duration-300 ${
-                currentIndex === index 
-                  ? 'ring-2 ring-blue-500 transform scale-105 shadow-2xl' 
-                  : 'opacity-70 hover:opacity-90 hover:scale-102'
-              }`}
+              className={`flex-shrink-0 relative rounded-lg overflow-hidden transition-all duration-300 ${currentIndex === index
+                ? 'ring-2 ring-blue-500 transform scale-105 shadow-2xl'
+                : 'opacity-70 hover:opacity-90 hover:scale-102'
+                }`}
               style={{ width: '120px', height: '90px' }}
               aria-label={`عرض ${item.title}`}
             >
@@ -516,7 +491,7 @@ export function WorkingSlider({
                 }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
-                  
+
                   if (!target.dataset.triedFallback) {
                     target.dataset.triedFallback = 'true'
                     console.log('🔄 Trying fallback for thumbnail:', item.imageUrl)

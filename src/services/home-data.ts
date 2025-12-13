@@ -303,18 +303,40 @@ export async function getSiteSettings() {
 // --- Contact Info ---
 export async function getContactInfo() {
     try {
-        return await db.contactInfo.findFirst({
+        const info = await db.contactInfo.findFirst({
             select: {
                 primaryPhone: true,
                 secondaryPhone: true,
                 primaryEmail: true,
                 address: true,
-                workingHours: true, // Json is okay if small
-                // mapCoordinates? usually small.
+                workingHours: true,
             }
         })
+
+        if (!info) {
+            return {
+                primaryPhone: '+20 100 000 0000',
+                secondaryPhone: '+20 120 000 0000',
+                primaryEmail: 'info@elhamdimport.com',
+                address: 'بورسعيد - الحي الإماراتي - بجوار المرور',
+                workingHours: {
+                    weekdays: '9:00 ص - 10:00 م',
+                    friday: '1:00 م - 10:00 م'
+                }
+            }
+        }
+        return info
     } catch {
-        return null
+        return {
+            primaryPhone: '+20 100 000 0000',
+            secondaryPhone: '+20 120 000 0000',
+            primaryEmail: 'info@elhamdimport.com',
+            address: 'بورسعيد - الحي الإماراتي - بجوار المرور',
+            workingHours: {
+                weekdays: '9:00 ص - 10:00 م',
+                friday: '1:00 م - 10:00 م'
+            }
+        }
     }
 }
 
