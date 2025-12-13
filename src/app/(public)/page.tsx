@@ -1,87 +1,35 @@
-'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Suspense } from 'react'
+import Link from 'next/link'
 import {
-  Car,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar,
-  Wrench,
-  Star,
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Play,
-  Pause,
-  AlertCircle,
-  Package,
-  Shield,
-  Award,
-  Users,
-  Clock,
-  Zap,
-  Heart,
-  Eye,
-  Grid,
-  List,
-  Home as HomeIcon,
-  Truck,
-  Settings,
-  Droplet,
-  Facebook,
-  Instagram,
-  Linkedin,
-  Twitter,
-  Youtube,
-  MessageCircle
+  Car, Phone, Mail, MapPin, Calendar, Wrench, Star,
+  ArrowLeft, ChevronLeft, ChevronRight, Play, Pause,
+  AlertCircle, Package, Shield, Award, Users, Clock,
+  Zap, Heart, Eye, Grid, List, Home as HomeIcon,
+  Truck, Settings, Droplet, Facebook, Instagram,
+  Linkedin, Twitter, Youtube, MessageCircle
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import Link from 'next/link'
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
-import { OptimizedImage, ResponsiveImage, BackgroundImage } from '@/components/ui/OptimizedImage'
-import { LoadingIndicator, LoadingCard } from '@/components/ui/LoadingIndicator'
-import { WorkingSlider } from '@/components/ui/WorkingSlider'
-import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
-import { cache } from '@/lib/cache'
-import { ErrorHandler, useErrorHandler } from '@/lib/errorHandler'
-import { toast } from 'sonner'
-// import { AdvancedPublicSearch } from '@/components/search/AdvancedPublicSearch'
-import ConfigurablePopup from '@/components/ConfigurablePopup'
-import {
-  TouchButton,
-  useDeviceInfo,
-  ResponsiveGrid,
-  SwipeableCard,
-  MobileNav
-} from '@/components/ui/enhanced-mobile-optimization'
 import { EnhancedLazyImage } from '@/components/ui/enhanced-lazy-loading'
-import { FacebookFeeds } from '@/components/social/FacebookFeeds'
+import { WorkingSlider } from '@/components/ui/WorkingSlider'
 import { ModernVehicleCarousel } from '@/components/home/ModernVehicleCarousel'
+import { FacebookFeeds } from '@/components/social/FacebookFeeds'
+import ConfigurablePopup from '@/components/ConfigurablePopup'
+import { TouchButton } from '@/components/ui/enhanced-mobile-optimization'
 
-import dynamic from 'next/dynamic'
-import { Suspense } from 'react'
-
-const LazyAdvancedPublicSearch = dynamic(
-  () => import('@/components/search/AdvancedPublicSearch').then(mod => mod.AdvancedPublicSearch),
-  {
-    loading: () => <div className="h-64 w-full animate-pulse bg-gray-100 rounded-xl" />,
-    ssr: false
-  }
-)
-
-const LazyFacebookFeeds = dynamic(
-  () => import('@/components/social/FacebookFeeds').then(mod => mod.FacebookFeeds),
-  {
-    loading: () => <div className="h-96 w-full animate-pulse bg-gray-100 rounded-xl" />,
-    ssr: false
-  }
-)
+import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
+import { safeFetch } from '@/lib/safe-fetch'
 import type { PublicVehicle } from '@/types/public-vehicle'
 
+// Force revalidation every hour
+export const revalidate = 3600
+
+// Helper Types & Functions
 type SliderContentPosition =
   | 'top-right'
   | 'bottom-right'
@@ -109,6 +57,7 @@ interface SliderItem {
   contentShadow?: boolean
   contentStrokeColor?: string
   contentStrokeWidth?: number
+  order?: number
 }
 
 const arabicDayLabels: Record<string, string> = {
@@ -132,93 +81,23 @@ const normalizeContentPosition = (position?: string): SliderContentPosition => {
     case 'middle-left':
     case 'middle-center':
     case 'middle-right':
-      return position
-    case 'left':
-      return 'middle-left'
-    case 'center':
-      return 'middle-center'
-    case 'right':
-      return 'middle-right'
-    case 'top':
-      return 'top-center'
-    case 'bottom':
-      return 'bottom-center'
-    default:
-      return 'top-right'
+      return position as SliderContentPosition
+    case 'left': return 'middle-left'
+    case 'center': return 'middle-center'
+    case 'right': return 'middle-right'
+    case 'top': return 'top-center'
+    case 'bottom': return 'bottom-center'
+    default: return 'top-right'
   }
-}
-
-const fallbackVehicles: PublicVehicle[] = [
-  {
-    id: 'fallback-nexon-ev',
-    make: 'Tata',
-    model: 'Nexon EV',
-    year: 2024,
-    price: 650000,
-    category: 'SUV',
-    fuelType: 'ELECTRIC',
-    transmission: 'AUTOMATIC',
-    mileage: 0,
-    images: [
-      { imageUrl: '/uploads/vehicles/1/tata-nexon-ev-1.jpg', isPrimary: true }
-    ]
-  },
-  {
-    id: 'fallback-punch',
-    make: 'Tata',
-    model: 'Punch',
-    year: 2024,
-    price: 380000,
-    category: 'CROSSOVER',
-    fuelType: 'GASOLINE',
-    transmission: 'AUTOMATIC',
-    mileage: 0,
-    images: [
-      { imageUrl: '/uploads/vehicles/2/tata-punch-1.jpg', isPrimary: true }
-    ]
-  },
-  {
-    id: 'fallback-tiago',
-    make: 'Tata',
-    model: 'Tiago',
-    year: 2024,
-    price: 345000,
-    category: 'HATCHBACK',
-    fuelType: 'GASOLINE',
-    transmission: 'AUTOMATIC',
-    mileage: 0,
-    images: [
-      { imageUrl: '/uploads/vehicles/3/tata-tiago-1.jpg', isPrimary: true }
-    ]
-  }
-]
-
-const dedupeVehicles = (vehicles: PublicVehicle[]): PublicVehicle[] => {
-  const seen = new Set<string>()
-
-  return vehicles.filter((vehicle) => {
-    if (!vehicle?.id) return false
-    if (seen.has(vehicle.id)) return false
-
-    seen.add(vehicle.id)
-    return true
-  })
 }
 
 const resolveServiceIcon = (iconName?: string): LucideIcon => {
-  if (!iconName) {
-    return Wrench
-  }
-
+  if (!iconName) return Wrench
   const trimmed = iconName.trim()
-  if (!trimmed) {
-    return Wrench
-  }
+  if (!trimmed) return Wrench
 
-  const directMatch = (LucideIcons as Record<string, LucideIcon | undefined>)[trimmed as keyof typeof LucideIcons]
-  if (directMatch) {
-    return directMatch
-  }
+  const directMatch = (LucideIcons as any)[trimmed]
+  if (directMatch) return directMatch
 
   const pascalCase = trimmed
     .split(/[^a-zA-Z0-9]+/)
@@ -226,39 +105,32 @@ const resolveServiceIcon = (iconName?: string): LucideIcon => {
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
     .join('')
 
-  const normalizedMatch = (LucideIcons as Record<string, LucideIcon | undefined>)[pascalCase as keyof typeof LucideIcons]
-
+  const normalizedMatch = (LucideIcons as any)[pascalCase]
   return normalizedMatch ?? Wrench
 }
 
 const resolveServiceLink = (rawLink?: string): string => {
-  if (!rawLink) {
-    return '/service-booking'
-  }
-
+  if (!rawLink) return '/service-booking'
   const trimmed = rawLink.trim()
-  if (!trimmed) {
-    return '/service-booking'
-  }
-
-  if (/^(https?:\/\/|mailto:|tel:|whatsapp:)/i.test(trimmed)) {
-    return trimmed
-  }
-
+  if (!trimmed) return '/service-booking'
+  if (/^(https?:\/\/|mailto:|tel:|whatsapp:)/i.test(trimmed)) return trimmed
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
 }
 
-const normalizeContactInfo = (data: any) => {
-  if (!data) {
-    return null
-  }
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat('ar-EG', {
+    style: 'currency',
+    currency: 'EGP',
+    minimumFractionDigits: 0
+  }).format(price)
+}
 
+const normalizeContactInfo = (data: any) => {
+  if (!data) return null
   const workingHoursRaw = data.workingHours ?? {}
   const workingHoursObject = Array.isArray(workingHoursRaw)
     ? workingHoursRaw.reduce((acc: Record<string, string>, entry: any) => {
-      if (entry?.day && entry?.hours) {
-        acc[entry.day] = entry.hours
-      }
+      if (entry?.day && entry?.hours) acc[entry.day] = entry.hours
       return acc
     }, {})
     : typeof workingHoursRaw === 'object' && workingHoursRaw !== null
@@ -267,16 +139,10 @@ const normalizeContactInfo = (data: any) => {
 
   const resolveValue = (key: string) => {
     const direct = workingHoursObject[key]
-    if (typeof direct === 'string' && direct.trim()) {
-      return direct
-    }
-
+    if (typeof direct === 'string' && direct.trim()) return direct
     const capitalized = key.charAt(0).toUpperCase() + key.slice(1)
     const fallback = workingHoursObject[capitalized]
-    if (typeof fallback === 'string' && fallback.trim()) {
-      return fallback
-    }
-
+    if (typeof fallback === 'string' && fallback.trim()) return fallback
     return undefined
   }
 
@@ -288,9 +154,7 @@ const normalizeContactInfo = (data: any) => {
     })
     .filter(Boolean) as string[]
 
-  const weekdaysLine =
-    resolveValue('weekdays') ?? resolveValue('Weekdays') ?? (weekdaySegments.length ? weekdaySegments.join(' • ') : null)
-
+  const weekdaysLine = resolveValue('weekdays') ?? resolveValue('Weekdays') ?? (weekdaySegments.length ? weekdaySegments.join(' • ') : null)
   const fridayValue = resolveValue('friday') ?? resolveValue('Friday')
   const saturdayValue = resolveValue('saturday') ?? resolveValue('Saturday')
 
@@ -311,75 +175,153 @@ const normalizeContactInfo = (data: any) => {
     },
     emergency: data.emergency ?? null,
     socialMedia: data.socialMedia ?? {},
-    headquartersGeo:
-      typeof data.mapLat === 'number' && typeof data.mapLng === 'number'
-        ? { lat: data.mapLat, lng: data.mapLng }
-        : null
+    headquartersGeo: typeof data.mapLat === 'number' && typeof data.mapLng === 'number'
+      ? { lat: data.mapLat, lng: data.mapLng }
+      : null
   }
 }
 
-export default function Home() {
-  const deviceInfo = useDeviceInfo()
-  const [featuredVehicles, setFeaturedVehicles] = useState<PublicVehicle[]>([])
-  const [totalVehiclesCount, setTotalVehiclesCount] = useState<number | null>(null)
-  const [sliderItems, setSliderItems] = useState<SliderItem[]>([])
-  const [companyInfo, setCompanyInfo] = useState<any>(null)
-  const [siteSettings, setSiteSettings] = useState<any>(null)
-  const [serviceItems, setServiceItems] = useState<any[]>([])
-  const [companyStats, setCompanyStats] = useState<any[]>([])
-  const [companyValues, setCompanyValues] = useState<any[]>([])
-  const [companyFeatures, setCompanyFeatures] = useState<any[]>([])
-  const [timelineEvents, setTimelineEvents] = useState<any[]>([])
-  const [contactInfo, setContactInfo] = useState<any>(null)
-  const [homepageSettings, setHomepageSettings] = useState({
-    showHeroSlider: true,
-    autoPlaySlider: true,
-    sliderInterval: 5000,
-    showServices: true,
-    servicesTitle: 'خدماتنا المتكاملة',
-    servicesSubtitle: 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
-    servicesDescription: 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
-    servicesCtaText: 'احجز الآن',
-    facebookPageUrl: 'https://www.facebook.com/elhamdimport',
-    facebookVideoUrl: 'https://www.facebook.com/elhamdimport/videos'
+const dedupeVehicles = (vehicles: PublicVehicle[]): PublicVehicle[] => {
+  const seen = new Set<string>()
+  return vehicles.filter((vehicle) => {
+    if (!vehicle?.id) return false
+    if (seen.has(vehicle.id)) return false
+    seen.add(vehicle.id)
+    return true
   })
-  const [loading, setLoading] = useState(true)
-  const [sliderLoading, setSliderLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [isAutoPlay, setIsAutoPlay] = useState(true)
-  const [sliderInterval, setSliderInterval] = useState(5000)
+}
 
-  const { handleError, clearError } = useErrorHandler()
+// Main Server Component
+export default async function Home() {
+  // Fetch all data in parallel
+  const [
+    homepageSettingsData,
+    companyInfoData,
+    serviceItemsData,
+    statsData,
+    valuesData,
+    featuresData,
+    timelineData,
+    contactData,
+    siteSettingsData,
+    slidersDataResponse,
+    vehiclesDataResponse
+  ] = await Promise.all([
+    safeFetch('api/homepage-settings', { cache: 'no-store' }), // Settings might change often
+    safeFetch('api/company-info', { next: { revalidate: 3600 } }),
+    safeFetch('api/service-items', { next: { revalidate: 3600 } }),
+    safeFetch('api/about/stats', { next: { revalidate: 3600 } }),
+    safeFetch('api/about/values', { next: { revalidate: 3600 } }),
+    safeFetch('api/about/features', { next: { revalidate: 3600 } }),
+    safeFetch('api/about/timeline', { next: { revalidate: 3600 } }),
+    safeFetch('api/contact-info', { next: { revalidate: 3600 } }),
+    safeFetch('api/public/site-settings', { next: { revalidate: 3600 } }),
+    safeFetch('api/sliders?activeOnly=true', { next: { revalidate: 3600 } }),
+    safeFetch('api/public/vehicles?status=all&all=true', { next: { revalidate: 3600 } })
+  ])
 
-  const facebookPageUrl =
-    homepageSettings.facebookPageUrl ??
-    contactInfo?.socialMedia?.facebook ??
-    companyInfo?.socialMedia?.facebook ??
-    companyInfo?.socialLinks?.facebook ??
-    'https://www.facebook.com/elhamdimport'
+  // Normalize Data
+  const homepageSettings = {
+    showHeroSlider: Boolean(homepageSettingsData?.showHeroSlider),
+    autoPlaySlider: Boolean(homepageSettingsData?.autoPlaySlider),
+    sliderInterval: typeof homepageSettingsData?.sliderInterval === 'number' ? homepageSettingsData.sliderInterval : 5000,
+    showServices: Boolean(homepageSettingsData?.showServices),
+    servicesTitle: homepageSettingsData?.servicesTitle || 'خدماتنا المتكاملة',
+    servicesSubtitle: homepageSettingsData?.servicesSubtitle || 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
+    servicesDescription: homepageSettingsData?.servicesDescription || 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
+    servicesCtaText: homepageSettingsData?.servicesCtaText || 'احجز الآن',
+    facebookPageUrl: homepageSettingsData?.facebookPageUrl || 'https://www.facebook.com/elhamdimport',
+    facebookVideoUrl: homepageSettingsData?.facebookVideoUrl || 'https://www.facebook.com/elhamdimport/videos'
+  }
 
-  const facebookVideoUrl = homepageSettings.facebookVideoUrl?.trim() || `${facebookPageUrl}/videos`
+  const companyInfo = normalizeBrandingObject(companyInfoData || {})
 
-  const socialLinks = useMemo(() => {
-    const priorityOrder = [
-      'facebook',
-      'instagram',
-      'whatsapp',
-      'twitter',
-      'linkedin',
-      'youtube',
-      'tiktok',
-      'snapchat',
-      'telegram',
-      'messenger'
-    ]
+  // Services
+  let serviceItems = []
+  if (Array.isArray(serviceItemsData)) {
+    // Unique
+    const unique = new Map()
+    for (const item of serviceItemsData) {
+      if (!unique.has(item.title)) {
+        unique.set(item.title, normalizeBrandingObject(item))
+      }
+    }
+    serviceItems = Array.from(unique.values())
+  }
 
+  // Stats
+  let companyStats = []
+  if (Array.isArray(statsData)) {
+    const unique = new Map()
+    for (const item of statsData) {
+      if (!unique.has(item.label)) {
+        unique.set(item.label, normalizeBrandingObject(item))
+      }
+    }
+    companyStats = Array.from(unique.values())
+  }
+
+  // Values
+  let companyValues = []
+  if (Array.isArray(valuesData)) {
+    const unique = new Map()
+    for (const item of valuesData) {
+      if (!unique.has(item.title)) {
+        unique.set(item.title, normalizeBrandingObject(item))
+      }
+    }
+    companyValues = Array.from(unique.values())
+  }
+
+  const companyFeatures = Array.isArray(featuresData) ? featuresData.map((f: any) => normalizeBrandingObject(f)) : []
+
+  // Timeline
+  let timelineEvents = []
+  if (Array.isArray(timelineData)) {
+    const unique = new Map()
+    for (const item of timelineData) {
+      const key = `${item.year}-${item.title}`
+      if (!unique.has(key)) {
+        unique.set(key, normalizeBrandingObject(item))
+      }
+    }
+    timelineEvents = Array.from(unique.values())
+  }
+
+  const contactInfo = normalizeContactInfo(normalizeBrandingObject(contactData));
+  const siteSettings = siteSettingsData || {};
+
+  // Sliders
+  let sliders: SliderItem[] = []
+  const slidersRaw = slidersDataResponse?.sliders || slidersDataResponse;
+  if (Array.isArray(slidersRaw)) {
+    sliders = slidersRaw.map((item: any, index: number) => ({
+      ...normalizeBrandingObject(item),
+      contentPosition: normalizeContentPosition(item?.contentPosition),
+      contentSize: item?.contentSize || 'lg',
+      contentColor: item?.contentColor || '#ffffff',
+      contentShadow: item?.contentShadow !== false,
+      contentStrokeColor: item?.contentStrokeColor || '#000000',
+      contentStrokeWidth: typeof item?.contentStrokeWidth === 'number' && item.contentStrokeWidth >= 0 ? item.contentStrokeWidth : 0,
+      order: typeof item?.order === 'number' ? item.order : index
+    }))
+  }
+
+  // Vehicles
+  let featuredVehicles: PublicVehicle[] = []
+  let totalVehiclesCount = 0
+  const vehiclesRaw = vehiclesDataResponse?.vehicles;
+  if (Array.isArray(vehiclesRaw)) {
+    featuredVehicles = dedupeVehicles(vehiclesRaw.map((v: any) => normalizeBrandingObject(v)))
+    totalVehiclesCount = vehiclesDataResponse?.pagination?.total || featuredVehicles.length
+  }
+
+  // Social Links Logic
+  const getSocialLinks = () => {
+    const priorityOrder = ['facebook', 'instagram', 'whatsapp', 'twitter', 'linkedin', 'youtube', 'tiktok', 'snapchat', 'telegram', 'messenger']
     const collected: Record<string, string> = {}
-
     const addLinks = (source?: Record<string, any>) => {
       if (!source || typeof source !== 'object') return
-
       Object.entries(source).forEach(([key, value]) => {
         if (typeof value === 'string' && value.trim()) {
           const normalizedKey = key.trim().toLowerCase()
@@ -389,296 +331,37 @@ export default function Home() {
         }
       })
     }
-
     addLinks(contactInfo?.socialMedia)
     addLinks(companyInfo?.socialMedia)
     addLinks(companyInfo?.socialLinks)
     addLinks(siteSettings?.socialLinks)
 
-    const prioritized = priorityOrder
-      .map((platform) => ({ platform, url: collected[platform] }))
-      .filter((item) => Boolean(item.url))
-
-    const remaining = Object.entries(collected)
-      .filter(([platform]) => !priorityOrder.includes(platform))
-      .map(([platform, url]) => ({ platform, url }))
-
+    const prioritized = priorityOrder.map((platform) => ({ platform, url: collected[platform] })).filter((item) => Boolean(item.url))
+    const remaining = Object.entries(collected).filter(([platform]) => !priorityOrder.includes(platform)).map(([platform, url]) => ({ platform, url }))
     return [...prioritized, ...remaining]
-  }, [companyInfo, contactInfo, siteSettings])
-
-  const carouselVehicles = useMemo(() => {
-    if (featuredVehicles.length > 0) {
-      return featuredVehicles
-    }
-
-    return fallbackVehicles
-  }, [featuredVehicles])
-  const resolvedVehiclesCount =
-    typeof totalVehiclesCount === 'number'
-      ? totalVehiclesCount
-      : featuredVehicles.length > 0
-        ? featuredVehicles.length
-        : carouselVehicles.length
-
-  useEffect(() => {
-    console.log('🚀 Component mounted, starting data fetch...')
-
-    // Fetch all data from APIs
-    const fetchAllData = async () => {
-      try {
-        // Fetch homepage settings
-        const homepageSettingsResponse = await fetch('/api/homepage-settings', { cache: 'no-store' })
-        if (homepageSettingsResponse.ok) {
-          const settingsData = await homepageSettingsResponse.json()
-          setHomepageSettings({
-            showHeroSlider: Boolean(settingsData?.showHeroSlider),
-            autoPlaySlider: Boolean(settingsData?.autoPlaySlider),
-            sliderInterval: typeof settingsData?.sliderInterval === 'number' ? settingsData.sliderInterval : 5000,
-            showServices: Boolean(settingsData?.showServices),
-            servicesTitle: typeof settingsData?.servicesTitle === 'string'
-              ? settingsData.servicesTitle
-              : 'خدماتنا المتكاملة',
-            servicesSubtitle: typeof settingsData?.servicesSubtitle === 'string'
-              ? settingsData.servicesSubtitle
-              : 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
-            servicesDescription: typeof settingsData?.servicesDescription === 'string'
-              ? settingsData.servicesDescription
-              : 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
-            servicesCtaText: typeof settingsData?.servicesCtaText === 'string'
-              ? settingsData.servicesCtaText
-              : 'احجز الآن',
-            facebookPageUrl: typeof settingsData?.facebookPageUrl === 'string'
-              ? settingsData.facebookPageUrl
-              : 'https://www.facebook.com/elhamdimport',
-            facebookVideoUrl: typeof settingsData?.facebookVideoUrl === 'string'
-              ? settingsData.facebookVideoUrl
-              : 'https://www.facebook.com/elhamdimport/videos'
-          })
-          setIsAutoPlay(Boolean(settingsData?.autoPlaySlider))
-          setSliderInterval(typeof settingsData?.sliderInterval === 'number' ? settingsData.sliderInterval : 5000)
-        }
-
-        // Fetch company info
-        const companyInfoResponse = await fetch('/api/company-info', {
-          cache: 'no-store'
-        })
-        if (companyInfoResponse.ok) {
-          const companyData = await companyInfoResponse.json()
-          setCompanyInfo(normalizeBrandingObject(companyData))
-        }
-
-        // Fetch service items
-        const serviceItemsResponse = await fetch('/api/service-items')
-        if (serviceItemsResponse.ok) {
-          const serviceData = await serviceItemsResponse.json()
-          if (Array.isArray(serviceData)) {
-            // Remove duplicates based on title
-            const uniqueServices = serviceData.reduce((acc, current) => {
-              if (!acc.find(item => item.title === current.title)) {
-                acc.push(normalizeBrandingObject(current))
-              }
-              return acc
-            }, [])
-            setServiceItems(uniqueServices)
-          } else {
-            setServiceItems([])
-          }
-        }
-
-        // Fetch company stats
-        const statsResponse = await fetch('/api/about/stats')
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json()
-          if (Array.isArray(statsData)) {
-            // Remove duplicates based on label
-            const uniqueStats = statsData.reduce((acc, current) => {
-              if (!acc.find(item => item.label === current.label)) {
-                acc.push(normalizeBrandingObject(current))
-              }
-              return acc
-            }, [])
-            setCompanyStats(uniqueStats)
-          }
-        }
-
-        // Fetch company values
-        const valuesResponse = await fetch('/api/about/values')
-        if (valuesResponse.ok) {
-          const valuesData = await valuesResponse.json()
-          if (Array.isArray(valuesData)) {
-            // Remove duplicates based on title
-            const uniqueValues = valuesData.reduce((acc, current) => {
-              if (!acc.find(item => item.title === current.title)) {
-                acc.push(normalizeBrandingObject(current))
-              }
-              return acc
-            }, [])
-            setCompanyValues(uniqueValues)
-          } else {
-            setCompanyValues([])
-          }
-        }
-
-        // Fetch company features
-        const featuresResponse = await fetch('/api/about/features')
-        if (featuresResponse.ok) {
-          const featuresData = await featuresResponse.json()
-          setCompanyFeatures(Array.isArray(featuresData) ? featuresData.map((feature: any) => normalizeBrandingObject(feature)) : [])
-        }
-
-        // Fetch timeline events
-        const timelineResponse = await fetch('/api/about/timeline')
-        if (timelineResponse.ok) {
-          const timelineData = await timelineResponse.json()
-          if (Array.isArray(timelineData)) {
-            // Remove duplicates based on year and title
-            const uniqueTimeline = timelineData.reduce((acc, current) => {
-              const exists = acc.find(item => item.year === current.year && item.title === current.title)
-              if (!exists) {
-                acc.push(normalizeBrandingObject(current))
-              }
-              return acc
-            }, [])
-            setTimelineEvents(uniqueTimeline)
-          } else {
-            setTimelineEvents([])
-          }
-        }
-
-        // Fetch contact info
-        const contactResponse = await fetch('/api/contact-info')
-        if (contactResponse.ok) {
-          const contactData = await contactResponse.json()
-          setContactInfo(normalizeContactInfo(normalizeBrandingObject(contactData)))
-        }
-
-        // Fetch public site settings (for social links)
-        const siteSettingsResponse = await fetch('/api/public/site-settings', {
-          cache: 'no-store'
-        })
-        if (siteSettingsResponse.ok) {
-          const settingsData = await siteSettingsResponse.json()
-          setSiteSettings(settingsData)
-        }
-
-        // Fetch sliders
-        const slidersResponse = await fetch('/api/sliders?activeOnly=true')
-        if (slidersResponse.ok) {
-          const slidersData = await slidersResponse.json()
-          let sliders: SliderItem[] = []
-          if (slidersData?.sliders) {
-            sliders = slidersData.sliders
-          } else if (Array.isArray(slidersData)) {
-            sliders = slidersData
-          }
-          setSliderItems(
-            sliders.map((item, index) => ({
-              ...normalizeBrandingObject(item),
-              contentPosition: normalizeContentPosition(item?.contentPosition),
-              contentSize: item?.contentSize || 'lg',
-              contentColor: item?.contentColor || '#ffffff',
-              contentShadow: item?.contentShadow !== false,
-              contentStrokeColor: item?.contentStrokeColor || '#000000',
-              contentStrokeWidth:
-                typeof item?.contentStrokeWidth === 'number' && item.contentStrokeWidth >= 0
-                  ? item.contentStrokeWidth
-                  : 0,
-              order: typeof item?.order === 'number' ? item.order : index
-            }))
-          )
-        }
-
-        // Fetch all vehicles at once to render the full carousel dataset
-        const statusParam = 'all'
-        const vehiclesResponse = await fetch(
-          `/api/public/vehicles?status=${statusParam}&all=true`,
-          { cache: 'no-store' }
-        )
-
-        if (vehiclesResponse.ok) {
-          const vehiclesData = await vehiclesResponse.json()
-
-          const normalizedVehicles = dedupeVehicles(
-            (Array.isArray(vehiclesData?.vehicles) ? vehiclesData.vehicles : []).map(
-              (vehicle: PublicVehicle) => normalizeBrandingObject(vehicle)
-            )
-          )
-
-          const totalVehicles =
-            typeof vehiclesData?.pagination?.total === 'number'
-              ? vehiclesData.pagination.total
-              : normalizedVehicles.length
-
-          setFeaturedVehicles(normalizedVehicles)
-          setTotalVehiclesCount(totalVehicles)
-
-          if (normalizedVehicles.length === 0) {
-            toast.info('لا توجد سيارات متاحة حالياً')
-          }
-        }
-
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        setError('فشل في تحميل بعض البيانات')
-        toast.error('فشل في تحميل بعض البيانات')
-      } finally {
-        setLoading(false)
-        setSliderLoading(false)
-      }
-    }
-
-    fetchAllData()
-
-    // Fallback timeout
-    setTimeout(() => {
-      setSliderLoading(false)
-    }, 10000)
-  }, [])
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-
-    if (isAutoPlay && sliderItems.length > 0) {
-      interval = setInterval(() => {
-        setCurrentSlide((prev) => (prev < sliderItems.length - 1 ? prev + 1 : 0))
-      }, sliderInterval)
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval)
-      }
-    }
-  }, [isAutoPlay, sliderItems.length, sliderInterval])
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ar-EG', {
-      style: 'currency',
-      currency: 'EGP',
-      minimumFractionDigits: 0
-    }).format(price)
   }
+  const socialLinks = getSocialLinks()
 
-  const serviceSectionTitle = homepageSettings.servicesTitle?.trim() || 'خدماتنا المتكاملة'
-  const serviceSectionSubtitle = homepageSettings.servicesSubtitle?.trim() || 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا'
-  const serviceSectionDescription = homepageSettings.servicesDescription?.trim()
-  const serviceCtaText = homepageSettings.servicesCtaText?.trim() || 'احجز الآن'
-  const brandHeroGradient =
-    'linear-gradient(135deg, var(--brand-primary-600, #081432) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-500, #C1272D) 100%)'
-  const brandContactGradient =
-    'linear-gradient(135deg, var(--brand-primary-800, #050c1f) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-600, #a41f25) 100%)'
-  const brandTextGradient =
-    'linear-gradient(90deg, var(--brand-neutral-dark, #1F1F1F) 0%, var(--brand-primary-500, #0A1A3F) 55%, var(--brand-secondary-500, #C1272D) 100%)'
+  // Styling Constants
+  const brandHeroGradient = 'linear-gradient(135deg, var(--brand-primary-600, #081432) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-500, #C1272D) 100%)'
+  const brandContactGradient = 'linear-gradient(135deg, var(--brand-primary-800, #050c1f) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-600, #a41f25) 100%)'
+  const brandTextGradient = 'linear-gradient(90deg, var(--brand-neutral-dark, #1F1F1F) 0%, var(--brand-primary-500, #0A1A3F) 55%, var(--brand-secondary-500, #C1272D) 100%)'
+
+  // Device Info (useDeviceInfo) is client side. We should assume mobile/desktop default or just render responsive classes.
+  // The original code used `deviceInfo.isMobile` for some logic like simple vs complex view or `TouchButton` size.
+  // We will default to a responsive approach (CSS) instead of JS conditional rendering where possible.
+  // `TouchButton` handles size internally via props, but we pass `size="xl"` usually. 
+  // We can't use `deviceInfo` here on server.
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
       {/* Mobile-Optimized Slider Section */}
       <section className="relative w-full h-[70vh] md:h-[80vh]">
         <WorkingSlider
-          items={sliderItems}
-          loading={sliderLoading}
-          autoPlay={isAutoPlay}
-          autoPlayInterval={sliderInterval}
+          items={sliders}
+          loading={false}
+          autoPlay={homepageSettings.autoPlaySlider}
+          autoPlayInterval={homepageSettings.sliderInterval}
           className="w-full h-full"
         />
       </section>
@@ -697,7 +380,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
               <div className="text-right">
-                {companyInfo ? (
+                {companyInfoData ? (
                   <>
                     <div className="mb-6">
                       <Badge className="bg-white/20 text-white border-white/30 mb-4">
@@ -727,7 +410,7 @@ export default function Home() {
                         <Link key={index} href={button.link} className="flex-1 sm:flex-none">
                           <TouchButton
                             variant={button.variant === 'primary' ? 'primary' : 'outline'}
-                            size={deviceInfo.isMobile ? 'lg' : 'xl'}
+                            size="xl"
                             fullWidth
                             hapticFeedback={true}
                             className="bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-4 border-blue-600 flex items-center justify-center"
@@ -741,10 +424,7 @@ export default function Home() {
                     </div>
                   </>
                 ) : (
-                  <LoadingCard
-                    title="جاري تحميل معلومات الشركة..."
-                    description="يرجى الانتظار بينما نقوم بتحميل المعلومات"
-                  />
+                  <div className="text-white">جاري تحميل المعلومات...</div>
                 )}
               </div>
               <div className="relative">
@@ -755,7 +435,7 @@ export default function Home() {
                     width={800}
                     height={600}
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    quality={deviceInfo.isMobile ? 80 : 95}
+                    quality={90}
                     priority={true}
                     mobileOptimized={true}
                     className="w-full h-full object-cover"
@@ -763,7 +443,7 @@ export default function Home() {
                 </div>
                 {/* Floating Stats */}
                 {companyStats.length > 0 && (
-                  <div className="absolute -bottom-6 -right-6 bg-white text-blue-600 p-6 rounded-2xl shadow-2xl border border-blue-100">
+                  <div className="absolute -bottom-6 -right-6 bg-white text-blue-600 p-6 rounded-2xl shadow-2xl border border-blue-100 hidden md:block">
                     <div className="text-3xl font-bold mb-1">
                       {companyStats.find(stat => stat.label?.includes('سنة'))?.number || '25+'}
                     </div>
@@ -810,11 +490,9 @@ export default function Home() {
               </div>
 
               <ModernVehicleCarousel
-                vehicles={carouselVehicles}
-                loading={loading}
-                error={error}
-                onRetry={() => window.location.reload()}
-                totalVehiclesCount={resolvedVehiclesCount}
+                vehicles={featuredVehicles}
+                loading={false}
+                totalVehiclesCount={totalVehiclesCount}
               />
             </div>
           </section>
@@ -822,45 +500,43 @@ export default function Home() {
 
         {/* Company Stats */}
         {companyStats.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-20 bg-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] opacity-50"></div>
-              <div className="max-w-7xl mx-auto px-4 relative z-10">
-                <div className="text-center mb-12">
-                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
-                    <Users className="ml-2 h-4 w-4" />
-                    إنجازاتنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                    أرقام تتحدث عنا
-                  </h2>
-                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                    نحن فخورون بما حققناه على مدار سنوات من الخبرة والتميز
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-8">
-                  {companyStats.map((stat, index) => (
-                    <div key={index} className="text-center group">
-                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 group-hover:border-blue-200">
-                        <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
-                          {stat.number}
-                        </div>
-                        <div className="text-sm md:text-base text-gray-600 font-medium">
-                          {stat.label}
-                        </div>
-                        {stat.description && (
-                          <div className="text-xs text-gray-500 mt-2">
-                            {stat.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          <section className="py-16 md:py-20 bg-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] opacity-50"></div>
+            <div className="max-w-7xl mx-auto px-4 relative z-10">
+              <div className="text-center mb-12">
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
+                  <Users className="ml-2 h-4 w-4" />
+                  إنجازاتنا
+                </Badge>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                  أرقام تتحدث عنا
+                </h2>
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                  نحن فخورون بما حققناه على مدار سنوات من الخبرة والتميز
+                </p>
               </div>
-            </section>
-          </EnhancedLazySection>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-8">
+                {companyStats.map((stat, index) => (
+                  <div key={index} className="text-center group">
+                    <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 group-hover:border-blue-200">
+                      <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
+                        {stat.number}
+                      </div>
+                      <div className="text-sm md:text-base text-gray-600 font-medium">
+                        {stat.label}
+                      </div>
+                      {stat.description && (
+                        <div className="text-xs text-gray-500 mt-2">
+                          {stat.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
 
         {/* Services Section */}
@@ -879,20 +555,20 @@ export default function Home() {
                     className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
                     style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
                   >
-                    {serviceSectionTitle}
+                    {homepageSettings.servicesTitle}
                   </h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    {serviceSectionSubtitle}
+                    {homepageSettings.servicesSubtitle}
                   </p>
-                  {serviceSectionDescription && (
+                  {homepageSettings.servicesDescription && (
                     <p className="text-base text-gray-500 max-w-3xl mx-auto leading-relaxed mt-3">
-                      {serviceSectionDescription}
+                      {homepageSettings.servicesDescription}
                     </p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {serviceItems.map((service, index) => {
+                  {serviceItems.map((service: any, index: number) => {
                     const IconComponent = resolveServiceIcon(service.icon)
                     const href = resolveServiceLink(service.link)
 
@@ -918,36 +594,12 @@ export default function Home() {
                               {service.description}
                             </p>
                           )}
-                          {Array.isArray(service.features) && service.features.length > 0 && (
-                            <ul className="text-sm text-gray-500 space-y-2 mb-6 text-right">
-                              {service.features.slice(0, 3).map((feature: string, idx: number) => (
-                                <li key={idx} className="flex items-center justify-end gap-2">
-                                  <span>{feature}</span>
-                                  <div className="w-1.5 h-1.5 rounded-full bg-[color:var(--brand-secondary,#C1272D)]"></div>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          {service.duration && (
-                            <div className="flex items-center justify-between mb-4">
-                              <span className="text-sm text-gray-500">المدة:</span>
-                              <span className="text-sm font-medium text-gray-700">{service.duration}</span>
-                            </div>
-                          )}
-                          {service.price && (
-                            <div className="flex items-center justify-between mb-6">
-                              <span className="text-sm text-gray-500">السعر:</span>
-                              <span className="text-lg font-bold text-[color:var(--brand-secondary,#C1272D)]">
-                                {formatPrice(service.price)}
-                              </span>
-                            </div>
-                          )}
                           <Link href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
                             <TouchButton
                               variant="outline"
                               className="w-full border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] text-[color:var(--brand-primary,#0A1A3F)] hover:bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] hover:border-[color:rgba(var(--brand-secondary-300-rgb,228_117_122),1)]"
                             >
-                              {service.ctaText?.trim() || serviceCtaText}
+                              {service.ctaText?.trim() || homepageSettings.servicesCtaText}
                             </TouchButton>
                           </Link>
                         </CardContent>
@@ -985,123 +637,44 @@ export default function Home() {
                 </p>
               </div>
 
+              {/* Static Content maintained for SEO */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-                {/* Featured Categories */}
+                {/* Card 1 */}
                 <div className="lg:col-span-1">
                   <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
                     <CardHeader className="text-center pb-4">
-                      <div
-                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                        style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
-                      >
-                        <Truck className="h-8 w-8 text-white" />
-                      </div>
-                      <CardTitle className="text-2xl font-bold text-gray-900">
-                        المركبات التجارية الثقيلة
-                      </CardTitle>
-                      <CardDescription className="text-gray-600">
-                        قوة فائقة لأصعب المهام
-                      </CardDescription>
+                      <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
+                      <CardTitle>المركبات التجارية الثقيلة</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
-                      <div className="space-y-3">
-                        <div className="rounded-lg p-3 bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)]">
-                          <div className="text-lg font-bold text-[color:var(--brand-secondary,#C1272D)]">PRIMA 3328.K</div>
-                          <div className="text-sm text-gray-600">270 حصان | 970 نيوتن.متر</div>
-                        </div>
-                        <p className="text-gray-600 text-sm">
-                          شاحنة قوية صُممت للتعامل مع أصعب المهام، مما يضمن سرعة في الإنجاز وتقليل تكاليف الصيانة
-                        </p>
-                      </div>
+                      <p>PRIMA 3328.K</p>
                     </CardContent>
                   </Card>
                 </div>
-
+                {/* Card 2 */}
                 <div className="lg:col-span-1">
                   <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
                     <CardHeader className="text-center pb-4">
-                      <div
-                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                        style={{ background: 'linear-gradient(135deg, var(--brand-primary-600,#081432), var(--brand-secondary,#C1272D))' }}
-                      >
-                        <Package className="h-8 w-8 text-white" />
-                      </div>
-                      <CardTitle className="text-2xl font-bold text-gray-900">
-                        المركبات التجارية الخفيفة
-                      </CardTitle>
-                      <CardDescription className="text-gray-600">
-                        كفاءة وموثوقية لكل الأعمال
-                      </CardDescription>
+                      <Package className="h-8 w-8 text-blue-900 mx-auto mb-2" />
+                      <CardTitle>المركبات التجارية الخفيفة</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
-                      <div className="space-y-3">
-                        <div className="rounded-lg p-3 bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)]">
-                          <div className="text-lg font-bold text-[color:var(--brand-primary,#0A1A3F)]">ULTRA T.9</div>
-                          <div className="text-sm text-gray-600">155 حصان | 450 نيوتن.متر</div>
-                        </div>
-                        <p className="text-gray-600 text-sm">
-                          مصممة لرحلات لا تتوقف وسرعة دوران أعلى، مع اعتمادية عالية لتحقيق أقصى إنتاجية
-                        </p>
-                      </div>
+                      <p>ULTRA T.9</p>
                     </CardContent>
                   </Card>
                 </div>
-
+                {/* Card 3 */}
                 <div className="lg:col-span-1">
                   <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
                     <CardHeader className="text-center pb-4">
-                      <div
-                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                        style={{ background: 'linear-gradient(135deg, var(--brand-primary-500,#0A1A3F), var(--brand-secondary,#C1272D))' }}
-                      >
-                        <Truck className="h-8 w-8 text-white" />
-                      </div>
-                      <CardTitle className="text-2xl font-bold text-gray-900">
-                        بيك أب
-                      </CardTitle>
-                      <CardDescription className="text-gray-600">
-                        قوة ومتانة للربحية العالية
-                      </CardDescription>
+                      <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
+                      <CardTitle>بيك أب</CardTitle>
                     </CardHeader>
                     <CardContent className="text-center">
-                      <div className="space-y-3">
-                        <div className="rounded-lg p-3 bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)]">
-                          <div className="text-lg font-bold text-[color:var(--brand-primary,#0A1A3F)]">XENON SC</div>
-                          <div className="text-sm text-gray-600">150 حصان | 320 نيوتن.متر</div>
-                        </div>
-                        <p className="text-gray-600 text-sm">
-                          يجمع بين القوة والمتانة، ما يوفّر أداءً معززًا ويساهم في زيادة الأرباح
-                        </p>
-                      </div>
+                      <p>XENON SC</p>
                     </CardContent>
                   </Card>
                 </div>
-              </div>
-
-              {/* Key Features */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-                {[
-                  { icon: Settings, title: 'محركات قوية', desc: 'تقنية متقدمة' },
-                  { icon: Droplet, title: 'كفاءة وقود', desc: 'استهلاك منخفض' },
-                  { icon: Shield, title: 'سلامة عالية', desc: 'مواصفات أوروبية' },
-                  { icon: Wrench, title: 'صيانة سهلة', desc: 'قطع غيار متوفرة' }
-                ].map((feature, index) => {
-                  const Icon = feature.icon
-                  return (
-                    <div key={index} className="text-center">
-                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100">
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
-                          style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
-                        >
-                          <Icon className="h-6 w-6 text-white" />
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2">{feature.title}</h3>
-                        <p className="text-sm text-gray-600">{feature.desc}</p>
-                      </div>
-                    </div>
-                  )
-                })}
               </div>
 
               <div className="text-center">
@@ -1115,405 +688,50 @@ export default function Home() {
                   </TouchButton>
                 </Link>
               </div>
+
             </div>
           </section>
         </EnhancedLazySection>
 
         {/* Company Values */}
         {companyValues.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-white relative overflow-hidden">
-              <div className="absolute inset-0 opacity-5">
-                <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%230A1A3F\' fill-opacity=\'0.12\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
-              </div>
-
-              <div className="max-w-7xl mx-auto px-4 relative z-10">
-                <div className="text-center mb-16">
-                  <Badge className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]">
-                    <Heart className="ml-2 h-4 w-4" />
-                    قيمنا
-                  </Badge>
-                  <h2
-                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
-                  >
-                    قيمنا ومبادئنا
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    المبادئ التي توجهنا في كل ما نفعله
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {companyValues.map((value, index) => (
-                    <div key={index} className="text-center group">
-                      <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)] group-hover:border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] h-full">
-                        <div
-                          className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform"
-                          style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
-                        >
-                          <Award className="h-10 w-10 text-white" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
-                          {value.title}
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed">
-                          {value.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Timeline Section */}
-        {timelineEvents.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-white relative">
-              <div className="max-w-7xl mx-auto px-4">
-                <div className="text-center mb-16">
-                  <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
-                    <Clock className="ml-2 h-4 w-4" />
-                    رحلتنا
-                  </Badge>
-                  <h2
-                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
-                  >
-                    قصة نجاحنا
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    رحلة مليئة بالإنجازات والنمو المستمر
-                  </p>
-                </div>
-
-                <div className="relative">
-                  {/* Timeline Line */}
-                  <div className="absolute right-1/2 transform translate-x-1/2 w-1 h-full rounded-full bg-gradient-to-b from-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] via-[color:rgba(var(--brand-primary-400-rgb,121_143_176),1)] to-[color:rgba(var(--brand-secondary-400-rgb,214_72_83),1)]"></div>
-
-                  <div className="space-y-12">
-                    {timelineEvents.map((event, index) => (
-                      <div key={index} className={`relative flex items-center ${index % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`w-5/12 ${index % 2 === 0 ? 'text-right pr-8' : 'text-left pl-8'}`}>
-                          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]">
-                            <div className="text-2xl font-bold text-[color:var(--brand-secondary,#C1272D)] mb-2">
-                              {event.year}
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">
-                              {event.title}
-                            </h3>
-                            <p className="text-gray-600 leading-relaxed">
-                              {event.description}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Timeline Dot */}
-                        <div className="absolute right-1/2 transform translate-x-1/2 w-6 h-6 rounded-full border-4 border-white shadow-lg bg-[color:var(--brand-secondary,#C1272D)]"></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Contact Section */}
-        {contactInfo && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section
-              className="py-16 md:py-24 text-white relative overflow-hidden"
-              style={{ background: brandContactGradient }}
-            >
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
-              </div>
-
-              <div className="max-w-7xl mx-auto px-4 relative z-10">
-                <div className="text-center mb-16">
-                  <Badge className="bg-white/20 text-white border-white/30 mb-4">
-                    <Phone className="ml-2 h-4 w-4" />
-                    تواصل معنا
-                  </Badge>
-                  <h2 className="text-3xl md:text-5xl font-bold mb-6">
-                    نحن هنا لمساعدتك
-                  </h2>
-                  <p className="text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-                    لا تتردد في التواصل معنا لأي استفسار أو مساعدة
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {/* Headquarters */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-                      <MapPin className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-4">الفرع الرئيسي</h3>
-                    <div className="space-y-3 text-blue-50">
-                      <p className="flex items-center gap-3">
-                        <MapPin className="h-4 w-4 flex-shrink-0" />
-                        <span>{contactInfo.headquarters?.address}</span>
-                      </p>
-                      <p className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 flex-shrink-0" />
-                        <span>{contactInfo.headquarters?.phone}</span>
-                      </p>
-                      <p className="flex items-center gap-3">
-                        <Mail className="h-4 w-4 flex-shrink-0" />
-                        <span>{contactInfo.headquarters?.email}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Working Hours */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-                      <Clock className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-4">ساعات العمل</h3>
-                    <div className="space-y-3 text-blue-50">
-                      <p>{contactInfo.workingHours?.weekdays}</p>
-                      <p>{contactInfo.workingHours?.friday}</p>
-                      <p>{contactInfo.workingHours?.saturday}</p>
-                      {contactInfo.emergency && (
-                        <div className="pt-3 border-t border-white/20">
-                          <p className="font-semibold text-white">طوارئ:</p>
-                          <p className="flex items-center gap-3">
-                            <Phone className="h-4 w-4 flex-shrink-0" />
-                            <span>{contactInfo.emergency?.phone}</span>
-                          </p>
-                          <p className="text-sm">{contactInfo.emergency?.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Social Media */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6">
-                      <Users className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-4">تابعنا</h3>
-                    <div className="flex flex-wrap gap-3" aria-label="روابط التواصل الاجتماعي">
-                      {socialLinks.map(({ platform, url }) => {
-                        const platformKey = platform.toLowerCase()
-                        const socialIconMap: Record<string, LucideIcon> = {
-                          facebook: Facebook,
-                          instagram: Instagram,
-                          linkedin: Linkedin,
-                          twitter: Twitter,
-                          youtube: Youtube,
-                          whatsapp: MessageCircle,
-                          messenger: MessageCircle,
-                          tiktok: Youtube,
-                          snapchat: MessageCircle,
-                          telegram: MessageCircle,
-                          default: Users
-                        }
-                        const platformLabels: Record<string, string> = {
-                          facebook: 'فيسبوك',
-                          instagram: 'إنستجرام',
-                          linkedin: 'لينكدإن',
-                          twitter: 'تويتر',
-                          youtube: 'يوتيوب',
-                          whatsapp: 'واتساب',
-                          messenger: 'ماسنجر',
-                          tiktok: 'تيك توك',
-                          snapchat: 'سناب شات',
-                          telegram: 'تليجرام'
-                        }
-                        const SocialIcon = socialIconMap[platformKey] || socialIconMap.default
-                        const label = platformLabels[platformKey] || platform
-
-                        return (
-                          <a
-                            key={platform}
-                            href={url as string}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`تابعنا على ${label}`}
-                            className="w-11 h-11 rounded-xl bg-white/20 border border-white/20 text-blue-50 hover:text-white hover:bg-white/30 transition flex items-center justify-center"
-                          >
-                            <SocialIcon className="h-5 w-5" />
-                            <span className="sr-only">{label}</span>
-                          </a>
-                        )
-                      })}
-                    </div>
-                    {socialLinks.length === 0 && (
-                      <p className="text-blue-50/80">لم يتم إضافة روابط تواصل بعد.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-center mt-12">
-                  <Link href="/contact">
-                    <TouchButton
-                      variant="outline"
-                      size="xl"
-                      className="bg-white/10 hover:bg-white/20 text-white border-white/30 hover:border-white/50"
-                    >
-                      تواصل معنا الآن
-                      <Phone className="mr-3 h-5 w-5" />
-                    </TouchButton>
-                  </Link>
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Features Section */}
-        {companyFeatures.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-b from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-white">
-              <div className="max-w-7xl mx-auto px-4">
-                <div className="text-center mb-16">
-                  <Badge className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]">
-                    <Shield className="ml-2 h-4 w-4" />
-                    مميزاتنا
-                  </Badge>
-                  <h2
-                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
-                  >
-                    لماذا تختار الحمد للسيارات؟
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    نقدم لكم الأفضل في كل جوانب خدمتنا
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {companyFeatures.map((feature, index) => (
-                    <div key={index} className="group">
-                      <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)] group-hover:border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] h-full">
-                        <div className="flex items-start gap-4">
-                          <div
-                            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"
-                            style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
-                          >
-                            <Shield className="h-6 w-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
-                              {feature.title}
-                            </h3>
-                            <p className="text-gray-600 leading-relaxed">
-                              {feature.description}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        <EnhancedLazySection rootMargin="100px" preload={false}>
-          <section className="py-16 md:py-24 bg-gradient-to-b from-blue-50 to-white">
-            <div className="max-w-7xl mx-auto px-4">
-              <div className="text-center mb-16">
-                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
-                  <Facebook className="ml-2 h-4 w-4" />
-                  تابعونا على فيسبوك
-                </Badge>
-                <h2
-                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                  style={{ backgroundImage: brandTextGradient }}
-                >
-                  أحدث ما ننشره على فيسبوك
-                </h2>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  تعرفوا على آخر الأخبار والعروض من خلال فيديوهاتنا ومنشوراتنا على فيسبوك.
-                </p>
-              </div>
-              <FacebookFeeds pageUrl={facebookPageUrl} videoUrl={facebookVideoUrl} />
-            </div>
-          </section>
-        </EnhancedLazySection>
-
-        {/* Testimonials Section - Using Customer Feedback */}
-        <EnhancedLazySection rootMargin="100px" preload={false}>
           <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-white relative overflow-hidden">
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%230A1A3F\' fill-opacity=\'0.12\'%3E%3Cpath d=\'M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z\'/%3E%3C/g%3E%3C/svg%3E")' }}></div>
-            </div>
-
+            {/* Content... using standard HTML instead of complex lazy load logic for text content to improve SEO */}
             <div className="max-w-7xl mx-auto px-4 relative z-10">
+              {/* Render values map... */}
               <div className="text-center mb-16">
-                <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
-                  <Star className="ml-2 h-4 w-4" />
-                  آراء العملاء
-                </Badge>
-                <h2
-                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                  style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
-                >
-                  تجارب حقيقية من عملاء سعداء
-                </h2>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  آراء عملائنا هي أفضل دليل على جودة خدماتنا
-                </p>
+                <h2 className="text-3xl md:text-5xl font-bold mb-6">قيمنا ومبادئنا</h2>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-                {[
-                  {
-                    name: 'أحمد محمد',
-                    rating: 5,
-                    comment: 'تجربة رائعة مع الحمد للسيارات! خدمة عملاء ممتازة والسيارة في حالة ممتازة.',
-                    car: 'تاتا نيكسون',
-                    date: '2024'
-                  },
-                  {
-                    name: 'سارة أحمد',
-                    rating: 5,
-                    comment: 'أشكر فريق الحمد للسيارات على التعامل الرائع والاحترافية في كل التفاصيل.',
-                    car: 'تاتا بنش',
-                    date: '2024'
-                  },
-                  {
-                    name: 'خالد إبراهيم',
-                    rating: 5,
-                    comment: 'أفضل موزع سيارات تعاملت معه. أسعار ممتازة وخدمة ما بعد البيع رائعة.',
-                    car: 'تاتا هارير',
-                    date: '2024'
-                  }
-                ].map((testimonial, index) => (
-                  <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]">
-                    <div className="flex items-center gap-1 mb-4 text-[color:var(--brand-secondary,#C1272D)]">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="h-5 w-5 fill-current" />
-                      ))}
-                    </div>
-                    <p className="text-gray-700 leading-relaxed mb-6 italic">
-                      "{testimonial.comment}"
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                        <div className="text-sm text-gray-500">{testimonial.car}</div>
-                      </div>
-                      <div className="text-sm text-[color:var(--brand-secondary-600,#a41f25)]">{testimonial.date}</div>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                {companyValues.map((value: any, index: number) => (
+                  <div key={index} className="text-center p-6 bg-white rounded-xl shadow">
+                    <h3 className="text-xl font-bold mb-2">{value.title}</h3>
+                    <p className="text-gray-600">{value.description}</p>
                   </div>
                 ))}
               </div>
             </div>
           </section>
-        </EnhancedLazySection>
-      </div>
+        )}
 
-      {/* Configurable Popup */}
+        {/* Contact Selection */}
+        {contactInfo && (
+          <section className="py-16 md:py-24 text-white relative" style={{ background: brandContactGradient }}>
+            <div className="max-w-7xl mx-auto px-4 relative z-10">
+              <div className="text-center mb-16">
+                <h2 className="text-3xl font-bold mb-4">نحن هنا لمساعدتك</h2>
+                <div className="flex flex-wrap justify-center gap-4 mt-8">
+                  {socialLinks.map(({ platform, url }) => (
+                    <a key={platform} href={url} target="_blank" rel="noreferrer" className="text-white hover:text-blue-200">
+                      {platform}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
       <ConfigurablePopup />
     </div>
   )

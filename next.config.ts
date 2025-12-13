@@ -13,18 +13,9 @@ const nextConfig: NextConfig = {
       config.resolve.fallback = { fs: false, path: false };
     }
 
-    // Disable preloading that causes warnings
+    // Webpack config is cleaned up to use Next.js defaults for better performance
     config.optimization = {
       ...config.optimization,
-      splitChunks: {
-        ...config.optimization.splitChunks,
-        chunks: 'all',
-        cacheGroups: {
-          ...config.optimization.splitChunks?.cacheGroups,
-          default: false,
-          vendors: false,
-        },
-      },
     };
 
     return config;
