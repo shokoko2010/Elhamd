@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
     const uniqueSliders = sliders.reduce((acc, current) => {
       // Create a unique key based on title and imageUrl
       const uniqueKey = `${current.title}-${current.imageUrl}`
-      
+
       // If we haven't seen this content before, or if the current slider has a lower order
       if (!acc[uniqueKey] || current.order < acc[uniqueKey].order) {
         acc[uniqueKey] = current
       }
-      
+
       return acc
     }, {} as Record<string, typeof sliders[0]>)
 
@@ -138,6 +138,14 @@ export async function POST(request: NextRequest) {
         isActive: isActive !== undefined ? isActive : true
       }
     })
+
+    // Revalidate the homepage cache
+    try {
+      const { revalidatePath } = await import('next/cache')
+      revalidatePath('/', 'page')
+    } catch (e) {
+      console.error('Error revalidating path:', e)
+    }
 
     return NextResponse.json({ slider }, { status: 201 })
   } catch (error) {

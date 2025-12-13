@@ -131,6 +131,14 @@ export async function PUT(
       }
     })
 
+    // Revalidate the homepage cache
+    try {
+      const { revalidatePath } = await import('next/cache')
+      revalidatePath('/', 'page')
+    } catch (e) {
+      console.error('Error revalidating path:', e)
+    }
+
     return NextResponse.json({ slider })
   } catch (error) {
     console.error('Error updating slider:', error)
@@ -187,6 +195,14 @@ export async function DELETE(
         where: { id: remainingSliders[i].id },
         data: { order: i }
       })
+    }
+
+    // Revalidate the homepage cache
+    try {
+      const { revalidatePath } = await import('next/cache')
+      revalidatePath('/', 'page')
+    } catch (e) {
+      console.error('Error revalidating path:', e)
     }
 
     return NextResponse.json({ message: 'تم حذف السلايدر بنجاح' })

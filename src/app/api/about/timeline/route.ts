@@ -143,6 +143,14 @@ export async function PUT(request: NextRequest) {
       orderBy: { order: 'asc' }
     })
 
+    // Revalidate the homepage to show new events
+    try {
+      const { revalidatePath } = await import('next/cache')
+      revalidatePath('/', 'page')
+    } catch (e) {
+      console.error('Error revalidating path:', e)
+    }
+
     return NextResponse.json(createdEvents)
   } catch (error) {
     console.error('Error updating timeline events:', error)

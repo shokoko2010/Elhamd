@@ -95,18 +95,37 @@ export async function PUT(request: NextRequest) {
         where: { id: existingInfo.id },
         data
       })
+
+      // Revalidate the homepage to show new contact info
+      try {
+        const { revalidatePath } = await import('next/cache')
+        revalidatePath('/', 'page')
+      } catch (e) {
+        console.error('Error revalidating path:', e)
+      }
+
       return NextResponse.json(updatedInfo)
     } else {
       const newInfo = await db.contactInfo.create({
         data
       })
+
+      // Revalidate the homepage to show new contact info
+      try {
+        const { revalidatePath } = await import('next/cache')
+        revalidatePath('/', 'page')
+      } catch (e) {
+        console.error('Error revalidating path:', e)
+      }
+
       return NextResponse.json(newInfo)
     }
-  } catch (error) {
-    console.error('Error updating contact info:', error)
-    return NextResponse.json(
-      { error: 'Failed to update contact info' },
-      { status: 500 }
-    )
   }
+  } catch (error) {
+  console.error('Error updating contact info:', error)
+  return NextResponse.json(
+    { error: 'Failed to update contact info' },
+    { status: 500 }
+  )
+}
 }
