@@ -353,8 +353,23 @@ export async function getStats() {
                 description: true
             }
         })
+
+        if (stats.length === 0) {
+            return [
+                { id: '1', label: 'سنة خبرة', number: '25+', description: 'نخدم عملاءنا باحترافية' },
+                { id: '2', label: 'عميل سعيد', number: '1000+', description: 'ثقة نعتز بها' },
+                { id: '3', label: 'سيارة مباعة', number: '500+', description: 'جودة مضمونة' },
+                { id: '4', label: 'مركز صيانة', number: '3', description: 'تغطية شاملة' }
+            ]
+        }
+
         return stats
     } catch {
-        return []
+        return [
+            { id: '1', label: 'سنة خبرة', number: '25+', description: 'نخدم عملاءنا باحترافية' },
+            { id: '2', label: 'عميل سعيد', number: '1000+', description: 'ثقة نعتز بها' },
+            { id: '3', label: 'سيارة مباعة', number: '500+', description: 'جودة مضمونة' },
+            { id: '4', label: 'مركز صيانة', number: '3', description: 'تغطية شاملة' }
+        ]
     }
 }

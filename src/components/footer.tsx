@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSiteSettings } from '@/components/SiteSettingsProvider'
 import { normalizeBrandingObject, normalizeBrandingText } from '@/lib/branding'
-import { 
-  Car, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Facebook, 
-  Twitter, 
-  Instagram, 
+import {
+  Car,
+  Phone,
+  Mail,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
   Youtube,
   Clock,
   Loader
@@ -64,25 +64,54 @@ export default function Footer() {
     const fetchFooterData = async () => {
       try {
         // Fetch footer content
-        const contentResponse = await fetch('/api/footer/content')
-        if (contentResponse.ok) {
-          const contentData = await contentResponse.json()
-          setFooterContent(normalizeBrandingObject(contentData))
-        }
+        try {
+          const contentResponse = await fetch('/api/footer/content')
+          if (contentResponse.ok) {
+            const contentData = await contentResponse.json()
+            setFooterContent(normalizeBrandingObject(contentData))
+          }
+        } catch (e) { console.warn('Footer content fetch failed', e) }
 
         // Fetch footer columns
-        const columnsResponse = await fetch('/api/footer/columns')
-        if (columnsResponse.ok) {
-          const columnsData = await columnsResponse.json()
-          setFooterColumns(Array.isArray(columnsData) ? columnsData.map((column: FooterColumn) => normalizeBrandingObject(column)) : [])
+        try {
+          const columnsResponse = await fetch('/api/footer/columns')
+          if (columnsResponse.ok) {
+            const columnsData = await columnsResponse.json()
+            if (Array.isArray(columnsData) && columnsData.length > 0) {
+              setFooterColumns(columnsData.map((column: FooterColumn) => normalizeBrandingObject(column)))
+            } else {
+              throw new Error('Empty columns')
+            }
+          } else {
+            throw new Error('Failed to fetch columns')
+          }
+        } catch {
+          // Fallback Columns
+          setFooterColumns([
+            {
+              id: '1', title: 'روابط سريعة', order: 1, isVisible: true, type: 'LINK',
+              content: 'الرئيسية\nمن نحن\nاتصل بنا\nسياسة الخصوصية\nالشروط والأحكام'
+            },
+            {
+              id: '2', title: 'خدماتنا', order: 2, isVisible: true, type: 'LINK',
+              content: 'بيع السيارات\nخدمة الصيانة\nقطع الغيار\nالتمويل'
+            },
+            {
+              id: '3', title: 'تواصل معنا', order: 3, isVisible: true, type: 'CONTACT',
+              content: '01000000000\ninfo@elhamdimport.com\nبورسعيد - الحي الإماراتي'
+            }
+          ])
         }
 
         // Fetch footer social links
-        const socialResponse = await fetch('/api/footer/social')
-        if (socialResponse.ok) {
-          const socialData = await socialResponse.json()
-          setFooterSocial(normalizeBrandingObject(socialData))
-        }
+        try {
+          const socialResponse = await fetch('/api/footer/social')
+          if (socialResponse.ok) {
+            const socialData = await socialResponse.json()
+            setFooterSocial(normalizeBrandingObject(socialData))
+          }
+        } catch (e) { console.warn('Footer social fetch failed', e) }
+
       } catch (error) {
         console.error('Error fetching footer data:', error)
       } finally {
@@ -246,12 +275,12 @@ export default function Footer() {
     }
 
     const IconComponent = iconMap[platform.toLowerCase()] || Facebook
-    
+
     return (
-      <a 
+      <a
         key={platform}
-        href={url} 
-        target="_blank" 
+        href={url}
+        target="_blank"
         rel="noopener noreferrer"
         className="text-gray-400 hover:text-white transition-colors"
       >
