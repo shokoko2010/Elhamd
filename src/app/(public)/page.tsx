@@ -478,39 +478,37 @@ export default async function Home() {
         <div className="h-8 md:h-12 bg-gradient-to-b from-blue-800 to-gray-50"></div>
 
         {/* Our Vehicles */}
-        <EnhancedLazySection rootMargin="100px" preload={false}>
-          <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white relative w-full">
-            {/* Background Decoration */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]"></div>
-              <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-secondary-100-rgb,247_216_217),1)]"></div>
+        <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white relative w-full">
+          {/* Background Decoration */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]"></div>
+            <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-secondary-100-rgb,247_216_217),1)]"></div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
+            <div className="text-center mb-16">
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
+                <Car className="ml-2 h-4 w-4" />
+                {companyInfo?.features?.[0] || 'سياراتنا'}
+              </Badge>
+              <h2
+                className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                style={{ backgroundImage: brandTextGradient }}
+              >
+                {companyInfo?.title || 'استعرض سيارات تاتا'}
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                {normalizeBrandingText(companyInfo?.subtitle || DISTRIBUTOR_BRANDING)}
+              </p>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 relative z-10">
-              <div className="text-center mb-16">
-                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
-                  <Car className="ml-2 h-4 w-4" />
-                  {companyInfo?.features?.[0] || 'سياراتنا'}
-                </Badge>
-                <h2
-                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                  style={{ backgroundImage: brandTextGradient }}
-                >
-                  {companyInfo?.title || 'استعرض سيارات تاتا'}
-                </h2>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  {normalizeBrandingText(companyInfo?.subtitle || DISTRIBUTOR_BRANDING)}
-                </p>
-              </div>
-
-              <ModernVehicleCarousel
-                vehicles={featuredVehicles}
-                loading={false}
-                totalVehiclesCount={totalVehiclesCount}
-              />
-            </div>
-          </section>
-        </EnhancedLazySection>
+            <ModernVehicleCarousel
+              vehicles={featuredVehicles}
+              loading={false}
+              totalVehiclesCount={totalVehiclesCount}
+            />
+          </div>
+        </section>
 
         {/* Company Stats */}
         {companyStats.length > 0 && (
@@ -555,157 +553,153 @@ export default async function Home() {
 
         {/* Services Section */}
         {homepageSettings.showServices && serviceItems.length > 0 && (
-          <EnhancedLazySection rootMargin="100px" preload={false}>
-            <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 relative">
-              <div className="max-w-7xl mx-auto px-4">
-                <div className="text-center mb-16">
-                  <Badge
-                    className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]"
-                  >
-                    <Wrench className="ml-2 h-4 w-4" />
-                    خدماتنا
-                  </Badge>
-                  <h2
-                    className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                    style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
-                  >
-                    {homepageSettings.servicesTitle}
-                  </h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    {homepageSettings.servicesSubtitle}
-                  </p>
-                  {homepageSettings.servicesDescription && (
-                    <p className="text-base text-gray-500 max-w-3xl mx-auto leading-relaxed mt-3">
-                      {homepageSettings.servicesDescription}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {serviceItems.map((service: any, index: number) => {
-                    const IconComponent = resolveServiceIcon(service.icon)
-                    const href = resolveServiceLink(service.link)
-
-                    return (
-                      <Card
-                        key={service?.id ?? `service-${index}`}
-                        className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm"
-                      >
-                        <CardHeader className="text-center pb-4">
-                          <div
-                            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"
-                            style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
-                          >
-                            <IconComponent className="h-8 w-8 text-white" />
-                          </div>
-                          <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
-                            {service.title}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-center">
-                          {service.description && (
-                            <p className="text-gray-600 mb-6 leading-relaxed">
-                              {service.description}
-                            </p>
-                          )}
-                          <Link href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
-                            <TouchButton
-                              variant="outline"
-                              className="w-full border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] text-[color:var(--brand-primary,#0A1A3F)] hover:bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] hover:border-[color:rgba(var(--brand-secondary-300-rgb,228_117_122),1)]"
-                            >
-                              {service.ctaText?.trim() || homepageSettings.servicesCtaText}
-                            </TouchButton>
-                          </Link>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </div>
-            </section>
-          </EnhancedLazySection>
-        )}
-
-        {/* Tata Motors Section */}
-        <EnhancedLazySection rootMargin="100px" preload={false}>
-          <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] via-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] to-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] relative overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23dc2626\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
-            </div>
-
-            <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 relative">
+            <div className="max-w-7xl mx-auto px-4">
               <div className="text-center mb-16">
-                <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
-                  <Truck className="ml-2 h-4 w-4" />
-                  Tata Motors
+                <Badge
+                  className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]"
+                >
+                  <Wrench className="ml-2 h-4 w-4" />
+                  خدماتنا
                 </Badge>
                 <h2
                   className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
                   style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
                 >
-                  تاتا موتورز
+                  {homepageSettings.servicesTitle}
                 </h2>
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-                  القوة والاعتمادية في عالم النقل التجاري. استعرض تشكيلتنا المتكاملة من المركبات التجارية الثقيلة والخفيفة وبيك أب
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                  {homepageSettings.servicesSubtitle}
                 </p>
+                {homepageSettings.servicesDescription && (
+                  <p className="text-base text-gray-500 max-w-3xl mx-auto leading-relaxed mt-3">
+                    {homepageSettings.servicesDescription}
+                  </p>
+                )}
               </div>
 
-              {/* Static Content maintained for SEO */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-                {/* Card 1 */}
-                <div className="lg:col-span-1">
-                  <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-                    <CardHeader className="text-center pb-4">
-                      <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
-                      <CardTitle>المركبات التجارية الثقيلة</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                      <p>PRIMA 3328.K</p>
-                    </CardContent>
-                  </Card>
-                </div>
-                {/* Card 2 */}
-                <div className="lg:col-span-1">
-                  <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-                    <CardHeader className="text-center pb-4">
-                      <Package className="h-8 w-8 text-blue-900 mx-auto mb-2" />
-                      <CardTitle>المركبات التجارية الخفيفة</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                      <p>ULTRA T.9</p>
-                    </CardContent>
-                  </Card>
-                </div>
-                {/* Card 3 */}
-                <div className="lg:col-span-1">
-                  <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-                    <CardHeader className="text-center pb-4">
-                      <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
-                      <CardTitle>بيك أب</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                      <p>XENON SC</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                {serviceItems.map((service: any, index: number) => {
+                  const IconComponent = resolveServiceIcon(service.icon)
+                  const href = resolveServiceLink(service.link)
 
-              <div className="text-center">
-                <Link href="/tata-motors">
-                  <TouchButton
-                    size="xl"
-                    className="text-lg font-semibold px-8 py-4 shadow-lg bg-gradient-to-r from-[color:var(--brand-primary-700,#061028)] via-[color:var(--brand-primary,#0A1A3F)] to-[color:var(--brand-secondary,#C1272D)] hover:from-[color:var(--brand-primary-800,#050c1f)] hover:to-[color:var(--brand-secondary-600,#a41f25)] text-white"
-                  >
-                    استعرض جميع موديلات تاتا
-                    <ArrowLeft className="mr-3 h-5 w-5" />
-                  </TouchButton>
-                </Link>
+                  return (
+                    <Card
+                      key={service?.id ?? `service-${index}`}
+                      className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm"
+                    >
+                      <CardHeader className="text-center pb-4">
+                        <div
+                          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"
+                          style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
+                        >
+                          <IconComponent className="h-8 w-8 text-white" />
+                        </div>
+                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
+                          {service.title}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="text-center">
+                        {service.description && (
+                          <p className="text-gray-600 mb-6 leading-relaxed">
+                            {service.description}
+                          </p>
+                        )}
+                        <Link href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+                          <TouchButton
+                            variant="outline"
+                            className="w-full border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] text-[color:var(--brand-primary,#0A1A3F)] hover:bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] hover:border-[color:rgba(var(--brand-secondary-300-rgb,228_117_122),1)]"
+                          >
+                            {service.ctaText?.trim() || homepageSettings.servicesCtaText}
+                          </TouchButton>
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
-
             </div>
           </section>
-        </EnhancedLazySection>
+        )}
+
+        {/* Tata Motors Section */}
+        <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] via-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] to-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23dc2626\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
+            <div className="text-center mb-16">
+              <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
+                <Truck className="ml-2 h-4 w-4" />
+                Tata Motors
+              </Badge>
+              <h2
+                className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
+                style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
+              >
+                تاتا موتورز
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                القوة والاعتمادية في عالم النقل التجاري. استعرض تشكيلتنا المتكاملة من المركبات التجارية الثقيلة والخفيفة وبيك أب
+              </p>
+            </div>
+
+            {/* Static Content maintained for SEO */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+              {/* Card 1 */}
+              <div className="lg:col-span-1">
+                <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader className="text-center pb-4">
+                    <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
+                    <CardTitle>المركبات التجارية الثقيلة</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <p>PRIMA 3328.K</p>
+                  </CardContent>
+                </Card>
+              </div>
+              {/* Card 2 */}
+              <div className="lg:col-span-1">
+                <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader className="text-center pb-4">
+                    <Package className="h-8 w-8 text-blue-900 mx-auto mb-2" />
+                    <CardTitle>المركبات التجارية الخفيفة</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <p>ULTRA T.9</p>
+                  </CardContent>
+                </Card>
+              </div>
+              {/* Card 3 */}
+              <div className="lg:col-span-1">
+                <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+                  <CardHeader className="text-center pb-4">
+                    <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
+                    <CardTitle>بيك أب</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <p>XENON SC</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <Link href="/tata-motors">
+                <TouchButton
+                  size="xl"
+                  className="text-lg font-semibold px-8 py-4 shadow-lg bg-gradient-to-r from-[color:var(--brand-primary-700,#061028)] via-[color:var(--brand-primary,#0A1A3F)] to-[color:var(--brand-secondary,#C1272D)] hover:from-[color:var(--brand-primary-800,#050c1f)] hover:to-[color:var(--brand-secondary-600,#a41f25)] text-white"
+                >
+                  استعرض جميع موديلات تاتا
+                  <ArrowLeft className="mr-3 h-5 w-5" />
+                </TouchButton>
+              </Link>
+            </div>
+
+          </div>
+        </section>
 
         {/* Company Values */}
         {companyValues.length > 0 && (
