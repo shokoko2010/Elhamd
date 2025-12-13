@@ -324,6 +324,16 @@ const sidebarConfig: SidebarEntry[] = [
         icon: Settings,
       },
       {
+        title: 'بيانات الاتصال',
+        href: '/admin/contact-info',
+        icon: Phone,
+      },
+      {
+        title: 'جدول الزمن (Timeline)',
+        href: '/admin/timeline',
+        icon: Calendar,
+      },
+      {
         title: 'الهيدر',
         href: '/admin/header',
         icon: Layout,
@@ -411,8 +421,8 @@ export function AdminSidebar() {
   }
 
   const toggleExpanded = (title: string) => {
-    setExpandedItems(prev => 
-      prev.includes(title) 
+    setExpandedItems(prev =>
+      prev.includes(title)
         ? prev.filter(item => item !== title)
         : [...prev, title]
     )
