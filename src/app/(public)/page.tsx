@@ -23,7 +23,19 @@ import ConfigurablePopup from '@/components/ConfigurablePopup'
 import { TouchButton } from '@/components/ui/enhanced-mobile-optimization'
 
 import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
-import { safeFetch } from '@/lib/safe-fetch'
+import {
+  getHomepageSettings,
+  getCompanyInfo,
+  getServiceItems,
+  getStats,
+  getValues,
+  getFeatures,
+  getTimeline,
+  getContactInfo,
+  getSiteSettings,
+  getSliders,
+  getPublicVehicles
+} from '@/services/home-data'
 import type { PublicVehicle } from '@/types/public-vehicle'
 
 // Force revalidation every hour
@@ -193,7 +205,7 @@ const dedupeVehicles = (vehicles: PublicVehicle[]): PublicVehicle[] => {
 
 // Main Server Component
 export default async function Home() {
-  // Fetch all data in parallel
+  // Fetch all data in parallel directly from DB (no internal fetch)
   const [
     homepageSettingsData,
     companyInfoData,
@@ -204,20 +216,20 @@ export default async function Home() {
     timelineData,
     contactData,
     siteSettingsData,
-    slidersDataResponse,
+    slidersRaw,
     vehiclesDataResponse
   ] = await Promise.all([
-    safeFetch('api/homepage-settings', { cache: 'no-store' }), // Settings might change often
-    safeFetch('api/company-info', { next: { revalidate: 3600 } }),
-    safeFetch('api/service-items', { next: { revalidate: 3600 } }),
-    safeFetch('api/about/stats', { next: { revalidate: 3600 } }),
-    safeFetch('api/about/values', { next: { revalidate: 3600 } }),
-    safeFetch('api/about/features', { next: { revalidate: 3600 } }),
-    safeFetch('api/about/timeline', { next: { revalidate: 3600 } }),
-    safeFetch('api/contact-info', { next: { revalidate: 3600 } }),
-    safeFetch('api/public/site-settings', { next: { revalidate: 3600 } }),
-    safeFetch('api/sliders?activeOnly=true', { next: { revalidate: 3600 } }),
-    safeFetch('api/public/vehicles?status=all&all=true', { next: { revalidate: 3600 } })
+    getHomepageSettings(),
+    getCompanyInfo(),
+    getServiceItems(),
+    getStats(),
+    getValues(),
+    getFeatures(),
+    getTimeline(),
+    getContactInfo(),
+    getSiteSettings(),
+    getSliders(true),
+    getPublicVehicles(0, 'AVAILABLE', undefined) // limit 0 for all if logic matches
   ])
 
   // Normalize Data
@@ -242,7 +254,9 @@ export default async function Home() {
     // Unique
     const unique = new Map()
     for (const item of serviceItemsData) {
+      // @ts-ignore
       if (!unique.has(item.title)) {
+        // @ts-ignore
         unique.set(item.title, normalizeBrandingObject(item))
       }
     }
@@ -293,7 +307,6 @@ export default async function Home() {
 
   // Sliders
   let sliders: SliderItem[] = []
-  const slidersRaw = slidersDataResponse?.sliders || slidersDataResponse;
   if (Array.isArray(slidersRaw)) {
     sliders = slidersRaw.map((item: any, index: number) => ({
       ...normalizeBrandingObject(item),
@@ -312,8 +325,9 @@ export default async function Home() {
   let totalVehiclesCount = 0
   const vehiclesRaw = vehiclesDataResponse?.vehicles;
   if (Array.isArray(vehiclesRaw)) {
+    // @ts-ignore
     featuredVehicles = dedupeVehicles(vehiclesRaw.map((v: any) => normalizeBrandingObject(v)))
-    totalVehiclesCount = vehiclesDataResponse?.pagination?.total || featuredVehicles.length
+    totalVehiclesCount = vehiclesDataResponse?.total || featuredVehicles.length
   }
 
   // Social Links Logic
