@@ -13,13 +13,13 @@ export async function GET() {
       where: { isActive: true },
       orderBy: { order: 'asc' }
     })
-    
+
     if (timelineEvents.length === 0) {
       // Return default timeline events if none exist
       return NextResponse.json([
         {
           id: '1',
-          year: '1999',
+          year: '2005',
           title: 'تأسيس الشركة',
           description: 'تأسست الحمد للسيارات كموزع معتمد لسيارات تاتا في مدن القناة',
           icon: 'Car',
@@ -28,7 +28,7 @@ export async function GET() {
         },
         {
           id: '2',
-          year: '2005',
+          year: '2010',
           title: 'التوسع في الخدمات',
           description: 'إطلاق أول مركز خدمة متكامل لصيانة سيارات تاتا',
           icon: 'Wrench',
@@ -37,7 +37,7 @@ export async function GET() {
         },
         {
           id: '3',
-          year: '2010',
+          year: '2015',
           title: 'التوسع الجغرافي',
           description: 'افتتاح فروع جديدة في المحافظات المصرية',
           icon: 'MapPin',
@@ -53,38 +53,21 @@ export async function GET() {
           order: 3,
           isActive: true
         },
-        {
-          id: '5',
-          year: '2020',
-          title: 'التحول الرقمي',
-          description: 'إطلاق المنصة الرقمية الشاملة لخدمة العملاء',
-          icon: 'Smartphone',
-          order: 4,
-          isActive: true
-        },
-        {
-          id: '6',
-          year: '2024',
-          title: 'سيارات كهربائية',
-          description: 'إدخال سيارات تاتا الكهربائية إلى السوق المصري',
-          icon: 'Zap',
-          order: 5,
-          isActive: true
-        }
+
       ])
     }
 
     // Remove duplicates and ensure unique events
     const uniqueEvents = timelineEvents.reduce((acc, current) => {
-      const existingIndex = acc.findIndex(event => 
-        event.year === current.year && 
+      const existingIndex = acc.findIndex(event =>
+        event.year === current.year &&
         event.title === current.title
       )
-      
+
       if (existingIndex === -1) {
         acc.push(current)
       }
-      
+
       return acc
     }, [] as typeof timelineEvents)
 
@@ -101,7 +84,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const user = await getAuthUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
