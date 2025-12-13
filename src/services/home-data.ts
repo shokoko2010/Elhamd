@@ -8,7 +8,26 @@ export async function getSliders(activeOnly = true) {
     try {
         const sliders = await db.slider.findMany({
             where: activeOnly ? { isActive: true } : {},
-            orderBy: { order: 'asc' }
+            orderBy: { order: 'asc' },
+            select: {
+                id: true,
+                title: true,
+                subtitle: true,
+                description: true,
+                imageUrl: true,
+                ctaText: true,
+                ctaLink: true,
+                badge: true,
+                badgeColor: true,
+                contentPosition: true,
+                contentSize: true,
+                contentColor: true,
+                contentShadow: true,
+                contentStrokeColor: true,
+                contentStrokeWidth: true,
+                order: true
+                // Excluded: description (if not used), isActive, createdAt, updatedAt
+            }
         })
 
         const uniqueSliders = sliders.reduce((acc, current) => {
@@ -31,7 +50,16 @@ export async function getCompanyInfo() {
     try {
         const companyInfo = await db.companyInfo.findFirst({
             where: { isActive: true },
-            orderBy: { updatedAt: 'desc' }
+            orderBy: { updatedAt: 'desc' },
+            select: {
+                id: true,
+                title: true,
+                subtitle: true,
+                // description: true, // Often not used in summary views
+                features: true,
+                ctaButtons: true,
+                imageUrl: true // Only if needed
+            }
         })
 
         if (!companyInfo) {
@@ -40,19 +68,18 @@ export async function getCompanyInfo() {
                 id: 'default',
                 title: 'مرحباً بك في الحمد للسيارات',
                 subtitle: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
-                description: 'نحن فخورون بخدمة مدن القناة كموزع معتمد لسيارات تاتا، حيث نقدم أحدث الموديلات مع ضمان الجودة الأصلي وخدمات ما بعد البيع المتميزة.',
+                // description: '...', // Removed to save space if unused
                 imageUrl: '/uploads/showroom-luxury.jpg',
                 features: [
                     'أحدث موديلات تاتا 2024',
                     'ضمان المصنع لمدة 3 سنوات',
-                    'خدمة صيانة على مدار الساعة',
+                    'ضمان صيانة على مدار الساعة',
                     'تمويل سيارات بأفضل الأسعار'
                 ],
                 ctaButtons: [
                     { text: 'استعرض السيارات', link: '/vehicles', variant: 'primary' },
                     { text: 'قيادة تجريبية', link: '/test-drive', variant: 'secondary' }
-                ],
-                isActive: true
+                ]
             }
         }
 
@@ -64,7 +91,7 @@ export async function getCompanyInfo() {
 }
 
 // --- Vehicles ---
-export async function getPublicVehicles(limit = 12, status = 'AVAILABLE', category?: string) {
+export async function getPublicVehicles(limit = 4, status = 'AVAILABLE', category?: string) {
     try {
         const where: any = {}
 
@@ -78,18 +105,29 @@ export async function getPublicVehicles(limit = 12, status = 'AVAILABLE', catego
 
         const vehicles = await db.vehicle.findMany({
             where,
-            include: {
+            select: {
+                id: true,
+                make: true,
+                model: true,
+                year: true,
+                price: true,
+                category: true,
+                fuelType: true,
+                transmission: true,
+                mileage: true,
+                // Only fetch primary image, strictly selected fields
                 images: {
                     take: 1,
                     orderBy: [
                         { isPrimary: 'desc' },
                         { order: 'asc' }
                     ],
-                    select: { id: true, imageUrl: true, altText: true, isPrimary: true, order: true }
+                    select: { id: true, imageUrl: true, altText: true, isPrimary: true }
                 }
+                // Excluded: description, specifications, features, highlights, etc.
             },
             orderBy: [{ createdAt: 'desc' }],
-            take: limit === 0 ? undefined : limit
+            take: limit === 0 ? 4 : limit // Force limit to avoid fetching all
         })
 
         const total = await db.vehicle.count({ where })
