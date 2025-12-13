@@ -249,7 +249,7 @@ export default async function Home() {
   const companyInfo = normalizeBrandingObject(companyInfoData || {})
 
   // Services
-  let serviceItems = []
+  let serviceItems: any[] = []
   if (Array.isArray(serviceItemsData)) {
     // Unique
     const unique = new Map()
@@ -264,11 +264,13 @@ export default async function Home() {
   }
 
   // Stats
-  let companyStats = []
-  if (Array.isArray(statsData)) {
+  let companyStats: any[] = []
+  if (Array.isArray(statsData) && statsData.length > 0) {
     const unique = new Map()
     for (const item of statsData) {
-      if (!unique.has(item.label)) {
+      // @ts-ignore
+      if (item && item.label && !unique.has(item.label)) {
+        // @ts-ignore
         unique.set(item.label, normalizeBrandingObject(item))
       }
     }
@@ -276,7 +278,7 @@ export default async function Home() {
   }
 
   // Values
-  let companyValues = []
+  let companyValues: any[] = []
   if (Array.isArray(valuesData)) {
     const unique = new Map()
     for (const item of valuesData) {
@@ -290,7 +292,7 @@ export default async function Home() {
   const companyFeatures = Array.isArray(featuresData) ? featuresData.map((f: any) => normalizeBrandingObject(f)) : []
 
   // Timeline
-  let timelineEvents = []
+  let timelineEvents: any[] = []
   if (Array.isArray(timelineData)) {
     const unique = new Map()
     for (const item of timelineData) {

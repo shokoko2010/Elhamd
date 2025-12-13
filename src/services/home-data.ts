@@ -4,12 +4,14 @@ import { VehicleCategory } from '@prisma/client'
 import { normalizeBrandingObject } from '@/lib/branding'
 
 // Helper to strip massive Base64 strings that break Vercel ISR (19MB limit)
-const stripLargeData = (str: string | null | undefined): string | null | undefined => {
+// Helper to strip massive Base64 strings that break Vercel ISR (19MB limit)
+// AND replace them with dynamic API URLs that serve the image on-demand.
+const stripLargeData = (str: string | null | undefined, type: 'vehicle' | 'slider' | 'company-info', id: string): string | null | undefined => {
     if (!str) return str;
-    // If string is > 100KB and looks like base64 image, replace it
-    if (str.length > 50000 && str.startsWith('data:image')) {
-        console.warn('Stripped large Base64 image to prevent build failure');
-        return '/uploads/showroom-luxury.jpg'; // Return a lightweight placeholder
+
+    // If it's a huge Base64 string, return the dynamic API URL
+    if (str.length > 1000 && str.startsWith('data:image')) {
+        return `/api/image/${type}/${id}`;
     }
     return str;
 }
@@ -38,7 +40,6 @@ export async function getSliders(activeOnly = true) {
                 contentStrokeColor: true,
                 contentStrokeWidth: true,
                 order: true
-                // Excluded: description (if not used), isActive, createdAt, updatedAt
             }
         })
 
@@ -52,7 +53,7 @@ export async function getSliders(activeOnly = true) {
 
         return Object.values(uniqueSliders).sort((a: any, b: any) => a.order - b.order).map((slider: any) => ({
             ...slider,
-            imageUrl: stripLargeData(slider.imageUrl) || ''
+            imageUrl: stripLargeData(slider.imageUrl, 'slider', slider.id) || ''
         }))
     } catch (error) {
         console.error('Error fetching sliders:', error)
@@ -70,20 +71,17 @@ export async function getCompanyInfo() {
                 id: true,
                 title: true,
                 subtitle: true,
-                // description: true, // Often not used in summary views
                 features: true,
                 ctaButtons: true,
-                imageUrl: true // Only if needed
+                imageUrl: true
             }
         })
 
         if (!companyInfo) {
-            // Default info
             return {
                 id: 'default',
                 title: 'مرحباً بك في الحمد للسيارات',
                 subtitle: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
-                // description: '...', // Removed to save space if unused
                 imageUrl: '/uploads/showroom-luxury.jpg',
                 features: [
                     'أحدث موديلات تاتا 2024',
@@ -100,7 +98,7 @@ export async function getCompanyInfo() {
 
         return {
             ...companyInfo,
-            imageUrl: stripLargeData(companyInfo.imageUrl)
+            imageUrl: stripLargeData(companyInfo.imageUrl, 'company-info', companyInfo.id)
         };
     } catch (error) {
         console.error('Error fetching company info:', error)
@@ -109,7 +107,7 @@ export async function getCompanyInfo() {
 }
 
 // --- Vehicles ---
-export async function getPublicVehicles(limit = 4, status = 'AVAILABLE', category?: string) {
+export async function getPublicVehicles(limit = 6, status = 'AVAILABLE', category?: string) {
     try {
         const where: any = {}
 
@@ -133,7 +131,6 @@ export async function getPublicVehicles(limit = 4, status = 'AVAILABLE', categor
                 fuelType: true,
                 transmission: true,
                 mileage: true,
-                // Only fetch primary image, strictly selected fields
                 images: {
                     take: 1,
                     orderBy: [
@@ -142,20 +139,18 @@ export async function getPublicVehicles(limit = 4, status = 'AVAILABLE', categor
                     ],
                     select: { id: true, imageUrl: true, altText: true, isPrimary: true }
                 }
-                // Excluded: description, specifications, features, highlights, etc.
             },
             orderBy: [{ createdAt: 'desc' }],
-            take: limit === 0 ? 4 : limit // Force limit to avoid fetching all
+            take: limit === 0 ? 6 : limit
         })
 
         const total = await db.vehicle.count({ where })
 
-        // Post-process to strip excessively large images
         const sanitizedVehicles = vehicles.map(v => ({
             ...v,
             images: v.images.map(img => ({
                 ...img,
-                imageUrl: stripLargeData(img.imageUrl) || ''
+                imageUrl: stripLargeData(img.imageUrl, 'vehicle', img.id) || ''
             }))
         }))
 
@@ -348,21 +343,18 @@ export async function getFeatures() {
 // --- Stats (Retry with correct probable fields) ---
 export async function getStats() {
     try {
-        // Assuming db.companyStats exists based on previous code
-        // If it fails, the catch block returns empty array
-        const stats = await db.companyStats.findMany({
+        // Correct model: companyStat
+        const stats = await db.companyStat.findMany({
             orderBy: { order: 'asc' },
             select: {
                 id: true,
                 label: true,
-                number: true, // Used in page.tsx
-                description: true,
-                // icon: true 
+                number: true,
+                description: true
             }
         })
         return stats
     } catch {
-        // Fallback or ignore
         return []
     }
 }
