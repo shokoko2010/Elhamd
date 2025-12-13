@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { buildSliderImageAlt } from '@/lib/media-utils'
-import { OptimizedImage } from '@/components/ui/OptimizedImage'
 
 const normalizeContentPosition = (position?: string): SliderContentPosition => {
   switch (position) {
@@ -82,7 +81,7 @@ export function WorkingSlider({
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
-
+  
   const intervalRef = useRef<NodeJS.Timeout>()
 
   // Handle auto-play
@@ -265,24 +264,17 @@ export function WorkingSlider({
     WebkitTextStroke: contentStrokeWidth > 0 ? `${contentStrokeWidth}px ${contentStrokeColor}` : undefined
   }
 
-  // Helper to ensure URLs are valid for Next/Image
-  const normalizeImageUrl = (url: string) => {
-    if (!url) return '/placeholder.jpg' // Default fallback
-    if (url.startsWith('http') || url.startsWith('data:')) return url
-    return url.startsWith('/') ? url : `/${url}`
-  }
-
   return (
     <div className={`relative w-full overflow-hidden ${className}`}>
       {/* Full viewport height */}
-      <div
+      <div 
         className="relative w-full h-[70vh] md:h-[80vh]"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {/* Background Image */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0">
           <img
             src={currentItem.imageUrl}
             alt={heroAlt}
@@ -296,29 +288,38 @@ export function WorkingSlider({
               objectFit: 'cover',
               zIndex: 1
             }}
-            // @ts-ignore
-            fetchPriority="high"
-            loading="eager"
             onLoad={() => {
               console.log('✅ Image loaded successfully:', currentItem.imageUrl)
             }}
             onError={(e) => {
               console.log('❌ Image failed to load:', currentItem.imageUrl)
               const target = e.target as HTMLImageElement
-
+              
+              // Only try fallback once to prevent infinite loop
               if (!target.dataset.triedFallback) {
                 target.dataset.triedFallback = 'true'
+                console.log('🔄 Trying fallback with absolute URL...')
+                // Try with absolute URL if relative fails
                 if (currentItem.imageUrl.startsWith('/')) {
                   target.src = currentItem.imageUrl
                 } else {
                   target.src = `/${currentItem.imageUrl}`
                 }
               } else {
+                console.log('💥 All fallbacks failed, hiding image')
                 target.style.display = 'none'
               }
             }}
           />
 
+          {/* Fallback background color */}
+          <div
+            className="absolute inset-0 z-0"
+            style={{
+              background: 'linear-gradient(135deg, var(--brand-primary-900, #030815), var(--brand-primary-600, #081432))'
+            }}
+          />
+          
           {/* Enhanced gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50 z-10" />
         </div>
@@ -365,12 +366,13 @@ export function WorkingSlider({
 
                 {/* CTA Button */}
                 <div
-                  className={`flex flex-col sm:flex-row gap-4 ${horizontalAlign === 'left'
-                    ? 'sm:justify-start'
-                    : horizontalAlign === 'center'
-                      ? 'sm:justify-center'
-                      : 'sm:justify-end'
-                    }`}
+                  className={`flex flex-col sm:flex-row gap-4 ${
+                    horizontalAlign === 'left'
+                      ? 'sm:justify-start'
+                      : horizontalAlign === 'center'
+                        ? 'sm:justify-center'
+                        : 'sm:justify-end'
+                  }`}
                 >
                   <Button
                     size="lg"
@@ -430,10 +432,11 @@ export function WorkingSlider({
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`transition-all duration-300 rounded-full ${currentIndex === index
-                  ? 'bg-[color:var(--brand-secondary,#C1272D)] w-10 h-3 shadow-lg'
-                  : 'bg-white/60 w-3 h-3 hover:bg-white/80 hover:scale-110'
-                  }`}
+                className={`transition-all duration-300 rounded-full ${
+                  currentIndex === index
+                    ? 'bg-[color:var(--brand-secondary,#C1272D)] w-10 h-3 shadow-lg'
+                    : 'bg-white/60 w-3 h-3 hover:bg-white/80 hover:scale-110'
+                }`}
                 aria-label={`الانتقال إلى الشريحة ${index + 1}`}
               />
             ))}
@@ -483,10 +486,11 @@ export function WorkingSlider({
             <button
               key={item.id}
               onClick={() => goToSlide(index)}
-              className={`flex-shrink-0 relative rounded-lg overflow-hidden transition-all duration-300 ${currentIndex === index
-                ? 'ring-2 ring-blue-500 transform scale-105 shadow-2xl'
-                : 'opacity-70 hover:opacity-90 hover:scale-102'
-                }`}
+              className={`flex-shrink-0 relative rounded-lg overflow-hidden transition-all duration-300 ${
+                currentIndex === index 
+                  ? 'ring-2 ring-blue-500 transform scale-105 shadow-2xl' 
+                  : 'opacity-70 hover:opacity-90 hover:scale-102'
+              }`}
               style={{ width: '120px', height: '90px' }}
               aria-label={`عرض ${item.title}`}
             >
@@ -512,9 +516,11 @@ export function WorkingSlider({
                 }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
-
+                  
                   if (!target.dataset.triedFallback) {
                     target.dataset.triedFallback = 'true'
+                    console.log('🔄 Trying fallback for thumbnail:', item.imageUrl)
+                    // Try with absolute URL if relative fails
                     if (item.imageUrl.startsWith('/')) {
                       target.src = item.imageUrl
                     } else {
