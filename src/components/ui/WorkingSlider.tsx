@@ -283,14 +283,40 @@ export function WorkingSlider({
       >
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <OptimizedImage
-            src={normalizeImageUrl(currentItem.imageUrl)}
+          <img
+            src={currentItem.imageUrl}
             alt={heroAlt}
-            fill
-            priority={true} // Always priority for hero slider
-            className="object-cover"
-            sizes="100vw"
-            quality={90} // High quality for hero
+            className="w-full h-full object-cover"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              zIndex: 1
+            }}
+            // @ts-ignore
+            fetchPriority="high"
+            loading="eager"
+            onLoad={() => {
+              console.log('✅ Image loaded successfully:', currentItem.imageUrl)
+            }}
+            onError={(e) => {
+              console.log('❌ Image failed to load:', currentItem.imageUrl)
+              const target = e.target as HTMLImageElement
+
+              if (!target.dataset.triedFallback) {
+                target.dataset.triedFallback = 'true'
+                if (currentItem.imageUrl.startsWith('/')) {
+                  target.src = currentItem.imageUrl
+                } else {
+                  target.src = `/${currentItem.imageUrl}`
+                }
+              } else {
+                target.style.display = 'none'
+              }
+            }}
           />
 
           {/* Enhanced gradient overlay */}
@@ -464,8 +490,8 @@ export function WorkingSlider({
               style={{ width: '120px', height: '90px' }}
               aria-label={`عرض ${item.title}`}
             >
-              <OptimizedImage
-                src={normalizeImageUrl(item.imageUrl)}
+              <img
+                src={item.imageUrl}
                 alt={buildSliderImageAlt(
                   {
                     title: item.title,
@@ -475,9 +501,29 @@ export function WorkingSlider({
                   },
                   { index }
                 )}
-                fill
-                className="object-cover"
-                sizes="120px"
+                className="w-full h-full object-cover"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+
+                  if (!target.dataset.triedFallback) {
+                    target.dataset.triedFallback = 'true'
+                    if (item.imageUrl.startsWith('/')) {
+                      target.src = item.imageUrl
+                    } else {
+                      target.src = `/${item.imageUrl}`
+                    }
+                  } else {
+                    target.style.display = 'none'
+                  }
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               {currentIndex === index && (
