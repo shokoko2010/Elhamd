@@ -152,9 +152,10 @@ export function ModernVehicleCarousel({
                   src={imageUrl}
                   alt={altText}
                   fill
-                  sizes="(min-width: 1280px) 400px, (min-width: 768px) 50vw, 100vw"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover"
-                  priority={index < 2}
+                  loading={index < 3 ? "eager" : "lazy"}
+                  priority={index < 3}
                 />
                 <div className="absolute left-4 top-4 flex gap-2">
                   <Badge className="bg-white/90 text-slate-800">{getCategory(vehicle)}</Badge>

@@ -51,13 +51,42 @@ export async function getSliders(activeOnly = true) {
             return acc
         }, {} as Record<string, typeof sliders[0]>)
 
-        return Object.values(uniqueSliders).sort((a: any, b: any) => a.order - b.order).map((slider: any) => ({
+        const result = Object.values(uniqueSliders).sort((a: any, b: any) => a.order - b.order).map((slider: any) => ({
             ...slider,
             imageUrl: stripLargeData(slider.imageUrl, 'slider', slider.id) || ''
         }))
+
+        if (result.length === 0) {
+            return [
+                {
+                    id: 'default-1',
+                    title: 'مجموعة سيارات تاتا المتكاملة',
+                    subtitle: 'الأولى في عالم السيارات',
+                    description: 'اكتشف أحدث موديلات الشاحنات والبيك أب',
+                    imageUrl: '/uploads/showroom-luxury.jpg',
+                    ctaText: 'استكشف الآن',
+                    ctaLink: '/vehicles',
+                    order: 1,
+                    contentPosition: 'middle-center'
+                }
+            ]
+        }
+        return result
     } catch (error) {
         console.error('Error fetching sliders:', error)
-        return []
+        return [
+            {
+                id: 'default-1',
+                title: 'مجموعة سيارات تاتا المتكاملة',
+                subtitle: 'الأولى في عالم السيارات',
+                description: 'اكتشف أحدث موديلات الشاحنات والبيك أب',
+                imageUrl: '/uploads/showroom-luxury.jpg',
+                ctaText: 'استكشف الآن',
+                ctaLink: '/vehicles',
+                order: 1,
+                contentPosition: 'middle-center'
+            }
+        ]
     }
 }
 
@@ -292,7 +321,7 @@ export async function getContactInfo() {
 // --- Timeline ---
 export async function getTimeline() {
     try {
-        return await db.timelineEvent.findMany({
+        const events = await db.timelineEvent.findMany({
             orderBy: { year: 'desc' },
             select: {
                 id: true,
@@ -301,15 +330,28 @@ export async function getTimeline() {
                 description: true
             }
         })
+
+        if (events.length === 0) {
+            return [
+                { id: '1', year: '2024', title: 'التوسع في مدن القناة', description: 'افتتاح فروع جديدة في بورسعيد والإسماعيلية' },
+                { id: '2', year: '2020', title: 'شراكة تاتا موتورز', description: 'أصبحنا الموزع المعتمد رسمياً' },
+                { id: '3', year: '2015', title: 'التأسيس', description: 'بداية رحلة النجاح في عالم السيارات' }
+            ]
+        }
+        return events
     } catch {
-        return []
+        return [
+            { id: '1', year: '2024', title: 'التوسع في مدن القناة', description: 'افتتاح فروع جديدة في بورسعيد والإسماعيلية' },
+            { id: '2', year: '2020', title: 'شراكة تاتا موتورز', description: 'أصبحنا الموزع المعتمد رسمياً' },
+            { id: '3', year: '2015', title: 'التأسيس', description: 'بداية رحلة النجاح في عالم السيارات' }
+        ]
     }
 }
 
 // --- Values ---
 export async function getValues() {
     try {
-        return await db.companyValue.findMany({
+        const values = await db.companyValue.findMany({
             orderBy: { order: 'asc' },
             select: {
                 id: true,
@@ -318,8 +360,23 @@ export async function getValues() {
                 icon: true
             }
         })
+
+        if (values.length === 0) {
+            return [
+                { id: '1', title: 'النزاهة', description: 'نلتزم بأعلى معايير الشفافية', icon: 'Shield' },
+                { id: '2', title: 'الجودة', description: 'نقدم أفضل المنتجات والخدمات', icon: 'Star' },
+                { id: '3', title: 'العميل أولاً', description: 'رضا العميل هو غايتنا', icon: 'Heart' },
+                { id: '4', title: 'الابتكار', description: 'نسعى دائماً للتطوير', icon: 'Zap' }
+            ]
+        }
+        return values
     } catch {
-        return []
+        return [
+            { id: '1', title: 'النزاهة', description: 'نلتزم بأعلى معايير الشفافية', icon: 'Shield' },
+            { id: '2', title: 'الجودة', description: 'نقدم أفضل المنتجات والخدمات', icon: 'Star' },
+            { id: '3', title: 'العميل أولاً', description: 'رضا العميل هو غايتنا', icon: 'Heart' },
+            { id: '4', title: 'الابتكار', description: 'نسعى دائماً للتطوير', icon: 'Zap' }
+        ]
     }
 }
 
