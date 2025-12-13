@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, TouchEvent } from 'react'
-import Image from 'next/image'
 import type { CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -274,23 +273,19 @@ export function WorkingSlider({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Background Image - Optimized with next/image */}
+        {/* Background Image - Using standard img for better compatibility with dynamic sources */}
         <div className="absolute inset-0">
-          <Image
+          <img
             src={currentItem.imageUrl}
             alt={heroAlt}
-            fill
-            priority={true} // LCP Critical: Always prioritize hero image
-            className="object-cover"
-            sizes="100vw"
-            quality={90}
-            unoptimized={currentItem.imageUrl.startsWith('/api/')} // Bypass optimization for API routes
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               if (!target.dataset.triedFallback) {
                 target.dataset.triedFallback = 'true';
                 // Try fallback image
-                target.src = '/uploads/showroom-luxury.jpg';
+                target.src = '/slider-punch.jpg';
                 console.log('Image load failed, switched to fallback:', currentItem.imageUrl);
               }
             }}
