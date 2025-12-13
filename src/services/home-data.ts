@@ -53,7 +53,8 @@ export async function getSliders(activeOnly = true) {
 
         const result = Object.values(uniqueSliders).sort((a: any, b: any) => a.order - b.order).map((slider: any) => ({
             ...slider,
-            imageUrl: stripLargeData(slider.imageUrl, 'slider', slider.id) || '/uploads/showroom-luxury.jpg'
+            // Serve Base64 images directly - modern browsers can handle them
+            imageUrl: slider.imageUrl || '/slider-punch.jpg'
         }))
 
         if (result.length === 0) {
