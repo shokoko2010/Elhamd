@@ -724,6 +724,47 @@ export default async function Home() {
           </section>
         )}
 
+        {/* Timeline Section */}
+        {timelineEvents.length > 0 && (
+          <section className="py-16 md:py-24 bg-white relative">
+            <div className="max-w-4xl mx-auto px-4 relative z-10">
+              <div className="text-center mb-16">
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
+                  <Clock className="ml-2 h-4 w-4" />
+                  تاريخنا
+                </Badge>
+                <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900">مسيرة النجاح</h2>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto">محطات هامة في رحلة الحمد للسيارات</p>
+              </div>
+
+              <div className="relative border-r-2 border-blue-100 mr-4 md:mr-0 md:mx-auto space-y-12">
+                {timelineEvents.map((event: any, index: number) => (
+                  <div key={index} className="relative flex flex-col md:flex-row items-center gap-8 group">
+                    {/* Dot */}
+                    <div className="absolute -right-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-md group-hover:scale-125 transition-transform z-10"></div>
+
+                    {/* Year Badge */}
+                    <div className="md:w-1/4 text-right md:text-left md:pl-8">
+                      <span className="inline-block px-4 py-2 rounded-full bg-blue-50 text-blue-700 font-bold text-xl border border-blue-100">
+                        {event.year}
+                      </span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 mr-8 md:mr-0 md:w-3/4">
+                      <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 group-hover:border-blue-200 group-hover:bg-blue-50/30 transition-colors relative">
+                        <div className="absolute top-6 -right-2 w-4 h-4 bg-gray-50 transform rotate-45 border-r border-t border-gray-100 group-hover:border-blue-200 group-hover:bg-blue-50/30 md:hidden"></div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">{event.title}</h3>
+                        <p className="text-gray-600 leading-relaxed">{event.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Contact Selection */}
         {contactInfo && (
           <section className="py-16 md:py-24 text-white relative" style={{ background: brandContactGradient }}>
