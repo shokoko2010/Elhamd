@@ -80,7 +80,11 @@ export async function getPublicVehicles(limit = 12, status = 'AVAILABLE', catego
             where,
             include: {
                 images: {
-                    orderBy: { order: 'asc' },
+                    take: 1,
+                    orderBy: [
+                        { isPrimary: 'desc' },
+                        { order: 'asc' }
+                    ],
                     select: { id: true, imageUrl: true, altText: true, isPrimary: true, order: true }
                 }
             },
