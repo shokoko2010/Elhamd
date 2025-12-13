@@ -3,6 +3,18 @@ import { db } from '@/lib/db'
 import { VehicleCategory } from '@prisma/client'
 import { normalizeBrandingObject } from '@/lib/branding'
 
+// Helper to strip massive Base64 strings that break Vercel ISR (19MB limit)
+const stripLargeData = (str: string | null | undefined): string | null | undefined => {
+    if (!str) return str;
+    // If string is > 100KB and looks like base64 image, replace it
+    if (str.length > 50000 && str.startsWith('data:image')) {
+        console.warn('Stripped large Base64 image to prevent build failure');
+        return '/uploads/showroom-luxury.jpg'; // Return a lightweight placeholder
+    }
+    return str;
+}
+
+
 // --- Sliders ---
 export async function getSliders(activeOnly = true) {
     try {
@@ -38,7 +50,10 @@ export async function getSliders(activeOnly = true) {
             return acc
         }, {} as Record<string, typeof sliders[0]>)
 
-        return Object.values(uniqueSliders).sort((a, b) => a.order - b.order)
+        return Object.values(uniqueSliders).sort((a: any, b: any) => a.order - b.order).map((slider: any) => ({
+            ...slider,
+            imageUrl: stripLargeData(slider.imageUrl) || ''
+        }))
     } catch (error) {
         console.error('Error fetching sliders:', error)
         return []
@@ -83,7 +98,10 @@ export async function getCompanyInfo() {
             }
         }
 
-        return companyInfo;
+        return {
+            ...companyInfo,
+            imageUrl: stripLargeData(companyInfo.imageUrl)
+        };
     } catch (error) {
         console.error('Error fetching company info:', error)
         return null
@@ -132,7 +150,16 @@ export async function getPublicVehicles(limit = 4, status = 'AVAILABLE', categor
 
         const total = await db.vehicle.count({ where })
 
-        return { vehicles, total }
+        // Post-process to strip excessively large images
+        const sanitizedVehicles = vehicles.map(v => ({
+            ...v,
+            images: v.images.map(img => ({
+                ...img,
+                imageUrl: stripLargeData(img.imageUrl) || ''
+            }))
+        }))
+
+        return { vehicles: sanitizedVehicles, total }
 
     } catch (error) {
         console.error('Error fetching vehicles:', error)
