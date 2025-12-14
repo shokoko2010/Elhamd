@@ -58,9 +58,9 @@ export async function PUT(
 ) {
   try {
     const { id } = await context.params
-    
+
     const auth = await authorize(request, { roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN] })
-    
+
     if (auth.error) {
       console.log('Auth failed:', auth.error)
       return auth.error
@@ -70,7 +70,7 @@ export async function PUT(
 
     const body = await request.json();
     console.log('Request body:', JSON.stringify(body, null, 2))
-    
+
     const {
       name,
       code,
@@ -80,6 +80,8 @@ export async function PUT(
       managerId,
       currency,
       timezone,
+      mapLat,
+      mapLng,
       settings,
       isActive,
     } = body;
@@ -148,6 +150,8 @@ export async function PUT(
       ...(managerId !== undefined && { managerId }),
       ...(currency && { currency }),
       ...(timezone && { timezone }),
+      ...(mapLat !== undefined && { mapLat: mapLat ? parseFloat(mapLat) : null }),
+      ...(mapLng !== undefined && { mapLng: mapLng ? parseFloat(mapLng) : null }),
       ...(settings !== undefined && { settings }),
       ...(isActive !== undefined && { isActive }),
     };
@@ -209,7 +213,7 @@ export async function DELETE(
     }
 
     // التحقق من أن الفرع لا يحتوي على بيانات مرتبطة
-    const hasRelatedData = 
+    const hasRelatedData =
       branch._count.users > 0 ||
       branch._count.vehicles > 0 ||
       branch._count.invoices > 0 ||

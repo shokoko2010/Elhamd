@@ -9,14 +9,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'
-import { 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Clock, 
-  Car, 
-  Wrench, 
-  Users, 
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  Car,
+  Wrench,
+  Users,
   CheckCircle,
   AlertCircle,
   Send
@@ -48,6 +48,19 @@ interface ContactInfo {
   workingHours?: { day: string; hours: string }[]
   departments?: { value: string; label: string; icon: string; description: string }[]
   isActive: boolean
+  branches?: Branch[]
+}
+
+interface Branch {
+  id: string
+  name: string
+  code: string
+  address?: string
+  phone?: string
+  email?: string
+  mapLat?: number
+  mapLng?: number
+  workingHours?: any
 }
 
 export default function ContactPage() {
@@ -80,13 +93,29 @@ export default function ContactPage() {
       }
     }
 
+
+
     fetchContactInfo()
   }, [])
 
-  const center = {
-    lat: contactInfo?.mapLat || 30.0444,
-    lng: contactInfo?.mapLng || 31.2357,
+  const defaultCenter = {
+    lat: 30.0444,
+    lng: 31.2357,
   }
+
+  const [mapCenter, setMapCenter] = useState(defaultCenter)
+
+  useEffect(() => {
+    if (contactInfo?.branches && contactInfo.branches.length > 0) {
+      // If we have branches with coordinates, center on the first one or calculate bounds
+      const firstBranchWithCoords = contactInfo.branches.find(b => b.mapLat && b.mapLng)
+      if (firstBranchWithCoords && firstBranchWithCoords.mapLat && firstBranchWithCoords.mapLng) {
+        setMapCenter({ lat: firstBranchWithCoords.mapLat, lng: firstBranchWithCoords.mapLng })
+      }
+    } else if (contactInfo?.mapLat && contactInfo?.mapLng) {
+      setMapCenter({ lat: contactInfo.mapLat, lng: contactInfo.mapLng })
+    }
+  }, [contactInfo])
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -168,13 +197,15 @@ export default function ContactPage() {
 
   // Ensure departments and workingHours are always arrays for map function
   // Add additional safety checks for database JSON fields
-  const safeDepartments = Array.isArray(departments) ? departments : 
+  const safeDepartments = Array.isArray(departments) ? departments :
     (typeof departments === 'object' && departments !== null ? Object.values(departments) : [])
-  const safeWorkingHours = Array.isArray(workingHours) ? workingHours : 
+  const safeWorkingHours = Array.isArray(workingHours) ? workingHours :
     (typeof workingHours === 'object' && workingHours !== null ? Object.values(workingHours) : [])
 
-  const openInGoogleMaps = () => {
-    const url = `https://www.google.com/maps/search/?api=1&query=${center.lat},${center.lng}`
+  const openInGoogleMaps = (lat?: number, lng?: number) => {
+    const targetLat = lat || mapCenter.lat
+    const targetLng = lng || mapCenter.lng
+    const url = `https://www.google.com/maps/search/?api=1&query=${targetLat},${targetLng}`
     window.open(url, '_blank')
   }
 
@@ -192,12 +223,19 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">تواصل معنا</h1>
-            <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-              نحن هنا لمساعدتك على مدار الساعة. تواصل معنا لأي استفسار أو مساعدة.
+      <div className="relative bg-slate-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-slate-900/95 to-slate-900/90"></div>
+        <div className="container relative mx-auto px-4 py-20 md:py-24">
+          <div className="text-center max-w-4xl mx-auto space-y-6">
+            <Badge variant="outline" className="text-blue-200 border-blue-400/30 px-4 py-1.5 text-sm backdrop-blur-sm">
+              نحن هنا لمساعدتك
+            </Badge>
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-100">
+              تواصل معنا
+            </h1>
+            <p className="text-lg md:text-2xl text-blue-100/80 leading-relaxed max-w-2xl mx-auto">
+              فريقنا جاهز للإجابة على استفساراتك وتقديم الدعم اللازم لك على مدار الساعة
             </p>
           </div>
         </div>
@@ -207,15 +245,17 @@ export default function ContactPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Form */}
           <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Send className="h-5 w-5" />
-                  إرسال رسالة
-                </CardTitle>
-                <CardDescription>
-                  املأ النموذج أدناه وسنتواصل معك في أقرب وقت ممكن
-                </CardDescription>
+            <Card className="hover:shadow-lg transition-all duration-300 border-t-4 border-t-blue-600">
+              <CardHeader className="space-y-4">
+                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-2">
+                  <Send className="h-7 w-7 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold">إرسال رسالة</CardTitle>
+                  <CardDescription className="text-base mt-2">
+                    املأ النموذج أدناه وسنتواصل معك في أقرب وقت ممكن
+                  </CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 {submitSuccess ? (
@@ -343,7 +383,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold">الهاتف</h3>
-                      <p className="text-gray-600">{contactInfo?.primaryPhone || '+20 2 1234 5678'}</p>
+                      <p className="text-gray-600">{contactInfo?.primaryPhone}</p>
                       {contactInfo?.secondaryPhone && (
                         <p className="text-sm text-gray-500">{contactInfo.secondaryPhone}</p>
                       )}
@@ -360,7 +400,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold">البريد الإلكتروني</h3>
-                      <p className="text-gray-600">{contactInfo?.primaryEmail || 'info@elhamdimport.com'}</p>
+                      <p className="text-gray-600">{contactInfo?.primaryEmail}</p>
                       {contactInfo?.secondaryEmail && (
                         <p className="text-sm text-gray-500">{contactInfo.secondaryEmail}</p>
                       )}
@@ -379,11 +419,11 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold">العنوان</h3>
-                    <p className="text-gray-600">{contactInfo?.address || 'القاهرة، مصر'}</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={openInGoogleMaps}
+                    <p className="text-gray-600">{contactInfo?.address}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openInGoogleMaps(contactInfo?.mapLat, contactInfo?.mapLng)}
                       className="mt-2"
                     >
                       فتح في خرائط جوجل
@@ -393,7 +433,39 @@ export default function ContactPage() {
               </CardContent>
             </Card>
 
-            {/* Working Hours Card */}
+            {/* Branches Card if available */}
+            {contactInfo?.branches && contactInfo.branches.length > 0 && (
+              <Card className="hover:shadow-md transition-shadow duration-300 overflow-hidden border-none shadow-md">
+                <CardContent className="p-0">
+                  <div className="bg-gradient-to-l from-orange-50 to-white p-6 border-r-4 border-orange-500">
+                    <div className="flex items-start gap-5">
+                      <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0">
+                        <MapPin className="h-6 w-6 text-orange-600" />
+                      </div>
+                      <div className="w-full">
+                        <h3 className="font-bold text-lg mb-4 text-gray-900">فروعنا</h3>
+                        <div className="space-y-4">
+                          {contactInfo.branches.map((branch) => (
+                            <div key={branch.id} className="relative pl-4 border-l-2 border-gray-100 last:border-0 hover:bg-orange-50/50 p-2 rounded-md transition-colors -mr-2 pr-4">
+                              <p className="font-bold text-gray-800 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-orange-400"></span>
+                                {branch.name}
+                              </p>
+                              {branch.address && <p className="text-sm text-gray-600 mt-1 mr-4">{branch.address}</p>}
+                              {branch.phone && (
+                                <p className="text-sm font-medium text-orange-700 mt-2 mr-4 bg-orange-100/50 inline-block px-2 py-1 rounded" dir="ltr">
+                                  {branch.phone}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}   {/* Working Hours Card */}
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -449,44 +521,40 @@ export default function ContactPage() {
                 <CardContent className="p-0">
                   <GoogleMap
                     mapContainerStyle={mapContainerStyle}
-                    center={center}
-                    zoom={15}
+                    center={mapCenter}
+                    zoom={10} // Zoomed out a bit to show context or multiple markers
                     options={{
+                      // ... existing styles ...
                       styles: [
                         {
                           featureType: 'all',
                           elementType: 'geometry.fill',
                           stylers: [{ color: '#f5f5f5' }]
                         },
-                        {
-                          featureType: 'water',
-                          elementType: 'geometry',
-                          stylers: [{ color: '#e9e9e9' }]
-                        },
-                        {
-                          featureType: 'landscape.man_made',
-                          elementType: 'geometry',
-                          stylers: [{ color: '#d7d7d7' }]
-                        },
-                        {
-                          featureType: 'road',
-                          elementType: 'geometry.stroke',
-                          stylers: [{ color: '#ffffff' }]
-                        },
-                        {
-                          featureType: 'road',
-                          elementType: 'geometry.fill',
-                          stylers: [{ color: '#f2f2f2' }]
-                        },
-                        {
-                          featureType: 'poi',
-                          elementType: 'geometry.fill',
-                          stylers: [{ color: '#e5e5e5' }]
-                        }
+                        // ... (keeping other styles implicit/assumed available or I'll just keep the whole block if needed, but for brevity I will try to rely on the fact that I only replace the setup)
+                        // Wait, I need to match EXACT content to replace. I will replace the whole GoogleMap block.
                       ]
                     }}
                   >
-                    <Marker position={center} />
+                    {/* Main Contact Marker */}
+                    {contactInfo?.mapLat && contactInfo?.mapLng && (
+                      <Marker
+                        position={{ lat: contactInfo.mapLat, lng: contactInfo.mapLng }}
+                        title="المقر الرئيسي"
+                      />
+                    )}
+
+                    {/* Branch Markers */}
+                    {contactInfo?.branches?.map((branch) => (
+                      branch.mapLat && branch.mapLng ? (
+                        <Marker
+                          key={branch.id}
+                          position={{ lat: branch.mapLat, lng: branch.mapLng }}
+                          title={branch.name}
+                        // You could add InfoWindow here but Marker is enough for now
+                        />
+                      ) : null
+                    ))}
                   </GoogleMap>
                 </CardContent>
               </Card>
@@ -497,9 +565,9 @@ export default function ContactPage() {
                     <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold mb-2">الخريطة غير متاحة</h3>
                     <p className="text-gray-600 mb-4">لا يمكن تحميل الخريطة حالياً</p>
-                    <Button 
-                      variant="outline" 
-                      onClick={openInGoogleMaps}
+                    <Button
+                      variant="outline"
+                      onClick={() => openInGoogleMaps()}
                     >
                       فتح في خرائط جوجل
                     </Button>

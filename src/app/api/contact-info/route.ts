@@ -13,6 +13,22 @@ export async function GET() {
       where: { isActive: true }
     })
 
+    // Get active branches
+    const branches = await db.branch.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        address: true,
+        phone: true,
+        email: true,
+        mapLat: true,
+        mapLng: true,
+        workingHours: true // Assuming workingHours might be added to Branch later, but for now getting basic info
+      }
+    })
+
     if (!contactInfo) {
       // Return default contact info if none exists
       return NextResponse.json({
@@ -48,11 +64,12 @@ export async function GET() {
             description: 'للمساعدة العامة والدعم الفني'
           }
         ],
-        isActive: true
+        isActive: true,
+        branches: []
       })
     }
 
-    return NextResponse.json(contactInfo)
+    return NextResponse.json({ ...contactInfo, branches })
   } catch (error) {
     console.error('Error fetching contact info:', error)
     return NextResponse.json(

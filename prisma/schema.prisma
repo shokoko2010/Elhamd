@@ -117,6 +117,8 @@ model Branch {
   openingDate            DateTime
   currency               String                  @default("EGP")
   timezone               String                  @default("Africa/Cairo")
+  mapLat                 Float?
+  mapLng                 Float?
   settings               Json?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt

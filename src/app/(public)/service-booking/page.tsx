@@ -11,18 +11,21 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { 
-  Calendar as CalendarIcon, 
-  Wrench, 
-  Clock, 
-  User, 
-  Mail, 
-  Phone, 
+import {
+  Calendar as CalendarIcon,
+  Wrench,
+  Clock,
+  User,
+  Mail,
+  Phone,
   Car,
   CheckCircle,
   AlertCircle,
   MapPin,
-  Loader2
+  Loader2,
+  ArrowRight,
+  ShieldCheck,
+  ChevronLeft
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
@@ -122,11 +125,12 @@ export default function ServiceBookingPage() {
   const isAuthenticated = status === 'authenticated'
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (status === 'unauthenticated') {
+      // Only clear if explicitly unauthenticated
       setVehicles([])
-      setServiceTypes([])
       return
     }
+    if (status === 'loading') return
 
     // Fetch vehicles from API
     const fetchVehicles = async () => {
@@ -138,7 +142,7 @@ export default function ServiceBookingPage() {
         }
       } catch (error) {
         console.error('Error fetching vehicles:', error)
-        toast.error('فشل في تحميل المركبات. يرجى المحاولة مرة أخرى لاحقاً.')
+        // toast.error('فشل في تحميل المركبات. يرجى المحاولة مرة أخرى لاحقاً.')
         setVehicles([])
       }
     }
@@ -153,7 +157,7 @@ export default function ServiceBookingPage() {
         }
       } catch (error) {
         console.error('Error fetching service types:', error)
-        toast.error('فشل في تحميل أنواع الخدمات. يرجى المحاولة مرة أخرى لاحقاً.')
+        // toast.error('فشل في تحميل أنواع الخدمات. يرجى المحاولة مرة أخرى لاحقاً.')
         setServiceTypes([])
       }
     }
@@ -177,24 +181,24 @@ export default function ServiceBookingPage() {
     fetchVehicles()
     fetchServiceTypes()
     fetchCalendarData()
-  }, [isAuthenticated])
+  }, [status])
 
   useEffect(() => {
     // Calculate total price based on selected service
     if (selectedService) {
       const service = serviceTypes.find(s => s.id === selectedService)
-      setFormData(prev => ({ 
-        ...prev, 
+      setFormData(prev => ({
+        ...prev,
         serviceTypeId: selectedService,
-        totalPrice: service?.price || 0 
+        totalPrice: service?.price || 0
       }))
     }
   }, [selectedService, serviceTypes])
 
   const handleVehicleSelect = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle)
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       vehicleId: vehicle.id,
       vehicleInfo: {
         ...prev.vehicleInfo,
@@ -228,10 +232,10 @@ export default function ServiceBookingPage() {
     setSelectedDate(date)
     if (timeSlot) {
       setSelectedTimeSlot(timeSlot)
-      setFormData(prev => ({ 
-        ...prev, 
+      setFormData(prev => ({
+        ...prev,
         date,
-        timeSlot: timeSlot.startTime 
+        timeSlot: timeSlot.startTime
       }))
       setStep(4)
     } else {
@@ -328,226 +332,220 @@ export default function ServiceBookingPage() {
 
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
-          <div className="container mx-auto px-4 py-12">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold mb-4">حجز موعد خدمة</h1>
-              <p className="text-xl text-blue-100">
-                خدمات صيانة وإصلاح احترافية لمركبتك
-              </p>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <Card className="max-w-md w-full shadow-xl border-t-4 border-t-red-500">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <ShieldCheck className="h-8 w-8 text-red-600" />
             </div>
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-3xl mx-auto">
-            <Card>
-              <CardContent className="p-8 text-center space-y-4">
-                <AlertCircle className="mx-auto h-12 w-12 text-blue-600" />
-                <h2 className="text-2xl font-bold">يجب تسجيل الدخول لحجز خدمة</h2>
-                <p className="text-gray-600">
-                  قم بتسجيل الدخول للوصول إلى مركباتك ومتابعة حجز الخدمة.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button onClick={() => signIn()} size="lg" className="min-w-[160px]">
-                    تسجيل الدخول
-                  </Button>
-                  <Button asChild variant="outline" size="lg" className="min-w-[160px]">
-                    <Link href="/">العودة إلى الصفحة الرئيسية</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+            <CardTitle className="text-2xl font-bold text-gray-900">تسجيل الدخول مطلوب</CardTitle>
+            <CardDescription className="text-gray-600">
+              يرجى تسجيل الدخول للوصول إلى نظام حجز الخدمات
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-6">
+            <Button onClick={() => signIn()} size="lg" className="w-full font-bold">
+              تسجيل الدخول الآن
+            </Button>
+            <Button asChild variant="outline" size="sm" className="w-full">
+              <Link href="/">العودة للرئيسية</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 pb-20">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4">حجز موعد خدمة</h1>
-            <p className="text-xl text-blue-100">
-              خدمات صيانة وإصلاح احترافية لمركبتك
+      <div className="relative bg-slate-900 text-white overflow-hidden mb-8">
+        <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-slate-900/95 to-slate-900/90"></div>
+        <div className="container relative mx-auto px-4 py-16 md:py-20">
+          <div className="max-w-3xl">
+            <Badge className="mb-4 bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 border-blue-500/50 backdrop-blur-sm">
+              نظام الحجز الإلكتروني
+            </Badge>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">حجز موعد صيانة</h1>
+            <p className="text-lg text-blue-100/80 leading-relaxed max-w-2xl">
+              احجز موعد صيانتك القادم بكل سهولة. اختر نوع الخدمة، الموعد المناسب، ودع فريقنا المتخصص يهتم بسيارتك.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
+      <div className="container mx-auto px-4">
+        <div className="max-w-5xl mx-auto">
           {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-center flex-wrap">
-              {[1, 2, 3, 4, 5].map((stepNumber) => (
-                <div key={stepNumber} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step >= stepNumber ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {stepNumber}
+          {!submitSuccess && (
+            <div className="mb-10 overflow-x-auto">
+              <div className="flex items-center justify-between min-w-[600px] bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                {[1, 2, 3, 4, 5].map((stepNumber) => (
+                  <div key={stepNumber} className="flex flex-col items-center relative z-10">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step >= stepNumber
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-110'
+                          : 'bg-gray-100 text-gray-400 border border-gray-200'
+                        }`}
+                    >
+                      {step > stepNumber ? <CheckCircle className="h-6 w-6" /> : stepNumber}
+                    </div>
+                    <span className={`mt-2 text-xs font-semibold uppercase tracking-wider ${step >= stepNumber ? 'text-blue-700' : 'text-gray-400'
+                      }`}>
+                      {stepNumber === 1 && 'المركبة'}
+                      {stepNumber === 2 && 'الخدمة'}
+                      {stepNumber === 3 && 'الموعد'}
+                      {stepNumber === 4 && 'البيانات'}
+                      {stepNumber === 5 && 'التأكيد'}
+                    </span>
                   </div>
-                  <span className={`ml-2 text-sm ${
-                    step >= stepNumber ? 'text-blue-600 font-medium' : 'text-gray-500'
-                  }`}>
-                    {stepNumber === 1 && 'المركبة'}
-                    {stepNumber === 2 && 'الخدمة'}
-                    {stepNumber === 3 && 'الموعد'}
-                    {stepNumber === 4 && 'البيانات'}
-                    {stepNumber === 5 && 'التأكيد'}
-                  </span>
-                  {stepNumber < 5 && (
-                    <div className={`w-16 h-1 mx-4 ${
-                      step > stepNumber ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}></div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
 
-          {submitSuccess ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-4">تم حجز الخدمة بنجاح!</h2>
-                <p className="text-gray-600 mb-6">
-                  شكراً لحجزك مع الحمد للسيارات. تم إرسال تأكيد الحجز على بريدك الإلكتروني.
-                </p>
-                <div className="bg-gray-50 rounded-lg p-6 mb-6 text-right max-w-md mx-auto">
-                  <h3 className="font-semibold mb-2">تفاصيل الحجز:</h3>
-                  <p>
-                    <strong>المركبة:</strong>{' '}
-                    {selectedVehicle ? `${selectedVehicle.make} ${selectedVehicle.model}` : 'لم يتم اختيار مركبة'}
+                {/* Connecting Lines */}
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -z-0 hidden"></div>
+                {/* (Note: Positioning absolute lines perfectly in a flex container is tricky without absolute positioning the container. simplified for now) */}
+              </div>
+            </div>
+          )}
+
+          <div className="transition-all duration-500 ease-in-out">
+            {submitSuccess ? (
+              <Card className="border-none shadow-2xl overflow-hidden">
+                <div className="bg-green-500 h-2 w-full"></div>
+                <CardContent className="text-center py-16 px-4">
+                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-green-100">
+                    <CheckCircle className="h-12 w-12 text-green-600" />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-4 text-gray-900">تم حجز الموعد بنجاح!</h2>
+                  <p className="text-gray-600 mb-8 max-w-lg mx-auto text-lg">
+                    شكراً لاختيارك مركز الحمد للصيانة. لقد تم تأكيد حجزك، وتم إرسال تفاصيل الموعد إلى بريدك الإلكتروني.
                   </p>
-                  <p><strong>الخدمة:</strong> {getSelectedService()?.name}</p>
-                  <p><strong>التاريخ:</strong> {selectedDate && format(selectedDate, 'PPP', { locale: ar })}</p>
-                  <p><strong>الوقت:</strong> {formData.timeSlot}</p>
-                  <p><strong>المدة:</strong> {getSelectedService()?.duration} دقيقة</p>
-                  <p><strong>التكلفة:</strong> {formData.totalPrice.toLocaleString()} ج.م</p>
-                  <p><strong>الاسم:</strong> {formData.customerInfo.name}</p>
-                  <p><strong>البريد:</strong> {formData.customerInfo.email}</p>
-                  <p><strong>الهاتف:</strong> {formData.customerInfo.phone}</p>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mb-6">
-                  <MapPin className="h-4 w-4" />
-                  <span>مركز الخدمة: القاهرة، مصر</span>
-                </div>
-                <Button onClick={resetForm} size="lg">
-                  حجز خدمة أخرى
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="p-6">
+
+                  <div className="bg-slate-50 rounded-2xl p-8 mb-8 text-right max-w-xl mx-auto border border-slate-100 shadow-inner">
+                    <h3 className="font-bold text-gray-900 mb-4 text-lg border-b pb-2">ملخص الحجز</h3>
+                    <div className="space-y-3 text-gray-700">
+                      <p className="flex justify-between">
+                        <span className="text-gray-500">المركبة:</span>
+                        <span className="font-medium">{selectedVehicle ? `${selectedVehicle.make} ${selectedVehicle.model}` : 'N/A'}</span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span className="text-gray-500">الخدمة:</span>
+                        <span className="font-medium">{getSelectedService()?.name}</span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span className="text-gray-500">الموعد:</span>
+                        <span className="font-medium" dir="ltr">
+                          {selectedDate && format(selectedDate, 'PPP', { locale: ar })} - {formData.timeSlot}
+                        </span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span className="text-gray-500">التكلفة المتوقعة:</span>
+                        <span className="font-bold text-blue-600">{formData.totalPrice.toLocaleString()} ج.م</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-4">
+                    <Button onClick={resetForm} size="lg" variant="outline">
+                      حجز موعد جديد
+                    </Button>
+                    <Link href="/">
+                      <Button size="lg">العودة للرئيسية</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
                 {/* Step 1: Vehicle Selection */}
                 {step === 1 && (
-                  <div>
-                    <h2 className="text-2xl font-bold mb-6">اختر مركبتك</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-2xl font-bold text-gray-900">اختر المركبة</h2>
+                      <Button variant="ghost" className="text-blue-600" onClick={handleSkipVehicleSelection}>
+                        تخطي اختيار المركبة <ArrowRight className="mr-2 h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {ensureArray(vehicles).map((vehicle) => (
-                        <Card 
-                          key={vehicle.id} 
-                          className={`cursor-pointer transition-all hover:shadow-md ${
-                            selectedVehicle?.id === vehicle.id ? 'ring-2 ring-blue-500' : ''
-                          }`}
+                        <Card
+                          key={vehicle.id}
+                          className={`cursor-pointer transition-all duration-300 hover:shadow-xl group border-2 ${selectedVehicle?.id === vehicle.id ? 'border-blue-500 shadow-md bg-blue-50/10' : 'border-transparent hover:border-blue-200'
+                            }`}
                           onClick={() => handleVehicleSelect(vehicle)}
                         >
-                          <CardContent className="p-4">
-                            <div className="flex items-center gap-3 mb-3">
-                              <Car className="h-8 w-8 text-blue-600" />
-                              <div>
-                                <h3 className="font-semibold">{vehicle.make} {vehicle.model}</h3>
-                                <p className="text-sm text-gray-600">{vehicle.year}</p>
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="p-3 bg-blue-100/50 rounded-xl group-hover:bg-blue-100 transition-colors">
+                                <Car className="h-8 w-8 text-blue-600" />
                               </div>
+                              {selectedVehicle?.id === vehicle.id && <Badge className="bg-blue-600">تم الاختيار</Badge>}
                             </div>
-                            <div className="space-y-1 text-sm">
-                              <p><strong>رقم اللوحة:</strong> {vehicle.licensePlate}</p>
-                              <p><strong>VIN:</strong> {vehicle.vin}</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">{vehicle.make} {vehicle.model}</h3>
+                            <p className="text-sm text-gray-500 mb-4">{vehicle.year} • {vehicle.licensePlate}</p>
+                            <div className="text-xs text-gray-400 bg-gray-50 p-2 rounded block truncate">
+                              VIN: {vehicle.vin || 'N/A'}
                             </div>
                           </CardContent>
                         </Card>
                       ))}
-                      <Card className="cursor-pointer transition-all hover:shadow-md border-dashed border-2">
-                        <CardContent className="p-4 h-full flex flex-col items-center justify-center text-center">
-                          <Car className="h-8 w-8 text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-600">إضافة مركبة جديدة</p>
-                        </CardContent>
+
+                      <Card
+                        className="cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/5 transition-all text-center flex flex-col items-center justify-center min-h-[220px] group"
+                        // In a real app, this would open a modal or navigate to add vehicle page
+                        onClick={() => toast.info('هذه الميزة ستكون متاحة قريباً')}
+                      >
+                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
+                          <Car className="h-8 w-8 text-gray-400 group-hover:text-blue-500" />
+                        </div>
+                        <h3 className="font-semibold text-gray-600 group-hover:text-blue-600">إضافة مركبة جديدة</h3>
                       </Card>
-                    </div>
-                    <div className="mt-6 flex justify-center">
-                      <Button variant="outline" onClick={handleSkipVehicleSelection}>
-                        المتابعة بدون اختيار مركبة
-                      </Button>
                     </div>
                   </div>
                 )}
 
                 {/* Step 2: Service Selection */}
                 {step === 2 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold">اختر الخدمة</h2>
-                      <Button
-                        variant="outline"
-                        onClick={() => setStep(1)}
-                      >
-                        السابق
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 mb-6">
+                      <Button variant="outline" size="icon" onClick={() => setStep(1)}>
+                        <ChevronLeft className="h-4 w-4" />
                       </Button>
+                      <h2 className="text-2xl font-bold text-gray-900">نوع الخدمة المطلوبة</h2>
                     </div>
-                    {selectedVehicle && (
-                      <div className="mb-6">
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="flex items-center gap-4">
-                              <Car className="h-8 w-8 text-blue-600" />
-                              <div>
-                                <h3 className="font-semibold">{selectedVehicle.make} {selectedVehicle.model}</h3>
-                                <p className="text-sm text-gray-600">{selectedVehicle.year} • {selectedVehicle.licensePlate}</p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {ensureArray(serviceTypes).map((service) => (
-                        <Card 
-                          key={service.id} 
-                          className={`cursor-pointer transition-all hover:shadow-md ${
-                            selectedService === service.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-                          }`}
+                        <Card
+                          key={service.id}
+                          className={`cursor-pointer transition-all duration-200 border-2 ${selectedService === service.id
+                              ? 'border-blue-600 shadow-lg bg-blue-50/20'
+                              : 'border-transparent hover:border-blue-200 hover:shadow-md'
+                            }`}
                           onClick={() => handleServiceSelect(service.id)}
                         >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3">
-                                <Checkbox
-                                  checked={selectedService === service.id}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) handleServiceSelect(service.id)
-                                  }}
-                                />
-                                <div className="flex-1">
-                                  <h4 className="font-semibold">{service.name}</h4>
-                                  <p className="text-sm text-gray-600 mb-2">{service.description}</p>
-                                  <div className="flex items-center gap-4 text-sm">
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {service.duration} دقيقة
-                                    </span>
-                                    {service.price && (
-                                      <span className="font-semibold text-blue-600">
-                                        {service.price.toLocaleString()} ج.م
-                                      </span>
-                                    )}
-                                  </div>
+                          <CardContent className="p-6">
+                            <div className="flex items-start gap-4">
+                              <Checkbox
+                                checked={selectedService === service.id}
+                                className="mt-1"
+                                onCheckedChange={() => handleServiceSelect(service.id)}
+                              />
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start">
+                                  <h4 className="text-lg font-bold text-gray-900 mb-2">{service.name}</h4>
+                                  {service.price && (
+                                    <Badge variant="secondary" className="font-bold text-blue-700 bg-blue-100">
+                                      {service.price.toLocaleString()} ج.م
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-gray-600 text-sm mb-4 leading-relaxed">{service.description}</p>
+                                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 bg-gray-100 w-fit px-2 py-1 rounded">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span>المدة التقديرية: {service.duration} دقيقة</span>
                                 </div>
                               </div>
                             </div>
@@ -558,197 +556,189 @@ export default function ServiceBookingPage() {
                   </div>
                 )}
 
-                {/* Step 3: Calendar & Time Slot Selection */}
+                {/* Step 3: Calendar */}
                 {step === 3 && selectedService && (
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold">اختر الموعد</h2>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setStep(2)}
-                      >
-                        السابق
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 mb-6">
+                      <Button variant="outline" size="icon" onClick={() => setStep(2)}>
+                        <ChevronLeft className="h-4 w-4" />
                       </Button>
+                      <h2 className="text-2xl font-bold text-gray-900">تحديد الموعد</h2>
                     </div>
-                    
+
                     {calendarLoading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                        <span className="mr-2">جاري تحميل التقويم...</span>
+                      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm border">
+                        <Loader2 className="h-10 w-10 animate-spin text-blue-600 mb-4" />
+                        <p className="text-gray-500 font-medium">جاري تحميل المواعيد المتاحة...</p>
                       </div>
                     ) : (
-                      <BookingCalendar
-                        bookings={calendarData.bookings}
-                        timeSlots={calendarData.timeSlots}
-                        holidays={calendarData.holidays}
-                        onDateSelect={handleDateSelect}
-                        selectedDate={selectedDate}
-                        selectedTimeSlot={selectedTimeSlot}
-                      />
+                      <div className="bg-white rounded-xl shadow-sm border p-1 md:p-6">
+                        <BookingCalendar
+                          bookings={calendarData.bookings}
+                          timeSlots={calendarData.timeSlots}
+                          holidays={calendarData.holidays}
+                          onDateSelect={handleDateSelect}
+                          selectedDate={selectedDate}
+                          selectedTimeSlot={selectedTimeSlot}
+                        />
+                      </div>
                     )}
                   </div>
                 )}
 
-                {/* Step 4: Customer Information */}
+                {/* Step 4: Customer Details & Confirmation */}
                 {step === 4 && selectedService && selectedDate && selectedTimeSlot && (
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold">معلومات العميل</h2>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setStep(3)}
-                      >
-                        السابق
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4 mb-6">
+                      <Button variant="outline" size="icon" onClick={() => setStep(3)}>
+                        <ChevronLeft className="h-4 w-4" />
                       </Button>
+                      <h2 className="text-2xl font-bold text-gray-900">مراجعة البيانات وتأكيد الحجز</h2>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      {/* Booking Summary */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>ملخص الحجز</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label className="text-sm font-medium">المركبة</Label>
-                              <p className="text-lg">
-                                {selectedVehicle
-                                  ? `${selectedVehicle.make} ${selectedVehicle.model}`
-                                  : 'لم يتم اختيار مركبة'}
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Left Column: Form Fields */}
+                        <div className="lg:col-span-2 space-y-6">
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>بيانات التواصل</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="name">الاسم الكامل *</Label>
+                                  <Input
+                                    id="name"
+                                    value={formData.customerInfo.name}
+                                    onChange={(e) => handleCustomerInfoChange('name', e.target.value)}
+                                    required
+                                    className="bg-gray-50"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="phone">رقم الهاتف *</Label>
+                                  <Input
+                                    id="phone"
+                                    type="tel"
+                                    value={formData.customerInfo.phone}
+                                    onChange={(e) => handleCustomerInfoChange('phone', e.target.value)}
+                                    required
+                                    className="bg-gray-50"
+                                  />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="email">البريد الإلكتروني *</Label>
+                                  <Input
+                                    id="email"
+                                    type="email"
+                                    value={formData.customerInfo.email}
+                                    onChange={(e) => handleCustomerInfoChange('email', e.target.value)}
+                                    required
+                                    className="bg-gray-50"
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>معلومات إضافية عن المركبة</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="mileage">قراءة العداد (كم)</Label>
+                                  <Input
+                                    id="mileage"
+                                    type="number"
+                                    value={formData.vehicleInfo.mileage}
+                                    onChange={(e) => handleVehicleInfoChange('mileage', e.target.value)}
+                                    className="bg-gray-50"
+                                  />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="notes">ملاحظات لفريق الصيانة</Label>
+                                  <Textarea
+                                    id="notes"
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                                    placeholder="أية أعطال محددة أو أصوات غريبة لاحظتها..."
+                                    className="min-h-[100px] bg-gray-50"
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Right Column: Order Summary */}
+                        <div className="lg:col-span-1">
+                          <Card className="sticky top-4 border-blue-100 shadow-lg bg-slate-50/50">
+                            <CardHeader className="bg-blue-600 text-white rounded-t-xl mb-4">
+                              <CardTitle>تفاصيل الحجز</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                              <div className="space-y-4 text-sm">
+                                <div className="flex justify-between items-center border-b pb-3 border-gray-100">
+                                  <span className="text-gray-500">المركبة</span>
+                                  <span className="font-semibold text-gray-900 text-end">
+                                    {selectedVehicle ? `${selectedVehicle.make} ${selectedVehicle.model}` : 'غير محدد'}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center border-b pb-3 border-gray-100">
+                                  <span className="text-gray-500">الخدمة</span>
+                                  <span className="font-semibold text-gray-900 text-end">{getSelectedService()?.name}</span>
+                                </div>
+                                <div className="flex justify-between items-center border-b pb-3 border-gray-100">
+                                  <span className="text-gray-500">التاريخ</span>
+                                  <span className="font-semibold text-gray-900 text-end">{format(selectedDate, 'PPP', { locale: ar })}</span>
+                                </div>
+                                <div className="flex justify-between items-center border-b pb-3 border-gray-100">
+                                  <span className="text-gray-500">الوقت</span>
+                                  <span className="font-semibold text-gray-900 text-end">{selectedTimeSlot.startTime}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2">
+                                  <span className="text-lg font-bold text-gray-900">الإجمالي</span>
+                                  <span className="text-xl font-bold text-blue-600">{formData.totalPrice.toLocaleString()} ج.م</span>
+                                </div>
+                              </div>
+
+                              {submitError && (
+                                <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-md flex items-start gap-2">
+                                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                  <span>{submitError}</span>
+                                </div>
+                              )}
+
+                              <Button
+                                type="submit"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 text-lg shadow-lg shadow-blue-600/20"
+                                disabled={loading || !formData.customerInfo.name || !formData.customerInfo.email || !formData.customerInfo.phone}
+                              >
+                                {loading ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    جاري المعالجة...
+                                  </>
+                                ) : (
+                                  'تأكيد وحجز الموعد'
+                                )}
+                              </Button>
+                              <p className="text-xs text-center text-gray-400">
+                                بالنقر على تأكيد الحجز، فإنك توافق على شروط الخدمة وسياسة الخصوصية.
                               </p>
-                            </div>
-                            <div>
-                              <Label className="text-sm font-medium">الخدمة</Label>
-                              <p className="text-lg">{getSelectedService()?.name}</p>
-                            </div>
-                            <div>
-                              <Label className="text-sm font-medium">التاريخ</Label>
-                              <p className="text-lg">{format(selectedDate, 'PPP', { locale: ar })}</p>
-                            </div>
-                            <div>
-                              <Label className="text-sm font-medium">الوقت</Label>
-                              <p className="text-lg">{selectedTimeSlot.startTime} - {selectedTimeSlot.endTime}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Customer Information */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>معلومات العميل</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="name">الاسم الكامل *</Label>
-                              <Input
-                                id="name"
-                                type="text"
-                                value={formData.customerInfo.name}
-                                onChange={(e) => handleCustomerInfoChange('name', e.target.value)}
-                                required
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="email">البريد الإلكتروني *</Label>
-                              <Input
-                                id="email"
-                                type="email"
-                                value={formData.customerInfo.email}
-                                onChange={(e) => handleCustomerInfoChange('email', e.target.value)}
-                                required
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <Label htmlFor="phone">رقم الهاتف *</Label>
-                            <Input
-                              id="phone"
-                              type="tel"
-                              value={formData.customerInfo.phone}
-                              onChange={(e) => handleCustomerInfoChange('phone', e.target.value)}
-                              required
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Vehicle Information */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>معلومات المركبة الإضافية</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="mileage">المسافة المقطوعة (كم)</Label>
-                              <Input
-                                id="mileage"
-                                type="number"
-                                value={formData.vehicleInfo.mileage}
-                                onChange={(e) => handleVehicleInfoChange('mileage', e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="notes">ملاحظات إضافية</Label>
-                              <Textarea
-                                id="notes"
-                                value={formData.notes}
-                                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                                placeholder="أي ملاحظات إضافية عن الخدمة المطلوبة..."
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Total Price */}
-                      <Card>
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            <span className="text-lg font-semibold">الإجمالي:</span>
-                            <span className="text-2xl font-bold text-blue-600">
-                              {formData.totalPrice.toLocaleString()} ج.م
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {submitError && (
-                        <Card className="border-red-200 bg-red-50">
-                          <CardContent className="p-4">
-                            <div className="flex items-center gap-2 text-red-800">
-                              <AlertCircle className="h-5 w-5" />
-                              <span>{submitError}</span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      <div className="flex justify-end">
-                        <Button 
-                          type="submit" 
-                          size="lg" 
-                          disabled={loading || !formData.customerInfo.name || !formData.customerInfo.email || !formData.customerInfo.phone}
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              جاري الحجز...
-                            </>
-                          ) : (
-                            'تأكيد الحجز'
-                          )}
-                        </Button>
+                            </CardContent>
+                          </Card>
+                        </div>
                       </div>
                     </form>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

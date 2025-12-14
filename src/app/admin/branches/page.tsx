@@ -26,7 +26,10 @@ interface Branch {
   isActive: boolean;
   openingDate: string;
   currency: string;
+  currency: string;
   timezone: string;
+  mapLat?: number;
+  mapLng?: number;
   manager?: {
     id: string;
     name: string;
@@ -48,7 +51,10 @@ interface BranchFormData {
   email?: string;
   managerId?: string;
   currency: string;
+  currency: string;
   timezone: string;
+  mapLat?: number;
+  mapLng?: number;
   isActive: boolean;
 }
 
@@ -83,6 +89,8 @@ export default function BranchesPage() {
     managerId: '',
     currency: 'EGP',
     timezone: 'Africa/Cairo',
+    mapLat: undefined,
+    mapLng: undefined,
     isActive: true,
   });
 
@@ -153,17 +161,17 @@ export default function BranchesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const url = editingBranch ? `/api/branches/${editingBranch.id}` : '/api/branches';
       const method = editingBranch ? 'PUT' : 'POST';
-      
+
       const requestData = {
         ...formData,
         managerId: formData.managerId || null, // Convert empty string to null
         settings: {} // Add empty settings object
       };
-      
+
       const response = await fetchWithAuth(url, {
         method,
         body: JSON.stringify(requestData),
@@ -196,6 +204,8 @@ export default function BranchesPage() {
       managerId: branch.manager?.id || '',
       currency: branch.currency,
       timezone: branch.timezone,
+      mapLat: branch.mapLat,
+      mapLng: branch.mapLng,
       isActive: branch.isActive,
     });
     setIsDialogOpen(true);
@@ -232,6 +242,8 @@ export default function BranchesPage() {
       managerId: '',
       currency: 'EGP',
       timezone: 'Africa/Cairo',
+      mapLat: undefined,
+      mapLng: undefined,
       isActive: true,
     });
   };
@@ -306,6 +318,28 @@ export default function BranchesPage() {
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mapLat">خط العرض (Latitude)</Label>
+                  <Input
+                    id="mapLat"
+                    type="number"
+                    step="any"
+                    value={formData.mapLat || ''}
+                    onChange={(e) => setFormData({ ...formData, mapLat: e.target.value ? parseFloat(e.target.value) : undefined })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mapLng">خط الطول (Longitude)</Label>
+                  <Input
+                    id="mapLng"
+                    type="number"
+                    step="any"
+                    value={formData.mapLng || ''}
+                    onChange={(e) => setFormData({ ...formData, mapLng: e.target.value ? parseFloat(e.target.value) : undefined })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

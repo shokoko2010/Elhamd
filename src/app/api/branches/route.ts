@@ -8,14 +8,14 @@ import { authorize, UserRole } from '@/lib/auth-server';
 
 const authHandler = async (request: NextRequest) => {
   try {
-    const auth = await authorize(request, { 
-      roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER] 
+    const auth = await authorize(request, {
+      roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.BRANCH_MANAGER]
     })
-    
+
     if (auth.error) {
       return auth.error
     }
-    
+
     return auth
   } catch (error) {
     console.error('Authentication error:', error)
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    
+
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -128,6 +128,8 @@ export async function POST(request: NextRequest) {
       managerId,
       currency,
       timezone,
+      mapLat,
+      mapLng,
       settings,
     } = body;
 
@@ -182,6 +184,8 @@ export async function POST(request: NextRequest) {
         managerId: managerId || null, // Ensure managerId is null if not provided
         currency: currency || 'EGP',
         timezone: timezone || 'Africa/Cairo',
+        mapLat: mapLat ? parseFloat(mapLat) : null,
+        mapLng: mapLng ? parseFloat(mapLng) : null,
         settings: settings || {},
         openingDate: new Date(),
       },
