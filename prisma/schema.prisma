@@ -868,6 +868,7 @@ model ContactInfo {
   address        String?
   mapLat         Float?
   mapLng         Float?
+  mapUrl         String?
   workingHours   Json?
   departments    Json?
   isActive       Boolean  @default(true)

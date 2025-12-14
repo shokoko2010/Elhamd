@@ -203,6 +203,12 @@ export default function ContactPage() {
     (typeof workingHours === 'object' && workingHours !== null ? Object.values(workingHours) : [])
 
   const openInGoogleMaps = (lat?: number, lng?: number) => {
+    // If no specific coordinates provided and we have a mapUrl, use it
+    if (!lat && !lng && contactInfo?.mapUrl) {
+      window.open(contactInfo.mapUrl, '_blank')
+      return
+    }
+
     const targetLat = lat || mapCenter.lat
     const targetLng = lng || mapCenter.lng
     const url = `https://www.google.com/maps/search/?api=1&query=${targetLat},${targetLng}`

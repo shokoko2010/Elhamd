@@ -19,6 +19,7 @@ interface ContactInfo {
     address: string
     mapLat: number
     mapLng: number
+    mapUrl?: string
     workingHours: {
         day: string
         hours: string
@@ -184,6 +185,43 @@ export default function AdminContactInfoPage() {
                                 placeholder="العنوان التفصيلي..."
                             />
                         </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="mapUrl">رابط خرائط جوجل (Google Maps Link)</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="mapUrl"
+                                    value={formData.mapUrl || ''}
+                                    onChange={(e) => {
+                                        const url = e.target.value
+                                        let lat = formData.mapLat
+                                        let lng = formData.mapLng
+
+                                        // Try to parse coordinates from URL
+                                        // Supports formats like: https://www.google.com/maps/@30.0444,31.2357,15z
+                                        // or https://www.google.com/maps?q=30.0444,31.2357
+                                        const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+                                        const qMatch = url.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/)
+
+                                        if (atMatch) {
+                                            lat = parseFloat(atMatch[1])
+                                            lng = parseFloat(atMatch[2])
+                                            toast.success('تم استخراج الإحداثيات من الرابط')
+                                        } else if (qMatch) {
+                                            lat = parseFloat(qMatch[1])
+                                            lng = parseFloat(qMatch[2])
+                                            toast.success('تم استخراج الإحداثيات من الرابط')
+                                        }
+
+                                        setFormData({ ...formData, mapUrl: url, mapLat: lat, mapLng: lng })
+                                    }}
+                                    placeholder="https://www.google.com/maps/..."
+                                    dir="ltr"
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                قم بلصق رابط الخريطة وسيتم استخراج خطوط الطول والعرض تلقائيًا
+                            </p>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="mapLat">خط العرض (Latitude)</Label>
@@ -193,6 +231,8 @@ export default function AdminContactInfoPage() {
                                     value={formData.mapLat || 0}
                                     onChange={(e) => setFormData({ ...formData, mapLat: parseFloat(e.target.value) })}
                                     dir="ltr"
+                                    readOnly
+                                    className="bg-muted"
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -203,6 +243,8 @@ export default function AdminContactInfoPage() {
                                     value={formData.mapLng || 0}
                                     onChange={(e) => setFormData({ ...formData, mapLng: parseFloat(e.target.value) })}
                                     dir="ltr"
+                                    readOnly
+                                    className="bg-muted"
                                 />
                             </div>
                         </div>

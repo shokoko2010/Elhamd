@@ -40,6 +40,7 @@ export async function GET() {
         address: 'القاهرة، مصر',
         mapLat: 30.0444,
         mapLng: 31.2357,
+        mapUrl: 'https://maps.app.goo.gl/default',
         workingHours: [
           { day: 'السبت - الخميس', hours: '9:00 ص - 8:00 م' },
           { day: 'الجمعة', hours: '2:00 م - 8:00 م' }
@@ -140,7 +141,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('Error updating contact info:', error)
     return NextResponse.json(
-      { error: 'Failed to update contact info' },
+      { error: 'Failed to update contact info', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
