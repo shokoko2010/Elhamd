@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Send
 } from 'lucide-react'
+import CompanyMap from '@/components/ui/CompanyMap'
 
 const mapContainerStyle = {
   width: '100%',
@@ -522,65 +523,7 @@ export default function ContactPage() {
             </Card>
 
             {/* Map */}
-            {shouldShowMap ? (
-              <Card>
-                <CardContent className="p-0">
-                  <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
-                    center={mapCenter}
-                    zoom={10} // Zoomed out a bit to show context or multiple markers
-                    options={{
-                      // ... existing styles ...
-                      styles: [
-                        {
-                          featureType: 'all',
-                          elementType: 'geometry.fill',
-                          stylers: [{ color: '#f5f5f5' }]
-                        },
-                        // ... (keeping other styles implicit/assumed available or I'll just keep the whole block if needed, but for brevity I will try to rely on the fact that I only replace the setup)
-                        // Wait, I need to match EXACT content to replace. I will replace the whole GoogleMap block.
-                      ]
-                    }}
-                  >
-                    {/* Main Contact Marker */}
-                    {contactInfo?.mapLat && contactInfo?.mapLng && (
-                      <Marker
-                        position={{ lat: contactInfo.mapLat, lng: contactInfo.mapLng }}
-                        title="المقر الرئيسي"
-                      />
-                    )}
-
-                    {/* Branch Markers */}
-                    {contactInfo?.branches?.map((branch) => (
-                      branch.mapLat && branch.mapLng ? (
-                        <Marker
-                          key={branch.id}
-                          position={{ lat: branch.mapLat, lng: branch.mapLng }}
-                          title={branch.name}
-                        // You could add InfoWindow here but Marker is enough for now
-                        />
-                      ) : null
-                    ))}
-                  </GoogleMap>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-8">
-                  <div className="text-center">
-                    <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">الخريطة غير متاحة</h3>
-                    <p className="text-gray-600 mb-4">لا يمكن تحميل الخريطة حالياً</p>
-                    <Button
-                      variant="outline"
-                      onClick={() => openInGoogleMaps()}
-                    >
-                      فتح في خرائط جوجل
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <CompanyMap contactInfo={contactInfo} />
           </div>
         </div>
       </div>

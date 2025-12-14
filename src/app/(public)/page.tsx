@@ -21,6 +21,7 @@ import { ModernVehicleCarousel } from '@/components/home/ModernVehicleCarousel'
 import { FacebookFeeds } from '@/components/social/FacebookFeeds'
 import ConfigurablePopup from '@/components/ConfigurablePopup'
 import { TouchButton } from '@/components/ui/enhanced-mobile-optimization'
+import CompanyMap from '@/components/ui/CompanyMap'
 
 import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
 import {
@@ -858,6 +859,11 @@ export default async function Home() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Map Section - Mobile & Desktop */}
+                <div className="w-full h-[400px] mt-8 lg:mt-0 lg:col-span-2 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                  <CompanyMap contactInfo={contactInfo} />
                 </div>
 
                 {/* Working Hours Card */}
