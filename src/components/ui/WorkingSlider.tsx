@@ -290,8 +290,8 @@ export function WorkingSlider({
             fill
             className="object-cover z-5"
             priority={currentIndex === 0}
-            quality={90}
-            sizes="100vw"
+            quality={80}
+            sizes="(max-width: 768px) 100vw, 100vw"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               if (!target.dataset.triedFallback) {
@@ -487,8 +487,8 @@ export function WorkingSlider({
                 )}
                 fill
                 className="object-cover"
-                sizes="120px"
-                quality={75}
+                sizes="(max-width: 768px) 90px, 120px"
+                quality={60}
                 loading="lazy"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
