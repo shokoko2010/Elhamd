@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, TouchEvent } from 'react'
 import type { CSSProperties } from 'react'
+import Image from 'next/image'
 import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -283,11 +284,14 @@ export function WorkingSlider({
             }}
           />
 
-          <img
+          <Image
             src={currentItem.imageUrl}
             alt={heroAlt}
-            className="absolute inset-0 w-full h-full object-cover z-5"
-            loading="eager"
+            fill
+            className="object-cover z-5"
+            priority={currentIndex === 0}
+            quality={90}
+            sizes="100vw"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               if (!target.dataset.triedFallback) {
@@ -470,7 +474,7 @@ export function WorkingSlider({
               style={{ width: '120px', height: '90px' }}
               aria-label={`عرض ${item.title}`}
             >
-              <img
+              <Image
                 src={item.imageUrl}
                 alt={buildSliderImageAlt(
                   {
@@ -481,15 +485,11 @@ export function WorkingSlider({
                   },
                   { index }
                 )}
-                className="w-full h-full object-cover"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
+                fill
+                className="object-cover"
+                sizes="120px"
+                quality={75}
+                loading="lazy"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
 
