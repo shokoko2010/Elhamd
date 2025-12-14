@@ -290,8 +290,8 @@ export function WorkingSlider({
             fill
             className="object-cover z-5"
             priority={currentIndex === 0}
-            quality={80}
-            sizes="(max-width: 768px) 100vw, 100vw"
+            quality={75}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               if (!target.dataset.triedFallback) {
@@ -460,8 +460,8 @@ export function WorkingSlider({
         </div>
       </div>
 
-      {/* Thumbnail Strip */}
-      <div className="bg-gradient-to-t from-black/90 to-black/70 backdrop-blur-sm p-4 border-t border-white/10">
+      {/* Thumbnail Strip - Hidden on mobile for performance */}
+      <div className="hidden md:block bg-gradient-to-t from-black/90 to-black/70 backdrop-blur-sm p-4 border-t border-white/10">
         <div className="flex gap-3 overflow-x-auto scrollbar-hide">
           {items.map((item, index) => (
             <button
