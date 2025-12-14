@@ -17,6 +17,7 @@
     "db:seed:comprehensive": "tsx scripts/comprehensive-seed.ts",
     "db:validate": "tsx scripts/validate-database.ts",
     "db:init": "tsx scripts/initialize-production-db.ts",
+    "migrate:images": "tsx scripts/migrate-slider-images.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
