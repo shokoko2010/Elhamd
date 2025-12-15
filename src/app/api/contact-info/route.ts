@@ -72,9 +72,14 @@ export async function GET() {
 
     return NextResponse.json({ ...contactInfo, branches })
   } catch (error) {
-    console.error('Error fetching contact info:', error)
+    console.error('Error fetching contact info (Detailed):', error)
+    // Log specifics if available
+    if (error instanceof Error) {
+      console.error('Stack:', error.stack)
+      console.error('Message:', error.message)
+    }
     return NextResponse.json(
-      { error: 'Failed to fetch contact info' },
+      { error: 'Failed to fetch contact info', details: error instanceof Error ? error.message : 'Unknown Error' },
       { status: 500 }
     )
   }

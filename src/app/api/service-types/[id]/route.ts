@@ -6,8 +6,10 @@ import { PERMISSIONS } from '@/lib/permissions'
 
 const MANAGE_ROLES = [UserRole.ADMIN, UserRole.SUPER_ADMIN]
 
+const VALID_CATEGORIES = ['MAINTENANCE', 'REPAIR', 'INSPECTION', 'DETAILING', 'CUSTOM']
+
 const isValidCategory = (value: unknown): value is ServiceCategory =>
-  typeof value === 'string' && (Object.values(ServiceCategory) as string[]).includes(value)
+  typeof value === 'string' && VALID_CATEGORIES.includes(value)
 
 const parsePositiveInteger = (value: unknown) => {
   if (typeof value === 'undefined') {
