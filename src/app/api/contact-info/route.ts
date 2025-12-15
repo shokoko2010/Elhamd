@@ -84,7 +84,7 @@ export async function GET() {
       })
     }
 
-    return NextResponse.json({ ...contactInfo, branches })
+    return NextResponse.json({ ...contactInfo, branches }, { headers: { 'X-Api-Version': 'v5-Fixed' } })
   } catch (error) {
     console.error('Error fetching contact info (Detailed):', error)
     // Log specifics if available

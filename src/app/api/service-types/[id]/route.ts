@@ -100,10 +100,10 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
       where: { id },
       data: updates
     })
-    return NextResponse.json(normalizeService(service))
+    return NextResponse.json(normalizeService(service), { headers: { 'X-Api-Version': 'v5-Fixed' } })
   } catch (error) {
     console.error('Error updating service type:', error)
-    return NextResponse.json({ error: 'حدث خطأ أثناء تحديث الخدمة', details: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'حدث خطأ أثناء تحديث الخدمة', details: String(error) }, { status: 500, headers: { 'X-Api-Version': 'v5-Fixed' } })
   }
 }
 
