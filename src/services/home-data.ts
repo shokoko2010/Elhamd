@@ -336,7 +336,21 @@ export async function getContactInfo() {
                 secondaryPhone: true,
                 primaryEmail: true,
                 address: true,
+                mapLat: true,
+                mapLng: true,
+                googleMapLink: true,
                 workingHours: true,
+            }
+        })
+
+        const branches = await db.branch.findMany({
+            where: { isActive: true },
+            select: {
+                id: true,
+                name: true,
+                mapLat: true,
+                mapLng: true,
+                googleMapLink: true
             }
         })
 
@@ -349,10 +363,11 @@ export async function getContactInfo() {
                 workingHours: {
                     weekdays: '9:00 ص - 10:00 م',
                     friday: '1:00 م - 10:00 م'
-                }
+                },
+                branches: []
             }
         }
-        return info
+        return { ...info, branches }
     } catch {
         return {
             primaryPhone: '+20 100 000 0000',

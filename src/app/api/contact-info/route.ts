@@ -26,22 +26,21 @@ export async function GET() {
     })
 
     // Get active branches
-    // Get active branches (Commented out for debugging 500 error)
-    // const branches = await db.branch.findMany({
-    //   where: { isActive: true },
-    //   select: {
-    //     id: true,
-    //     name: true,
-    //     code: true,
-    //     address: true,
-    //     phone: true,
-    //     email: true,
-    //     mapLat: true,
-    //     mapLng: true,
-    //     workingHours: true
-    //   }
-    // })
-    const branches: any[] = []
+    const branches = await db.branch.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        address: true,
+        phone: true,
+        email: true,
+        mapLat: true,
+        mapLng: true,
+        googleMapLink: true,
+        workingHours: true
+      }
+    })
 
     if (!contactInfo) {
       // Return default contact info if none exists
