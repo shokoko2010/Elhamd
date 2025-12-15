@@ -37,8 +37,7 @@ export async function GET() {
         email: true,
         mapLat: true,
         mapLng: true,
-        googleMapLink: true,
-        workingHours: true
+        googleMapLink: true
       }
     })
 
