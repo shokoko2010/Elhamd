@@ -45,8 +45,8 @@ const normalizeService = (service: { [key: string]: any }) => ({
   isActive: service.isActive
 })
 
-export async function PATCH(request: NextRequest, context: { params: { id: string } }) {
-  const { id } = context.params
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
   if (!id) {
     return NextResponse.json({ error: 'معرّف الخدمة مطلوب' }, { status: 400 })
   }
@@ -107,8 +107,8 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
-  const { id } = context.params
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
   if (!id) {
     return NextResponse.json({ error: 'معرّف الخدمة مطلوب' }, { status: 400 })
   }
