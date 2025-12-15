@@ -338,7 +338,7 @@ export async function getContactInfo() {
                 address: true,
                 mapLat: true,
                 mapLng: true,
-                googleMapLink: true,
+                mapUrl: true,
                 workingHours: true,
             }
         })
@@ -367,7 +367,7 @@ export async function getContactInfo() {
                 branches: []
             }
         }
-        return { ...info, branches }
+        return { ...info, googleMapLink: info.mapUrl, branches }
     } catch {
         return {
             primaryPhone: '+20 100 000 0000',
