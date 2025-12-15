@@ -378,8 +378,12 @@ export default function ContactPage() {
             </Card>
           </div>
 
+
           {/* Contact Information */}
           <div className="space-y-6">
+            {/* Map */}
+            <CompanyMap contactInfo={contactInfo} />
+
             {/* Contact Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
@@ -522,11 +526,10 @@ export default function ContactPage() {
               </CardContent>
             </Card>
 
-            {/* Map */}
-            <CompanyMap contactInfo={contactInfo} />
+
           </div>
         </div>
       </div>
-    </div>
+    </div >
   )
 }

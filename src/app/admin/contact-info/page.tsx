@@ -197,19 +197,26 @@ export default function AdminContactInfoPage() {
                                         let lng = formData.mapLng
 
                                         // Try to parse coordinates from URL
-                                        // Supports formats like: https://www.google.com/maps/@30.0444,31.2357,15z
-                                        // or https://www.google.com/maps?q=30.0444,31.2357
+                                        // Supports formats like: 
+                                        // 1. https://www.google.com/maps/@30.0444,31.2357,15z
+                                        // 2. https://www.google.com/maps?q=30.0444,31.2357
+                                        // 3. ...!3d30.0444!4d31.2357...
                                         const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
                                         const qMatch = url.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/)
+                                        const dataMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
 
                                         if (atMatch) {
                                             lat = parseFloat(atMatch[1])
                                             lng = parseFloat(atMatch[2])
-                                            toast.success('تم استخراج الإحداثيات من الرابط')
+                                            toast.success('تم استخراج الإحداثيات من الرابط (Format 1)')
                                         } else if (qMatch) {
                                             lat = parseFloat(qMatch[1])
                                             lng = parseFloat(qMatch[2])
-                                            toast.success('تم استخراج الإحداثيات من الرابط')
+                                            toast.success('تم استخراج الإحداثيات من الرابط (Format 2)')
+                                        } else if (dataMatch) {
+                                            lat = parseFloat(dataMatch[1])
+                                            lng = parseFloat(dataMatch[2])
+                                            toast.success('تم استخراج الإحداثيات من الرابط (Format 3)')
                                         }
 
                                         setFormData({ ...formData, mapUrl: url, mapLat: lat, mapLng: lng })
