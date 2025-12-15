@@ -34,6 +34,9 @@ interface MapProps {
 }
 
 export default function LeafletCompanyMap({ contactInfo }: MapProps) {
+    // Default center (Cairo)
+    let activeCenter: [number, number] = [30.0444, 31.2357]
+
     // Determine initial center: Priority HQ -> First Branch -> Default (Cairo)
     if (contactInfo?.mapLat && contactInfo?.mapLng) {
         activeCenter = [contactInfo.mapLat, contactInfo.mapLng]

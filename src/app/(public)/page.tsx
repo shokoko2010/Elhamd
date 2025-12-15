@@ -798,9 +798,8 @@ export default async function Home() {
         {/* Contact Section - Redesigned & Detailed */}
         {contactInfo && (
           <section className="py-24 relative overflow-hidden bg-[#0A1A3F] text-white">
-            {/* Background Effects */}
-            <div className="absolute inset-0 opacity-10 bg-[url('/grid-pattern.svg')]"></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-[#0A1A3F] via-[#0A1A3F]/95 to-[#050C1F]"></div>
+            <div className="absolute inset-0 opacity-20 bg-white/5"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0A1A3F] via-[#0A1A3F]/95 to-transparent"></div>
 
             {/* Animated Shapes */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl"></div>
