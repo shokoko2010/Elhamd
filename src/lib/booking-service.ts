@@ -1,5 +1,6 @@
 // API-based services for booking management
 import { BookingStatus } from '@prisma/client'
+import { db } from '@/lib/db'
 
 // Re-export BookingStatus from Prisma for consistency
 export { BookingStatus } from '@prisma/client'
@@ -81,7 +82,7 @@ export interface CreateServiceBookingResult {
 export class BookingService {
   private static instance: BookingService
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): BookingService {
     if (!BookingService.instance) {
@@ -91,14 +92,79 @@ export class BookingService {
   }
 
   // Service availability methods
-  async getServiceAvailability(serviceTypeIds: string[], date: Date): Promise<string[]> {
-    // Mock implementation - in real app, this would check database
-    const allTimeSlots = [
-      '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
-    ]
-    
-    // For demo purposes, return some available time slots
-    return allTimeSlots.slice(0, 5)
+  async getServiceAvailability(serviceTypeIds: string[], date: Date): Promise<any[]> {
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    // Get all defined time slots
+    let timeSlots = await db.timeSlot.findMany({
+      where: { isActive: true },
+      orderBy: { startTime: 'asc' }
+    })
+
+    if (timeSlots.length === 0) {
+      // Auto-seed default business hours (Sat-Thu, 9 AM - 5 PM)
+      const slots = []
+      const workDays = [0, 1, 2, 3, 4, 6] // Sun, Mon, Tue, Wed, Thu, Sat
+
+      for (const day of workDays) {
+        for (let hour = 9; hour < 17; hour++) {
+          const startTime = `${hour.toString().padStart(2, '0')}:00`
+          const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`
+
+          slots.push({
+            dayOfWeek: day,
+            startTime,
+            endTime,
+            maxBookings: 2, // Allow 2 concurrent bookings
+            isActive: true
+          })
+        }
+      }
+
+      try {
+        await db.timeSlot.createMany({ data: slots })
+
+        // Re-fetch after seeding
+        timeSlots = await db.timeSlot.findMany({
+          where: { isActive: true },
+          orderBy: { startTime: 'asc' }
+        })
+      } catch (error) {
+        console.error('Failed to auto-seed time slots:', error)
+        // Continue with empty slots to avoid crash, though booking won't work
+      }
+    }
+
+    if (timeSlots.length === 0) {
+      // Fallback if still empty
+      return []
+    }
+
+    // Get existing bookings
+    const existingBookings = await db.serviceBooking.findMany({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
+        },
+        status: {
+          not: BookingStatus.CANCELLED
+        }
+      }
+    })
+
+    // Map slots to availability
+    return timeSlots.map(slot => {
+      const bookingsForSlot = existingBookings.filter(b => b.timeSlot === slot.startTime)
+      return {
+        id: slot.id,
+        time: slot.startTime,
+        available: bookingsForSlot.length < slot.maxBookings
+      }
+    })
   }
 
   // Service booking methods
@@ -111,48 +177,118 @@ export class BookingService {
     message?: string
     urgency?: string
   }): Promise<CreateServiceBookingResult> {
-    // Mock implementation
-    const mockServiceType: ServiceType = {
-      id: data.serviceTypeIds[0],
-      name: 'صيانة شاملة',
-      category: 'صيانة',
-      duration: 120,
-      price: 200
+    // Determine vehicle
+    let vehicleId = data.vehicleId
+
+    // If customer doesn't exist, create partial user or use guest logic? 
+    // consistently use existing or create new. For now, find user by email
+    let user = await db.user.findUnique({
+      where: { email: data.customerInfo.email }
+    })
+
+    if (!user) {
+      // Create guest/lead user
+      user = await db.user.create({
+        data: {
+          email: data.customerInfo.email,
+          name: data.customerInfo.name,
+          phone: data.customerInfo.phone,
+          password: '', // No password for auto-created
+          role: 'CUSTOMER'
+        }
+      })
     }
 
-    const mockVehicle: Vehicle | undefined = data.vehicleId ? {
-      id: data.vehicleId,
-      make: 'Toyota',
-      model: 'Camry',
-      year: 2022
-    } : undefined
+    // Create the booking
+    const booking = await db.serviceBooking.create({
+      data: {
+        customerId: user.id,
+        vehicleId: vehicleId,
+        serviceTypeId: data.serviceTypeIds[0], // Assuming single service for now
+        date: data.date,
+        timeSlot: data.timeSlot,
+        status: BookingStatus.PENDING,
+        notes: data.message
+      },
+      include: {
+        serviceType: true,
+        vehicle: true,
+        customer: {
+          select: { name: true, email: true, phone: true }
+        }
+      }
+    })
 
-    const booking: Booking = {
-      id: `booking_${Date.now()}`,
-      date: data.date,
-      timeSlot: data.timeSlot,
-      status: BookingStatus.PENDING,
-      paymentStatus: 'PENDING',
-      totalPrice: mockServiceType.price,
-      customer: data.customerInfo,
-      vehicle: mockVehicle,
-      serviceType: mockServiceType
+    // Map to Booking interface
+    // ... logic to return CreateServiceBookingResult ...
+    const resultBooking: Booking = {
+      id: booking.id,
+      date: booking.date,
+      timeSlot: booking.timeSlot,
+      status: booking.status,
+      paymentStatus: booking.paymentStatus,
+      totalPrice: booking.serviceType.price || 0,
+      customer: {
+        name: booking.customer.name || '',
+        email: booking.customer.email,
+        phone: booking.customer.phone || ''
+      },
+      vehicle: booking.vehicle ? {
+        id: booking.vehicle.id,
+        make: booking.vehicle.make,
+        model: booking.vehicle.model,
+        year: booking.vehicle.year
+      } : undefined,
+      serviceType: {
+        id: booking.serviceType.id,
+        name: booking.serviceType.name,
+        category: booking.serviceType.category,
+        duration: booking.serviceType.duration,
+        price: booking.serviceType.price || 0
+      }
     }
 
     return {
-      bookings: [booking],
-      totalPrice: mockServiceType.price
+      bookings: [resultBooking],
+      totalPrice: resultBooking.totalPrice
     }
   }
 
   // Test drive availability methods
-  async getTestDriveAvailability(vehicleId: string, date: Date): Promise<string[]> {
-    // Mock implementation
-    const allTimeSlots = [
-      '09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'
-    ]
-    
-    return allTimeSlots.slice(0, 4)
+  async getTestDriveAvailability(vehicleId: string, date: Date): Promise<any[]> {
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    // Generate standard slots (e.g. 9 AM to 5 PM)
+    const slots = []
+    for (let i = 9; i <= 17; i++) {
+      slots.push(`${i.toString().padStart(2, '0')}:00`)
+    }
+
+    // Get existing bookings for this vehicle
+    const existingBookings = await db.testDriveBooking.findMany({
+      where: {
+        vehicleId: vehicleId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
+        },
+        status: {
+          not: BookingStatus.CANCELLED
+        }
+      }
+    })
+
+    // Return objects { time: string, available: boolean }
+    return slots.map(time => {
+      const isBooked = existingBookings.some(b => b.timeSlot === time)
+      return {
+        time,
+        available: !isBooked
+      }
+    })
   }
 
   // Test drive booking methods
@@ -211,7 +347,7 @@ export const TestDriveBookingService = {
       }
 
       const data = await response.json()
-      
+
       return data.map((booking: any) => ({
         ...booking,
         date: new Date(booking.date),
@@ -279,7 +415,7 @@ export const ServiceBookingService = {
       }
 
       const data = await response.json()
-      
+
       return data.map((booking: any) => ({
         ...booking,
         date: new Date(booking.date),

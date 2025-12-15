@@ -356,10 +356,10 @@ export async function getContactInfo() {
 
         if (!info) {
             return {
-                primaryPhone: '+20 100 000 0000',
-                secondaryPhone: '+20 120 000 0000',
-                primaryEmail: 'info@elhamdimport.com',
-                address: 'بورسعيد - الحي الإماراتي - بجوار المرور',
+                primaryPhone: '+201555767729',
+                secondaryPhone: '+201555767729',
+                primaryEmail: 'info@elhamdimport.online',
+                address: 'الحمد للاستيراد وتجارة السيارات بورسعيد حي الضواحي القابوطي طريق الشاحنات , بورسعيد, مصر',
                 workingHours: {
                     weekdays: '9:00 ص - 10:00 م',
                     friday: '1:00 م - 10:00 م'
@@ -370,10 +370,10 @@ export async function getContactInfo() {
         return { ...info, googleMapLink: info.mapUrl, branches }
     } catch {
         return {
-            primaryPhone: '+20 100 000 0000',
-            secondaryPhone: '+20 120 000 0000',
-            primaryEmail: 'info@elhamdimport.com',
-            address: 'بورسعيد - الحي الإماراتي - بجوار المرور',
+            primaryPhone: '+201555767729',
+            secondaryPhone: '+201555767729',
+            primaryEmail: 'info@elhamdimport.online',
+            address: 'الحمد للاستيراد وتجارة السيارات بورسعيد حي الضواحي القابوطي طريق الشاحنات , بورسعيد, مصر',
             workingHours: {
                 weekdays: '9:00 ص - 10:00 م',
                 friday: '1:00 م - 10:00 م'
