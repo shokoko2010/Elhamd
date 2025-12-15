@@ -34,14 +34,10 @@ interface MapProps {
 }
 
 export default function LeafletCompanyMap({ contactInfo }: MapProps) {
-    const defaultLat = contactInfo?.mapLat || 30.0444
-    const defaultLng = contactInfo?.mapLng || 31.2357
-    const center: [number, number] = [defaultLat, defaultLng]
-
-    let activeCenter: [number, number] = center
-
-    // Determine initial center based on data branches/availability
-    if (contactInfo?.branches && contactInfo.branches.length > 0) {
+    // Determine initial center: Priority HQ -> First Branch -> Default (Cairo)
+    if (contactInfo?.mapLat && contactInfo?.mapLng) {
+        activeCenter = [contactInfo.mapLat, contactInfo.mapLng]
+    } else if (contactInfo?.branches && contactInfo.branches.length > 0) {
         const firstBranch = contactInfo.branches.find((b: any) => b.mapLat && b.mapLng)
         if (firstBranch) {
             activeCenter = [firstBranch.mapLat, firstBranch.mapLng]
