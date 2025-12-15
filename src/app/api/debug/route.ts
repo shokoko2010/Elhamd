@@ -10,9 +10,26 @@ export async function GET() {
         const hasContactInfo = !!db.contactInfo
         const hasServiceType = !!db.serviceType
 
+        // Test Data Access
+        let contactInfoData: any = null
+        let contactInfoError: string | null = null
+        try {
+            contactInfoData = await db.contactInfo.findFirst({ select: { id: true, isActive: true } })
+        } catch (e) {
+            contactInfoError = e instanceof Error ? e.message : String(e)
+        }
+
+        let serviceTypeCount = 0
+        let serviceTypeError: string | null = null
+        try {
+            serviceTypeCount = await db.serviceType.count()
+        } catch (e) {
+            serviceTypeError = e instanceof Error ? e.message : String(e)
+        }
+
         // Test DB connection
         let dbStatus = 'Unknown'
-        let dbError = null
+        let dbError: string | null = null
         try {
             await db.$queryRaw`SELECT 1`
             dbStatus = 'Connected'
@@ -30,6 +47,10 @@ export async function GET() {
             modelsFound: models.length,
             modelContactInfo: hasContactInfo,
             modelServiceType: hasServiceType,
+            contactInfoData,
+            contactInfoError,
+            serviceTypeCount,
+            serviceTypeError,
             modelsList: models
         })
     } catch (error) {
