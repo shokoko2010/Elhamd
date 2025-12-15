@@ -12,10 +12,44 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
 
     // Get time slots
-    const timeSlots = await db.timeSlot.findMany({
+    // Get time slots
+    let timeSlots = await db.timeSlot.findMany({
       where: { isActive: true },
       orderBy: { dayOfWeek: 'asc' }
     })
+
+    if (timeSlots.length === 0) {
+      // Auto-seed default business hours (Sat-Thu, 9 AM - 5 PM)
+      const slots = []
+      const workDays = [0, 1, 2, 3, 4, 6] // Sun, Mon, Tue, Wed, Thu, Sat
+
+      for (const day of workDays) {
+        for (let hour = 9; hour < 17; hour++) {
+          const startTime = `${hour.toString().padStart(2, '0')}:00`
+          const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`
+
+          slots.push({
+            dayOfWeek: day,
+            startTime,
+            endTime,
+            maxBookings: 2, // Allow 2 concurrent bookings
+            isActive: true
+          })
+        }
+      }
+
+      try {
+        await db.timeSlot.createMany({ data: slots })
+
+        // Re-fetch after seeding
+        timeSlots = await db.timeSlot.findMany({
+          where: { isActive: true },
+          orderBy: { dayOfWeek: 'asc' }
+        })
+      } catch (error) {
+        console.error('Failed to auto-seed time slots:', error)
+      }
+    }
 
     // Get holidays
     const holidays = await db.holiday.findMany({
