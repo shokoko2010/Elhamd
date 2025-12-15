@@ -21,12 +21,35 @@ const customIcon = new L.Icon({
     shadowSize: [41, 41]
 })
 
-function ChangeView({ center, zoom }: { center: [number, number], zoom: number }) {
-    const map = useMap()
-    useEffect(() => {
-        map.setView(center, zoom)
-    }, [center, zoom, map])
-    return null
+const map = useMap()
+
+useEffect(() => {
+    if (!contactInfo) return
+
+    const points: [number, number][] = []
+
+    // Add HQ
+    if (contactInfo.mapLat && contactInfo.mapLng) {
+        points.push([contactInfo.mapLat, contactInfo.mapLng])
+    }
+
+    // Add Branches
+    contactInfo.branches?.forEach((b: any) => {
+        if (b.mapLat && b.mapLng) {
+            points.push([b.mapLat, b.mapLng])
+        }
+    })
+
+    if (points.length > 0) {
+        const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])))
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 })
+    } else {
+        // Default to Cairo if no points
+        map.setView([30.0444, 31.2357], 10)
+    }
+}, [contactInfo, map])
+
+return null
 }
 
 interface MapProps {
@@ -34,18 +57,8 @@ interface MapProps {
 }
 
 export default function LeafletCompanyMap({ contactInfo }: MapProps) {
-    // Default center (Cairo)
-    let activeCenter: [number, number] = [30.0444, 31.2357]
-
-    // Determine initial center: Priority HQ -> First Branch -> Default (Cairo)
-    if (contactInfo?.mapLat && contactInfo?.mapLng) {
-        activeCenter = [contactInfo.mapLat, contactInfo.mapLng]
-    } else if (contactInfo?.branches && contactInfo.branches.length > 0) {
-        const firstBranch = contactInfo.branches.find((b: any) => b.mapLat && b.mapLng)
-        if (firstBranch) {
-            activeCenter = [firstBranch.mapLat, firstBranch.mapLng]
-        }
-    }
+    // Default center (Cairo) - used only for initial render before effect kicks in
+    const defaultCenter: [number, number] = [30.0444, 31.2357]
 
     const openInGoogleMaps = (lat: number, lng: number, link?: string) => {
         if (link) {
@@ -59,12 +72,12 @@ export default function LeafletCompanyMap({ contactInfo }: MapProps) {
     return (
         <div className="h-full w-full relative z-0">
             <MapContainer
-                center={activeCenter}
+                center={defaultCenter}
                 zoom={10}
                 scrollWheelZoom={false}
                 style={{ height: "100%", width: "100%", borderRadius: "1rem" }}
             >
-                <ChangeView center={activeCenter} zoom={10} />
+                <ChangeView contactInfo={contactInfo} />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -442,10 +442,23 @@ export default function ContactPage() {
                     <Clock className="h-6 w-6 text-blue-200" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">ساعات العمل</h3>
-                    <p className="text-blue-200 text-sm">أوقات دوانا في المعرض</p>
+                    <h4 className="text-lg font-semibold text-white mb-1">المقر الرئيسي</h4>
+                    <p className="text-blue-100/70">{contactInfo.address}</p>
                   </div>
                 </div>
+
+                {/* Branches Addresses */}
+                {contactInfo.branches?.map((branch) => (
+                  <div key={branch.id} className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 flex-shrink-0">
+                      <MapPin className="h-6 w-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-semibold text-white mb-1">{branch.name}</h4>
+                      <p className="text-blue-100/70">{branch.address}</p>
+                    </div>
+                  </div>
+                ))}
 
                 <div className="space-y-4">
                   {safeWorkingHours.map((hours: any, index: number) => (
