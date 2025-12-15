@@ -9,6 +9,9 @@ import { db } from '@/lib/db'
 export async function GET() {
   try {
     // Get contact info from database
+    if (!db.contactInfo) {
+      throw new Error('Prisma Client does not have ContactInfo model. Please run npx prisma generate.')
+    }
     const contactInfo = await db.contactInfo.findFirst({
       where: { isActive: true }
     })
