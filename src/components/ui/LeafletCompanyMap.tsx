@@ -48,7 +48,11 @@ export default function LeafletCompanyMap({ contactInfo }: MapProps) {
         }
     }
 
-    const openInGoogleMaps = (lat: number, lng: number) => {
+    const openInGoogleMaps = (lat: number, lng: number, link?: string) => {
+        if (link) {
+            window.open(link, '_blank')
+            return
+        }
         const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
         window.open(url, '_blank')
     }
@@ -77,7 +81,7 @@ export default function LeafletCompanyMap({ contactInfo }: MapProps) {
                                     size="sm"
                                     variant="outline"
                                     className="mt-2 text-xs"
-                                    onClick={() => openInGoogleMaps(contactInfo.mapLat, contactInfo.mapLng)}
+                                    onClick={() => openInGoogleMaps(contactInfo.mapLat, contactInfo.mapLng, contactInfo.googleMapLink)}
                                 >
                                     فتح في خرائط جوجل
                                 </Button>
@@ -101,7 +105,7 @@ export default function LeafletCompanyMap({ contactInfo }: MapProps) {
                                         size="sm"
                                         variant="outline"
                                         className="mt-2 text-xs"
-                                        onClick={() => openInGoogleMaps(branch.mapLat, branch.mapLng)}
+                                        onClick={() => openInGoogleMaps(branch.mapLat, branch.mapLng, branch.googleMapLink)}
                                     >
                                         فتح في خرائط جوجل
                                     </Button>

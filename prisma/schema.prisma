@@ -119,6 +119,7 @@ model Branch {
   timezone               String                  @default("Africa/Cairo")
   mapLat                 Float?
   mapLng                 Float?
+  googleMapLink          String?
   settings               Json?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt

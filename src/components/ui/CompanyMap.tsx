@@ -22,7 +22,8 @@ interface MapProps {
 }
 
 export default function CompanyMap({ contactInfo }: MapProps) {
-    // We now use OpenStreetMap (Leaflet) by default as per user request to avoid API Keys
+    // If we have a specific branch with a map link, we can potentially use it or just pass it down
+    // The actual map implementation will reside in LeafletCompanyMap (which is client-side only)
     return (
         <div className="w-full h-full min-h-[400px] rounded-2xl overflow-hidden shadow-xl border border-gray-100 relative z-0">
             <LeafletMap contactInfo={contactInfo} />

@@ -26,10 +26,10 @@ interface Branch {
   isActive: boolean;
   openingDate: string;
   currency: string;
-  currency: string;
   timezone: string;
   mapLat?: number;
   mapLng?: number;
+  googleMapLink?: string;
   manager?: {
     id: string;
     name: string;
@@ -51,10 +51,10 @@ interface BranchFormData {
   email?: string;
   managerId?: string;
   currency: string;
-  currency: string;
   timezone: string;
   mapLat?: number;
   mapLng?: number;
+  googleMapLink?: string;
   isActive: boolean;
 }
 
@@ -91,6 +91,7 @@ export default function BranchesPage() {
     timezone: 'Africa/Cairo',
     mapLat: undefined,
     mapLng: undefined,
+    googleMapLink: '',
     isActive: true,
   });
 
@@ -206,6 +207,7 @@ export default function BranchesPage() {
       timezone: branch.timezone,
       mapLat: branch.mapLat,
       mapLng: branch.mapLng,
+      googleMapLink: branch.googleMapLink || '',
       isActive: branch.isActive,
     });
     setIsDialogOpen(true);
@@ -244,6 +246,7 @@ export default function BranchesPage() {
       timezone: 'Africa/Cairo',
       mapLat: undefined,
       mapLng: undefined,
+      googleMapLink: '',
       isActive: true,
     });
   };
@@ -317,6 +320,15 @@ export default function BranchesPage() {
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="googleMapLink">رابط خرائط جوجل (Google Maps Link)</Label>
+                <Input
+                  id="googleMapLink"
+                  value={formData.googleMapLink}
+                  onChange={(e) => setFormData({ ...formData, googleMapLink: e.target.value })}
+                  placeholder="https://maps.app.goo.gl/..."
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">

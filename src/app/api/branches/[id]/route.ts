@@ -82,6 +82,7 @@ export async function PUT(
       timezone,
       mapLat,
       mapLng,
+      googleMapLink,
       settings,
       isActive,
     } = body;
@@ -152,6 +153,7 @@ export async function PUT(
       ...(timezone && { timezone }),
       ...(mapLat !== undefined && { mapLat: mapLat ? parseFloat(mapLat) : null }),
       ...(mapLng !== undefined && { mapLng: mapLng ? parseFloat(mapLng) : null }),
+      ...(googleMapLink !== undefined && { googleMapLink }),
       ...(settings !== undefined && { settings }),
       ...(isActive !== undefined && { isActive }),
     };

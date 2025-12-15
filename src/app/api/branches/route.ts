@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
       timezone,
       mapLat,
       mapLng,
+      googleMapLink,
       settings,
     } = body;
 
@@ -187,6 +188,7 @@ export async function POST(request: NextRequest) {
         mapLat: mapLat ? parseFloat(mapLat) : null,
         mapLng: mapLng ? parseFloat(mapLng) : null,
         settings: settings || {},
+        googleMapLink,
         openingDate: new Date(),
       },
       include: {

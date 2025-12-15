@@ -797,124 +797,130 @@ export default async function Home() {
 
         {/* Contact Section - Redesigned & Detailed */}
         {contactInfo && (
-          <section className="py-20 md:py-28 relative overflow-hidden bg-[#0A1A3F] text-white">
-            {/* Background Map & Overlay */}
-            <div className="absolute inset-0 opacity-20 bg-[url('/grid-pattern.svg')]"></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-[#0A1A3F] via-[#0A1A3F]/90 to-[#061028]"></div>
+          <section className="py-24 relative overflow-hidden bg-[#0A1A3F] text-white">
+            {/* Background Effects */}
+            <div className="absolute inset-0 opacity-10 bg-[url('/grid-pattern.svg')]"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0A1A3F] via-[#0A1A3F]/95 to-[#050C1F]"></div>
+
+            {/* Animated Shapes */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl"></div>
 
             <div className="max-w-7xl mx-auto px-4 relative z-10">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">
-                {/* Text Content */}
-                <div>
-                  <Badge className="bg-blue-500/10 text-blue-200 border-blue-500/20 mb-6 px-4 py-2">
-                    تواصل معنا
-                  </Badge>
-                  <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white leading-tight">
-                    نحن هنا لخدمتك <span className="text-blue-400">في أي وقت</span>
-                  </h2>
-                  <p className="text-xl text-blue-100/80 mb-10 leading-relaxed max-w-lg">
-                    فريقنا جاهز للإجابة على استفساراتكم وتقديم أفضل خدمات الدعم والمبيعات. تفضل بزيارتنا أو اتصل بنا.
-                  </p>
+              <div className="text-center mb-16">
+                <Badge className="bg-blue-500/10 text-blue-200 border-blue-500/20 mb-4 px-4 py-1.5 text-sm backdrop-blur-sm">
+                  تواصل معنا
+                </Badge>
+                <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                  نحن هنا <span className="text-blue-400">لخدمتك</span>
+                </h2>
+                <p className="text-blue-100/60 max-w-2xl mx-auto text-lg">
+                  فريقنا جاهز للإجابة على استفساراتكم وتقديم أفضل خدمات الدعم والمبيعات.
+                </p>
+              </div>
 
-                  <div className="space-y-8">
-                    {/* Address */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+                {/* Contact Info Column */}
+                <div className="lg:col-span-4 space-y-6">
+                  {/* Address Card */}
+                  <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors group">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 flex-shrink-0">
+                      <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
                         <MapPin className="h-6 w-6 text-blue-400" />
                       </div>
                       <div>
                         <h4 className="text-lg font-semibold text-white mb-1">المقر الرئيسي</h4>
-                        <p className="text-blue-100/70">{contactInfo.headquarters.address}</p>
+                        <p className="text-blue-100/70 mb-3 leading-relaxed">{contactInfo.headquarters.address}</p>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Phone */}
+                  {/* Phone Card */}
+                  <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors group">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 flex-shrink-0">
-                        <Phone className="h-6 w-6 text-blue-400" />
+                      <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center border border-green-500/20 group-hover:scale-110 transition-transform">
+                        <Phone className="h-6 w-6 text-green-400" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <h4 className="text-lg font-semibold text-white mb-1">اتصل بنا</h4>
-                        <Link href={`tel:${contactInfo.contactNumbers.primary}`} className="block text-blue-100/70 hover:text-white transition-colors dir-ltr text-right">
-                          {contactInfo.contactNumbers.primary}
-                        </Link>
-                        {contactInfo.contactNumbers.secondary && (
-                          <Link href={`tel:${contactInfo.contactNumbers.secondary}`} className="block text-blue-100/70 hover:text-white transition-colors dir-ltr text-right">
-                            {contactInfo.contactNumbers.secondary}
+                        <div className="space-y-1">
+                          <Link href={`tel:${contactInfo.contactNumbers.primary}`} className="block text-blue-100/70 hover:text-white transition-colors dir-ltr text-right">
+                            {contactInfo.contactNumbers.primary}
                           </Link>
-                        )}
+                          {contactInfo.contactNumbers.secondary && (
+                            <Link href={`tel:${contactInfo.contactNumbers.secondary}`} className="block text-blue-100/70 hover:text-white transition-colors dir-ltr text-right">
+                              {contactInfo.contactNumbers.secondary}
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Email */}
+                  {/* Email Card */}
+                  <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors group">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 flex-shrink-0">
-                        <Mail className="h-6 w-6 text-blue-400" />
+                      <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
+                        <Mail className="h-6 w-6 text-purple-400" />
                       </div>
                       <div>
                         <h4 className="text-lg font-semibold text-white mb-1">البريد الإلكتروني</h4>
-                        <Link href={`mailto:${contactInfo.headquarters.email}`} className="text-blue-100/70 hover:text-white transition-colors">
+                        <Link href={`mailto:${contactInfo.headquarters.email}`} className="text-blue-100/70 hover:text-white transition-colors break-all">
                           {contactInfo.headquarters.email}
                         </Link>
                       </div>
                     </div>
                   </div>
+
+                  {/* Social Links */}
+                  <div className="pt-4 flex justify-center gap-3">
+                    {socialLinks.map(({ platform, url }) => {
+                      const Icon = platform.includes('facebook') ? Facebook :
+                        platform.includes('instagram') ? Instagram :
+                          platform.includes('twitter') ? Twitter :
+                            platform.includes('linkedin') ? Linkedin :
+                              platform.includes('youtube') ? Youtube : MessageCircle
+                      return (
+                        <a
+                          key={platform}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/20 transition-all hover:scale-110"
+                          aria-label={platform}
+                        >
+                          <Icon className="h-5 w-5 text-white/80" />
+                        </a>
+                      )
+                    })}
+                  </div>
                 </div>
 
-                {/* Map Section - Mobile & Desktop */}
-                <div className="w-full h-[400px] mt-8 lg:mt-0 lg:col-span-2 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                  <CompanyMap contactInfo={contactInfo} />
-                </div>
+                {/* Map Column */}
+                <div className="lg:col-span-8 space-y-6">
+                  <div className="w-full h-[500px] rounded-3xl overflow-hidden shadow-2xl border border-white/10 relative group">
+                    <CompanyMap contactInfo={contactInfo} />
 
-                {/* Working Hours Card */}
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl">
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="p-2 bg-blue-500 rounded-lg">
-                      <Clock className="h-6 w-6 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-white">مواعيد العمل</h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    {contactInfo.workingHours.weekdays && (
-                      <div className="flex justify-between items-center py-3 border-b border-white/5">
-                        <span className="text-blue-100">طوال أيام الأسبوع</span>
-                        <span className="text-white font-medium dir-ltr">{contactInfo.workingHours.weekdays}</span>
+                    {/* Overlay Info for Working Hours on Desktop - or standard layout */}
+                    <div className="absolute bottom-6 right-6 bg-slate-900/90 backdrop-blur-md text-white p-5 rounded-xl border border-white/10 max-w-xs shadow-xl hidden md:block">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Clock className="h-5 w-5 text-blue-400" />
+                        <h4 className="font-bold">ساعات العمل</h4>
                       </div>
-                    )}
-                    {contactInfo.workingHours.friday && (
-                      <div className="flex justify-between items-center py-3 border-b border-white/5">
-                        <span className="text-blue-100">الجمعة</span>
-                        <span className="text-white font-medium dir-ltr">{contactInfo.workingHours.friday}</span>
+                      <div className="space-y-2 text-sm text-blue-100/80">
+                        {contactInfo.workingHours.weekdays && (
+                          <div className="flex justify-between gap-4">
+                            <span>أيام الأسبوع:</span>
+                            <span dir="ltr" className="text-white">{contactInfo.workingHours.weekdays}</span>
+                          </div>
+                        )}
+                        {contactInfo.workingHours.friday && (
+                          <div className="flex justify-between gap-4">
+                            <span>الجمعة:</span>
+                            <span dir="ltr" className="text-white">{contactInfo.workingHours.friday}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Social Links Grid */}
-                  <div className="mt-10 pt-8 border-t border-white/10">
-                    <p className="text-sm text-blue-200 mb-6 text-center">تابعنا على وسائل التواصل</p>
-                    <div className="flex flex-wrap justify-center gap-4">
-                      {socialLinks.map(({ platform, url }) => {
-                        // Simple mapping for icons
-                        const Icon = platform.includes('facebook') ? Facebook :
-                          platform.includes('instagram') ? Instagram :
-                            platform.includes('twitter') ? Twitter :
-                              platform.includes('linkedin') ? Linkedin :
-                                platform.includes('youtube') ? Youtube : MessageCircle
-
-                        return (
-                          <a
-                            key={platform}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-blue-600 hover:border-blue-500 transition-all duration-300 hover:scale-110 group"
-                            aria-label={platform}
-                          >
-                            <Icon className="h-5 w-5 text-white group-hover:text-white" />
-                          </a>
-                        )
-                      })}
                     </div>
                   </div>
                 </div>
