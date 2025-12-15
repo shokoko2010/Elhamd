@@ -8,12 +8,21 @@ import { db } from '@/lib/db'
 
 export async function GET() {
   try {
-    // Get contact info from database
-    if (!db.contactInfo) {
-      throw new Error('Prisma Client does not have ContactInfo model. Please run npx prisma generate.')
-    }
     const contactInfo = await db.contactInfo.findFirst({
-      where: { isActive: true }
+      where: { isActive: true },
+      select: {
+        id: true,
+        primaryPhone: true,
+        secondaryPhone: true,
+        primaryEmail: true,
+        secondaryEmail: true,
+        address: true,
+        mapLat: true,
+        mapLng: true,
+        mapUrl: true,
+        isActive: true
+        // Excluded JSON fields (workingHours, departments) to debug 500 error
+      }
     })
 
     // Get active branches
