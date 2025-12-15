@@ -190,7 +190,12 @@ const normalizeContactInfo = (data: any) => {
     socialMedia: data.socialMedia ?? {},
     headquartersGeo: typeof data.mapLat === 'number' && typeof data.mapLng === 'number'
       ? { lat: data.mapLat, lng: data.mapLng }
-      : null
+      : null,
+    // Pass through map data for CompanyMap component
+    mapLat: data.mapLat,
+    mapLng: data.mapLng,
+    googleMapLink: data.googleMapLink,
+    branches: data.branches || []
   }
 }
 
