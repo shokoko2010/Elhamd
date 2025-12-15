@@ -21,35 +21,36 @@ const customIcon = new L.Icon({
     shadowSize: [41, 41]
 })
 
-const map = useMap()
+function ChangeView({ contactInfo }: { contactInfo: any }) {
+    const map = useMap()
 
-useEffect(() => {
-    if (!contactInfo) return
+    useEffect(() => {
+        if (!contactInfo) return
 
-    const points: [number, number][] = []
+        const points: [number, number][] = []
 
-    // Add HQ
-    if (contactInfo.mapLat && contactInfo.mapLng) {
-        points.push([contactInfo.mapLat, contactInfo.mapLng])
-    }
-
-    // Add Branches
-    contactInfo.branches?.forEach((b: any) => {
-        if (b.mapLat && b.mapLng) {
-            points.push([b.mapLat, b.mapLng])
+        // Add HQ
+        if (contactInfo.mapLat && contactInfo.mapLng) {
+            points.push([contactInfo.mapLat, contactInfo.mapLng])
         }
-    })
 
-    if (points.length > 0) {
-        const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])))
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 })
-    } else {
-        // Default to Cairo if no points
-        map.setView([30.0444, 31.2357], 10)
-    }
-}, [contactInfo, map])
+        // Add Branches
+        contactInfo.branches?.forEach((b: any) => {
+            if (b.mapLat && b.mapLng) {
+                points.push([b.mapLat, b.mapLng])
+            }
+        })
 
-return null
+        if (points.length > 0) {
+            const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])))
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 })
+        } else {
+            // Default to Cairo if no points
+            map.setView([30.0444, 31.2357], 10)
+        }
+    }, [contactInfo, map])
+
+    return null
 }
 
 interface MapProps {
