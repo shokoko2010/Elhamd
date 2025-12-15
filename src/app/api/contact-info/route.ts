@@ -104,10 +104,7 @@ export async function PUT(request: NextRequest) {
     const user = await getAuthUser()
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if user is admin
@@ -116,47 +113,71 @@ export async function PUT(request: NextRequest) {
     })
 
     if (!adminUser || (adminUser.role !== 'ADMIN' && adminUser.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const data = await request.json()
+    const body = await request.json()
+
+    // Helper to extract coordinates from Google Maps URL
+    let calculatedLat = body.mapLat
+    let calculatedLng = body.mapLng
+
+    if (body.mapUrl && typeof body.mapUrl === 'string') {
+      // Regex for @lat,lng
+      const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/
+      const match = body.mapUrl.match(regex)
+      if (match) {
+        calculatedLat = parseFloat(match[1])
+        calculatedLng = parseFloat(match[2])
+      }
+    }
+
+    // Construct safe update object
+    const updateData: any = {
+      primaryPhone: body.primaryPhone,
+      secondaryPhone: body.secondaryPhone,
+      primaryEmail: body.primaryEmail,
+      secondaryEmail: body.secondaryEmail,
+      address: body.address,
+      mapUrl: body.mapUrl,
+      mapLat: calculatedLat,
+      mapLng: calculatedLng,
+      isActive: true
+    }
+
+    // Handle JSON fields safely
+    if (Array.isArray(body.workingHours)) {
+      updateData.workingHours = body.workingHours
+    }
+    if (Array.isArray(body.departments)) {
+      updateData.departments = body.departments
+    }
 
     // Update or create contact info
     const existingInfo = await db.contactInfo.findFirst()
 
+    let result
     if (existingInfo) {
-      const updatedInfo = await db.contactInfo.update({
+      result = await db.contactInfo.update({
         where: { id: existingInfo.id },
-        data
+        data: updateData
       })
-
-      // Revalidate the homepage to show new contact info
-      try {
-        const { revalidatePath } = await import('next/cache')
-        revalidatePath('/', 'page')
-      } catch (e) {
-        console.error('Error revalidating path:', e)
-      }
-
-      return NextResponse.json(updatedInfo)
     } else {
-      const newInfo = await db.contactInfo.create({
-        data
+      result = await db.contactInfo.create({
+        data: updateData
       })
-
-      // Revalidate the homepage to show new contact info
-      try {
-        const { revalidatePath } = await import('next/cache')
-        revalidatePath('/', 'page')
-      } catch (e) {
-        console.error('Error revalidating path:', e)
-      }
-
-      return NextResponse.json(newInfo)
     }
+
+    // Revalidate the homepage using imported function
+    try {
+      const { revalidatePath } = await import('next/cache')
+      revalidatePath('/', 'page')
+    } catch (e) {
+      console.error('Error revalidating path:', e)
+    }
+
+    return NextResponse.json(result)
+
   } catch (error) {
     console.error('Error updating contact info:', error)
     return NextResponse.json(
