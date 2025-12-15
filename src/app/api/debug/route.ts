@@ -27,6 +27,14 @@ export async function GET() {
             serviceTypeError = e instanceof Error ? e.message : String(e)
         }
 
+        let branchCount = 0
+        let branchError: string | null = null
+        try {
+            branchCount = await db.branch.count()
+        } catch (e) {
+            branchError = e instanceof Error ? e.message : String(e)
+        }
+
         // Test DB connection
         let dbStatus = 'Unknown'
         let dbError: string | null = null
@@ -51,6 +59,8 @@ export async function GET() {
             contactInfoError,
             serviceTypeCount,
             serviceTypeError,
+            branchCount,
+            branchError,
             modelsList: models
         })
     } catch (error) {
