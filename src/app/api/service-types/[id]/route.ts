@@ -79,7 +79,7 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
 
     const duration = parsePositiveInteger(body.duration)
     if (duration === null) {
-      return NextResponse.json({ error: 'مدة الخدمة يجب أن تكون رقمًا أكبر من صفر' }, { status: 400 })
+      return NextResponse.json({ error: 'مدة الخدمة غير صالحة', received: body.duration }, { status: 400 })
     }
     if (typeof duration === 'number') {
       updates.duration = duration
@@ -105,7 +105,11 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
     }
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: 'لم يتم تقديم أي تغييرات' }, { status: 400 })
+      return NextResponse.json({
+        error: 'لم يتم تقديم أي تغييرات (No changes detected)',
+        receivedBody: body,
+        debugKeys: Object.keys(body)
+      }, { status: 400 })
     }
 
     const service = await db.serviceType.update({
