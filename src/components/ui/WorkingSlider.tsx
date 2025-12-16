@@ -86,15 +86,7 @@ export function WorkingSlider({
   const intervalRef = useRef<NodeJS.Timeout>()
 
   // Handle auto-play
-  // Handle auto-play
   useEffect(() => {
-    // Disable autoplay on mobile to save resources and improve TBT
-    const isMobile = window.innerWidth < 768
-    if (isMobile) {
-      if (isAutoPlay) setIsAutoPlay(false)
-      return
-    }
-
     if (isAutoPlay && items.length > 1) {
       intervalRef.current = setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % items.length)
