@@ -34,14 +34,14 @@ export async function generateQuotationPDF(quotationId: string): Promise<Buffer>
       Branch: ${quotation.branch.name}
       Date: ${quotation.createdAt.toLocaleDateString()}
       
-      Vehicle: ${quotation.vehicle.make} ${quotation.vehicle.model} (${quotation.vehicle.year})
+      Vehicle: ${quotation.vehicle?.make || 'Unknown'} ${quotation.vehicle?.model || ''} (${quotation.vehicle?.year || ''})
       
       Items:
-      ${quotation.items.map(item => 
-        `- ${item.vehicle.make} ${item.vehicle.model}: $${item.price}`
-      ).join('\n')}
+      ${quotation.items?.map(item =>
+      `- ${item.vehicle?.make || ''} ${item.vehicle?.model || ''}: $${item.unitPrice || 0}`
+    ).join('\n') || 'No items'}
       
-      Total: $${quotation.totalAmount}
+      Total: $${quotation.totalAmount || 0}
       
       Terms and Conditions:
       ${quotation.terms || 'Standard terms apply'}
@@ -53,7 +53,8 @@ export async function generateQuotationPDF(quotationId: string): Promise<Buffer>
     return Buffer.from(pdfContent, 'utf-8')
   } catch (error) {
     console.error('Error generating quotation PDF:', error)
-    throw new Error('Failed to generate PDF')
+    // Return a basic error PDF content instead of crashing
+    return Buffer.from(`Error generating PDF: ${(error as Error).message}`, 'utf-8')
   }
 }
 
@@ -92,9 +93,9 @@ export async function generateInvoicePDF(invoiceId: string): Promise<Buffer> {
       Vehicle: ${invoice.vehicle.make} ${invoice.vehicle.model} (${invoice.vehicle.year})
       
       Items:
-      ${invoice.items.map(item => 
-        `- ${item.vehicle.make} ${item.vehicle.model}: $${item.price}`
-      ).join('\n')}
+      ${invoice.items.map(item =>
+      `- ${item.vehicle.make} ${item.vehicle.model}: $${item.price}`
+    ).join('\n')}
       
       Total: $${invoice.totalAmount}
       Paid: $${invoice.paidAmount}
@@ -113,7 +114,7 @@ export async function generateInvoicePDF(invoiceId: string): Promise<Buffer> {
 export class ElectronicInvoicingService {
   private static instance: ElectronicInvoicingService;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): ElectronicInvoicingService {
     if (!ElectronicInvoicingService.instance) {
@@ -181,9 +182,9 @@ export class ElectronicInvoicingService {
       Phone: ${invoice.customerPhone}
       
       Items:
-      ${invoice.items?.map((item: any) => 
-        `- ${item.description}: $${item.price}`
-      ).join('\n') || 'No items'}
+      ${invoice.items?.map((item: any) =>
+      `- ${item.description}: $${item.price}`
+    ).join('\n') || 'No items'}
       
       Total: $${invoice.totalAmount || 0}
       

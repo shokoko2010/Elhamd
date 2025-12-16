@@ -19,7 +19,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
 
     // Simulate email sending
     await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
   } catch (error) {
     console.error('Error sending email:', error)
     throw new Error('Failed to send email')
@@ -60,13 +60,13 @@ export async function sendQuotationEmail(quotationId: string): Promise<void> {
           <p><strong>Branch:</strong> ${quotation.branch.name}</p>
           
           <h3>Vehicle Information</h3>
-          <p><strong>Vehicle:</strong> ${quotation.vehicle.make} ${quotation.vehicle.model} (${quotation.vehicle.year})</p>
+          <p><strong>Vehicle:</strong> ${quotation.vehicle?.make || 'Unknown'} ${quotation.vehicle?.model || ''} (${quotation.vehicle?.year || ''})</p>
           
           <h3>Quotation Items</h3>
           <ul>
-            ${quotation.items.map(item => 
-              `<li>${item.vehicle.make} ${item.vehicle.model}: $${item.price}</li>`
-            ).join('')}
+            ${quotation.items?.map(item =>
+      `<li>${item.vehicle?.make || 'Item'} ${item.vehicle?.model || ''}: $${item.unitPrice || 0}</li>`
+    ).join('') || '<li>No items</li>'}
           </ul>
           
           <h3>Total Amount: $${quotation.totalAmount}</h3>
@@ -90,7 +90,9 @@ export async function sendQuotationEmail(quotationId: string): Promise<void> {
     })
   } catch (error) {
     console.error('Error sending quotation email:', error)
-    throw new Error('Failed to send quotation email')
+    // Don't throw, just log. The API will receive success currently (?) No, better to throw so API knows.
+    // But let's simplify the error message
+    throw new Error('Failed to send quotation email: ' + (error as Error).message)
   }
 }
 
@@ -132,9 +134,9 @@ export async function sendInvoiceEmail(invoiceId: string): Promise<void> {
           
           <h3>Invoice Items</h3>
           <ul>
-            ${invoice.items.map(item => 
-              `<li>${item.vehicle.make} ${item.vehicle.model}: $${item.price}</li>`
-            ).join('')}
+            ${invoice.items.map(item =>
+      `<li>${item.vehicle.make} ${item.vehicle.model}: $${item.price}</li>`
+    ).join('')}
           </ul>
           
           <h3>Payment Information</h3>
@@ -195,7 +197,7 @@ export async function sendWelcomeEmail(customerEmail: string, customerName: stri
 export class EmailService {
   private static instance: EmailService;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): EmailService {
     if (!EmailService.instance) {
@@ -247,9 +249,9 @@ export class EmailService {
     services?: string[]
   }): Promise<void> {
     const { customerName, customerEmail, bookingType, vehicleInfo, date, time, services } = params
-    
+
     const subject = `Booking Confirmation - ${bookingType === 'test-drive' ? 'Test Drive' : 'Service Appointment'}`
-    
+
     const html = `
       <html>
         <body>
@@ -292,9 +294,9 @@ export class EmailService {
     services?: string[]
   }): Promise<void> {
     const { customerName, customerEmail, bookingType, vehicleInfo, date, time, services } = params
-    
+
     const subject = `New ${bookingType === 'test-drive' ? 'Test Drive' : 'Service'} Booking`
-    
+
     const html = `
       <html>
         <body>
