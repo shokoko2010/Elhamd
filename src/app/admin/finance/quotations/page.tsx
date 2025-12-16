@@ -614,279 +614,280 @@ function QuotationsContent() {
                           {getStatusBadge(quotation.status)}
                         </td>
                         <td className="text-right py-3 px-4">
-                          <Link href={`/admin/quotations/${quotation.id}/print`} target="_blank">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              title="تحميل / طباعة PDF"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          {quotation.status === 'DRAFT' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSendQuotation(quotation.id)}
-                              title="إرسال بالبريد"
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {quotation.status === 'ACCEPTED' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleConvertToInvoice(quotation.id)}
-                              title="تحويل لفاتورة"
-                            >
-                              <FileText className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Link href={`/admin/quotations/${quotation.id}/print`} target="_blank">
-                            <Button variant="ghost" size="sm" title="معاينة">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </td>
+                          <div className="flex items-center gap-2">
+                            <Link href={`/admin/quotations/${quotation.id}/print`} target="_blank">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="تحميل / طباعة PDF"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            {quotation.status === 'DRAFT' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSendQuotation(quotation.id)}
+                                title="إرسال بالبريد"
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {quotation.status === 'ACCEPTED' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleConvertToInvoice(quotation.id)}
+                                title="تحويل لفاتورة"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Link href={`/admin/quotations/${quotation.id}/print`} target="_blank">
+                              <Button variant="ghost" size="sm" title="معاينة">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </div>
+                        </td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      {/* Analytics Tab */}
-      <TabsContent value="analytics" className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>تحليل أداء المبيعات</CardTitle>
-              <CardDescription>نظرة عامة على أداء عروض الأسعار والمبيعات</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span>معدل تحويل العروض</span>
-                  <span className="font-bold">{quotationStats.conversionRate}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>متوسط قيمة العرض</span>
-                  <span className="font-bold">
-                    {quotationStats.totalQuotations > 0
-                      ? formatCurrency(quotationStats.totalValue / quotationStats.totalQuotations)
-                      : formatCurrency(0)
-                    }
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>إجمالي القيمة المحتملة</span>
-                  <span className="font-bold text-green-600">
-                    {formatCurrency(quotationStats.totalValue)}
-                  </span>
-                </div>
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>توزيع العروض حسب الحالة</CardTitle>
-              <CardDescription>توزيع عروض الأسعار حسب حالتها الحالية</CardDescription>
-            </CardHeader>
-            <CardContent>
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>تحليل أداء المبيعات</CardTitle>
+                <CardDescription>نظرة عامة على أداء عروض الأسعار والمبيعات</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span>معدل تحويل العروض</span>
+                    <span className="font-bold">{quotationStats.conversionRate}%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>متوسط قيمة العرض</span>
+                    <span className="font-bold">
+                      {quotationStats.totalQuotations > 0
+                        ? formatCurrency(quotationStats.totalValue / quotationStats.totalQuotations)
+                        : formatCurrency(0)
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>إجمالي القيمة المحتملة</span>
+                    <span className="font-bold text-green-600">
+                      {formatCurrency(quotationStats.totalValue)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>توزيع العروض حسب الحالة</CardTitle>
+                <CardDescription>توزيع عروض الأسعار حسب حالتها الحالية</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span>المسودات</span>
+                    <Badge variant="secondary">{quotationStats.draftQuotations}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>المرسلة</span>
+                    <Badge variant="default">{quotationStats.sentQuotations}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>المقبولة</span>
+                    <Badge variant="default" className="bg-green-600">{quotationStats.acceptedQuotations}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>المرفوضة</span>
+                    <Badge variant="destructive">{quotations.filter(q => q.status === 'REJECTED').length}</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Create Quotation Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={handleModalOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>إنشاء عرض سعر جديد</DialogTitle>
+            <DialogDescription>إنشاء عرض سعر جديد للعميل وإضافة السيارات والخدمات</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Customer Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="customer">العميل</Label>
+                <Select value={newQuotation.customerId} onValueChange={(value) => setNewQuotation(prev => ({ ...prev, customerId: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر العميل" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name} - {customer.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="validUntil">صالح حتى</Label>
+                <Input
+                  id="validUntil"
+                  type="date"
+                  value={newQuotation.validUntil}
+                  onChange={(e) => setNewQuotation(prev => ({ ...prev, validUntil: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Items Selection */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">إضافة بنود العرض</h3>
+
+              <Tabs defaultValue="vehicles" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="vehicles">السيارات</TabsTrigger>
+                  <TabsTrigger value="services">الخدمات</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="vehicles" className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+                    {vehicles.map((vehicle) => (
+                      <Card key={vehicle.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium">{vehicle.make} {vehicle.model}</h4>
+                              <p className="text-sm text-gray-500">{vehicle.year} - {vehicle.category}</p>
+                              <p className="text-lg font-bold text-blue-600">{formatCurrency(vehicle.price)}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => addVehicleToQuotation(vehicle)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="services" className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+                    {services.map((service) => (
+                      <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium">{service.name}</h4>
+                              <p className="text-sm text-gray-500">{service.description}</p>
+                              <p className="text-lg font-bold text-green-600">{formatCurrency(service.price)}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => addServiceToQuotation(service)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* Selected Items */}
+            {newQuotation.items.length > 0 && (
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span>المسودات</span>
-                  <Badge variant="secondary">{quotationStats.draftQuotations}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>المرسلة</span>
-                  <Badge variant="default">{quotationStats.sentQuotations}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>المقبولة</span>
-                  <Badge variant="default" className="bg-green-600">{quotationStats.acceptedQuotations}</Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>المرفوضة</span>
-                  <Badge variant="destructive">{quotations.filter(q => q.status === 'REJECTED').length}</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </TabsContent>
-    </Tabs>
-
-      {/* Create Quotation Modal */ }
-  <Dialog open={isCreateModalOpen} onOpenChange={handleModalOpenChange}>
-    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>إنشاء عرض سعر جديد</DialogTitle>
-        <DialogDescription>إنشاء عرض سعر جديد للعميل وإضافة السيارات والخدمات</DialogDescription>
-      </DialogHeader>
-
-      <div className="space-y-6">
-        {/* Customer Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="customer">العميل</Label>
-            <Select value={newQuotation.customerId} onValueChange={(value) => setNewQuotation(prev => ({ ...prev, customerId: value }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="اختر العميل" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.name} - {customer.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="validUntil">صالح حتى</Label>
-            <Input
-              id="validUntil"
-              type="date"
-              value={newQuotation.validUntil}
-              onChange={(e) => setNewQuotation(prev => ({ ...prev, validUntil: e.target.value }))}
-            />
-          </div>
-        </div>
-
-        {/* Items Selection */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">إضافة بنود العرض</h3>
-
-          <Tabs defaultValue="vehicles" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="vehicles">السيارات</TabsTrigger>
-              <TabsTrigger value="services">الخدمات</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="vehicles" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
-                {vehicles.map((vehicle) => (
-                  <Card key={vehicle.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium">{vehicle.make} {vehicle.model}</h4>
-                          <p className="text-sm text-gray-500">{vehicle.year} - {vehicle.category}</p>
-                          <p className="text-lg font-bold text-blue-600">{formatCurrency(vehicle.price)}</p>
-                        </div>
+                <h3 className="text-lg font-semibold">البند المحددة</h3>
+                <div className="space-y-2">
+                  {newQuotation.items.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <span className="font-medium">{item.description}</span>
+                        <span className="text-sm text-gray-500 ml-2">x{item.quantity}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{formatCurrency(item.totalPrice)}</span>
                         <Button
+                          variant="ghost"
                           size="sm"
-                          onClick={() => addVehicleToQuotation(vehicle)}
+                          onClick={() => removeItemFromQuotation(item.id)}
                         >
-                          <Plus className="h-4 w-4" />
+                          <X className="h-4 w-4" />
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="services" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
-                {services.map((service) => (
-                  <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium">{service.name}</h4>
-                          <p className="text-sm text-gray-500">{service.description}</p>
-                          <p className="text-lg font-bold text-green-600">{formatCurrency(service.price)}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => addServiceToQuotation(service)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Selected Items */}
-        {newQuotation.items.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">البند المحددة</h3>
-            <div className="space-y-2">
-              {newQuotation.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <span className="font-medium">{item.description}</span>
-                    <span className="text-sm text-gray-500 ml-2">x{item.quantity}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold">{formatCurrency(item.totalPrice)}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItemFromQuotation(item.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span>الإجمالي:</span>
+                    <span>
+                      {formatCurrency(newQuotation.items.reduce((sum, item) => sum + item.totalPrice, 0))}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="border-t pt-4">
-              <div className="flex justify-between items-center text-lg font-bold">
-                <span>الإجمالي:</span>
-                <span>
-                  {formatCurrency(newQuotation.items.reduce((sum, item) => sum + item.totalPrice, 0))}
-                </span>
+              </div>
+            )}
+
+            {/* Notes and Terms */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="notes">ملاحظات</Label>
+                <Textarea
+                  id="notes"
+                  value={newQuotation.notes}
+                  onChange={(e) => setNewQuotation(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="أي ملاحظات إضافية..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="terms">الشروط والأحكام</Label>
+                <Textarea
+                  id="terms"
+                  value={newQuotation.terms}
+                  onChange={(e) => setNewQuotation(prev => ({ ...prev, terms: e.target.value }))}
+                  placeholder="الشروط والأحكام الخاصة بالعرض..."
+                />
               </div>
             </div>
           </div>
-        )}
 
-        {/* Notes and Terms */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="notes">ملاحظات</Label>
-            <Textarea
-              id="notes"
-              value={newQuotation.notes}
-              onChange={(e) => setNewQuotation(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="أي ملاحظات إضافية..."
-            />
-          </div>
-          <div>
-            <Label htmlFor="terms">الشروط والأحكام</Label>
-            <Textarea
-              id="terms"
-              value={newQuotation.terms}
-              onChange={(e) => setNewQuotation(prev => ({ ...prev, terms: e.target.value }))}
-              placeholder="الشروط والأحكام الخاصة بالعرض..."
-            />
-          </div>
-        </div>
-      </div>
-
-      <DialogFooter>
-        <Button variant="outline" onClick={() => handleModalOpenChange(false)}>
-          إلغاء
-        </Button>
-        <Button onClick={handleCreateQuotation}>
-          إنشاء عرض السعر
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleModalOpenChange(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleCreateQuotation}>
+              إنشاء عرض السعر
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div >
   )
 }
