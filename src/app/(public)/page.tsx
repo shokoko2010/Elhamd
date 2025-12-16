@@ -2,7 +2,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import {
-  Car, Phone, Mail, MapPin, Calendar, Award, Clock,
+  Car, Phone, Mail, MapPin, Calendar, Award, Clock, ArrowLeft,
   Facebook, Instagram, Linkedin, Twitter, Youtube, MessageCircle
 } from 'lucide-react'
 
