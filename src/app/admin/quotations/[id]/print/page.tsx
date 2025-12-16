@@ -64,7 +64,15 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
     // Helper to safely get nested specs
     const getSpec = (key: string) => {
         if (Array.isArray(quotation.vehicle?.specifications)) {
-            const spec = quotation.vehicle.specifications.find((s: any) => s.key === key)
+            // Normalize the search key (e.g. "engine_type" -> "engine")
+            const normalizedSearch = key.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ')
+
+            const spec = quotation.vehicle.specifications.find((s: any) => {
+                const specKey = (s.key || '').toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ')
+                const specLabel = (s.label || '').toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ')
+
+                return specKey.includes(normalizedSearch) || specLabel.includes(normalizedSearch) || normalizedSearch.includes(specKey)
+            })
             return spec?.value || '-'
         }
         return quotation.vehicle?.specifications?.[key] || '-'
@@ -102,7 +110,7 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                         عرض أسعار ومواصفات
                     </div>
                     <div className="border-b-2 border-black pb-1 mb-1 flex justify-between text-sm font-bold">
-                        <div className="w-1/3 text-right">شركة: ............................................</div>
+                        <div className="w-1/3 text-right">شركة: {quotation.customer.company || '............................................'}</div>
                         <div className="w-1/3 text-center">التاريخ: {formatDate(quotation.issueDate)}</div>
                         <div className="w-1/3 text-left">............................................ :Company</div>
                     </div>
@@ -127,7 +135,7 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                 {quotation.vehicle?.images && quotation.vehicle.images.length > 0 ? (
                     <div className="mb-6 flex justify-center h-[250px] items-center">
                         <img
-                            src={quotation.vehicle.images[0].url}
+                            src={quotation.vehicle.images[0].imageUrl || quotation.vehicle.images[0].url}
                             alt="Vehicle"
                             className="max-h-full max-w-full object-contain"
                         />
