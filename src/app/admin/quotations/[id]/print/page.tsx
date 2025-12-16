@@ -73,9 +73,9 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
 
                 return specKey.includes(normalizedSearch) || specLabel.includes(normalizedSearch) || normalizedSearch.includes(specKey)
             })
-            return spec?.value || '-'
+            return spec?.value
         }
-        return quotation.vehicle?.specifications?.[key] || '-'
+        return quotation.vehicle?.specifications?.[key]
     }
 
     const vehicleTitle = `${quotation.vehicle?.make || ''} ${quotation.vehicle?.model || ''}`.trim()
