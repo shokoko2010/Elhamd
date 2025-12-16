@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Send, 
-  Mail, 
-  MessageSquare, 
-  Users, 
+import {
+  Send,
+  Mail,
+  MessageSquare,
+  Users,
   Target,
   TrendingUp,
   Calendar,
@@ -103,6 +103,15 @@ export default function MarketingAutomation() {
       }
     } catch (error) {
       console.error('Error fetching marketing data:', error)
+      setMetrics({
+        totalCampaigns: 0,
+        activeCampaigns: 0,
+        totalMessages: 0,
+        openRate: 0,
+        clickRate: 0,
+        conversionRate: 0,
+        roi: 0
+      })
     } finally {
       setLoading(false)
     }
@@ -123,7 +132,7 @@ export default function MarketingAutomation() {
       push: Smartphone,
       social: Users
     }
-    
+
     const Icon = iconMap[type as keyof typeof iconMap] || Mail
     return <Icon className="h-4 w-4" />
   }
@@ -135,7 +144,7 @@ export default function MarketingAutomation() {
       push: 'إشعار',
       social: 'وسائل التواصل'
     }
-    
+
     return labels[type as keyof typeof labels] || type
   }
 
@@ -150,7 +159,7 @@ export default function MarketingAutomation() {
 
     const config = statusConfig[status as keyof typeof statusConfig] || { label: status, variant: 'secondary' as const, icon: FileText }
     const Icon = config.icon
-    
+
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         <Icon className="h-3 w-3" />
@@ -441,7 +450,7 @@ export default function MarketingAutomation() {
                           ))}
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-gray-600">التنفيذات:</p>
@@ -452,14 +461,14 @@ export default function MarketingAutomation() {
                           <p className="font-medium">{formatPercentage(automation.successRate)}</p>
                         </div>
                       </div>
-                      
+
                       {automation.lastRun && (
                         <div className="text-sm">
                           <p className="text-gray-600">آخر تشغيل:</p>
                           <p>{new Date(automation.lastRun).toLocaleDateString('ar-EG')}</p>
                         </div>
                       )}
-                      
+
                       <div className="flex gap-2 pt-2">
                         <Button variant="outline" size="sm" className="flex-1">
                           <Edit className="ml-2 h-4 w-4" />
@@ -515,19 +524,19 @@ export default function MarketingAutomation() {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span>إجمالي المرسل:</span>
-                      <span className="font-medium">{formatNumber(15420)}</span>
+                      <span className="font-medium">{metrics ? formatNumber(metrics.totalMessages) : '0'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل الفتح:</span>
-                      <span className="font-medium">{formatPercentage(24.5)}</span>
+                      <span className="font-medium">{metrics ? formatPercentage(metrics.openRate) : '0%'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل النقر:</span>
-                      <span className="font-medium">{formatPercentage(12.3)}</span>
+                      <span className="font-medium">{metrics ? formatPercentage(metrics.clickRate) : '0%'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل التحويل:</span>
-                      <span className="font-medium">{formatPercentage(3.2)}</span>
+                      <span className="font-medium">{metrics ? formatPercentage(metrics.conversionRate) : '0%'}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -541,19 +550,19 @@ export default function MarketingAutomation() {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span>إجمالي المرسل:</span>
-                      <span className="font-medium">{formatNumber(8750)}</span>
+                      <span className="font-medium">0</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل التسليم:</span>
-                      <span className="font-medium">{formatPercentage(98.2)}</span>
+                      <span className="font-medium">0%</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل الرد:</span>
-                      <span className="font-medium">{formatPercentage(8.7)}</span>
+                      <span className="font-medium">0%</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل التحويل:</span>
-                      <span className="font-medium">{formatPercentage(2.1)}</span>
+                      <span className="font-medium">0%</span>
                     </div>
                   </div>
                 </CardContent>
@@ -567,19 +576,19 @@ export default function MarketingAutomation() {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span>إجمالي المرسل:</span>
-                      <span className="font-medium">{formatNumber(12300)}</span>
+                      <span className="font-medium">0</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل التسليم:</span>
-                      <span className="font-medium">{formatPercentage(96.8)}</span>
+                      <span className="font-medium">0%</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل الفتح:</span>
-                      <span className="font-medium">{formatPercentage(18.9)}</span>
+                      <span className="font-medium">0%</span>
                     </div>
                     <div className="flex justify-between">
                       <span>معدل التحويل:</span>
-                      <span className="font-medium">{formatPercentage(1.8)}</span>
+                      <span className="font-medium">0%</span>
                     </div>
                   </div>
                 </CardContent>
