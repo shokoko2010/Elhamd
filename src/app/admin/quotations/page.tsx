@@ -5,15 +5,16 @@ import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { 
-  FileText, 
-  Clock, 
-  CheckCircle, 
+import {
+  FileText,
+  Clock,
+  CheckCircle,
   AlertCircle,
   RefreshCw,
   Plus,
   Eye,
-  Download
+  Download,
+  Printer
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -74,7 +75,7 @@ export default function QuotationsPage() {
   const loadQuotations = async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
       // Load quotations stats
       const statsResponse = await fetch('/api/finance/quotations?stats=true')
@@ -122,7 +123,7 @@ export default function QuotationsPage() {
       'EXPIRED': { variant: 'outline' as const, label: 'منتهية الصلاحية' },
       'CONVERTED': { variant: 'default' as const, label: 'محولة لفاتورة' }
     }
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.DRAFT
     return (
       <Badge variant={config.variant}>
@@ -134,10 +135,10 @@ export default function QuotationsPage() {
   const getExpiringSoon = () => {
     const threeDaysFromNow = new Date()
     threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
-    
+
     return quotations
-      .filter(q => 
-        q.status === 'SENT' && 
+      .filter(q =>
+        q.status === 'SENT' &&
         new Date(q.validUntil) <= threeDaysFromNow &&
         new Date(q.validUntil) > new Date()
       )
@@ -161,7 +162,7 @@ export default function QuotationsPage() {
             جاري التحميل...
           </Button>
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
@@ -190,7 +191,7 @@ export default function QuotationsPage() {
             إعادة المحاولة
           </Button>
         </div>
-        
+
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-6">
             <p className="text-red-600">{error}</p>
@@ -231,7 +232,7 @@ export default function QuotationsPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats?.total || 0}</div>
               <p className="text-xs text-muted-foreground">
-                {stats?.monthlyGrowth.total > 0 ? '+' : ''}{stats?.monthlyGrowth.total || 0}% من الشهر الماضي
+                {stats?.monthlyGrowth?.total && stats.monthlyGrowth.total > 0 ? '+' : ''}{stats?.monthlyGrowth?.total || 0}% من الشهر الماضي
               </p>
             </CardContent>
           </Card>
@@ -305,7 +306,7 @@ export default function QuotationsPage() {
                       <div>
                         <p className="font-medium">{quotation.customer.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {quotation.vehicle.make} {quotation.vehicle.model} {quotation.vehicle.year}
+                          {quotation.vehicle?.make} {quotation.vehicle?.model} {quotation.vehicle?.year}
                         </p>
                       </div>
                       <div className="text-left">
@@ -313,6 +314,11 @@ export default function QuotationsPage() {
                         <div className="flex items-center gap-2 justify-end">
                           <p className="text-xs text-muted-foreground">{formatDate(quotation.issueDate)}</p>
                           {getStatusBadge(quotation.status)}
+                          <Link href={`/admin/quotations/${quotation.id}/print`} target="_blank">
+                            <Button variant="ghost" size="icon" title="طباعة / تصدير PDF">
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -340,12 +346,17 @@ export default function QuotationsPage() {
                       <div>
                         <p className="font-medium">{quotation.customer.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {quotation.vehicle.make} {quotation.vehicle.model}
+                          {quotation.vehicle?.make} {quotation.vehicle?.model}
                         </p>
                       </div>
                       <div className="text-left">
                         <p className="font-medium">{formatCurrency(quotation.totalAmount)}</p>
                         <p className="text-xs text-red-600">{getDaysUntilExpiry(quotation.validUntil)}</p>
+                        <Link href={`/admin/quotations/${quotation.id}/print`} target="_blank">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" title="طباعة / تصدير PDF">
+                            <Printer className="h-3 w-3" />
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   ))}

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     const authenticatedUser = await getAuthUser()
-    
+
     if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -35,6 +35,13 @@ export async function GET(request: NextRequest, context: RouteParams) {
             phone: true,
             company: true,
             address: true
+          }
+        },
+        vehicle: {
+          include: {
+            images: true,
+            specifications: true,
+            features: true
           }
         },
         items: true,
@@ -70,7 +77,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     const authenticatedUser = await getAuthUser()
-    
+
     if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -152,40 +159,48 @@ export async function PUT(request: NextRequest, context: RouteParams) {
             id: true,
             name: true
           }
+        },
+        vehicle: {
+          include: {
+            images: true,
+            specifications: true,
+            features: true
+          }
         }
       }
+    }
     })
 
-    // Log activity
-    await db.activityLog.create({
-      data: {
-        action: 'UPDATE_QUOTATION',
-        entityType: 'QUOTATION',
-        entityId: updatedQuotation.id,
-        userId: user.id,
-        details: {
-          quotationNumber: updatedQuotation.quotationNumber,
-          status: updatedQuotation.status,
-          totalAmount: updatedQuotation.totalAmount
-        }
+  // Log activity
+  await db.activityLog.create({
+    data: {
+      action: 'UPDATE_QUOTATION',
+      entityType: 'QUOTATION',
+      entityId: updatedQuotation.id,
+      userId: user.id,
+      details: {
+        quotationNumber: updatedQuotation.quotationNumber,
+        status: updatedQuotation.status,
+        totalAmount: updatedQuotation.totalAmount
       }
-    })
+    }
+  })
 
-    return NextResponse.json(updatedQuotation)
-  } catch (error) {
-    console.error('Error updating quotation:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json(updatedQuotation)
+} catch (error) {
+  console.error('Error updating quotation:', error)
+  return NextResponse.json(
+    { error: 'Internal server error' },
+    { status: 500 }
+  )
+}
 }
 
 export async function DELETE(request: NextRequest, context: RouteParams) {
   try {
     const { id } = await context.params
     const authenticatedUser = await getAuthUser()
-    
+
     if (!authenticatedUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -212,8 +227,8 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
 
     // Check if quotation can be deleted (only draft or expired quotations)
     if (!['DRAFT', 'EXPIRED', 'REJECTED'].includes(quotation.status)) {
-      return NextResponse.json({ 
-        error: 'Cannot delete quotation in current status' 
+      return NextResponse.json({
+        error: 'Cannot delete quotation in current status'
       }, { status: 400 })
     }
 
