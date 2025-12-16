@@ -153,19 +153,17 @@ export class AdminService {
     const cancelledBookings = cancelledTestDrives + cancelledServices
 
     // Revenue stats
-    const monthlyRevenue = await db.payment.aggregate({
+    const monthlyRevenue = await db.transaction.aggregate({
       where: {
-        createdAt: { gte: startOfMonthDate, lte: endOfMonthDate },
-        status: PaymentStatus.COMPLETED,
-        invoiceId: { not: null }
+        date: { gte: startOfMonthDate, lte: endOfMonthDate },
+        type: 'INCOME'
       },
       _sum: { amount: true }
     })
 
-    const totalRevenue = await db.payment.aggregate({
+    const totalRevenue = await db.transaction.aggregate({
       where: {
-        status: PaymentStatus.COMPLETED,
-        invoiceId: { not: null }
+        type: 'INCOME'
       },
       _sum: { amount: true }
     })
@@ -299,11 +297,10 @@ export class AdminService {
     // Revenue by month
     const revenueByMonth = await Promise.all(
       last6Months.map(async ({ month, startOfMonth, endOfMonth }) => {
-        const result = await db.payment.aggregate({
+        const result = await db.transaction.aggregate({
           where: {
-            createdAt: { gte: startOfMonth, lte: endOfMonth },
-            status: PaymentStatus.COMPLETED,
-            invoiceId: { not: null }
+            date: { gte: startOfMonth, lte: endOfMonth },
+            type: 'INCOME'
           },
           _sum: { amount: true }
         })
