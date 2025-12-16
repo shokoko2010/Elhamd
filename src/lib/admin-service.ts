@@ -76,7 +76,7 @@ export interface AnalyticsData {
 export class AdminService {
   private static instance: AdminService
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): AdminService {
     if (!AdminService.instance) {
@@ -153,17 +153,17 @@ export class AdminService {
     const cancelledBookings = cancelledTestDrives + cancelledServices
 
     // Revenue stats
-    const monthlyRevenue = await db.serviceBooking.aggregate({
+    const monthlyRevenue = await db.payment.aggregate({
       where: {
-        date: { gte: startOfMonthDate, lte: endOfMonthDate },
-        paymentStatus: PaymentStatus.COMPLETED
+        createdAt: { gte: startOfMonthDate, lte: endOfMonthDate },
+        status: PaymentStatus.COMPLETED
       },
-      _sum: { totalPrice: true }
+      _sum: { amount: true }
     })
 
-    const totalRevenue = await db.serviceBooking.aggregate({
-      where: { paymentStatus: PaymentStatus.COMPLETED },
-      _sum: { totalPrice: true }
+    const totalRevenue = await db.payment.aggregate({
+      where: { status: PaymentStatus.COMPLETED },
+      _sum: { amount: true }
     })
 
     return {
@@ -173,8 +173,8 @@ export class AdminService {
       totalCustomers,
       todayBookings,
       pendingBookings,
-      totalRevenue: totalRevenue._sum.totalPrice || 0,
-      monthlyRevenue: monthlyRevenue._sum.totalPrice || 0,
+      totalRevenue: totalRevenue._sum.amount || 0,
+      monthlyRevenue: monthlyRevenue._sum.amount || 0,
       testDriveBookings,
       serviceBookings,
       completedBookings,
@@ -305,7 +305,7 @@ export class AdminService {
 
         return {
           month,
-          revenue: result._sum.totalPrice || 0
+          revenue: result._sum.amount || 0
         }
       })
     )
