@@ -32,7 +32,9 @@ export async function GET(request: NextRequest, context: RouteParams) {
             id: true,
             name: true,
             email: true,
-            phone: true
+            email: true,
+            phone: true,
+            branchId: true
           }
         },
         vehicle: {
@@ -61,10 +63,10 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
 
     return NextResponse.json(quotation)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching quotation:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${error.message}` },
       { status: 500 }
     )
   }
@@ -182,10 +184,10 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     })
 
     return NextResponse.json(updatedQuotation)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating quotation:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${error.message}` },
       { status: 500 }
     )
   }
