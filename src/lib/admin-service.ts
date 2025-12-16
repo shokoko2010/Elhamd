@@ -156,13 +156,17 @@ export class AdminService {
     const monthlyRevenue = await db.payment.aggregate({
       where: {
         createdAt: { gte: startOfMonthDate, lte: endOfMonthDate },
-        status: PaymentStatus.COMPLETED
+        status: PaymentStatus.COMPLETED,
+        invoiceId: { not: null }
       },
       _sum: { amount: true }
     })
 
     const totalRevenue = await db.payment.aggregate({
-      where: { status: PaymentStatus.COMPLETED },
+      where: {
+        status: PaymentStatus.COMPLETED,
+        invoiceId: { not: null }
+      },
       _sum: { amount: true }
     })
 
@@ -298,7 +302,8 @@ export class AdminService {
         const result = await db.payment.aggregate({
           where: {
             createdAt: { gte: startOfMonth, lte: endOfMonth },
-            status: PaymentStatus.COMPLETED
+            status: PaymentStatus.COMPLETED,
+            invoiceId: { not: null }
           },
           _sum: { amount: true }
         })
