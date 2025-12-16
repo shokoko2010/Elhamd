@@ -32,9 +32,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
             id: true,
             name: true,
             email: true,
-            phone: true,
-            company: true,
-            address: true
+            phone: true
           }
         },
         vehicle: {
