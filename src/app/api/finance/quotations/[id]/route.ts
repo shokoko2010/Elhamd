@@ -54,9 +54,19 @@ export async function GET(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Attempt to enrich with vehicle data if present in metadata
+    // Attempt to enrich with vehicle data if present in metadata or items
     let quotationWithVehicle: any = { ...quotation }
-    const vehicleId = (quotation.metadata as any)?.vehicleId
+    let vehicleId = (quotation.metadata as any)?.vehicleId
+
+    // Fallback: Check if any item is linked to a vehicle
+    if (!vehicleId && quotation.items && quotation.items.length > 0) {
+      const vehicleItem = quotation.items.find((item: any) =>
+        (item.metadata as any)?.type === 'vehicle' && (item.metadata as any)?.vehicleId
+      )
+      if (vehicleItem) {
+        vehicleId = (vehicleItem.metadata as any).vehicleId
+      }
+    }
 
     if (vehicleId) {
       const vehicle = await db.vehicle.findUnique({
