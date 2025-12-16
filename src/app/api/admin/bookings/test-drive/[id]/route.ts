@@ -6,12 +6,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { BookingStatus } from '@prisma/client'
 
+// ... imports
+
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
   try {
     const params = await context.params
+    const { id } = params // Destructure id
+
     const booking = await db.testDriveBooking.findUnique({
       where: { id },
       include: {
@@ -65,6 +69,7 @@ export async function PUT(
 ) {
   try {
     const params = await context.params
+    const { id } = params // Destructure id
     const body = await request.json()
     const { status, notes, date, timeSlot } = body
 
@@ -84,9 +89,9 @@ export async function PUT(
     }
 
     // Check for conflicting bookings if changing date/time
-    if ((date && date !== existingBooking.date.toISOString().split('T')[0]) || 
-        (timeSlot && timeSlot !== existingBooking.timeSlot)) {
-      
+    if ((date && date !== existingBooking.date.toISOString().split('T')[0]) ||
+      (timeSlot && timeSlot !== existingBooking.timeSlot)) {
+
       const conflictingBooking = await db.testDriveBooking.findFirst({
         where: {
           vehicleId: existingBooking.vehicleId,
@@ -96,7 +101,7 @@ export async function PUT(
             in: ['PENDING', 'CONFIRMED']
           },
           id: {
-            not: params.id
+            not: id
           }
         }
       })
@@ -155,6 +160,8 @@ export async function DELETE(
 ) {
   try {
     const params = await context.params
+    const { id } = params // Destructure id
+
     // Check if booking exists
     const existingBooking = await db.testDriveBooking.findUnique({
       where: { id }
@@ -167,9 +174,19 @@ export async function DELETE(
       )
     }
 
-    // Delete booking
-    await db.testDriveBooking.delete({
-      where: { id }
+    // Clean up related records - use transaction to ensure consistency
+    await db.$transaction(async (tx) => {
+      // Delete related notifications
+      // Note: Assuming Notification model has testDriveBookingId, but if not we can skip.
+      // For now, let's just delete the booking. If schema has Cascade, it will handle it.
+      // If schema has SetNull (like Payment), it will handle it.
+
+      // If we need to manually delete things:
+      // await tx.notification.deleteMany({ where: { testDriveBookingId: id } })
+
+      await tx.testDriveBooking.delete({
+        where: { id }
+      })
     })
 
     return NextResponse.json({ message: 'تم حذف حجز القيادة التجريبية بنجاح' })

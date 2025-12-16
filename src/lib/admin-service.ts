@@ -295,12 +295,12 @@ export class AdminService {
     // Revenue by month
     const revenueByMonth = await Promise.all(
       last6Months.map(async ({ month, startOfMonth, endOfMonth }) => {
-        const result = await db.serviceBooking.aggregate({
+        const result = await db.payment.aggregate({
           where: {
-            date: { gte: startOfMonth, lte: endOfMonth },
-            paymentStatus: PaymentStatus.COMPLETED
+            createdAt: { gte: startOfMonth, lte: endOfMonth },
+            status: PaymentStatus.COMPLETED
           },
-          _sum: { totalPrice: true }
+          _sum: { amount: true }
         })
 
         return {
