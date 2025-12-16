@@ -168,32 +168,31 @@ export async function PUT(request: NextRequest, context: RouteParams) {
           }
         }
       }
-    }
     })
 
-  // Log activity
-  await db.activityLog.create({
-    data: {
-      action: 'UPDATE_QUOTATION',
-      entityType: 'QUOTATION',
-      entityId: updatedQuotation.id,
-      userId: user.id,
-      details: {
-        quotationNumber: updatedQuotation.quotationNumber,
-        status: updatedQuotation.status,
-        totalAmount: updatedQuotation.totalAmount
+    // Log activity
+    await db.activityLog.create({
+      data: {
+        action: 'UPDATE_QUOTATION',
+        entityType: 'QUOTATION',
+        entityId: updatedQuotation.id,
+        userId: user.id,
+        details: {
+          quotationNumber: updatedQuotation.quotationNumber,
+          status: updatedQuotation.status,
+          totalAmount: updatedQuotation.totalAmount
+        }
       }
-    }
-  })
+    })
 
-  return NextResponse.json(updatedQuotation)
-} catch (error) {
-  console.error('Error updating quotation:', error)
-  return NextResponse.json(
-    { error: 'Internal server error' },
-    { status: 500 }
-  )
-}
+    return NextResponse.json(updatedQuotation)
+  } catch (error) {
+    console.error('Error updating quotation:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
 }
 
 export async function DELETE(request: NextRequest, context: RouteParams) {
