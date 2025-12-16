@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cairo, Tajawal, Geist, Geist_Mono } from "next/font/google";
+import { Cairo, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/components/auth-provider";
@@ -11,13 +11,6 @@ import { PwaRegistry } from "@/components/pwa-registry";
 
 const cairo = Cairo({
   variable: "--font-cairo",
-  subsets: ["arabic", "latin"],
-  display: "swap",
-  weight: ["400", "700"],
-});
-
-const tajawal = Tajawal({
-  variable: "--font-tajawal",
   subsets: ["arabic", "latin"],
   display: "swap",
   weight: ["400", "700"],
@@ -92,7 +85,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${cairo.className} ${cairo.variable} ${tajawal.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${cairo.className} ${cairo.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <PwaRegistry />
         <AuthProvider>

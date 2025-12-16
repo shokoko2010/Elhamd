@@ -2,42 +2,34 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import {
-  Car, Phone, Mail, MapPin, Calendar, Wrench, Star,
-  ArrowLeft, ChevronLeft, ChevronRight, Play, Pause,
-  AlertCircle, Package, Shield, Award, Users, Clock,
-  Zap, Heart, Eye, Grid, List, Home as HomeIcon,
-  Truck, Settings, Droplet, Facebook, Instagram,
-  Linkedin, Twitter, Youtube, MessageCircle
+  Car, Phone, Mail, MapPin, Calendar, Award, Clock,
+  Facebook, Instagram, Linkedin, Twitter, Youtube, MessageCircle
 } from 'lucide-react'
-import * as LucideIcons from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { EnhancedLazySection } from '@/components/ui/enhanced-lazy-loading'
 import { EnhancedLazyImage } from '@/components/ui/enhanced-lazy-loading'
 import { WorkingSlider } from '@/components/ui/WorkingSlider'
-import { ModernVehicleCarousel } from '@/components/home/ModernVehicleCarousel'
-import { FacebookFeeds } from '@/components/social/FacebookFeeds'
 import ConfigurablePopup from '@/components/ConfigurablePopup'
 import { TouchButton } from '@/components/ui/enhanced-mobile-optimization'
 import CompanyMap from '@/components/ui/CompanyMap'
+
+// New Server Components
+import { ServicesSection } from '@/components/home/ServicesSection'
+import { StatsSection } from '@/components/home/StatsSection'
+import { VehiclesSection } from '@/components/home/VehiclesSection'
+import { ValuesSection } from '@/components/home/ValuesSection'
+import { TimelineSection } from '@/components/home/TimelineSection'
+import { SectionSkeleton } from '@/components/home/SectionSkeleton'
+import { VehiclesSkeleton } from '@/components/home/VehiclesSkeleton'
 
 import { normalizeBrandingObject, normalizeBrandingText, DISTRIBUTOR_BRANDING } from '@/lib/branding'
 import {
   getHomepageSettings,
   getCompanyInfo,
-  getServiceItems,
-  getStats,
-  getValues,
-  getFeatures,
-  getTimeline,
   getContactInfo,
   getSiteSettings,
   getSliders,
-  getPublicVehicles
 } from '@/services/home-data'
-import type { PublicVehicle } from '@/types/public-vehicle'
 
 // Force revalidation every hour
 export const revalidate = 3600
@@ -104,40 +96,6 @@ const normalizeContentPosition = (position?: string): SliderContentPosition => {
   }
 }
 
-const resolveServiceIcon = (iconName?: string): LucideIcon => {
-  if (!iconName) return Wrench
-  const trimmed = iconName.trim()
-  if (!trimmed) return Wrench
-
-  const directMatch = (LucideIcons as any)[trimmed]
-  if (directMatch) return directMatch
-
-  const pascalCase = trimmed
-    .split(/[^a-zA-Z0-9]+/)
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
-    .join('')
-
-  const normalizedMatch = (LucideIcons as any)[pascalCase]
-  return normalizedMatch ?? Wrench
-}
-
-const resolveServiceLink = (rawLink?: string): string => {
-  if (!rawLink) return '/service-booking'
-  const trimmed = rawLink.trim()
-  if (!trimmed) return '/service-booking'
-  if (/^(https?:\/\/|mailto:|tel:|whatsapp:)/i.test(trimmed)) return trimmed
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
-}
-
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('ar-EG', {
-    style: 'currency',
-    currency: 'EGP',
-    minimumFractionDigits: 0
-  }).format(price)
-}
-
 const normalizeContactInfo = (data: any) => {
   if (!data) return null
   const workingHoursRaw = data.workingHours ?? {}
@@ -191,7 +149,6 @@ const normalizeContactInfo = (data: any) => {
     headquartersGeo: typeof data.mapLat === 'number' && typeof data.mapLng === 'number'
       ? { lat: data.mapLat, lng: data.mapLng }
       : null,
-    // Pass through map data for CompanyMap component
     mapLat: data.mapLat,
     mapLng: data.mapLng,
     googleMapLink: data.googleMapLink,
@@ -199,43 +156,21 @@ const normalizeContactInfo = (data: any) => {
   }
 }
 
-const dedupeVehicles = (vehicles: PublicVehicle[]): PublicVehicle[] => {
-  const seen = new Set<string>()
-  return vehicles.filter((vehicle) => {
-    if (!vehicle?.id) return false
-    if (seen.has(vehicle.id)) return false
-    seen.add(vehicle.id)
-    return true
-  })
-}
-
 // Main Server Component
 export default async function Home() {
-  // Fetch all data in parallel directly from DB (no internal fetch)
+  // Fetch initial data (Hero & Header) - Block until these are ready
   const [
     homepageSettingsData,
     companyInfoData,
-    serviceItemsData,
-    statsData,
-    valuesData,
-    featuresData,
-    timelineData,
     contactData,
     siteSettingsData,
-    slidersRaw,
-    vehiclesDataResponse
+    slidersRaw
   ] = await Promise.all([
     getHomepageSettings(),
     getCompanyInfo(),
-    getServiceItems(),
-    getStats(),
-    getValues(),
-    getFeatures(),
-    getTimeline(),
     getContactInfo(),
     getSiteSettings(),
-    getSliders(true),
-    getPublicVehicles(6, 'AVAILABLE', undefined) // limit 6 for home page performance
+    getSliders(true)
   ])
 
   // Normalize Data
@@ -243,75 +178,11 @@ export default async function Home() {
     showHeroSlider: Boolean(homepageSettingsData?.showHeroSlider),
     autoPlaySlider: Boolean(homepageSettingsData?.autoPlaySlider),
     sliderInterval: typeof homepageSettingsData?.sliderInterval === 'number' ? homepageSettingsData.sliderInterval : 5000,
-    showServices: Boolean(homepageSettingsData?.showServices),
-    servicesTitle: homepageSettingsData?.servicesTitle || 'خدماتنا المتكاملة',
-    servicesSubtitle: homepageSettingsData?.servicesSubtitle || 'نقدم مجموعة شاملة من الخدمات لضمان أفضل تجربة لعملائنا',
-    servicesDescription: homepageSettingsData?.servicesDescription || 'اكتشف حلولنا المتكاملة في البيع، الصيانة، التمويل، وقطع الغيار مع فريق دعم متخصص.',
-    servicesCtaText: homepageSettingsData?.servicesCtaText || 'احجز الآن',
-    facebookPageUrl: homepageSettingsData?.facebookPageUrl || 'https://www.facebook.com/elhamdimport',
-    facebookVideoUrl: homepageSettingsData?.facebookVideoUrl || 'https://www.facebook.com/elhamdimport/videos'
   }
 
   const companyInfo = normalizeBrandingObject(companyInfoData || {})
-
-  // Services
-  let serviceItems: any[] = []
-  if (Array.isArray(serviceItemsData)) {
-    // Unique
-    const unique = new Map()
-    for (const item of serviceItemsData) {
-      // @ts-ignore
-      if (!unique.has(item.title)) {
-        // @ts-ignore
-        unique.set(item.title, normalizeBrandingObject(item))
-      }
-    }
-    serviceItems = Array.from(unique.values())
-  }
-
-  // Stats
-  let companyStats: any[] = []
-  if (Array.isArray(statsData) && statsData.length > 0) {
-    const unique = new Map()
-    for (const item of statsData) {
-      // @ts-ignore
-      if (item && item.label && !unique.has(item.label)) {
-        // @ts-ignore
-        unique.set(item.label, normalizeBrandingObject(item))
-      }
-    }
-    companyStats = Array.from(unique.values())
-  }
-
-  // Values
-  let companyValues: any[] = []
-  if (Array.isArray(valuesData)) {
-    const unique = new Map()
-    for (const item of valuesData) {
-      if (!unique.has(item.title)) {
-        unique.set(item.title, normalizeBrandingObject(item))
-      }
-    }
-    companyValues = Array.from(unique.values())
-  }
-
-  const companyFeatures = Array.isArray(featuresData) ? featuresData.map((f: any) => normalizeBrandingObject(f)) : []
-
-  // Timeline
-  let timelineEvents: any[] = []
-  if (Array.isArray(timelineData)) {
-    const unique = new Map()
-    for (const item of timelineData) {
-      const key = `${item.year}-${item.title}`
-      if (!unique.has(key)) {
-        unique.set(key, normalizeBrandingObject(item))
-      }
-    }
-    timelineEvents = Array.from(unique.values())
-  }
-
-  const contactInfo = normalizeContactInfo(normalizeBrandingObject(contactData));
-  const siteSettings = siteSettingsData || {};
+  const contactInfo = normalizeContactInfo(normalizeBrandingObject(contactData))
+  const siteSettings = siteSettingsData || {}
 
   // Sliders
   let sliders: SliderItem[] = []
@@ -326,16 +197,6 @@ export default async function Home() {
       contentStrokeWidth: typeof item?.contentStrokeWidth === 'number' && item.contentStrokeWidth >= 0 ? item.contentStrokeWidth : 0,
       order: typeof item?.order === 'number' ? item.order : index
     }))
-  }
-
-  // Vehicles
-  let featuredVehicles: PublicVehicle[] = []
-  let totalVehiclesCount = 0
-  const vehiclesRaw = vehiclesDataResponse?.vehicles;
-  if (Array.isArray(vehiclesRaw)) {
-    // @ts-ignore
-    featuredVehicles = dedupeVehicles(vehiclesRaw.map((v: any) => normalizeBrandingObject(v)))
-    totalVehiclesCount = vehiclesDataResponse?.total || 0
   }
 
   // Social Links Logic
@@ -366,14 +227,6 @@ export default async function Home() {
 
   // Styling Constants
   const brandHeroGradient = 'linear-gradient(135deg, var(--brand-primary-600, #081432) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-500, #C1272D) 100%)'
-  const brandContactGradient = 'linear-gradient(135deg, var(--brand-primary-800, #050c1f) 0%, var(--brand-primary-700, #061028) 55%, var(--brand-secondary-600, #a41f25) 100%)'
-  const brandTextGradient = 'linear-gradient(90deg, var(--brand-neutral-dark, #1F1F1F) 0%, var(--brand-primary-500, #0A1A3F) 55%, var(--brand-secondary-500, #C1272D) 100%)'
-
-  // Device Info (useDeviceInfo) is client side. We should assume mobile/desktop default or just render responsive classes.
-  // The original code used `deviceInfo.isMobile` for some logic like simple vs complex view or `TouchButton` size.
-  // We will default to a responsive approach (CSS) instead of JS conditional rendering where possible.
-  // `TouchButton` handles size internally via props, but we pass `size="xl"` usually. 
-  // We can't use `deviceInfo` here on server.
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
@@ -463,17 +316,6 @@ export default async function Home() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                {/* Floating Stats */}
-                {companyStats.length > 0 && (
-                  <div className="absolute -bottom-6 -right-6 bg-white text-blue-600 p-6 rounded-2xl shadow-2xl border border-blue-100 hidden md:block">
-                    <div className="text-3xl font-bold mb-1">
-                      {companyStats.find(stat => stat.label?.includes('سنة'))?.number || '25+'}
-                    </div>
-                    <div className="text-sm text-blue-500 font-medium">
-                      {companyStats.find(stat => stat.label?.includes('سنة'))?.label || 'سنة خبرة'}
-                    </div>
-                  </div>
-                )}
                 {/* Decorative Elements */}
                 <div className="absolute -top-4 -left-4 w-24 h-24 rounded-full opacity-20 blur-xl bg-[color:var(--brand-secondary,#C1272D)]"></div>
                 <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-20 blur-xl bg-[color:var(--brand-primary-400,#798fb0)]"></div>
@@ -485,152 +327,22 @@ export default async function Home() {
         {/* Spacing between sections */}
         <div className="h-8 md:h-12 bg-gradient-to-b from-blue-800 to-gray-50"></div>
 
-        {/* Our Vehicles */}
-        <section className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white relative w-full">
-          {/* Background Decoration */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-primary-100-rgb,225_230_239),1)]"></div>
-            <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-30 blur-3xl bg-[color:rgba(var(--brand-secondary-100-rgb,247_216_217),1)]"></div>
-          </div>
+        {/* Our Vehicles - Suspense Wrapped */}
+        <Suspense fallback={<VehiclesSkeleton />}>
+          <VehiclesSection />
+        </Suspense>
 
-          <div className="max-w-7xl mx-auto px-4 relative z-10">
-            <div className="text-center mb-16">
-              <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
-                <Car className="ml-2 h-4 w-4" />
-                {companyInfo?.features?.[0] || 'سياراتنا'}
-              </Badge>
-              <h2
-                className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                style={{ backgroundImage: brandTextGradient }}
-              >
-                {companyInfo?.title || 'استعرض سيارات تاتا'}
-              </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                {normalizeBrandingText(companyInfo?.subtitle || DISTRIBUTOR_BRANDING)}
-              </p>
-            </div>
+        {/* Company Stats - Suspense Wrapped */}
+        <Suspense fallback={<div className="h-40 w-full bg-slate-50 animate-pulse"></div>}>
+          <StatsSection />
+        </Suspense>
 
-            <ModernVehicleCarousel
-              vehicles={featuredVehicles}
-              loading={false}
-              totalVehiclesCount={totalVehiclesCount}
-            />
-          </div>
-        </section>
+        {/* Services Section - Suspense Wrapped */}
+        <Suspense fallback={<SectionSkeleton />}>
+          <ServicesSection />
+        </Suspense>
 
-        {/* Company Stats */}
-        {companyStats.length > 0 && (
-          <section className="py-16 md:py-20 bg-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] opacity-50"></div>
-            <div className="max-w-7xl mx-auto px-4 relative z-10">
-              <div className="text-center mb-12">
-                <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-4">
-                  <Users className="ml-2 h-4 w-4" />
-                  إنجازاتنا
-                </Badge>
-                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                  أرقام تتحدث عنا
-                </h2>
-                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                  نحن فخورون بما حققناه على مدار سنوات من الخبرة والتميز
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 md:gap-8">
-                {companyStats.map((stat, index) => (
-                  <div key={index} className="text-center group">
-                    <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 group-hover:border-blue-200">
-                      <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2 group-hover:scale-110 transition-transform">
-                        {stat.number}
-                      </div>
-                      <div className="text-sm md:text-base text-gray-600 font-medium">
-                        {stat.label}
-                      </div>
-                      {stat.description && (
-                        <div className="text-xs text-gray-500 mt-2">
-                          {stat.description}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Services Section */}
-        {homepageSettings.showServices && serviceItems.length > 0 && (
-          <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 relative">
-            <div className="max-w-7xl mx-auto px-4">
-              <div className="text-center mb-16">
-                <Badge
-                  className="mb-4 border border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] text-[color:var(--brand-primary,#0A1A3F)]"
-                >
-                  <Wrench className="ml-2 h-4 w-4" />
-                  خدماتنا
-                </Badge>
-                <h2
-                  className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent"
-                  style={{ backgroundImage: 'linear-gradient(120deg, var(--brand-primary,#0A1A3F), var(--brand-secondary,#C1272D))' }}
-                >
-                  {homepageSettings.servicesTitle}
-                </h2>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  {homepageSettings.servicesSubtitle}
-                </p>
-                {homepageSettings.servicesDescription && (
-                  <p className="text-base text-gray-500 max-w-3xl mx-auto leading-relaxed mt-3">
-                    {homepageSettings.servicesDescription}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                {serviceItems.map((service: any, index: number) => {
-                  const IconComponent = resolveServiceIcon(service.icon)
-                  const href = resolveServiceLink(service.link)
-
-                  return (
-                    <Card
-                      key={service?.id ?? `service-${index}`}
-                      className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm"
-                    >
-                      <CardHeader className="text-center pb-4">
-                        <div
-                          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"
-                          style={{ background: 'linear-gradient(135deg, var(--brand-primary-700,#061028), var(--brand-secondary,#C1272D))' }}
-                        >
-                          <IconComponent className="h-8 w-8 text-white" />
-                        </div>
-                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-[color:var(--brand-secondary,#C1272D)] transition-colors">
-                          {service.title}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-center">
-                        {service.description && (
-                          <p className="text-gray-600 mb-6 leading-relaxed">
-                            {service.description}
-                          </p>
-                        )}
-                        <Link href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
-                          <TouchButton
-                            variant="outline"
-                            className="w-full border-[color:rgba(var(--brand-primary-200-rgb,199_209_224),1)] text-[color:var(--brand-primary,#0A1A3F)] hover:bg-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] hover:border-[color:rgba(var(--brand-secondary-300-rgb,228_117_122),1)]"
-                          >
-                            {service.ctaText?.trim() || homepageSettings.servicesCtaText}
-                          </TouchButton>
-                        </Link>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Tata Motors Section */}
+        {/* Tata Motors Section - Static/Link */}
         <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] via-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] to-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] relative overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-5">
@@ -640,7 +352,7 @@ export default async function Home() {
           <div className="max-w-7xl mx-auto px-4 relative z-10">
             <div className="text-center mb-16">
               <Badge className="mb-4 border border-[color:rgba(var(--brand-secondary-200-rgb,240_177_179),1)] bg-[color:rgba(var(--brand-secondary-50-rgb,251_236_236),1)] text-[color:var(--brand-secondary,#C1272D)]">
-                <Truck className="ml-2 h-4 w-4" />
+                <Car className="ml-2 h-4 w-4" />
                 Tata Motors
               </Badge>
               <h2
@@ -654,46 +366,6 @@ export default async function Home() {
               </p>
             </div>
 
-            {/* Static Content maintained for SEO */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-              {/* Card 1 */}
-              <div className="lg:col-span-1">
-                <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-                  <CardHeader className="text-center pb-4">
-                    <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
-                    <CardTitle>المركبات التجارية الثقيلة</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <p>PRIMA 3328.K</p>
-                  </CardContent>
-                </Card>
-              </div>
-              {/* Card 2 */}
-              <div className="lg:col-span-1">
-                <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-                  <CardHeader className="text-center pb-4">
-                    <Package className="h-8 w-8 text-blue-900 mx-auto mb-2" />
-                    <CardTitle>المركبات التجارية الخفيفة</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <p>ULTRA T.9</p>
-                  </CardContent>
-                </Card>
-              </div>
-              {/* Card 3 */}
-              <div className="lg:col-span-1">
-                <Card className="h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-                  <CardHeader className="text-center pb-4">
-                    <Truck className="h-8 w-8 text-blue-900 mx-auto mb-2" />
-                    <CardTitle>بيك أب</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <p>XENON SC</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
             <div className="text-center">
               <Link href="/tata-motors">
                 <TouchButton
@@ -705,100 +377,18 @@ export default async function Home() {
                 </TouchButton>
               </Link>
             </div>
-
           </div>
         </section>
 
-        {/* Company Values */}
-        {companyValues.length > 0 && (
-          <section className="py-16 md:py-24 bg-gradient-to-br from-[color:rgba(var(--brand-primary-50-rgb,238_241_246),1)] to-white relative overflow-hidden">
-            {/* Content... using standard HTML instead of complex lazy load logic for text content to improve SEO */}
-            <div className="max-w-7xl mx-auto px-4 relative z-10">
-              {/* Render values map... */}
-              <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-5xl font-bold mb-6">قيمنا ومبادئنا</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                {companyValues.map((value: any, index: number) => (
-                  <div key={index} className="text-center p-6 bg-white rounded-xl shadow">
-                    <h3 className="text-xl font-bold mb-2">{value.title}</h3>
-                    <p className="text-gray-600">{value.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        {/* Company Values - Suspense Wrapped */}
+        <Suspense fallback={<SectionSkeleton />}>
+          <ValuesSection />
+        </Suspense>
 
-        {/* Timeline Section - Premium Brand UI */}
-        {timelineEvents.length > 0 && (
-          <section className="py-24 bg-gradient-to-b from-white to-slate-50 relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 relative z-10">
-              <div className="text-center mb-20">
-                <Badge className="bg-[color:var(--brand-primary-50,#EBF1F8)] text-[color:var(--brand-primary,#0A1A3F)] border border-[color:var(--brand-primary-200,#C7D3E2)] shadow-sm mb-6 px-4 py-2 text-base">
-                  <Clock className="ml-2 h-4 w-4" />
-                  تاريخنا العريق
-                </Badge>
-                <h2 className="text-4xl md:text-5xl font-bold mb-6 text-[color:var(--brand-primary,#0A1A3F)] tracking-tight">
-                  مسيرة النجاح المستمرة
-                </h2>
-                <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                  محطات مضيئة في تاريخ الحمد للسيارات، نبني المستقبل بخبرة الماضي
-                </p>
-              </div>
-
-              <div className="relative">
-                {/* Center Line with Brand Color */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-0.5 bg-gradient-to-b from-[color:var(--brand-primary-200,#C7D3E2)] via-[color:var(--brand-secondary,#C1272D)] to-[color:var(--brand-primary-200,#C7D3E2)] hidden md:block opacity-30"></div>
-
-                <div className="space-y-16 md:space-y-24">
-                  {timelineEvents.map((event: any, index: number) => {
-                    const isEven = index % 2 === 0
-                    return (
-                      <div key={index} className={`relative flex flex-col md:flex-row items-center ${isEven ? 'md:flex-row-reverse' : ''} gap-8 md:gap-0`}>
-                        {/* Content Side */}
-                        <div className="w-full md:w-1/2 flex justify-center md:block">
-                          <div className={`w-full max-w-lg ${isEven ? 'md:pr-16 lg:pr-24 text-right' : 'md:pl-16 lg:pl-24 text-left'}`}>
-                            <div className="bg-white p-8 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border border-[color:var(--brand-primary-50,#EBF1F8)] hover:border-[color:var(--brand-secondary-200,#F0B1B3)] transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden">
-                              {/* Brand Accent */}
-                              <div className={`absolute top-0 ${isEven ? 'right-0' : 'left-0'} w-1.5 h-full bg-gradient-to-b from-[color:var(--brand-primary,#0A1A3F)] to-[color:var(--brand-secondary,#C1272D)]`}></div>
-
-                              <span className="block text-6xl font-bold text-slate-50 absolute top-2 right-4 z-0 opacity-80 select-none font-outfit">
-                                {event.year}
-                              </span>
-
-                              <div className="relative z-10">
-                                <Badge className="mb-4 bg-[color:var(--brand-primary,#0A1A3F)] text-white hover:bg-[color:var(--brand-primary-800,#050c1f)] border-0">
-                                  {event.year}
-                                </Badge>
-                                <h3 className="text-2xl font-bold text-[color:var(--brand-primary,#0A1A3F)] mb-3 leading-snug">
-                                  {event.title}
-                                </h3>
-                                <p className="text-slate-600 leading-relaxed text-lg">
-                                  {event.description}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Center Dot - Brand Style */}
-                        <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center justify-center hidden md:flex">
-                          <div className="relative flex items-center justify-center">
-                            <div className="w-4 h-4 bg-[color:var(--brand-secondary,#C1272D)] rounded-full z-20 shadow-[0_0_0_4px_white,0_0_0_8px_rgba(193,39,45,0.2)]"></div>
-                          </div>
-                        </div>
-
-                        {/* Empty Side */}
-                        <div className="w-full md:w-1/2 hidden md:block"></div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* Timeline Section - Suspense Wrapped */}
+        <Suspense fallback={<SectionSkeleton />}>
+          <TimelineSection />
+        </Suspense>
 
         {/* Contact Section - Redesigned & Detailed */}
         {contactInfo && (
@@ -921,7 +511,7 @@ export default async function Home() {
                   <div className="w-full h-[500px] rounded-3xl overflow-hidden shadow-2xl border border-white/10 relative group">
                     <CompanyMap contactInfo={contactInfo} />
 
-                    {/* Overlay Info for Working Hours on Desktop - or standard layout */}
+                    {/* Overlay Info for Working Hours on Desktop */}
                     <div className="absolute bottom-6 right-6 bg-slate-900/90 backdrop-blur-md text-white p-5 rounded-xl border border-white/10 max-w-xs shadow-xl hidden md:block">
                       <div className="flex items-center gap-3 mb-3">
                         <Clock className="h-5 w-5 text-blue-400" />
