@@ -40,8 +40,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
         vehicle: {
           include: {
             images: true,
-            specifications: true,
-            features: true
+            specifications: true
           }
         },
         items: true,
@@ -163,8 +162,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
         vehicle: {
           include: {
             images: true,
-            specifications: true,
-            features: true
+            specifications: true
           }
         }
       }

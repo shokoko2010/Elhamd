@@ -63,6 +63,10 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
 
     // Helper to safely get nested specs
     const getSpec = (key: string) => {
+        if (Array.isArray(quotation.vehicle?.specifications)) {
+            const spec = quotation.vehicle.specifications.find((s: any) => s.key === key)
+            return spec?.value || '-'
+        }
         return quotation.vehicle?.specifications?.[key] || '-'
     }
 
