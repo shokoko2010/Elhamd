@@ -86,7 +86,15 @@ export function WorkingSlider({
   const intervalRef = useRef<NodeJS.Timeout>()
 
   // Handle auto-play
+  // Handle auto-play
   useEffect(() => {
+    // Disable autoplay on mobile to save resources and improve TBT
+    const isMobile = window.innerWidth < 768
+    if (isMobile) {
+      if (isAutoPlay) setIsAutoPlay(false)
+      return
+    }
+
     if (isAutoPlay && items.length > 1) {
       intervalRef.current = setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % items.length)
@@ -290,7 +298,7 @@ export function WorkingSlider({
             fill
             className="object-cover z-5"
             priority={currentIndex === 0}
-            quality={75}
+            quality={80}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
             onError={(e) => {
               const target = e.target as HTMLImageElement;

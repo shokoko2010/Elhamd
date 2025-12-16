@@ -154,8 +154,8 @@ export function ModernVehicleCarousel({
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover"
-                  loading={index < 3 ? "eager" : "lazy"}
-                  priority={index < 3}
+                  loading="lazy"
+                  priority={false}
                 />
                 <div className="absolute left-4 top-4 flex gap-2">
                   <Badge className="bg-white/90 text-slate-800">{getCategory(vehicle)}</Badge>
