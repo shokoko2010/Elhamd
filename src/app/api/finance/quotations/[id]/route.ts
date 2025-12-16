@@ -32,7 +32,6 @@ export async function GET(request: NextRequest, context: RouteParams) {
             id: true,
             name: true,
             email: true,
-            email: true,
             phone: true,
             branchId: true
           }
