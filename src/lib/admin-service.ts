@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { BookingStatus, PaymentStatus, UserRole, VehicleStatus } from '@prisma/client'
+import { BookingStatus, PaymentStatus, UserRole, VehicleStatus, InvoiceStatus } from '@prisma/client'
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, subMonths } from 'date-fns'
 
 export interface DashboardStats {
@@ -153,19 +153,19 @@ export class AdminService {
     const cancelledBookings = cancelledTestDrives + cancelledServices
 
     // Revenue stats
-    const monthlyRevenue = await db.transaction.aggregate({
+    const monthlyRevenue = await db.invoice.aggregate({
       where: {
-        date: { gte: startOfMonthDate, lte: endOfMonthDate },
-        type: 'INCOME'
+        createdAt: { gte: startOfMonthDate, lte: endOfMonthDate },
+        status: { notIn: [InvoiceStatus.CANCELLED, InvoiceStatus.REFUNDED] }
       },
-      _sum: { amount: true }
+      _sum: { paidAmount: true }
     })
 
-    const totalRevenue = await db.transaction.aggregate({
+    const totalRevenue = await db.invoice.aggregate({
       where: {
-        type: 'INCOME'
+        status: { notIn: [InvoiceStatus.CANCELLED, InvoiceStatus.REFUNDED] }
       },
-      _sum: { amount: true }
+      _sum: { paidAmount: true }
     })
 
     return {
@@ -175,8 +175,8 @@ export class AdminService {
       totalCustomers,
       todayBookings,
       pendingBookings,
-      totalRevenue: totalRevenue._sum.amount || 0,
-      monthlyRevenue: monthlyRevenue._sum.amount || 0,
+      totalRevenue: totalRevenue._sum.paidAmount || 0,
+      monthlyRevenue: monthlyRevenue._sum.paidAmount || 0,
       testDriveBookings,
       serviceBookings,
       completedBookings,
@@ -294,20 +294,19 @@ export class AdminService {
       })
     )
 
-    // Revenue by month
     const revenueByMonth = await Promise.all(
       last6Months.map(async ({ month, startOfMonth, endOfMonth }) => {
-        const result = await db.transaction.aggregate({
+        const result = await db.invoice.aggregate({
           where: {
-            date: { gte: startOfMonth, lte: endOfMonth },
-            type: 'INCOME'
+            createdAt: { gte: startOfMonth, lte: endOfMonth },
+            status: { notIn: [InvoiceStatus.CANCELLED, InvoiceStatus.REFUNDED] }
           },
-          _sum: { amount: true }
+          _sum: { paidAmount: true }
         })
 
         return {
           month,
-          revenue: result._sum.amount || 0
+          revenue: result._sum.paidAmount || 0
         }
       })
     )
