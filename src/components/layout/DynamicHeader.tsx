@@ -124,7 +124,7 @@ export default function DynamicHeader() {
 
     const baseClasses = 'transition-all duration-300'
     const scrollClasses = settings.headerSettings.stickyHeader && isScrolled ? 'fixed top-0 left-0 right-0 z-50 shadow-lg' : ''
-    const transparentClasses = settings.headerSettings.transparentHeader && !isScrolled ? 'bg-transparent' : 'bg-white'
+    const transparentClasses = settings.headerSettings.transparentHeader && !isScrolled ? 'absolute top-0 left-0 right-0 z-50 bg-transparent' : 'bg-white relative'
 
     return `${baseClasses} ${scrollClasses} ${transparentClasses}`
   }
