@@ -290,6 +290,7 @@ export function WorkingSlider({
             fill
             className="object-cover z-5"
             priority={currentIndex === 0}
+            fetchPriority={currentIndex === 0 ? "high" : "auto"}
             quality={75}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
             onError={(e) => {

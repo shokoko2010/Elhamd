@@ -155,6 +155,7 @@ export function ModernVehicleCarousel({
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover"
                   loading="lazy"
+                  quality={60}
                   priority={false}
                 />
                 <div className="absolute left-4 top-4 flex gap-2">
