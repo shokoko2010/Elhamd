@@ -158,7 +158,22 @@ export async function getCompanyInfo() {
         };
     } catch (error) {
         console.error('Error fetching company info:', error)
-        return null
+        return {
+            id: 'default',
+            title: 'مرحباً بك في الحمد للسيارات',
+            subtitle: 'الموزع المعتمد لسيارات تاتا في مدن القناة',
+            imageUrl: '/uploads/showroom-luxury.jpg',
+            features: [
+                'أحدث موديلات تاتا 2024',
+                'ضمان المصنع لمدة 3 سنوات',
+                'ضمان صيانة على مدار الساعة',
+                'تمويل سيارات بأفضل الأسعار'
+            ],
+            ctaButtons: [
+                { text: 'استعرض السيارات', link: '/vehicles', variant: 'primary' },
+                { text: 'قيادة تجريبية', link: '/test-drive', variant: 'secondary' }
+            ]
+        }
     }
 }
 
@@ -323,7 +338,15 @@ export async function getSiteSettings() {
             }
         })
     } catch {
-        return null
+        return {
+            siteTitle: 'الحمد للسيارات',
+            siteDescription: 'الموزع المعتمد لسيارات تاتا في مصر',
+            contactEmail: 'info@elhamdimport.online',
+            contactPhone: '+201555767729',
+            contactAddress: 'بورسعيد، مصر',
+            workingHours: { weekdays: '9:00 - 10:00' },
+            socialLinks: {}
+        }
     }
 }
 
