@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useSiteSettings } from '@/components/SiteSettingsProvider'
 import { normalizeBrandingObject, normalizeBrandingText } from '@/lib/branding'
 import {
@@ -312,12 +313,12 @@ export default function Footer() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-blue-950/30 backdrop-blur-xl lg:col-span-2">
             <div className="flex items-center space-x-3 mb-6">
               {footerContent?.logoUrl || settings.logoUrl ? (
-                <img
-                  src={footerContent?.logoUrl || settings.logoUrl}
+                <Image
+                  src={footerContent?.logoUrl || settings.logoUrl || ''}
                   alt={footerContent?.logoText || settings.siteTitle}
-                  width="200"
-                  height="64"
-                  className="h-14 w-auto rounded-md bg-transparent md:h-16"
+                  width={200}
+                  height={64}
+                  className="h-14 w-auto rounded-md bg-transparent md:h-16 object-contain"
                 />
               ) : (
                 <Car className="h-12 w-12" style={{ color: settings.primaryColor }} />

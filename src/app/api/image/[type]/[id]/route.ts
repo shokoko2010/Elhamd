@@ -28,6 +28,32 @@ export async function GET(
                 select: { imageUrl: true }
             })
             base64Data = info?.imageUrl || null
+        } else if (type === 'logo') {
+            // Check Site Settings
+            const settings = await db.siteSettings.findUnique({
+                where: { id },
+                select: { logoUrl: true, faviconUrl: true }
+            })
+
+            if (settings?.logoUrl?.startsWith('data:image')) {
+                base64Data = settings.logoUrl
+            } else if (settings?.faviconUrl?.startsWith('data:image')) {
+                // If the ID matches, it might be favicon. 
+                // But usually we can't distinguish by ID alone if they share ID "default".
+                // Since logoUrl is primary, if it's not base64, check favicon?
+                // Or if the STRIPPED url implied which one? 
+                // The stripLargeData helper generates /api/image/logo/[id]. It doesn't say "favicon".
+                // Assuming logo is the main use case.
+                base64Data = settings.faviconUrl
+            }
+
+            // Fallback to Footer Content if not found in Site Settings
+            if (!base64Data) {
+                const footer = await db.footerContent.findUnique({ where: { id } })
+                if (footer?.logoUrl?.startsWith('data:image')) {
+                    base64Data = footer.logoUrl
+                }
+            }
         }
 
         if (!base64Data) {

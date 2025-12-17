@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -201,10 +202,13 @@ export default function DynamicHeader() {
           {settings.headerSettings.showLogo && (
             <Link href="/" className="flex items-center gap-3">
               {settings.logoUrl ? (
-                <img
+                <Image
                   src={settings.logoUrl}
                   alt={settings.siteTitle}
+                  width={160}
+                  height={40}
                   className="h-10 w-auto"
+                  priority
                 />
               ) : (
                 <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
