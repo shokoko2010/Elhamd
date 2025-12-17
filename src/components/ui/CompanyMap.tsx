@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { MapPin } from 'lucide-react'
 
@@ -22,11 +23,36 @@ interface MapProps {
 }
 
 export default function CompanyMap({ contactInfo }: MapProps) {
-    // If we have a specific branch with a map link, we can potentially use it or just pass it down
-    // The actual map implementation will reside in LeafletCompanyMap (which is client-side only)
+    const [isVisible, setIsVisible] = useState(false)
+    const containerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true)
+                    observer.disconnect()
+                }
+            },
+            { rootMargin: '200px' }
+        )
+
+        if (containerRef.current) {
+            observer.observe(containerRef.current)
+        }
+
+        return () => observer.disconnect()
+    }, [])
+
     return (
-        <div className="w-full h-full min-h-[400px] rounded-2xl overflow-hidden shadow-xl border border-gray-100 relative z-0">
-            <LeafletMap contactInfo={contactInfo} />
+        <div ref={containerRef} className="w-full h-full min-h-[400px] rounded-2xl overflow-hidden shadow-xl border border-gray-100 relative z-0">
+            {isVisible ? (
+                <LeafletMap contactInfo={contactInfo} />
+            ) : (
+                <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                    <MapPin className="h-12 w-12 text-gray-300 mx-auto animate-pulse" />
+                </div>
+            )}
         </div>
     )
 }
