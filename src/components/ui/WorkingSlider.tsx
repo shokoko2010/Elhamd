@@ -83,7 +83,7 @@ export function WorkingSlider({
   const [touchEnd, setTouchEnd] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
 
-  const intervalRef = useRef<NodeJS.Timeout>()
+  const intervalRef = useRef<NodeJS.Timeout>(null)
 
   // Handle auto-play
   useEffect(() => {
@@ -291,7 +291,7 @@ export function WorkingSlider({
             className="object-cover z-5"
             priority={currentIndex === 0}
             fetchPriority={currentIndex === 0 ? "high" : "auto"}
-            quality={75}
+            quality={65}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 100vw"
             onError={(e) => {
               const target = e.target as HTMLImageElement;

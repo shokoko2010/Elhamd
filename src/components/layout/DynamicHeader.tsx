@@ -5,14 +5,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { 
-  Menu, 
-  X, 
-  Phone, 
-  Mail, 
-  Facebook, 
-  Twitter, 
-  Instagram, 
+import {
+  Menu,
+  X,
+  Phone,
+  Mail,
+  Facebook,
+  Twitter,
+  Instagram,
   Linkedin,
   ChevronDown,
   Car,
@@ -62,8 +62,8 @@ interface NavigationItem {
 
 const navigation: NavigationItem[] = [
   { label: 'Home', href: '/' },
-  { 
-    label: 'Vehicles', 
+  {
+    label: 'Vehicles',
     href: '/vehicles',
     children: [
       { label: 'All Vehicles', href: '/vehicles' },
@@ -89,11 +89,11 @@ export default function DynamicHeader() {
 
   useEffect(() => {
     fetchSiteSettings()
-    
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10)
     }
-    
+
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -120,11 +120,11 @@ export default function DynamicHeader() {
 
   const headerClasses = () => {
     if (!settings) return 'bg-white shadow-md'
-    
+
     const baseClasses = 'transition-all duration-300'
     const scrollClasses = settings.headerSettings.stickyHeader && isScrolled ? 'fixed top-0 left-0 right-0 z-50 shadow-lg' : ''
     const transparentClasses = settings.headerSettings.transparentHeader && !isScrolled ? 'bg-transparent' : 'bg-white'
-    
+
     return `${baseClasses} ${scrollClasses} ${transparentClasses}`
   }
 
@@ -164,7 +164,7 @@ export default function DynamicHeader() {
                   <span>{settings.contactEmail}</span>
                 </div>
               </div>
-              
+
               {settings.headerSettings.showSocialLinks && (
                 <div className="flex items-center gap-3">
                   {settings.socialLinks.facebook && (
@@ -201,9 +201,9 @@ export default function DynamicHeader() {
           {settings.headerSettings.showLogo && (
             <Link href="/" className="flex items-center gap-3">
               {settings.logoUrl ? (
-                <img 
-                  src={settings.logoUrl} 
-                  alt={settings.siteTitle} 
+                <img
+                  src={settings.logoUrl}
+                  alt={settings.siteTitle}
                   className="h-10 w-auto"
                 />
               ) : (
@@ -225,18 +225,17 @@ export default function DynamicHeader() {
                   {item.children ? (
                     <div className="group">
                       <button
-                        className={`flex items-center gap-1 font-medium transition-colors hover:text-blue-600 ${
-                          isActive(item.href) ? 'text-blue-600' : textClasses()
-                        }`}
+                        className={`flex items-center gap-1 font-medium transition-colors hover:text-blue-600 ${isActive(item.href) ? 'text-blue-600' : textClasses()
+                          }`}
                         onMouseEnter={() => setActiveDropdown(item.href)}
                         onMouseLeave={() => setActiveDropdown(null)}
                       >
                         {item.label}
                         <ChevronDown className="w-4 h-4" />
                       </button>
-                      
+
                       {activeDropdown === item.href && (
-                        <div 
+                        <div
                           className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border py-2 z-50"
                           onMouseEnter={() => setActiveDropdown(item.href)}
                           onMouseLeave={() => setActiveDropdown(null)}
@@ -245,9 +244,8 @@ export default function DynamicHeader() {
                             <Link
                               key={child.href}
                               href={child.href}
-                              className={`block px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                                isActive(child.href) ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
-                              }`}
+                              className={`block px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${isActive(child.href) ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
+                                }`}
                               onClick={() => setActiveDropdown(null)}
                             >
                               {child.label}
@@ -259,9 +257,8 @@ export default function DynamicHeader() {
                   ) : (
                     <Link
                       href={item.href}
-                      className={`font-medium transition-colors hover:text-blue-600 ${
-                        isActive(item.href) ? 'text-blue-600' : textClasses()
-                      }`}
+                      className={`font-medium transition-colors hover:text-blue-600 ${isActive(item.href) ? 'text-blue-600' : textClasses()
+                        }`}
                     >
                       {item.label}
                     </Link>
@@ -313,6 +310,7 @@ export default function DynamicHeader() {
               size="sm"
               className="lg:hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle navigation menu"
             >
               {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
@@ -329,23 +327,21 @@ export default function DynamicHeader() {
                 <div key={item.href}>
                   <Link
                     href={item.href}
-                    className={`block px-3 py-2 rounded-md font-medium transition-colors ${
-                      isActive(item.href) ? 'text-blue-600 bg-blue-50' : textClasses()
-                    }`}
+                    className={`block px-3 py-2 rounded-md font-medium transition-colors ${isActive(item.href) ? 'text-blue-600 bg-blue-50' : textClasses()
+                      }`}
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {item.label}
                   </Link>
-                  
+
                   {item.children && (
                     <div className="ml-4 mt-2 space-y-2">
                       {item.children.map((child) => (
                         <Link
                           key={child.href}
                           href={child.href}
-                          className={`block px-3 py-2 rounded-md text-sm transition-colors ${
-                            isActive(child.href) ? 'text-blue-600 bg-blue-50' : 'text-gray-600'
-                          }`}
+                          className={`block px-3 py-2 rounded-md text-sm transition-colors ${isActive(child.href) ? 'text-blue-600 bg-blue-50' : 'text-gray-600'
+                            }`}
                           onClick={() => setIsMenuOpen(false)}
                         >
                           {child.label}

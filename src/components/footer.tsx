@@ -283,6 +283,7 @@ export default function Footer() {
         target="_blank"
         rel="noopener noreferrer"
         className="text-gray-400 hover:text-white transition-colors"
+        aria-label={platform}
       >
         <IconComponent className="h-5 w-5" />
       </a>

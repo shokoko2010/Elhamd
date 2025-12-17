@@ -2,6 +2,7 @@
 
 import { useEffect, Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import Script from 'next/script'
 
 interface GoogleAnalyticsProps {
   measurementId: string
@@ -11,49 +12,13 @@ function GoogleAnalyticsInner({ measurementId }: GoogleAnalyticsProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  useEffect(() => {
-    // Load Google Analytics script
-    const script1 = document.createElement('script')
-    script1.async = true
-    script1.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`
-    document.head.appendChild(script1)
-
-    const script2 = document.createElement('script')
-    script2.innerHTML = `
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', '${measurementId}', {
-        page_path: window.location.pathname,
-        send_page_view: true,
-        custom_map: {
-          'dimension1': 'user_type',
-          'dimension2': 'page_type'
-        }
-      });
-    `
-    document.head.appendChild(script2)
-
-    return () => {
-      // Cleanup scripts when component unmounts
-      try {
-        if (document.head.contains(script1)) {
-          document.head.removeChild(script1)
-        }
-        if (document.head.contains(script2)) {
-          document.head.removeChild(script2)
-        }
-      } catch (error) {
-        // Ignore cleanup errors
-      }
-    }
-  }, [measurementId])
-
+  // Manual script injection removed in favor of next/script
+  // useEffect for page view tracking remains
   useEffect(() => {
     // Track page views when pathname or search params change
     if (typeof window !== 'undefined' && window.gtag) {
       const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
-      
+
       window.gtag('event', 'page_view', {
         page_path: url,
         page_title: document.title,
@@ -75,10 +40,31 @@ function GoogleAnalyticsInner({ measurementId }: GoogleAnalyticsProps) {
 export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
   return (
     <Suspense>
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
+        strategy="lazyOnload"
+      />
+      <Script id="google-analytics" strategy="lazyOnload">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${measurementId}', {
+            page_path: window.location.pathname,
+            send_page_view: true,
+            custom_map: {
+              'dimension1': 'user_type',
+              'dimension2': 'page_type'
+            }
+          });
+        `}
+      </Script>
       <GoogleAnalyticsInner measurementId={measurementId} />
     </Suspense>
   )
 }
+
+
 
 // Helper function to determine page type
 function getPageType(pathname: string): string {

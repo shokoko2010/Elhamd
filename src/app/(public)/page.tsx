@@ -180,7 +180,7 @@ export default async function Home() {
     sliderInterval: typeof homepageSettingsData?.sliderInterval === 'number' ? homepageSettingsData.sliderInterval : 5000,
   }
 
-  const companyInfo = normalizeBrandingObject(companyInfoData || {})
+  const companyInfo = normalizeBrandingObject(companyInfoData || {} as any)
   const contactInfo = normalizeContactInfo(normalizeBrandingObject(contactData))
   const siteSettings = siteSettingsData || {}
 
