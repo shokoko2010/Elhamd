@@ -215,9 +215,9 @@ export default async function Home() {
       })
     }
     addLinks(contactInfo?.socialMedia)
-    addLinks(companyInfo?.socialMedia)
-    addLinks(companyInfo?.socialLinks)
-    addLinks(siteSettings?.socialLinks)
+    addLinks((companyInfo as any)?.socialMedia)
+    addLinks((companyInfo as any)?.socialLinks)
+    addLinks((siteSettings as any)?.socialLinks)
 
     const prioritized = priorityOrder.map((platform) => ({ platform, url: collected[platform] })).filter((item) => Boolean(item.url))
     const remaining = Object.entries(collected).filter(([platform]) => !priorityOrder.includes(platform)).map(([platform, url]) => ({ platform, url }))
@@ -423,7 +423,7 @@ export default async function Home() {
                         <MapPin className="h-6 w-6 text-blue-400" />
                       </div>
                       <div>
-                        <h4 className="text-lg font-semibold text-white mb-1">المقر الرئيسي</h4>
+                        <h3 className="text-lg font-semibold text-white mb-1">المقر الرئيسي</h3>
                         <p className="text-blue-100/70 mb-3 leading-relaxed">{contactInfo.headquarters.address}</p>
                       </div>
                     </div>
@@ -436,7 +436,7 @@ export default async function Home() {
                         <Phone className="h-6 w-6 text-green-400" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="text-lg font-semibold text-white mb-1">اتصل بنا</h4>
+                        <h3 className="text-lg font-semibold text-white mb-1">اتصل بنا</h3>
                         <div className="space-y-1">
                           <Link href={`tel:${contactInfo.contactNumbers.primary}`} className="block text-blue-100/70 hover:text-white transition-colors dir-ltr text-right">
                             {contactInfo.contactNumbers.primary}
@@ -458,7 +458,7 @@ export default async function Home() {
                         <Mail className="h-6 w-6 text-purple-400" />
                       </div>
                       <div>
-                        <h4 className="text-lg font-semibold text-white mb-1">البريد الإلكتروني</h4>
+                        <h3 className="text-lg font-semibold text-white mb-1">البريد الإلكتروني</h3>
                         <Link href={`mailto:${contactInfo.headquarters.email}`} className="text-blue-100/70 hover:text-white transition-colors break-all">
                           {contactInfo.headquarters.email}
                         </Link>
@@ -492,13 +492,13 @@ export default async function Home() {
                   {/* Branches Addresses List */}
                   {contactInfo.branches && contactInfo.branches.length > 0 && (
                     <div className="pt-6 border-t border-white/10 space-y-4">
-                      <h4 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                         <MapPin className="h-5 w-5 text-blue-400" />
                         فروعنا الأخرى
-                      </h4>
+                      </h3>
                       {contactInfo.branches.map((branch: any) => (
                         <div key={branch.id} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors">
-                          <h5 className="text-lg font-semibold text-white mb-1">{branch.name}</h5>
+                          <h4 className="text-lg font-semibold text-white mb-1">{branch.name}</h4>
                           <p className="text-blue-100/70 text-sm leading-relaxed">{branch.address}</p>
                         </div>
                       ))}
@@ -515,7 +515,7 @@ export default async function Home() {
                     <div className="absolute bottom-6 right-6 bg-slate-900/90 backdrop-blur-md text-white p-5 rounded-xl border border-white/10 max-w-xs shadow-xl hidden md:block">
                       <div className="flex items-center gap-3 mb-3">
                         <Clock className="h-5 w-5 text-blue-400" />
-                        <h4 className="font-bold">ساعات العمل</h4>
+                        <h3 className="font-bold">ساعات العمل</h3>
                       </div>
                       <div className="space-y-2 text-sm text-blue-100/80">
                         {contactInfo.workingHours.weekdays && (

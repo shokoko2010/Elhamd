@@ -24,11 +24,13 @@ const ALLOWED_FIELDS = [
 
 type FooterContentPayload = Partial<Record<(typeof ALLOWED_FIELDS)[number], string | null>>
 
+import { stripLargeData } from '@/services/home-data'
+
 export async function GET() {
   try {
     // Get footer content from database
     const footerContent = await db.footerContent.findFirst()
-    
+
     if (!footerContent) {
       // Return default content if none exists
       return NextResponse.json(normalizeBrandingObject({
@@ -44,7 +46,10 @@ export async function GET() {
       }))
     }
 
-    return NextResponse.json(normalizeBrandingObject(footerContent))
+    return NextResponse.json(normalizeBrandingObject({
+      ...footerContent,
+      logoUrl: stripLargeData(footerContent.logoUrl, 'logo', footerContent.id)
+    }))
   } catch (error) {
     console.error('Error fetching footer content:', error)
     return NextResponse.json(

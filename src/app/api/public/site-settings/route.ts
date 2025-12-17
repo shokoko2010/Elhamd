@@ -6,12 +6,37 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { normalizeBrandingObject } from '@/lib/branding'
 
+import { stripLargeData } from '@/services/home-data'
+
 export async function GET(request: NextRequest) {
   try {
     const settings = await db.siteSettings.findFirst({
       where: { isActive: true },
       orderBy: {
         createdAt: 'desc'
+      },
+      // Explicitly select fields to avoid accidental leaks of huge hidden columns
+      select: {
+        id: true,
+        logoUrl: true,
+        faviconUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+        accentColor: true,
+        neutralDarkColor: true,
+        neutralLightColor: true,
+        surfaceColor: true,
+        fontFamily: true,
+        siteTitle: true,
+        siteDescription: true,
+        contactEmail: true,
+        contactPhone: true,
+        contactAddress: true,
+        socialLinks: true,
+        seoSettings: true,
+        performanceSettings: true,
+        headerSettings: true,
+        footerSettings: true
       }
     })
 
@@ -39,7 +64,7 @@ export async function GET(request: NextRequest) {
         siteDescription: 'الموزع المعتمد لسيارات تاتا في مدن القناة - السيارات التجارية والبيك أب والشاحنات',
         contactEmail: 'info@elhamdimport.online',
         contactPhone: '+20 2 12345678',
-          contactAddress: 'بورسعيد، مصر',
+        contactAddress: 'بورسعيد، مصر',
         socialLinks: {
           facebook: 'https://facebook.com/elhamdimport',
           twitter: 'https://twitter.com/elhamdimport',
@@ -87,9 +112,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(defaultSettings, { headers })
     }
 
-    // Ensure all JSON fields have default values
+    // Ensure all JSON fields have default values and strip large Base64
     const processedSettings = normalizeBrandingObject({
       ...settings,
+      logoUrl: stripLargeData(settings.logoUrl, 'logo', settings.id),
+      faviconUrl: stripLargeData(settings.faviconUrl, 'logo', settings.id),
       socialLinks: settings.socialLinks || {},
       seoSettings: settings.seoSettings || {},
       performanceSettings: settings.performanceSettings || {},
@@ -102,7 +129,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching public site settings:', error)
     return NextResponse.json(
       { error: 'Failed to fetch site settings' },
-      { 
+      {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': '*',

@@ -6,7 +6,7 @@ import { normalizeBrandingObject } from '@/lib/branding'
 // Helper to strip massive Base64 strings that break Vercel ISR (19MB limit)
 // Helper to strip massive Base64 strings that break Vercel ISR (19MB limit)
 // AND replace them with dynamic API URLs that serve the image on-demand.
-const stripLargeData = (str: string | null | undefined, type: 'vehicle' | 'slider' | 'company-info', id: string): string | null | undefined => {
+export const stripLargeData = (str: string | null | undefined, type: 'vehicle' | 'slider' | 'company-info' | 'logo', id: string): string | null | undefined => {
     if (!str) return str;
 
     // If it's a huge Base64 string, return the dynamic API URL

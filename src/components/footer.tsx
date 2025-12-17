@@ -315,6 +315,8 @@ export default function Footer() {
                 <img
                   src={footerContent?.logoUrl || settings.logoUrl}
                   alt={footerContent?.logoText || settings.siteTitle}
+                  width="200"
+                  height="64"
                   className="h-14 w-auto rounded-md bg-transparent md:h-16"
                 />
               ) : (
