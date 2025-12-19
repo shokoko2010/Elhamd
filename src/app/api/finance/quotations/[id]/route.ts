@@ -78,6 +78,32 @@ export async function GET(request: NextRequest, context: RouteParams) {
       })
       if (vehicle) {
         quotationWithVehicle.vehicle = vehicle
+
+        // Inject root fields as specifications if they don't exist
+        if (!quotationWithVehicle.vehicle.specifications) {
+          quotationWithVehicle.vehicle.specifications = []
+        }
+
+        const standardSpecs = [
+          { key: 'root_year', label: 'الموديل (Year)', value: vehicle.year?.toString(), category: 'CHASSIS' },
+          { key: 'root_fuel', label: 'نوع الوقود (Fuel Type)', value: vehicle.fuelType, category: 'ENGINE' },
+          { key: 'root_transmission', label: 'ناقل الحركة (Transmission)', value: vehicle.transmission, category: 'TRANSMISSION' },
+          { key: 'root_color', label: 'اللون (Color)', value: vehicle.color, category: 'EXTERIOR' },
+          { key: 'root_mileage', label: 'المسافة (Mileage)', value: vehicle.mileage ? `${vehicle.mileage} KM` : 'New', category: 'PERFORMANCE' },
+          { key: 'root_vin', label: 'رقم الشاسيه (VIN)', value: vehicle.vin, category: 'CHASSIS' },
+          { key: 'root_stock', label: 'رقم المخزون (Stock No)', value: vehicle.stockNumber, category: 'CHASSIS' }
+        ]
+
+        standardSpecs.forEach(stdSpec => {
+          if (stdSpec.value) {
+            quotationWithVehicle.vehicle.specifications.push({
+              key: stdSpec.key,
+              label: stdSpec.label,
+              value: stdSpec.value,
+              category: stdSpec.category
+            })
+          }
+        })
       }
     }
 
