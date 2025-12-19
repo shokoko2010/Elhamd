@@ -155,7 +155,7 @@ const createInitialFormState = (): VehicleFormState => {
       key: item.key,
       label: item.label,
       value: '',
-      category: group.category
+      category: group.dbCategory
     }))
   )
 
@@ -182,14 +182,17 @@ const createInitialFormState = (): VehicleFormState => {
 }
 
 const SPEC_CATEGORIES = [
-  { value: 'ENGINE', label: 'المحرك والأداء' },
+  { value: 'ENGINE', label: 'المحرك' },
   { value: 'PERFORMANCE', label: 'الأداء' },
   { value: 'SAFETY', label: 'الأمان' },
   { value: 'INTERIOR', label: 'المقصورة الداخلية' },
   { value: 'EXTERIOR', label: 'المظهر الخارجي' },
-  { value: 'INFOTAINMENT', label: 'الترفيه والتكنولوجيا' },
+  { value: 'TECHNOLOGY', label: 'التكنولوجيا' },
+  { value: 'TRANSMISSION', label: 'ناقل الحركة' },
+  { value: 'CHASSIS', label: 'الشاسيه والتعليق' },
   { value: 'DIMENSIONS', label: 'الأبعاد' },
-  { value: 'COMFORT', label: 'الراحة' }
+  { value: 'WEIGHTS', label: 'الأوزان' },
+  { value: 'CAPACITIES', label: 'السعات' }
 ]
 
 const VEHICLE_STATUSES = [
@@ -611,7 +614,7 @@ export default function AdminVehiclesPage() {
                                   key: item.key,
                                   label: item.label,
                                   value: newValue,
-                                  category: categoryGroup.category
+                                  category: categoryGroup.dbCategory
                                 }]
                               };
                             });
@@ -627,28 +630,48 @@ export default function AdminVehiclesPage() {
         </Accordion>
 
         {/* Fallback for custom specs that don't fit the template */}
+        {/* Fallback for custom specs that don't fit the template */}
         <div className="mt-8 pt-6 border-t">
           <Label className="text-base font-semibold block mb-4">مواصفات إضافية (أخرى)</Label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
             <div className="space-y-1">
+              <Label htmlFor="custom-spec-label" className="text-xs">اسم المواصفة</Label>
               <Input
-                placeholder="اسم المواصفة (مثال: لون الفرش)"
+                placeholder="مثال: لون الفرش"
                 id="custom-spec-label"
                 value={specInput.label}
                 onChange={(e) => setSpecInput(prev => ({ ...prev, label: e.target.value }))}
               />
             </div>
             <div className="space-y-1">
+              <Label htmlFor="custom-spec-value" className="text-xs">القيمة</Label>
               <Input
-                placeholder="القيمة (مثال: بيج)"
+                placeholder="مثال: بيج"
                 id="custom-spec-value"
                 value={specInput.value}
                 onChange={(e) => setSpecInput(prev => ({ ...prev, value: e.target.value }))}
               />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">الفئة</Label>
+              <Select
+                value={specInput.category}
+                onValueChange={(val) => setSpecInput(prev => ({ ...prev, category: val }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر الفئة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SPEC_CATEGORIES.map(cat => (
+                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               type="button"
               variant="outline"
+              className="w-full mb-0.5"
               onClick={() => {
                 if (specInput.label && specInput.value) {
                   const randomKey = `custom_${Date.now()}`;
@@ -659,14 +682,16 @@ export default function AdminVehiclesPage() {
                       key: randomKey,
                       label: specInput.label,
                       value: specInput.value,
-                      category: 'أخرى (Other)'
+                      category: specInput.category || 'TECHNOLOGY'
                     }]
                   }));
-                  setSpecInput({ key: '', label: '', value: '', category: '' });
+                  setSpecInput({ key: '', label: '', value: '', category: 'ENGINE' });
+                } else {
+                  toast.error('يرجى إدخال الاسم والقيمة')
                 }
               }}
             >
-              إضافة مواصفة خاصة
+              إضافة
             </Button>
           </div>
 

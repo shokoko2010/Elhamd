@@ -5,12 +5,14 @@ export interface SpecItem {
 
 export interface SpecCategory {
     category: string
+    dbCategory: "ENGINE" | "EXTERIOR" | "INTERIOR" | "SAFETY" | "TECHNOLOGY" | "TRANSMISSION" | "CHASSIS" | "DIMENSIONS" | "WEIGHTS" | "PERFORMANCE" | "CAPACITIES"
     items: SpecItem[]
 }
 
 export const VEHICLE_SPEC_TEMPLATE: SpecCategory[] = [
     {
         category: "المحرك (Engine)",
+        dbCategory: "ENGINE",
         items: [
             { key: "engine_model", label: "الموديل" },
             { key: "engine_type", label: "النوع" },
@@ -25,6 +27,7 @@ export const VEHICLE_SPEC_TEMPLATE: SpecCategory[] = [
     },
     {
         category: "ناقل الحركة (Transmission)",
+        dbCategory: "TRANSMISSION",
         items: [
             { key: "trans_model", label: "الموديل" },
             { key: "trans_type", label: "النوع" },
@@ -35,6 +38,7 @@ export const VEHICLE_SPEC_TEMPLATE: SpecCategory[] = [
     },
     {
         category: "التعليق والمكابح والعجلات (Suspension, Brakes & Tyres)",
+        dbCategory: "CHASSIS",
         items: [
             { key: "suspension_front", label: "التعليق الأمامي" },
             { key: "suspension_rear", label: "التعليق الخلفي" },
@@ -45,6 +49,7 @@ export const VEHICLE_SPEC_TEMPLATE: SpecCategory[] = [
     },
     {
         category: "الأبعاد والمقاسات (Dimensions)",
+        dbCategory: "DIMENSIONS",
         items: [
             { key: "dim_wheelbase", label: "قاعدة العجلات" },
             { key: "dim_overall", label: "الأبعاد الكلية (طول×عرض×ارتفاع)" },
@@ -55,6 +60,7 @@ export const VEHICLE_SPEC_TEMPLATE: SpecCategory[] = [
     },
     {
         category: "الأوزان (Weights)",
+        dbCategory: "WEIGHTS",
         items: [
             { key: "weight_gvw", label: "الوزن الإجمالي للمركبة (GVW)" },
             { key: "weight_front_axle", label: "الوزن المسموح للمحور الأمامي" },
