@@ -40,6 +40,14 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                 setQuotation(data)
                 setEditablePrice(data.totalAmount.toString())
 
+                // Extract features from specs
+                if (data.vehicle?.specifications) {
+                    const features = data.vehicle.specifications
+                        .filter((s: any) => s.key?.startsWith('feature_') || s.label === 'Feature')
+                        .map((s: any) => s.value)
+                    setFeaturesList(features)
+                }
+
                 // Initialize header data
                 setHeaderData({
                     companyAr: data.customer.company || '............................................',
@@ -82,6 +90,8 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
     if (loading) return <div className="p-8 text-center">جاري تحميل عرض السعر...</div>
     if (!quotation) return <div className="p-8 text-center text-red-600">لم يتم العثور على عرض السعر</div>
 
+    const [featuresList, setFeaturesList] = useState<string[]>([])
+
     // Group specs by category for dynamic rendering
     const getGroupedSpecs = () => {
         if (!quotation?.vehicle?.specifications) return []
@@ -89,8 +99,13 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
         const specs = quotation.vehicle.specifications as any[]
         const groups: { [key: string]: any[] } = {}
 
+        // Filter out features (they will be shown in Options section)
+        const technicalSpecs = specs.filter(spec =>
+            !spec.key?.startsWith('feature_') && spec.label !== 'Feature'
+        )
+
         // Group by category
-        specs.forEach(spec => {
+        technicalSpecs.forEach(spec => {
             const cat = spec.category || 'Other'
             if (!groups[cat]) groups[cat] = []
             groups[cat].push(spec)
@@ -294,7 +309,7 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                 {/* Breaks page if needed, but keeping flow for now */}
 
                 {/* Options Section */}
-                {quotation.vehicle?.features && quotation.vehicle.features.length > 0 && (
+                {(featuresList.length > 0 || (quotation.vehicle?.features && quotation.vehicle.features.length > 0)) && (
                     <div className="mb-6 break-inside-avoid">
                         <div className="text-center text-xl font-bold mb-2 font-serif">
                             الكماليات (Options)
@@ -307,7 +322,7 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                                 </tr>
                             </thead>
                             <tbody>
-                                {quotation.vehicle.features.map((feature: string, i: number) => (
+                                {[...featuresList, ...(quotation.vehicle?.features || [])].map((feature: string, i: number) => (
                                     <tr key={i} className="border-b border-black">
                                         <td className="border-l-2 border-black p-1 text-center font-bold">{feature}</td>
                                         <td className="p-1 text-center font-serif text-lg">√</td>
