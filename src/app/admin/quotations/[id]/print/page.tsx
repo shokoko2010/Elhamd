@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Printer, ArrowRight, Save } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
+import { VEHICLE_SPEC_TEMPLATE } from '@/lib/vehicle-specs'
 
 interface QuotationPrintPageProps {
     params: Promise<{ id: string }>
@@ -154,123 +155,66 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                     <table className="w-full border-2 border-black text-sm">
                         <thead>
                             <tr className="border-b-2 border-black bg-gray-100">
-                                <th className="border-l-2 border-black p-1 w-1/2 text-center">البيان</th>
-                                <th className="p-1 w-1/2 text-center">المواصفات</th>
+                                <th className="border-l-2 border-black p-1 w-1/3 text-center">البيان</th>
+                                <th className="p-1 w-2/3 text-center">المواصفات</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Engine */}
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">المحرك (Engine)</td>
-                                <td className="p-1 text-center" dir="ltr">{getSpec('engine_type') || 'TATA 2.2L DICOR Euro IV Direct Injection'}</td>
-                            </tr>
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">الموديل (Model)</td>
-                                <td className="p-1 text-center" dir="ltr">{getSpec('engine_model') || 'Common Rail Turbocharged'}</td>
-                            </tr>
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">السعة اللترية (Capacity)</td>
-                                <td className="p-1 text-center" dir="ltr">{getSpec('capacity') || '2179 cc'}</td>
-                            </tr>
-                            <tr className="border-b-2 border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">عدد السلندرات (No. of Cylinders)</td>
-                                <td className="p-1 text-center" dir="ltr">{getSpec('cylinders') || '4'}</td>
-                            </tr>
+                            {VEHICLE_SPEC_TEMPLATE.map((group, groupIndex) => {
+                                // Find specs for this group
+                                const groupSpecs = group.items.map(item => {
+                                    const val = quotation.vehicle?.specifications?.find((s: any) => s.key === item.key)?.value;
+                                    return val ? { label: item.label, value: val } : null;
+                                }).filter(Boolean);
 
-                            {/* Power & Torque */}
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">القوة القصوى (Maximum Power)</td>
-                                <td className="p-1 text-center" dir="ltr">{getSpec('max_power') || '150 Hp (110 Kw) @ 4000 rpm'}</td>
-                            </tr>
-                            <tr className="border-b-2 border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">العزم الأقصى (Maximum Torque)</td>
-                                <td className="p-1 text-center" dir="ltr">{getSpec('max_torque') || '320 Nm @ 1500-3000 rpm'}</td>
-                            </tr>
+                                if (groupSpecs.length === 0) return null;
 
-                            {/* Transmission */}
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center row-span-2">ناقل الحركة (Transmission)</td>
-                                <td className="p-1 text-center" dir="ltr">GBS-76-5/4.10 - MK-II-Gearbox with overdrive</td>
-                            </tr>
-                            <tr className="border-b-2 border-black">
-                                <td className="p-1 text-center border-l-2 border-black hidden"></td>
-                                <td className="p-1 text-center" dir="ltr">5F + 1R</td>
-                            </tr>
-
-                            {/* Brakes & Steering */}
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">الفرامل والتوجيه (Brakes & Steering)</td>
-                                <td className="p-1 bg-gray-200"></td>
-                            </tr>
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">نظام المكابح (Brake Type)</td>
-                                <td className="p-1 text-center" dir="ltr">فرامل هيدروليك (Hydraulic brakes)</td>
-                            </tr>
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">نظام التوجيه (Steering)</td>
-                                <td className="p-1 text-center" dir="ltr">مساعد توجيه (باور ستيرنج) هيدروليكي (Integral hydraulic power assisted steering)</td>
-                            </tr>
-
-                            {/* Tires */}
-                            <tr className="border-b-2 border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">العجلات (Tires)</td>
-                                <td className="p-1 text-center" dir="ltr">235 / 70 R16 Tubeless</td>
-                            </tr>
-
-                            {/* Dimensions */}
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">الأبعاد / الأوزان (Dimensions / Weights)</td>
-                                <td className="p-1 bg-gray-200"></td>
-                            </tr>
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">الأبعاد الكلية (Overall Dimensions)</td>
-                                <td className="p-1 text-center" dir="ltr">5312 x 1860 x 1765 mm</td>
-                            </tr>
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">قاعدة العجلات (Wheelbase)</td>
-                                <td className="p-1 text-center" dir="ltr">3170 mm</td>
-                            </tr>
-                            <tr className="border-b border-black">
-                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">الحمولة القصوى (GVW)</td>
-                                <td className="p-1 text-center" dir="ltr">3050 kg</td>
-                            </tr>
+                                return (
+                                    <>
+                                        {/* Category Header */}
+                                        <tr key={`cat-${groupIndex}`} className="border-b border-black bg-gray-200">
+                                            <td colSpan={2} className="p-1 font-bold text-center">{group.category}</td>
+                                        </tr>
+                                        {/* Specs */}
+                                        {groupSpecs.map((spec, index) => (
+                                            <tr key={`${groupIndex}-${index}`} className="border-b border-black">
+                                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">{spec!.label}</td>
+                                                <td className="p-1 text-center" dir="ltr">{spec!.value}</td>
+                                            </tr>
+                                        ))}
+                                    </>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
 
                 {/* Breaks page if needed, but keeping flow for now */}
 
-                {/* Options Table */}
-                <div className="mb-6 break-inside-avoid">
-                    <div className="text-center text-xl font-bold mb-2 font-serif">
-                        الكماليات (Options)
-                    </div>
-                    <table className="w-2/3 mx-auto border-2 border-black text-sm">
-                        <thead>
-                            <tr className="border-b-2 border-black">
-                                <th className="border-l-2 border-black p-1 text-center w-3/4">البند</th>
-                                <th className="p-1 text-center w-1/4">الحالة</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {[
-                                { name: 'تكييف (A/C)', key: 'ac' },
-                                { name: 'سنتر لوك (Central lock)', key: 'central_lock' },
-                                { name: 'زجاج كهربا (Power windows)', key: 'electric_windows' },
-                                { name: 'مرايات كهربا (Electric mirrors)', key: 'electric_mirrors' },
-                                { name: 'ريموت كنترول (Remote control)', key: 'remote' },
-                                { name: 'شاشة تاتش (Touch screen)', key: 'touch_screen' },
-                                { name: 'نظام فرامل (ABS/EBD)', key: 'abs' },
-                                { name: 'وسائد هوائية (Air bags)', key: 'airbags' },
-                            ].map((opt, i) => (
-                                <tr key={i} className="border-b border-black">
-                                    <td className="border-l-2 border-black p-1 text-center font-bold">{opt.name}</td>
-                                    <td className="p-1 text-center font-serif text-lg">√</td> {/* Hardcoded check for demo, real logic: {quotation.vehicle?.features?.includes(opt.key) ? '√' : '-'} */}
+                {/* Options Section */}
+                {quotation.vehicle?.features && quotation.vehicle.features.length > 0 && (
+                    <div className="mb-6 break-inside-avoid">
+                        <div className="text-center text-xl font-bold mb-2 font-serif">
+                            الكماليات (Options)
+                        </div>
+                        <table className="w-2/3 mx-auto border-2 border-black text-sm">
+                            <thead>
+                                <tr className="border-b-2 border-black">
+                                    <th className="border-l-2 border-black p-1 text-center w-3/4">البند</th>
+                                    <th className="p-1 text-center w-1/4">متوفر</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {quotation.vehicle.features.map((feature: string, i: number) => (
+                                    <tr key={i} className="border-b border-black">
+                                        <td className="border-l-2 border-black p-1 text-center font-bold">{feature}</td>
+                                        <td className="p-1 text-center font-serif text-lg">√</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
                 {/* Terms & Conditions Table */}
                 <div className="mb-8 break-inside-avoid">

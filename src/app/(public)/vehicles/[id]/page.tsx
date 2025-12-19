@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { VEHICLE_SPEC_TEMPLATE } from '@/lib/vehicle-specs'
 
 interface VehicleImage {
   id: string
@@ -300,9 +301,8 @@ export default function VehicleDetailsPage() {
                       <button
                         key={image.id}
                         onClick={() => setSelectedImageIndex(index)}
-                        className={`aspect-video bg-gray-100 rounded overflow-hidden border-2 transition-colors relative ${
-                          selectedImageIndex === index ? 'border-blue-500' : 'border-transparent hover:border-gray-300'
-                        }`}
+                        className={`aspect-video bg-gray-100 rounded overflow-hidden border-2 transition-colors relative ${selectedImageIndex === index ? 'border-blue-500' : 'border-transparent hover:border-gray-300'
+                          }`}
                       >
                         <Image
                           src={image.imageUrl}
@@ -440,26 +440,61 @@ export default function VehicleDetailsPage() {
             </TabsList>
 
             <TabsContent value="specifications" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>المواصفات التفصيلية</CardTitle>
-                  <CardDescription>تعرف على أهم المواصفات الفنية للمركبة</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {specificationList.length === 0 ? (
-                    <p className="text-gray-500">لا تتوفر مواصفات تفصيلية لهذه المركبة حالياً.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {specificationList.map((spec) => (
-                        <div key={spec.id} className="flex justify-between py-2 border-b border-gray-100">
-                          <span className="font-medium text-gray-700">{spec.label}</span>
-                          <span className="text-gray-600 text-left max-w-[60%]">{spec.value}</span>
+              <div className="space-y-6">
+                {VEHICLE_SPEC_TEMPLATE.map((group, index) => {
+                  const groupSpecs = group.items.map(item => {
+                    const val = specificationList.find(s => s.key === item.key)?.value;
+                    return val ? { label: item.label, value: val } : null;
+                  }).filter(Boolean);
+
+                  if (groupSpecs.length === 0) return null;
+
+                  return (
+                    <Card key={index}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">{group.category}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                          {groupSpecs.map((spec, i) => (
+                            <div key={i} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
+                              <span className="font-medium text-gray-700">{spec!.label}</span>
+                              <span className="text-gray-900 font-semibold text-left" dir="ltr">{spec!.value}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+
+                {/* Catch-all for specs not in the template */}
+                {specificationList.some(s => !VEHICLE_SPEC_TEMPLATE.some(g => g.items.some(i => i.key === s.key))) && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">مواصفات أخرى</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        {specificationList.filter(s => !VEHICLE_SPEC_TEMPLATE.some(g => g.items.some(i => i.key === s.key))).map((spec, i) => (
+                          <div key={i} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
+                            <span className="font-medium text-gray-700">{spec.label}</span>
+                            <span className="text-gray-900 font-semibold text-left">{spec.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {specificationList.length === 0 && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <p className="text-gray-500 text-center">لا تتوفر مواصفات تفصيلية لهذه المركبة حالياً.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="features" className="mt-6">

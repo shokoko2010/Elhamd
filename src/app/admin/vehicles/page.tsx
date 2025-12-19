@@ -39,6 +39,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { VEHICLE_SPEC_TEMPLATE } from '@/lib/vehicle-specs'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 interface VehicleImageFormData {
   id?: string
@@ -113,7 +120,7 @@ interface VehicleFormState {
   featured: boolean
   images: VehicleImageFormData[]
   features: string[]
-  specifications: { key: string; label: string; value: string; category: string }[]
+  specifications: { id: string; key: string; label: string; value: string; category: string }[]
 }
 
 const VEHICLE_CATEGORIES = [
@@ -141,26 +148,38 @@ const TRANSMISSION_TYPES = [
   { value: 'SEMI_AUTOMATIC', label: 'شبه أوتوماتيك' }
 ]
 
-const createInitialFormState = (): VehicleFormState => ({
-  make: 'Tata Motors',
-  model: '',
-  year: new Date().getFullYear(),
-  price: 0,
-  stockNumber: '',
-  stockQuantity: 0,
-  vin: '',
-  description: '',
-  category: 'SEDAN',
-  fuelType: 'PETROL',
-  transmission: 'MANUAL',
-  mileage: 0,
-  color: '',
-  status: 'AVAILABLE',
-  featured: false,
-  images: [],
-  features: [],
-  specifications: []
-})
+const createInitialFormState = (): VehicleFormState => {
+  const initialSpecs = VEHICLE_SPEC_TEMPLATE.flatMap(group =>
+    group.items.map(item => ({
+      id: Math.random().toString(36).substr(2, 9),
+      key: item.key,
+      label: item.label,
+      value: '',
+      category: group.category
+    }))
+  )
+
+  return {
+    make: 'Tata Motors',
+    model: '',
+    year: new Date().getFullYear(),
+    price: 0,
+    stockNumber: '',
+    stockQuantity: 0,
+    vin: '',
+    description: '',
+    category: 'SEDAN',
+    fuelType: 'PETROL',
+    transmission: 'MANUAL',
+    mileage: 0,
+    color: '',
+    status: 'AVAILABLE',
+    featured: false,
+    images: [],
+    features: [],
+    specifications: initialSpecs
+  }
+}
 
 const SPEC_CATEGORIES = [
   { value: 'ENGINE', label: 'المحرك والأداء' },
@@ -361,7 +380,9 @@ export default function AdminVehiclesPage() {
     return {
       ...rest,
       features: formData.features,
-      specifications: formData.specifications,
+      specifications: formData.specifications
+        .filter(spec => spec.value && spec.value.trim() !== '')
+        .map(({ key, label, value, category }) => ({ key, label, value, category })),
       images: normalized.length
         ? normalized.map((image, index) => ({
           imageUrl: image.imageUrl,
@@ -513,6 +534,8 @@ export default function AdminVehiclesPage() {
     }))
   }
 
+
+
   const renderFeatureManager = () => (
     <div className="space-y-4 rounded-lg border p-4 bg-slate-50">
       <div className="flex items-end justify-between gap-4">
@@ -547,82 +570,132 @@ export default function AdminVehiclesPage() {
     </div>
   )
 
-  const renderSpecificationManager = () => (
-    <div className="space-y-4 rounded-lg border p-4 bg-slate-50">
-      <div className="space-y-2">
-        <Label>إضافة مواصفات فنية</Label>
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
-          <div className="md:col-span-3 space-y-1">
-            <Label className="text-xs text-muted-foreground">التصنيف</Label>
-            <Select value={specInput.category} onValueChange={(val) => setSpecInput(prev => ({ ...prev, category: val }))}>
-              <SelectTrigger className="bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-zinc-950">
-                {SPEC_CATEGORIES.map(cat => (
-                  <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="md:col-span-3 space-y-1">
-            <Label className="text-xs text-muted-foreground">المفتاح (Technical Key)</Label>
-            <Input className="bg-white" value={specInput.key} onChange={(e) => setSpecInput(prev => ({ ...prev, key: e.target.value }))} placeholder="engine_cc" dir="ltr" />
-          </div>
-          <div className="md:col-span-3 space-y-1">
-            <Label className="text-xs text-muted-foreground">التسمية (العربية)</Label>
-            <Input className="bg-white" value={specInput.label} onChange={(e) => setSpecInput(prev => ({ ...prev, label: e.target.value }))} placeholder="سعة المحرك" />
-          </div>
-          <div className="md:col-span-2 space-y-1">
-            <Label className="text-xs text-muted-foreground">القيمة</Label>
-            <Input className="bg-white" value={specInput.value} onChange={(e) => setSpecInput(prev => ({ ...prev, value: e.target.value }))} placeholder="1.6 لتر" />
-          </div>
-          <div className="md:col-span-1">
-            <Button type="button" className="w-full" onClick={handleAddSpecification}>
-              <Plus className="h-4 w-4" />
+  const renderSpecificationManager = () => {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-semibold">المواصفات الفنية</Label>
+        </div>
+
+        <Accordion type="multiple" defaultValue={[VEHICLE_SPEC_TEMPLATE[0].category]} className="w-full">
+          {VEHICLE_SPEC_TEMPLATE.map((categoryGroup, index) => (
+            <AccordionItem key={index} value={categoryGroup.category}>
+              <AccordionTrigger className="text-lg font-bold px-2 bg-slate-50 rounded-md hover:no-underline hover:bg-slate-100">
+                {categoryGroup.category}
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 px-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {categoryGroup.items.map((item) => {
+                    const existingSpec = formData.specifications.find(s => s.key === item.key);
+                    return (
+                      <div key={item.key} className="space-y-2">
+                        <Label htmlFor={`spec-${item.key}`} className="text-sm text-gray-600">
+                          {item.label}
+                        </Label>
+                        <Input
+                          id={`spec-${item.key}`}
+                          value={existingSpec?.value || ''}
+                          placeholder={`أدخل ${item.label}`}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setFormData(prev => {
+                              // Remove existing entry for this key if it exists
+                              const filtered = prev.specifications.filter(s => s.key !== item.key);
+                              if (!newValue) return { ...prev, specifications: filtered };
+
+                              // Add updated entry
+                              return {
+                                ...prev,
+                                specifications: [...filtered, {
+                                  id: existingSpec?.id || Math.random().toString(36).substr(2, 9),
+                                  key: item.key,
+                                  label: item.label,
+                                  value: newValue,
+                                  category: categoryGroup.category
+                                }]
+                              };
+                            });
+                          }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+
+        {/* Fallback for custom specs that don't fit the template */}
+        <div className="mt-8 pt-6 border-t">
+          <Label className="text-base font-semibold block mb-4">مواصفات إضافية (أخرى)</Label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Input
+                placeholder="اسم المواصفة (مثال: لون الفرش)"
+                id="custom-spec-label"
+                value={specInput.label}
+                onChange={(e) => setSpecInput(prev => ({ ...prev, label: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Input
+                placeholder="القيمة (مثال: بيج)"
+                id="custom-spec-value"
+                value={specInput.value}
+                onChange={(e) => setSpecInput(prev => ({ ...prev, value: e.target.value }))}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (specInput.label && specInput.value) {
+                  const randomKey = `custom_${Date.now()}`;
+                  setFormData(prev => ({
+                    ...prev,
+                    specifications: [...prev.specifications, {
+                      id: Math.random().toString(36).substr(2, 9),
+                      key: randomKey,
+                      label: specInput.label,
+                      value: specInput.value,
+                      category: 'أخرى (Other)'
+                    }]
+                  }));
+                  setSpecInput({ key: '', label: '', value: '', category: '' });
+                }
+              }}
+            >
+              إضافة مواصفة خاصة
             </Button>
+          </div>
+
+          {/* List custom specs */}
+          <div className="mt-4 space-y-2">
+            {formData.specifications.filter(s => !VEHICLE_SPEC_TEMPLATE.some(cat => cat.items.some(i => i.key === s.key))).map((spec, idx) => (
+              <div key={idx} className="flex items-center justify-between bg-slate-50 p-2 rounded border">
+                <div className="flex gap-2 text-sm">
+                  <span className="font-bold">{spec.label}:</span>
+                  <span>{spec.value}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-red-500"
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    specifications: prev.specifications.filter(s => s.id !== spec.id)
+                  }))}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-
-      <div className="rounded-md border bg-white overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50 hover:bg-slate-50">
-              <TableHead className="text-right">التصنيف</TableHead>
-              <TableHead className="text-right">التسمية</TableHead>
-              <TableHead className="text-right">القيمة</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {formData.specifications.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                  لا توجد مواصفات مضافة بعد
-                </TableCell>
-              </TableRow>
-            ) : (
-              formData.specifications.map((spec, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Badge variant="outline">{SPEC_CATEGORIES.find(c => c.value === spec.category)?.label || spec.category}</Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">{spec.label}</TableCell>
-                  <TableCell className="text-muted-foreground">{spec.value}</TableCell>
-                  <TableCell>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemoveSpecification(index)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  )
+    )
+  }
 
   // Fetch vehicles
   const fetchVehicles = async () => {
@@ -851,6 +924,7 @@ export default function AdminVehiclesPage() {
       features: Array.isArray(vehicle.features) ? vehicle.features : [],
       specifications: Array.isArray(vehicle.specifications)
         ? vehicle.specifications.map(spec => ({
+          id: spec.id,
           key: spec.key,
           label: spec.label,
           value: spec.value,
