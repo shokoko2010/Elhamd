@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Car } from 'lucide-react'
+import { Car, Fuel, Settings, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
-import { AdvancedPublicSearch } from '@/components/search/AdvancedPublicSearch'
+import Image from 'next/image'
+import { cn } from '@/lib/utils'
 
 interface Vehicle {
   id: string
@@ -31,43 +32,9 @@ interface Filters {
   sortBy: string
 }
 
-type AdvancedSearchResult = {
-  id: string
-  title: string
-  description: string
-  category: string
-  relevanceScore: number
-  metadata: {
-    year: number
-    price: number
-    status: string
-    mileage?: number
-    fuelType: string
-    transmission: string
-    primaryImage?: string | null
-  }
-}
-
-type AdvancedSearchPayload = {
-  results: AdvancedSearchResult[]
-  query: string
-  pagination: {
-    total: number
-    page: number
-    limit: number
-    totalPages: number
-  }
-  // Additional filter metadata from advanced search component (unused for now)
-  filters?: Record<string, unknown>
-}
-
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
-  const [advancedVehicles, setAdvancedVehicles] = useState<Vehicle[]>([])
-  const [advancedSearchActive, setAdvancedSearchActive] = useState(false)
-  const [advancedResultInfo, setAdvancedResultInfo] = useState<{ total: number; query: string } | null>(null)
   const [filters, setFilters] = useState<Filters>({
     category: 'all',
     fuelType: 'all',
@@ -75,8 +42,24 @@ export default function VehiclesPage() {
     sortBy: 'featured'
   })
 
+  // Derived state for filtering
+  const filteredVehicles = vehicles.filter(vehicle => {
+    if (filters.category !== 'all' && vehicle.category !== filters.category) return false
+    if (filters.fuelType !== 'all' && vehicle.fuelType !== filters.fuelType) return false
+    if (filters.transmission !== 'all' && vehicle.transmission !== filters.transmission) return false
+    return true
+  }).sort((a, b) => {
+    switch (filters.sortBy) {
+      case 'price-asc': return a.price - b.price
+      case 'price-desc': return b.price - a.price
+      case 'year-desc': return b.year - a.year
+      case 'year-asc': return a.year - b.year
+      default: return (b.status === 'FEATURED' ? 1 : 0) - (a.status === 'FEATURED' ? 1 : 0)
+    }
+  })
+
   useEffect(() => {
-    const loadVehicles = async () => {
+    async function loadVehicles() {
       setLoading(true)
       try {
         const response = await fetch('/api/public/vehicles')
@@ -86,351 +69,187 @@ export default function VehiclesPage() {
         }
       } catch (error) {
         console.error('Error fetching vehicles:', error)
-        setVehicles([])
       } finally {
         setLoading(false)
       }
     }
-
     loadVehicles()
   }, [])
-
-  const mapAdvancedResultToVehicle = (result: AdvancedSearchResult): Vehicle => {
-    const titleParts = result.title.split(' ')
-    const make = titleParts[0] || result.title
-    const model = titleParts.slice(1).join(' ') || result.title
-    const primaryImage = result.metadata.primaryImage
-
-    return {
-      id: result.id,
-      make,
-      model,
-      year: result.metadata.year,
-      price: result.metadata.price,
-      category: result.category,
-      fuelType: result.metadata.fuelType,
-      transmission: result.metadata.transmission,
-      mileage: result.metadata.mileage,
-      status: result.metadata.status,
-      images: [
-        {
-          imageUrl: primaryImage || '/uploads/vehicles/1/nexon-front-new.jpg',
-          isPrimary: true
-        }
-      ]
-    }
-  }
-
-  const clearAdvancedSearch = () => {
-    setAdvancedVehicles([])
-    setAdvancedSearchActive(false)
-    setAdvancedResultInfo(null)
-  }
-
-  const handleAdvancedSearchComplete = (payload: AdvancedSearchPayload) => {
-    if (!payload.query) {
-      clearAdvancedSearch()
-      return
-    }
-
-    const mapped = payload.results.map(mapAdvancedResultToVehicle)
-    setAdvancedVehicles(mapped)
-    setAdvancedSearchActive(true)
-    setAdvancedResultInfo({ total: payload.pagination.total, query: payload.query })
-  }
-
-  useEffect(() => {
-    const baseVehicles = advancedSearchActive ? advancedVehicles : vehicles
-    let filtered = [...baseVehicles]
-
-    // Apply category filter
-    if (filters.category !== 'all') {
-      filtered = filtered.filter(vehicle => vehicle.category === filters.category)
-    }
-
-    // Apply fuel type filter
-    if (filters.fuelType !== 'all') {
-      filtered = filtered.filter(vehicle => vehicle.fuelType === filters.fuelType)
-    }
-
-    // Apply transmission filter
-    if (filters.transmission !== 'all') {
-      filtered = filtered.filter(vehicle => vehicle.transmission === filters.transmission)
-    }
-
-    // Sort vehicles
-    filtered.sort((a, b) => {
-      switch (filters.sortBy) {
-        case 'price-asc':
-          return a.price - b.price
-        case 'price-desc':
-          return b.price - a.price
-        case 'year-desc':
-          return b.year - a.year
-        case 'year-asc':
-          return a.year - b.year
-        case 'featured':
-          return (b.status === 'FEATURED' ? 1 : 0) - (a.status === 'FEATURED' ? 1 : 0)
-        default:
-          return 0
-      }
-    })
-
-    setFilteredVehicles(filtered)
-  }, [vehicles, filters, advancedVehicles, advancedSearchActive])
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ar-EG', {
-      style: 'currency',
-      currency: 'EGP',
-      minimumFractionDigits: 0
-    }).format(price)
-  }
 
   const updateFilter = (key: keyof Filters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
 
   const clearFilters = () => {
-    setFilters({
-      category: 'all',
-      fuelType: 'all',
-      transmission: 'all',
-      sortBy: 'featured'
-    })
-    clearAdvancedSearch()
+    setFilters({ category: 'all', fuelType: 'all', transmission: 'all', sortBy: 'featured' })
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ar-EG', {
+      style: 'currency',
+      currency: 'EGP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">جاري تحميل المركبات...</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-gray-500 font-medium animate-pulse">جاري تحميل أسطول السيارات...</p>
       </div>
     )
   }
 
-  const categoryLabels: Record<string, string> = {
-    SEDAN: 'سيدان',
-    SUV: 'دفع رباعي',
-    HATCHBACK: 'هاتشباك',
-    TRUCK: 'شاحنة',
-    VAN: 'فان',
-    COMMERCIAL: 'تجارية',
-    BUS: 'حافلة',
-    PICKUP: 'بيك أب'
-  }
-
-  const getCategoryLabel = (category: string) => categoryLabels[category] || category
-
-  const fuelTypeLabels: Record<string, string> = {
-    PETROL: 'بنزين',
-    DIESEL: 'ديزل',
-    ELECTRIC: 'كهربائي',
-    HYBRID: 'هجين',
-    CNG: 'غاز طبيعي'
-  }
-
-  const getFuelTypeLabel = (fuelType: string) => fuelTypeLabels[fuelType] || fuelType
-
-  const transmissionLabels: Record<string, string> = {
-    MANUAL: 'يدوي',
-    AUTOMATIC: 'أوتوماتيك',
-    CVT: 'ناقل حركة متغير'
-  }
-
-  const getTransmissionLabel = (transmission: string) => transmissionLabels[transmission] || transmission
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Page Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div className="min-h-screen bg-[#F8F9FA] pb-20">
+      {/* Search Header */}
+      <div className="bg-white border-b sticky top-0 z-30 shadow-sm backdrop-blur-md bg-white/90">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">المركبات</h1>
-              <p className="text-gray-600 mt-1">ابحث عن سيارتك Tata المثالية</p>
+              <h1 className="text-2xl font-bold text-gray-900">أسطول السيارات</h1>
+              <p className="text-sm text-gray-500">اختر من بين تشكيلتنا المميزة من سيارات تاتا</p>
             </div>
-            <div className="mt-4 md:mt-0">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <span>
-                  {advancedSearchActive && advancedResultInfo
-                    ? `تم العثور على ${advancedResultInfo.total} مركبة لبحث "${advancedResultInfo.query}"`
-                    : `تم العثور على ${filteredVehicles.length} مركبة`}
-                </span>
-                {advancedSearchActive && (
-                  <Button variant="ghost" size="sm" onClick={clearAdvancedSearch}>
-                    عرض كل المركبات
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-6 space-y-6">
-          <div className="rounded-lg border bg-gray-50 p-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">البحث المتقدم</h2>
-                <p className="text-sm text-gray-600">استخدم الفلاتر الذكية للحصول على نتائج دقيقة من قاعدة البيانات</p>
-              </div>
-              {advancedSearchActive && advancedResultInfo && (
-                <div className="text-sm text-gray-600">
-                  عرض نتائج البحث المتقدم
-                </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <FilterSelect
+                value={filters.category}
+                onChange={(v) => updateFilter('category', v)}
+                placeholder="الفئة"
+                options={[
+                  { value: 'all', label: 'الكل' },
+                  { value: 'TRUCK', label: 'شاحنات' },
+                  { value: 'PICKUP', label: 'بيك أب' },
+                  { value: 'BUS', label: 'حافلات' },
+                  { value: 'VAN', label: 'فان' },
+                  { value: 'SEDAN', label: 'سيدان' },
+                ]}
+              />
+              <FilterSelect
+                value={filters.fuelType}
+                onChange={(v) => updateFilter('fuelType', v)}
+                placeholder="الوقود"
+                options={[
+                  { value: 'all', label: 'الكل' },
+                  { value: 'DIESEL', label: 'ديزل' },
+                  { value: 'PETROL', label: 'بنزين' },
+                ]}
+              />
+              <FilterSelect
+                value={filters.sortBy}
+                onChange={(v) => updateFilter('sortBy', v)}
+                placeholder="ترتيب"
+                options={[
+                  { value: 'featured', label: 'المميزة' },
+                  { value: 'price-asc', label: 'الأقل سعراً' },
+                  { value: 'price-desc', label: 'الأعلى سعراً' },
+                  { value: 'year-desc', label: 'الأحدث موديلاً' },
+                ]}
+              />
+              {(filters.category !== 'all' || filters.fuelType !== 'all') && (
+                <Button variant="ghost" size="icon" onClick={clearFilters} title="مسح الفلاتر">
+                  <RotateCcw className="h-4 w-4 text-gray-500" />
+                </Button>
               )}
             </div>
-            <AdvancedPublicSearch
-              showResults={false}
-              onSearchComplete={({ results, query, pagination }) =>
-                handleAdvancedSearchComplete({ results, query, pagination })
-              }
-              onClear={clearAdvancedSearch}
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Select value={filters.category} onValueChange={(value) => updateFilter('category', value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="SEDAN">سيدان</SelectItem>
-                <SelectItem value="SUV">دفع رباعي</SelectItem>
-                <SelectItem value="HATCHBACK">هاتشباك</SelectItem>
-                <SelectItem value="PICKUP">بيك أب</SelectItem>
-                <SelectItem value="TRUCK">شاحنة</SelectItem>
-                <SelectItem value="VAN">فان</SelectItem>
-                <SelectItem value="BUS">حافلة</SelectItem>
-                <SelectItem value="COMMERCIAL">تجارية</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.fuelType} onValueChange={(value) => updateFilter('fuelType', value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="PETROL">بنزين</SelectItem>
-                <SelectItem value="DIESEL">ديزل</SelectItem>
-                <SelectItem value="ELECTRIC">كهربائي</SelectItem>
-                <SelectItem value="HYBRID">هجين</SelectItem>
-                <SelectItem value="CNG">غاز طبيعي</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.transmission} onValueChange={(value) => updateFilter('transmission', value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="MANUAL">يدوي</SelectItem>
-                <SelectItem value="AUTOMATIC">أوتوماتيك</SelectItem>
-                <SelectItem value="CVT">ناقل حركة متغير</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.sortBy} onValueChange={(value) => updateFilter('sortBy', value)}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="featured">المميزة</SelectItem>
-                <SelectItem value="price-asc">السعر: الأقل</SelectItem>
-                <SelectItem value="price-desc">السعر: الأعلى</SelectItem>
-                <SelectItem value="year-desc">الأحدث</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline" onClick={clearFilters}>
-              مسح الفلاتر
-            </Button>
           </div>
         </div>
       </div>
 
-      {/* Vehicle Grid */}
+      {/* Grid */}
       <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <span className="text-sm font-medium text-gray-500">
+            {filteredVehicles.length} مركبة متوفرة
+          </span>
+        </div>
+
         {filteredVehicles.length === 0 ? (
-          <div className="text-center py-12">
-            <Car className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {advancedSearchActive ? 'لا توجد نتائج للبحث المتقدم' : 'لا توجد مركبات'}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {advancedSearchActive && advancedResultInfo
-                ? `لم يتم العثور على مركبات تطابق "${advancedResultInfo.query}"`
-                : 'لم يتم العثور على مركبات تطابق معايير البحث الخاصة بك'}
-            </p>
-            {advancedSearchActive ? (
-              <Button onClick={clearAdvancedSearch} variant="outline">
-                عرض كل المركبات
-              </Button>
-            ) : (
-              <Button onClick={clearFilters} variant="outline">
-                مسح الفلاتر
-              </Button>
-            )}
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="bg-gray-100 p-6 rounded-full mb-4">
+              <Car className="h-10 w-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">لا توجد نتائج</h3>
+            <p className="text-gray-500 mt-2 max-w-md">لم نتمكن من العثور على مركبات تطابق معايير البحث الحالية. جرب تغيير الفلاتر.</p>
+            <Button variant="outline" className="mt-6" onClick={clearFilters}>مسح جميع الفلاتر</Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredVehicles.map((vehicle) => (
-              <Card key={vehicle.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="h-48 bg-gray-200 relative">
-                  <img
-                    src={vehicle.images[0]?.imageUrl || '/uploads/vehicles/1/nexon-front-new.jpg'}
-                    alt={`${vehicle.make} ${vehicle.model}`}
-                    className="w-full h-full object-cover"
-                  />
-                  <Badge className={`absolute top-2 right-2 text-xs z-10 ${
-                    vehicle.status === 'AVAILABLE' ? 'bg-green-500' : 
-                    vehicle.status === 'SOLD' ? 'bg-red-500' : 'bg-yellow-500'
-                  }`}>
-                    {vehicle.status === 'AVAILABLE' ? 'متاحة' : vehicle.status === 'SOLD' ? 'مباعة' : 'محجوزة'}
-                  </Badge>
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="text-lg font-semibold">{vehicle.make} {vehicle.model}</h3>
-                      <p className="text-sm text-gray-600">{vehicle.year}</p>
+              <Link href={`/vehicles/${vehicle.id}`} key={vehicle.id} className="group">
+                <Card className="h-full border-0 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden bg-white ring-1 ring-gray-100 group-hover:ring-primary/20">
+                  {/* Image Area */}
+                  <div className="aspect-[4/3] relative bg-gray-200 overflow-hidden">
+                    <Image
+                      src={vehicle.images[0]?.imageUrl || '/placeholder-car.jpg'}
+                      alt={`${vehicle.make} ${vehicle.model}`}
+                      fill
+                      className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
+
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      <Badge className={cn(
+                        "backdrop-blur-md shadow-sm border-0 font-bold",
+                        vehicle.status === 'AVAILABLE' ? "bg-green-500/90 text-white" : "bg-gray-900/90 text-white"
+                      )}>
+                        {vehicle.status === 'AVAILABLE' ? 'متاحة' : vehicle.status === 'SOLD' ? 'مباعة' : 'محجوزة'}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-xs">{getCategoryLabel(vehicle.category)}</Badge>
+
+                    <div className="absolute bottom-3 right-3 left-3 text-white">
+                      <h3 className="text-lg font-bold leading-tight drop-shadow-md">{vehicle.make} {vehicle.model}</h3>
+                      <p className="text-sm opacity-90 drop-shadow-sm">{vehicle.year} • {vehicle.category}</p>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    <Badge variant="secondary" className="text-xs">{getFuelTypeLabel(vehicle.fuelType)}</Badge>
-                    <Badge variant="secondary" className="text-xs">{getTransmissionLabel(vehicle.transmission)}</Badge>
-                    {vehicle.color && (
-                      <Badge variant="secondary" className="text-xs">{vehicle.color}</Badge>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-xl font-bold text-blue-900">
-                      {formatPrice(vehicle.price)}
-                    </span>
-                  </div>
-                  <Link href={`/vehicles/${vehicle.id}`}>
-                    <Button className="w-full">
-                      التفاصيل
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+
+                  {/* Content Area */}
+                  <CardContent className="p-4 pt-5">
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                      <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-md">
+                        <Fuel className="h-3.5 w-3.5" />
+                        <span>{vehicle.fuelType}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-md">
+                        <Settings className="h-3.5 w-3.5" />
+                        <span>{vehicle.transmission}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                      <div className="text-primary font-bold text-xl tracking-tight">
+                        {formatPrice(vehicle.price)}
+                      </div>
+                      <Button size="sm" className="rounded-full px-5 bg-primary hover:bg-primary/90 text-white">
+                        التفاصيل
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+function FilterSelect({ value, onChange, options, placeholder }: { value: string, onChange: (val: string) => void, options: { value: string, label: string }[], placeholder: string }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-[130px] h-9 text-xs font-medium bg-gray-50 border-gray-200 focus:ring-primary/20">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value} className="text-xs">
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

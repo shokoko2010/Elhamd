@@ -313,7 +313,7 @@ export default function VehicleDetailsPage() {
             <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+                  <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#0A1A3F] to-[#2563eb] leading-tight">
                     {vehicle.make} {vehicle.model} <span className="text-gray-400 font-light">{vehicle.year}</span>
                   </h1>
                   <div className="flex flex-wrap gap-2 mt-3">
@@ -396,7 +396,7 @@ export default function VehicleDetailsPage() {
             <Card className="border-0 shadow-lg ring-1 ring-gray-200 overflow-hidden">
               <div className="bg-primary/5 p-6 text-center border-b border-primary/10">
                 <p className="text-gray-500 text-sm mb-1 font-medium">السعر المطلوب</p>
-                <div className="text-4xl font-extrabold text-primary tracking-tight">
+                <div className="text-4xl font-extrabold text-[#0A1A3F] tracking-tight">
                   {formatPrice(priceToDisplay, currencyToDisplay)}
                 </div>
                 {vehicle.pricing?.hasDiscount && (
@@ -407,12 +407,12 @@ export default function VehicleDetailsPage() {
               </div>
 
               <CardContent className="p-6 space-y-4">
-                <Button size="lg" className="w-full text-lg h-12 shadow-md shadow-primary/20" onClick={() => setShowContactDialog(true)}>
+                <Button size="lg" className="w-full text-lg h-12 shadow-md hover:shadow-xl transition-all duration-300 bg-[#C1272D] hover:bg-[#a41f25] text-white" onClick={() => setShowContactDialog(true)}>
                   <Phone className="h-5 w-5 ml-2" />
                   تواصل معنا الآن
                 </Button>
                 <Link href={`/test-drive?vehicle=${vehicle.id}`} className="block">
-                  <Button size="lg" variant="outline" className="w-full h-12 border-2 hover:bg-gray-50">
+                  <Button size="lg" variant="outline" className="w-full h-12 border-2 border-[#0A1A3F] text-[#0A1A3F] hover:bg-[#0A1A3F] hover:text-white transition-all duration-300">
                     <Calendar className="h-5 w-5 ml-2" />
                     حجز تجربة قيادة
                   </Button>

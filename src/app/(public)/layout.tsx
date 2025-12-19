@@ -15,7 +15,7 @@ export default function PublicLayout({
   return (
     <>
       <Navbar />
-      <main className={isHome ? '' : 'pt-20 md:pt-24 lg:pt-28'}>
+      <main className={isHome ? '' : 'pt-4 md:pt-8'}>
         {children}
       </main>
       <Footer />
