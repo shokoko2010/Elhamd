@@ -28,6 +28,8 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
         mrEn: '............................................'
     })
 
+    const [featuresList, setFeaturesList] = useState<string[]>([])
+
     useEffect(() => {
         fetchQuotation()
     }, [])
@@ -90,7 +92,7 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
     if (loading) return <div className="p-8 text-center">جاري تحميل عرض السعر...</div>
     if (!quotation) return <div className="p-8 text-center text-red-600">لم يتم العثور على عرض السعر</div>
 
-    const [featuresList, setFeaturesList] = useState<string[]>([])
+
 
     // Group specs by category for dynamic rendering
     const getGroupedSpecs = () => {
