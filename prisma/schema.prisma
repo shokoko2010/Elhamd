@@ -3777,3 +3777,34 @@ enum PopupPosition {
   BOTTOM_CENTER
   BOTTOM_RIGHT
 }
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  type      ContactType   @default(CONTACT_US)
+  status    ContactStatus @default(NEW)
+  metadata  Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("contact_messages")
+}
+
+enum ContactType {
+  CONTACT_US
+  INQUIRY
+  COMPLAINT
+  SUGGESTION
+  OTHER
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  ARCHIVED
+  REPLIED
+}

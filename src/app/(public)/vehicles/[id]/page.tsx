@@ -558,15 +558,61 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
     phone: '',
     message: ''
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Contact form submission:', formData, 'for vehicle:', vehicle.id)
-    onSuccess()
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const response = await fetch('/api/contact/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          subject: `استفسار عن مركبة: ${vehicle.make} ${vehicle.model}`,
+          department: 'sales',
+          metadata: {
+            vehicleId: vehicle.id,
+            vehicleName: `${vehicle.make} ${vehicle.model}`,
+            vehicleStock: vehicle.stockNumber
+          }
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'حدث خطأ أثناء الإرسال')
+      }
+
+      onSuccess()
+      setFormData({ name: '', email: '', phone: '', message: '' })
+
+      // Explicitly toast success if possible, or rely on parent handling
+      // But parent just closes dialog. We could add a simple alert or use a toast hook if available here.
+      // Since this is a simple form, closing the dialog (onSuccess) is usually enough feedback if followed by a global toast.
+      // But let's verify if toast is available. The parent uses `useToast`? No, parent doesn't.
+      // We'll leave it to onSuccess to close, maybe add a native alert or assume user sees it close.
+      alert('تم إرسال طلبك بنجاح! سنتواصل معك قريباً.')
+
+    } catch (error: any) {
+      console.error('Error submitting form:', error)
+      setSubmitError(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-right">
+      {submitError && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+          {submitError}
+        </div>
+      )}
       <div className="space-y-1">
         <Label htmlFor="name">الاسم الكامل</Label>
         <Input
@@ -576,6 +622,7 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           required
           placeholder="أدخل اسمك"
           className="bg-gray-50"
+          disabled={isSubmitting}
         />
       </div>
       <div className="space-y-1">
@@ -588,6 +635,7 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           required
           placeholder="name@example.com"
           className="bg-gray-50"
+          disabled={isSubmitting}
         />
       </div>
       <div className="space-y-1">
@@ -599,6 +647,7 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           required
           placeholder="مثال: 01012345678"
           className="bg-gray-50"
+          disabled={isSubmitting}
         />
       </div>
       <div className="space-y-1">
@@ -610,10 +659,11 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           placeholder={`أرغب في معرفة المزيد عن ${vehicle.make} ${vehicle.model}...`}
           required
           className="min-h-[120px] bg-gray-50"
+          disabled={isSubmitting}
         />
       </div>
-      <Button type="submit" className="w-full text-lg h-12">
-        إرسال الطلب
+      <Button type="submit" className="w-full text-lg h-12" disabled={isSubmitting}>
+        {isSubmitting ? 'جاري الإرسال...' : 'إرسال الطلب'}
       </Button>
     </form>
   )

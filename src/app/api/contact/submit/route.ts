@@ -26,16 +26,16 @@ export const POST = apiMiddleware.withPublicAuth(
     }
 
     // Save to database
-    const contactSubmission = await db.contactSubmission.create({
+    const contactSubmission = await db.contactMessage.create({
       data: {
         name,
         email,
         phone,
         subject: subject || 'استفسار عام',
         message,
-        department: department || 'general',
-        status: 'PENDING',
-        submittedAt: new Date()
+        type: department === 'sales' ? 'INQUIRY' : 'CONTACT_US',
+        status: 'NEW',
+        metadata: { department }
       }
     })
 
