@@ -309,11 +309,11 @@ export default function TestDrivePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
-        <div className="container mx-auto px-4 py-12">
+      <div className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-8 md:py-12">
           <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4">حجز تجربة قيادة</h1>
-            <p className="text-xl text-blue-100/90">
+            <h1 className="text-3xl md:text-4xl font-bold mb-4 text-[#0A1A3F]">حجز تجربة قيادة</h1>
+            <p className="text-lg md:text-xl text-gray-600">
               جرب بنفسك سيارتك المفضلة من تاتا
             </p>
           </div>
