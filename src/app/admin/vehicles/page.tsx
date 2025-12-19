@@ -12,6 +12,20 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import {
   Car, Plus, Edit, Trash2, Search, Filter, Eye,
   MoreHorizontal, X, Check, AlertCircle, Image as ImageIcon,
   Calendar, DollarSign, Settings, Package, Loader2, RefreshCw
@@ -500,73 +514,112 @@ export default function AdminVehiclesPage() {
   }
 
   const renderFeatureManager = () => (
-    <div className="space-y-3">
-      <Label>المزايا (Features)</Label>
-      <div className="flex gap-2">
-        <Input
-          placeholder="أدخل ميزة جديدة (مثال: نظام صوتي JBL)"
-          value={featureInput}
-          onChange={(e) => setFeatureInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
-        />
-        <Button type="button" onClick={handleAddFeature}>إضافة</Button>
+    <div className="space-y-4 rounded-lg border p-4 bg-slate-50">
+      <div className="flex items-end justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <Label>إضافة ميزة جديدة</Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="أدخل ميزة (مثال: فتحة سقف بانوراما)"
+              value={featureInput}
+              onChange={(e) => setFeatureInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
+            />
+            <Button type="button" onClick={handleAddFeature}>إضافة</Button>
+          </div>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2 mt-2">
-        {formData.features.map((feature, index) => (
-          <Badge key={index} variant="secondary" className="flex items-center gap-1">
-            {feature}
-            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => handleRemoveFeature(index)} />
-          </Badge>
-        ))}
+
+      <div className="min-h-[100px] rounded-md border bg-white p-4">
+        {formData.features.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">لا توجد مزايا مضافة بعد</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {formData.features.map((feature, index) => (
+              <Badge key={index} variant="secondary" className="flex items-center gap-1 py-1.5 px-3">
+                {feature}
+                <X className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors ml-1" onClick={() => handleRemoveFeature(index)} />
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
 
   const renderSpecificationManager = () => (
-    <div className="space-y-3">
-      <Label>المواصفات الفنية</Label>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end bg-gray-50 p-3 rounded-lg border">
-        <div className="space-y-1">
-          <Label className="text-xs">التصنيف</Label>
-          <Select value={specInput.category} onValueChange={(val) => setSpecInput(prev => ({ ...prev, category: val }))}>
-            <SelectTrigger className="h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SPEC_CATEGORIES.map(cat => (
-                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">المفتاح (Key)</Label>
-          <Input className="h-8" value={specInput.key} onChange={(e) => setSpecInput(prev => ({ ...prev, key: e.target.value }))} placeholder="engine_capacity" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">التسمية (Label)</Label>
-          <Input className="h-8" value={specInput.label} onChange={(e) => setSpecInput(prev => ({ ...prev, label: e.target.value }))} placeholder="سعة المحرك" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">القيمة</Label>
-          <Input className="h-8" value={specInput.value} onChange={(e) => setSpecInput(prev => ({ ...prev, value: e.target.value }))} placeholder="1.6 لتر" />
-        </div>
-        <Button type="button" size="sm" onClick={handleAddSpecification}>إضافة</Button>
-      </div>
-
-      <div className="space-y-2 max-h-60 overflow-y-auto">
-        {formData.specifications.map((spec, index) => (
-          <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-white text-sm">
-            <div className="flex items-center gap-3">
-              <Badge variant="outline">{SPEC_CATEGORIES.find(c => c.value === spec.category)?.label || spec.category}</Badge>
-              <span className="font-medium">{spec.label}</span>
-              <span className="text-muted-foreground">{spec.value}</span>
-            </div>
-            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveSpecification(index)}>
-              <X className="h-4 w-4 text-destructive" />
+    <div className="space-y-4 rounded-lg border p-4 bg-slate-50">
+      <div className="space-y-2">
+        <Label>إضافة مواصفات فنية</Label>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+          <div className="md:col-span-3 space-y-1">
+            <Label className="text-xs text-muted-foreground">التصنيف</Label>
+            <Select value={specInput.category} onValueChange={(val) => setSpecInput(prev => ({ ...prev, category: val }))}>
+              <SelectTrigger className="bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-zinc-950">
+                {SPEC_CATEGORIES.map(cat => (
+                  <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-3 space-y-1">
+            <Label className="text-xs text-muted-foreground">المفتاح (Technical Key)</Label>
+            <Input className="bg-white" value={specInput.key} onChange={(e) => setSpecInput(prev => ({ ...prev, key: e.target.value }))} placeholder="engine_cc" dir="ltr" />
+          </div>
+          <div className="md:col-span-3 space-y-1">
+            <Label className="text-xs text-muted-foreground">التسمية (العربية)</Label>
+            <Input className="bg-white" value={specInput.label} onChange={(e) => setSpecInput(prev => ({ ...prev, label: e.target.value }))} placeholder="سعة المحرك" />
+          </div>
+          <div className="md:col-span-2 space-y-1">
+            <Label className="text-xs text-muted-foreground">القيمة</Label>
+            <Input className="bg-white" value={specInput.value} onChange={(e) => setSpecInput(prev => ({ ...prev, value: e.target.value }))} placeholder="1.6 لتر" />
+          </div>
+          <div className="md:col-span-1">
+            <Button type="button" className="w-full" onClick={handleAddSpecification}>
+              <Plus className="h-4 w-4" />
             </Button>
           </div>
-        ))}
+        </div>
+      </div>
+
+      <div className="rounded-md border bg-white overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-slate-50 hover:bg-slate-50">
+              <TableHead className="text-right">التصنيف</TableHead>
+              <TableHead className="text-right">التسمية</TableHead>
+              <TableHead className="text-right">القيمة</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {formData.specifications.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  لا توجد مواصفات مضافة بعد
+                </TableCell>
+              </TableRow>
+            ) : (
+              formData.specifications.map((spec, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Badge variant="outline">{SPEC_CATEGORIES.find(c => c.value === spec.category)?.label || spec.category}</Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">{spec.label}</TableCell>
+                  <TableCell className="text-muted-foreground">{spec.value}</TableCell>
+                  <TableCell>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemoveSpecification(index)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   )
@@ -1137,14 +1190,14 @@ export default function AdminVehiclesPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                      {vehicle._count?.testDriveBookings > 0 && (
+                      {(vehicle._count?.testDriveBookings ?? 0) > 0 && (
                         <Badge variant="outline" className="rounded-full border-blue-100 bg-blue-50 text-blue-700">
-                          {vehicle._count.testDriveBookings} قيادة تجريبية
+                          {vehicle._count?.testDriveBookings} قيادة تجريبية
                         </Badge>
                       )}
-                      {vehicle._count?.serviceBookings > 0 && (
+                      {(vehicle._count?.serviceBookings ?? 0) > 0 && (
                         <Badge variant="outline" className="rounded-full border-cyan-100 bg-cyan-50 text-cyan-700">
-                          {vehicle._count.serviceBookings} حجز صيانة
+                          {vehicle._count?.serviceBookings} حجز صيانة
                         </Badge>
                       )}
                       {vehicle.mileage && (
@@ -1241,194 +1294,213 @@ export default function AdminVehiclesPage() {
 
       {/* Create Vehicle Dialog */}
       {/* Create Vehicle Dialog */}
+      {/* Create Vehicle Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>إضافة مركبة جديدة</DialogTitle>
             <DialogDescription>
               أدخل بيانات المركبة الجديدة
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="make">الماركة</Label>
-                <Input
-                  id="make"
-                  value={formData.make}
-                  onChange={(e) => setFormData(prev => ({ ...prev, make: e.target.value }))}
-                />
+
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details">البيانات الأساسية</TabsTrigger>
+              <TabsTrigger value="images">الصور</TabsTrigger>
+              <TabsTrigger value="specs">المواصفات والمزايا</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="details" className="space-y-4 py-4">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="make">الماركة</Label>
+                    <Input
+                      id="make"
+                      value={formData.make}
+                      onChange={(e) => setFormData(prev => ({ ...prev, make: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model">الموديل</Label>
+                    <Input
+                      id="model"
+                      value={formData.model}
+                      onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="year">السنة</Label>
+                    <Input
+                      id="year"
+                      type="number"
+                      value={formData.year}
+                      onChange={(e) => setFormData(prev => ({ ...prev, year: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price">السعر</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stockNumber">رقم المخزون</Label>
+                    <Input
+                      id="stockNumber"
+                      value={formData.stockNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stockNumber: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="stockQuantity">الكمية في المخزون</Label>
+                    <Input
+                      id="stockQuantity"
+                      type="number"
+                      min={0}
+                      value={formData.stockQuantity}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: Number(e.target.value) }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vin">رقم الهيكل (VIN)</Label>
+                    <Input
+                      id="vin"
+                      value={formData.vin}
+                      onChange={(e) => setFormData(prev => ({ ...prev, vin: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category">الفئة</Label>
+                    <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الفئة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VEHICLE_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fuelType">نوع الوقود</Label>
+                    <Select value={formData.fuelType} onValueChange={(value) => setFormData(prev => ({ ...prev, fuelType: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر نوع الوقود" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FUEL_TYPES.map((fuel) => (
+                          <SelectItem key={fuel.value} value={fuel.value}>
+                            {fuel.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="transmission">ناقل الحركة</Label>
+                    <Select value={formData.transmission} onValueChange={(value) => setFormData(prev => ({ ...prev, transmission: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر ناقل الحركة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TRANSMISSION_TYPES.map((trans) => (
+                          <SelectItem key={trans.value} value={trans.value}>
+                            {trans.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="color">اللون</Label>
+                    <Input
+                      id="color"
+                      value={formData.color}
+                      onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mileage">المسافة المقطوعة (كم)</Label>
+                    <Input
+                      id="mileage"
+                      type="number"
+                      value={formData.mileage}
+                      onChange={(e) => setFormData(prev => ({ ...prev, mileage: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="status">الحالة</Label>
+                    <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الحالة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VEHICLE_STATUSES.map((stat) => (
+                          <SelectItem key={stat.value} value={stat.value}>
+                            {stat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">الوصف</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="featured"
+                      checked={formData.featured}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
+                    />
+                    <Label htmlFor="featured">مركبة مميزة</Label>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="model">الموديل</Label>
-                <Input
-                  id="model"
-                  value={formData.model}
-                  onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                />
+            </TabsContent>
+
+            <TabsContent value="images" className="py-4">
+              <div className="space-y-4">
+                {renderImageManager('create')}
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="year">السنة</Label>
-                <Input
-                  id="year"
-                  type="number"
-                  value={formData.year}
-                  onChange={(e) => setFormData(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-                />
+            </TabsContent>
+
+            <TabsContent value="specs" className="space-y-6 py-4">
+              <div className="space-y-4">
+                {renderFeatureManager()}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">السعر</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) }))}
-                />
+              <div className="space-y-4 pt-4 border-t">
+                {renderSpecificationManager()}
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="stockNumber">رقم المخزون</Label>
-                <Input
-                  id="stockNumber"
-                  value={formData.stockNumber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, stockNumber: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="stockQuantity">الكمية في المخزون</Label>
-                <Input
-                  id="stockQuantity"
-                  type="number"
-                  min={0}
-                  value={formData.stockQuantity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: Number(e.target.value) }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="vin">رقم الهيكل (VIN)</Label>
-                <Input
-                  id="vin"
-                  value={formData.vin}
-                  onChange={(e) => setFormData(prev => ({ ...prev, vin: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">الفئة</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر الفئة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VEHICLE_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fuelType">نوع الوقود</Label>
-                <Select value={formData.fuelType} onValueChange={(value) => setFormData(prev => ({ ...prev, fuelType: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر نوع الوقود" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FUEL_TYPES.map((fuel) => (
-                      <SelectItem key={fuel.value} value={fuel.value}>
-                        {fuel.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="transmission">ناقل الحركة</Label>
-                <Select value={formData.transmission} onValueChange={(value) => setFormData(prev => ({ ...prev, transmission: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر ناقل الحركة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRANSMISSION_TYPES.map((trans) => (
-                      <SelectItem key={trans.value} value={trans.value}>
-                        {trans.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="color">اللون</Label>
-                <Input
-                  id="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="mileage">المسافة المقطوعة (كم)</Label>
-                <Input
-                  id="mileage"
-                  type="number"
-                  value={formData.mileage}
-                  onChange={(e) => setFormData(prev => ({ ...prev, mileage: parseInt(e.target.value) }))}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">الحالة</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر الحالة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VEHICLE_STATUSES.map((stat) => (
-                      <SelectItem key={stat.value} value={stat.value}>
-                        {stat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">الوصف</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="featured"
-                  checked={formData.featured}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-                />
-                <Label htmlFor="featured">مركبة مميزة</Label>
-              </div>
-            </div>
-            <div className="space-y-4 border-t pt-4">
-              {renderImageManager('create')}
-            </div>
-            <div className="space-y-4 border-t pt-4">
-              {renderFeatureManager()}
-            </div>
-            <div className="space-y-4 border-t pt-4">
-              {renderSpecificationManager()}
-            </div>
-          </div>
-          <DialogFooter>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => handleCreateDialogChange(false)}>
               إلغاء
             </Button>
@@ -1441,198 +1513,216 @@ export default function AdminVehiclesPage() {
 
       {/* Edit Vehicle Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>تعديل المركبة</DialogTitle>
             <DialogDescription>
               تعديل بيانات المركبة
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-make">الماركة</Label>
-                <Input
-                  id="edit-make"
-                  value={formData.make}
-                  onChange={(e) => setFormData(prev => ({ ...prev, make: e.target.value }))}
-                />
+
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details">البيانات الأساسية</TabsTrigger>
+              <TabsTrigger value="images">الصور</TabsTrigger>
+              <TabsTrigger value="specs">المواصفات والمزايا</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="details" className="space-y-4 py-4">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-make">الماركة</Label>
+                    <Input
+                      id="edit-make"
+                      value={formData.make}
+                      onChange={(e) => setFormData(prev => ({ ...prev, make: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-model">الموديل</Label>
+                    <Input
+                      id="edit-model"
+                      value={formData.model}
+                      onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-year">السنة</Label>
+                    <Input
+                      id="edit-year"
+                      type="number"
+                      value={formData.year}
+                      onChange={(e) => setFormData(prev => ({ ...prev, year: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-price">السعر</Label>
+                    <Input
+                      id="edit-price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-stockNumber">رقم المخزون</Label>
+                    <Input
+                      id="edit-stockNumber"
+                      value={formData.stockNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stockNumber: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-stockQuantity">الكمية في المخزون</Label>
+                    <Input
+                      id="edit-stockQuantity"
+                      type="number"
+                      min={0}
+                      value={formData.stockQuantity}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: Number(e.target.value) }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-vin">رقم الهيكل (VIN)</Label>
+                    <Input
+                      id="edit-vin"
+                      value={formData.vin}
+                      onChange={(e) => setFormData(prev => ({ ...prev, vin: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-category">الفئة</Label>
+                    <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الفئة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VEHICLE_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-fuelType">نوع الوقود</Label>
+                    <Select value={formData.fuelType} onValueChange={(value) => setFormData(prev => ({ ...prev, fuelType: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر نوع الوقود" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FUEL_TYPES.map((fuel) => (
+                          <SelectItem key={fuel.value} value={fuel.value}>
+                            {fuel.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-transmission">ناقل الحركة</Label>
+                    <Select value={formData.transmission} onValueChange={(value) => setFormData(prev => ({ ...prev, transmission: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر ناقل الحركة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TRANSMISSION_TYPES.map((trans) => (
+                          <SelectItem key={trans.value} value={trans.value}>
+                            {trans.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-color">اللون</Label>
+                    <Input
+                      id="edit-color"
+                      value={formData.color}
+                      onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-mileage">المسافة المقطوعة (كم)</Label>
+                    <Input
+                      id="edit-mileage"
+                      type="number"
+                      value={formData.mileage}
+                      onChange={(e) => setFormData(prev => ({ ...prev, mileage: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-status">الحالة</Label>
+                    <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الحالة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VEHICLE_STATUSES.map((stat) => (
+                          <SelectItem key={stat.value} value={stat.value}>
+                            {stat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-description">الوصف</Label>
+                    <Textarea
+                      id="edit-description"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="edit-featured"
+                      checked={formData.featured}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
+                    />
+                    <Label htmlFor="edit-featured">مركبة مميزة</Label>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-model">الموديل</Label>
-                <Input
-                  id="edit-model"
-                  value={formData.model}
-                  onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                />
+            </TabsContent>
+
+            <TabsContent value="images" className="py-4">
+              <div className="space-y-4">
+                {renderImageManager('edit')}
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-year">السنة</Label>
-                <Input
-                  id="edit-year"
-                  type="number"
-                  value={formData.year}
-                  onChange={(e) => setFormData(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-                />
+            </TabsContent>
+
+            <TabsContent value="specs" className="space-y-6 py-4">
+              <div className="space-y-4">
+                {renderFeatureManager()}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-price">السعر</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) }))}
-                />
+              <div className="space-y-4 pt-4 border-t">
+                {renderSpecificationManager()}
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-stockNumber">رقم المخزون</Label>
-                <Input
-                  id="edit-stockNumber"
-                  value={formData.stockNumber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, stockNumber: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-stockQuantity">الكمية في المخزون</Label>
-                <Input
-                  id="edit-stockQuantity"
-                  type="number"
-                  min={0}
-                  value={formData.stockQuantity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: Number(e.target.value) }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-vin">رقم الهيكل (VIN)</Label>
-                <Input
-                  id="edit-vin"
-                  value={formData.vin}
-                  onChange={(e) => setFormData(prev => ({ ...prev, vin: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-category">الفئة</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر الفئة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VEHICLE_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-fuelType">نوع الوقود</Label>
-                <Select value={formData.fuelType} onValueChange={(value) => setFormData(prev => ({ ...prev, fuelType: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر نوع الوقود" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FUEL_TYPES.map((fuel) => (
-                      <SelectItem key={fuel.value} value={fuel.value}>
-                        {fuel.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-transmission">ناقل الحركة</Label>
-                <Select value={formData.transmission} onValueChange={(value) => setFormData(prev => ({ ...prev, transmission: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر ناقل الحركة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRANSMISSION_TYPES.map((trans) => (
-                      <SelectItem key={trans.value} value={trans.value}>
-                        {trans.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-color">اللون</Label>
-                <Input
-                  id="edit-color"
-                  value={formData.color}
-                  onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-mileage">المسافة المقطوعة (كم)</Label>
-                <Input
-                  id="edit-mileage"
-                  type="number"
-                  value={formData.mileage}
-                  onChange={(e) => setFormData(prev => ({ ...prev, mileage: parseInt(e.target.value) }))}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-status">الحالة</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر الحالة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VEHICLE_STATUSES.map((stat) => (
-                      <SelectItem key={stat.value} value={stat.value}>
-                        {stat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-description">الوصف</Label>
-                <Textarea
-                  id="edit-description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="edit-featured"
-                  checked={formData.featured}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
-                />
-                <Label htmlFor="edit-featured">مركبة مميزة</Label>
-              </div>
-            </div>
-            <div className="space-y-4 border-t pt-4">
-              {renderImageManager('edit')}
-            </div>
-            <div className="space-y-4 border-t pt-4">
-              {renderFeatureManager()}
-            </div>
-            <div className="space-y-4 border-t pt-4">
-              {renderSpecificationManager()}
-            </div>
-          </div>
-          <DialogFooter>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => handleEditDialogChange(false)}>
               إلغاء
             </Button>
             <Button onClick={handleUpdateVehicle}>
-              تحديث المركبة
+              حفظ التغييرات
             </Button>
           </DialogFooter>
         </DialogContent>
