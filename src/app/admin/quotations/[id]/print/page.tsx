@@ -18,6 +18,16 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
     const [editablePrice, setEditablePrice] = useState<string>('')
     const [isEditingPrice, setIsEditingPrice] = useState(false)
 
+    // State for editable headers
+    const [headerData, setHeaderData] = useState({
+        companyAr: '',
+        date: '',
+        companyEn: '............................................',
+        customerName: '',
+        validity: '',
+        mrEn: '............................................'
+    })
+
     useEffect(() => {
         fetchQuotation()
     }, [])
@@ -29,6 +39,16 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                 const data = await response.json()
                 setQuotation(data)
                 setEditablePrice(data.totalAmount.toString())
+
+                // Initialize header data
+                setHeaderData({
+                    companyAr: data.customer.company || '............................................',
+                    date: formatDate(data.issueDate),
+                    companyEn: '............................................',
+                    customerName: data.customer.name || '',
+                    validity: `حتى ${formatDate(data.validUntil)}`,
+                    mrEn: '............................................'
+                })
             }
         } catch (error) {
             console.error('Error fetching quotation:', error)
@@ -62,24 +82,74 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
     if (loading) return <div className="p-8 text-center">جاري تحميل عرض السعر...</div>
     if (!quotation) return <div className="p-8 text-center text-red-600">لم يتم العثور على عرض السعر</div>
 
-    // Helper to safely get nested specs
-    const getSpec = (key: string) => {
-        if (Array.isArray(quotation.vehicle?.specifications)) {
-            // Normalize the search key (e.g. "engine_type" -> "engine")
-            const normalizedSearch = key.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ')
+    // Group specs by category for dynamic rendering
+    const getGroupedSpecs = () => {
+        if (!quotation?.vehicle?.specifications) return []
 
-            const spec = quotation.vehicle.specifications.find((s: any) => {
-                const specKey = (s.key || '').toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ')
-                const specLabel = (s.label || '').toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ')
+        const specs = quotation.vehicle.specifications as any[]
+        const groups: { [key: string]: any[] } = {}
 
-                return specKey.includes(normalizedSearch) || specLabel.includes(normalizedSearch) || normalizedSearch.includes(specKey)
-            })
-            return spec?.value
+        // Group by category
+        specs.forEach(spec => {
+            const cat = spec.category || 'Other'
+            if (!groups[cat]) groups[cat] = []
+            groups[cat].push(spec)
+        })
+
+        // Defined categories in order
+        const orderedCategories = [
+            'ENGINE', 'TRANSMISSION', 'CHASSIS', 'DIMENSIONS', 'WEIGHTS', 'PERFORMANCE', 'CAPACITIES', 'EXTERIOR', 'INTERIOR', 'SAFETY', 'TECHNOLOGY'
+        ]
+
+        // Map internal category codes to display names (using template where possible)
+        const categoryLabels: { [key: string]: string } = {}
+        VEHICLE_SPEC_TEMPLATE.forEach(t => {
+            categoryLabels[t.dbCategory] = t.category
+        })
+
+        // Fallback labels
+        const fallbackLabels: { [key: string]: string } = {
+            'ENGINE': 'المحرك (Engine)',
+            'TRANSMISSION': 'ناقل الحركة (Transmission)',
+            'CHASSIS': 'التعليق والمكابح والعجلات (Suspension, Brakes & Tyres)',
+            'DIMENSIONS': 'الأبعاد والمقاسات (Dimensions)',
+            'WEIGHTS': 'الأوزان (Weights)',
+            'PERFORMANCE': 'الأداء (Performance)',
+            'CAPACITIES': 'السعات (Capacities)',
+            'EXTERIOR': 'التجهيزات الخارجية (Exterior)',
+            'INTERIOR': 'التجهيزات الداخلية (Interior)',
+            'SAFETY': 'الأمان (Safety)',
+            'TECHNOLOGY': 'التكنولوجيا (Technology)'
         }
-        return quotation.vehicle?.specifications?.[key]
+
+        const result: { title: string; items: any[] }[] = []
+
+        // Add ordered categories first
+        orderedCategories.forEach(cat => {
+            if (groups[cat] && groups[cat].length > 0) {
+                result.push({
+                    title: categoryLabels[cat] || fallbackLabels[cat] || cat,
+                    items: groups[cat]
+                })
+                delete groups[cat]
+            }
+        })
+
+        // Add remaining groups
+        Object.keys(groups).forEach(cat => {
+            if (groups[cat].length > 0) {
+                result.push({
+                    title: categoryLabels[cat] || fallbackLabels[cat] || cat,
+                    items: groups[cat]
+                })
+            }
+        })
+
+        return result
     }
 
     const vehicleTitle = `${quotation.vehicle?.make || ''} ${quotation.vehicle?.model || ''}`.trim()
+    const groupedSpecs = getGroupedSpecs()
 
     return (
         <div className="min-h-screen bg-gray-100 print:bg-white p-8 print:p-0 font-sans" dir="rtl">
@@ -93,7 +163,7 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                 </Link>
                 <div className="flex gap-2">
                     <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1 rounded border border-yellow-200 text-sm text-yellow-800">
-                        <span>💡 يمكنك تعديل السعر بالضغط عليه أدناه</span>
+                        <span>💡 يمكنك تعديل البيانات بالضغط عليها مباشرة</span>
                     </div>
                     <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white">
                         <Printer className="ml-2 h-4 w-4" />
@@ -110,15 +180,57 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                     <div className="bg-gray-400 text-black text-center py-2 text-2xl font-bold mb-1 border-2 border-black">
                         عرض أسعار ومواصفات
                     </div>
-                    <div className="border-b-2 border-black pb-1 mb-1 flex justify-between text-sm font-bold">
-                        <div className="w-1/3 text-right">شركة: {quotation.customer.company || '............................................'}</div>
-                        <div className="w-1/3 text-center">التاريخ: {formatDate(quotation.issueDate)}</div>
-                        <div className="w-1/3 text-left">............................................ :Company</div>
+                    <div className="border-b-2 border-black pb-1 mb-1 flex justify-between text-sm font-bold items-center">
+                        <div className="w-1/3 text-right flex items-center">
+                            <span className="whitespace-nowrap ml-1">شركة:</span>
+                            <input
+                                value={headerData.companyAr}
+                                onChange={(e) => setHeaderData({ ...headerData, companyAr: e.target.value })}
+                                className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-right"
+                            />
+                        </div>
+                        <div className="w-1/3 text-center flex justify-center items-center">
+                            <span className="whitespace-nowrap ml-1">التاريخ:</span>
+                            <input
+                                value={headerData.date}
+                                onChange={(e) => setHeaderData({ ...headerData, date: e.target.value })}
+                                className="w-24 bg-transparent border-none focus:ring-0 p-0 font-bold text-center"
+                            />
+                        </div>
+                        <div className="w-1/3 text-left flex items-center justify-end" dir="ltr">
+                            <input
+                                value={headerData.companyEn}
+                                onChange={(e) => setHeaderData({ ...headerData, companyEn: e.target.value })}
+                                className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-left"
+                            />
+                            <span className="whitespace-nowrap mr-1">:Company</span>
+                        </div>
                     </div>
-                    <div className="border-b-2 border-black pb-1 flex justify-between text-sm font-bold">
-                        <div className="w-1/3 text-right">السيد: {quotation.customer.name}</div>
-                        <div className="w-1/3 text-center">الصلاحية: حتى {formatDate(quotation.validUntil)}</div>
-                        <div className="w-1/3 text-left">............................................ :Mr</div>
+                    <div className="border-b-2 border-black pb-1 flex justify-between text-sm font-bold items-center">
+                        <div className="w-1/3 text-right flex items-center">
+                            <span className="whitespace-nowrap ml-1">السيد:</span>
+                            <input
+                                value={headerData.customerName}
+                                onChange={(e) => setHeaderData({ ...headerData, customerName: e.target.value })}
+                                className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-right"
+                            />
+                        </div>
+                        <div className="w-1/3 text-center flex justify-center items-center">
+                            <span className="whitespace-nowrap ml-1">الصلاحية:</span>
+                            <input
+                                value={headerData.validity}
+                                onChange={(e) => setHeaderData({ ...headerData, validity: e.target.value })}
+                                className="w-32 bg-transparent border-none focus:ring-0 p-0 font-bold text-center"
+                            />
+                        </div>
+                        <div className="w-1/3 text-left flex items-center justify-end" dir="ltr">
+                            <input
+                                value={headerData.mrEn}
+                                onChange={(e) => setHeaderData({ ...headerData, mrEn: e.target.value })}
+                                className="w-full bg-transparent border-none focus:ring-0 p-0 font-bold text-left"
+                            />
+                            <span className="whitespace-nowrap mr-1">:Mr</span>
+                        </div>
                     </div>
                     <div className="text-center text-xs mt-2 font-medium px-8">
                         تتشرف شركة الحمد للاستيراد الموزع المعتمد لشركة أم أم جروب للصناعة والتجارة العالمية (أم تي أي) الوكيل الحصري للعلامة التجارية تاتا موتورز بجمهورية مصر العربية، بتقديم العرض التالي لشركتكم الموقرة:
@@ -160,31 +272,21 @@ export default function QuotationPrintPage({ params }: QuotationPrintPageProps) 
                             </tr>
                         </thead>
                         <tbody>
-                            {VEHICLE_SPEC_TEMPLATE.map((group, groupIndex) => {
-                                // Find specs for this group
-                                const groupSpecs = group.items.map(item => {
-                                    const val = quotation.vehicle?.specifications?.find((s: any) => s.key === item.key)?.value;
-                                    return val ? { label: item.label, value: val } : null;
-                                }).filter(Boolean);
-
-                                if (groupSpecs.length === 0) return null;
-
-                                return (
-                                    <>
-                                        {/* Category Header */}
-                                        <tr key={`cat-${groupIndex}`} className="border-b border-black bg-gray-200">
-                                            <td colSpan={2} className="p-1 font-bold text-center">{group.category}</td>
+                            {groupedSpecs.map((group, groupIndex) => (
+                                <>
+                                    {/* Category Header */}
+                                    <tr key={`cat-${groupIndex}`} className="border-b border-black bg-gray-200">
+                                        <td colSpan={2} className="p-1 font-bold text-center">{group.title}</td>
+                                    </tr>
+                                    {/* Specs */}
+                                    {group.items.map((spec: any, index: number) => (
+                                        <tr key={`${groupIndex}-${index}`} className="border-b border-black">
+                                            <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">{spec.label}</td>
+                                            <td className="p-1 text-center" dir="ltr">{spec.value}</td>
                                         </tr>
-                                        {/* Specs */}
-                                        {groupSpecs.map((spec, index) => (
-                                            <tr key={`${groupIndex}-${index}`} className="border-b border-black">
-                                                <td className="border-l-2 border-black p-1 font-bold bg-gray-50 text-center">{spec!.label}</td>
-                                                <td className="p-1 text-center" dir="ltr">{spec!.value}</td>
-                                            </tr>
-                                        ))}
-                                    </>
-                                )
-                            })}
+                                    ))}
+                                </>
+                            ))}
                         </tbody>
                     </table>
                 </div>
