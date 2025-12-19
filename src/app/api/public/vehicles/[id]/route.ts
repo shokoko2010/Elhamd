@@ -101,22 +101,22 @@ function normaliseVehicle(vehicle: Awaited<ReturnType<typeof findVehicle>>) {
 
   const pricing = vehicle.pricing
     ? {
-        basePrice: Number(vehicle.pricing.basePrice),
-        totalPrice: Number(vehicle.pricing.totalPrice),
-        discountPrice:
-          vehicle.pricing.discountPrice !== null && vehicle.pricing.discountPrice !== undefined
-            ? Number(vehicle.pricing.discountPrice)
-            : null,
-        discountPercentage:
-          vehicle.pricing.discountPercentage !== null && vehicle.pricing.discountPercentage !== undefined
-            ? Number(vehicle.pricing.discountPercentage)
-            : null,
-        taxes: Number(vehicle.pricing.taxes ?? 0),
-        fees: Number(vehicle.pricing.fees ?? 0),
-        currency: vehicle.pricing.currency,
-        hasDiscount: vehicle.pricing.hasDiscount,
-        discountExpires: vehicle.pricing.discountExpires?.toISOString() ?? null
-      }
+      basePrice: Number(vehicle.pricing.basePrice),
+      totalPrice: Number(vehicle.pricing.totalPrice),
+      discountPrice:
+        vehicle.pricing.discountPrice !== null && vehicle.pricing.discountPrice !== undefined
+          ? Number(vehicle.pricing.discountPrice)
+          : null,
+      discountPercentage:
+        vehicle.pricing.discountPercentage !== null && vehicle.pricing.discountPercentage !== undefined
+          ? Number(vehicle.pricing.discountPercentage)
+          : null,
+      taxes: Number(vehicle.pricing.taxes ?? 0),
+      fees: Number(vehicle.pricing.fees ?? 0),
+      currency: vehicle.pricing.currency,
+      hasDiscount: vehicle.pricing.hasDiscount,
+      discountExpires: vehicle.pricing.discountExpires?.toISOString() ?? null
+    }
     : null
 
   return {
@@ -138,28 +138,29 @@ function normaliseVehicle(vehicle: Awaited<ReturnType<typeof findVehicle>>) {
     images:
       vehicle.images.length > 0
         ? vehicle.images.map((image) => ({
-            id: image.id,
-            imageUrl: image.imageUrl,
-            altText: image.altText,
-            isPrimary: image.isPrimary,
-            order: image.order
-          }))
+          id: image.id,
+          imageUrl: image.imageUrl,
+          altText: image.altText,
+          isPrimary: image.isPrimary,
+          order: image.order
+        }))
         : [
-            {
-              id: 'placeholder',
-              imageUrl: '/placeholder-car.jpg',
-              altText: `${vehicle.make} ${vehicle.model}`,
-              isPrimary: true,
-              order: 0
-            }
-          ],
+          {
+            id: 'placeholder',
+            imageUrl: '/placeholder-car.jpg',
+            altText: `${vehicle.make} ${vehicle.model}`,
+            isPrimary: true,
+            order: 0
+          }
+        ],
     specifications,
     pricing
   }
 }
 
-export async function GET(request: NextRequest, context: { params: { id: string } }) {
-  const identifier = decodeURIComponent(context.params.id)
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
+  const identifier = decodeURIComponent(params.id)
 
   if (!identifier) {
     return NextResponse.json({ error: 'Vehicle identifier is required' }, { status: 400 })
