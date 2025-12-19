@@ -16,6 +16,13 @@ const imageInputSchema = z.object({
   order: z.number().int().min(0).optional()
 })
 
+const specificationInputSchema = z.object({
+  key: z.string().min(1, 'المفتاح مطلوب'),
+  label: z.string().min(1, 'التسمية مطلوبة'),
+  value: z.string().min(1, 'القيمة مطلوبة'),
+  category: z.string().min(1, 'الفئة مطلوبة')
+})
+
 const baseVehicleSchema = z.object({
   make: z.string().min(1, 'الماركة مطلوبة'),
   model: z.string().min(1, 'الموديل مطلوب'),
@@ -31,14 +38,17 @@ const baseVehicleSchema = z.object({
   mileage: z.number().int().min(0).optional(),
   color: z.string().optional(),
   status: z.nativeEnum(VehicleStatus),
-  featured: z.boolean().optional()
+  featured: z.boolean().optional(),
+  features: z.array(z.string()).optional()
 })
 
 const createVehicleSchema = baseVehicleSchema.extend({
-  images: z.array(imageInputSchema).optional()
+  images: z.array(imageInputSchema).optional(),
+  specifications: z.array(specificationInputSchema).optional()
 })
 const updateVehicleSchema = baseVehicleSchema.partial().extend({
-  images: z.array(imageInputSchema).optional()
+  images: z.array(imageInputSchema).optional(),
+  specifications: z.array(specificationInputSchema).optional()
 })
 
 const sanitizeVehiclePayload = <T extends Partial<z.infer<typeof baseVehicleSchema>>>(
@@ -122,7 +132,7 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
-    
+
     // Check if user has required role or permissions
     const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
     const hasAccess =
@@ -131,7 +141,7 @@ export async function GET(request: NextRequest) {
       user.role === UserRole.STAFF ||
       user.role === UserRole.BRANCH_MANAGER ||
       userPermissions.includes(PERMISSIONS.VIEW_VEHICLES)
-    
+
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
@@ -149,7 +159,7 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: any = {}
-    
+
     if (search) {
       where.OR = [
         { make: { contains: search, mode: 'insensitive' } },
@@ -158,11 +168,11 @@ export async function GET(request: NextRequest) {
         { description: { contains: search, mode: 'insensitive' } }
       ]
     }
-    
+
     if (category && category !== 'all') {
       where.category = category as VehicleCategory
     }
-    
+
     if (status && status !== 'all') {
       where.status = status as VehicleStatus
     }
@@ -201,14 +211,14 @@ export async function GET(request: NextRequest) {
 
     const activeVehicleReservations = reservedVehicleIds.length
       ? await db.invoice.findMany({
-          where: {
-            vehicleId: { in: reservedVehicleIds },
-            status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
-            isDeleted: false
-          },
-          select: { vehicleId: true },
-          distinct: ['vehicleId']
-        })
+        where: {
+          vehicleId: { in: reservedVehicleIds },
+          status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
+          isDeleted: false
+        },
+        select: { vehicleId: true },
+        distinct: ['vehicleId']
+      })
       : []
 
     const activeReservationSet = new Set(activeVehicleReservations.map(record => record.vehicleId).filter(Boolean) as string[])
@@ -267,7 +277,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
-    
+
     // Check if user has required role or permissions
     const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
     const hasAccess =
@@ -276,13 +286,13 @@ export async function POST(request: NextRequest) {
       user.role === UserRole.STAFF ||
       user.role === UserRole.BRANCH_MANAGER ||
       userPermissions.includes(PERMISSIONS.CREATE_VEHICLES)
-    
+
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
 
     const body = await request.json()
-    
+
     // Validate input
     const validatedData = createVehicleSchema.parse(body)
     const { images: imagePayload, ...vehiclePayload } = validatedData
@@ -293,7 +303,7 @@ export async function POST(request: NextRequest) {
     const existingVehicle = await db.vehicle.findUnique({
       where: { stockNumber: sanitizedData.stockNumber }
     })
-    
+
     if (existingVehicle) {
       return NextResponse.json(
         { error: 'رقم المخزون مستخدم بالفعل' },
@@ -317,18 +327,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Create vehicle with default pricing
+    // Create vehicle with default pricing
     const vehicle = await db.vehicle.create({
       data: {
         ...sanitizedData,
+        features: (vehiclePayload as any).features || [],
         images: normalizedImages.length
           ? {
-              create: normalizedImages.map(image => ({
-                imageUrl: image.imageUrl,
-                altText: image.altText,
-                isPrimary: image.isPrimary,
-                order: image.order
-              }))
-            }
+            create: normalizedImages.map(image => ({
+              imageUrl: image.imageUrl,
+              altText: image.altText,
+              isPrimary: image.isPrimary,
+              order: image.order
+            }))
+          }
+          : undefined,
+        specifications: (vehiclePayload as any).specifications?.length
+          ? {
+            create: (vehiclePayload as any).specifications.map((spec: any) => ({
+              key: spec.key,
+              label: spec.label,
+              value: spec.value,
+              category: spec.category
+            }))
+          }
           : undefined,
         pricing: {
           create: {
@@ -348,6 +370,9 @@ export async function POST(request: NextRequest) {
         images: {
           orderBy: { order: 'asc' }
         },
+        specifications: {
+          orderBy: { category: 'asc' }
+        },
         pricing: true
       }
     })
@@ -355,14 +380,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(vehicle, { status: 201 })
   } catch (error) {
     console.error('Error creating vehicle:', error)
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'بيانات غير صالحة', details: error.errors },
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json(
       { error: 'فشل في إنشاء المركبة' },
       { status: 500 }

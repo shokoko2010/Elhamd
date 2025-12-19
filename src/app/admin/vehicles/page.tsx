@@ -55,6 +55,7 @@ interface Vehicle {
   updatedAt: string
   images: { id: string; imageUrl: string; altText?: string | null; isPrimary: boolean; order: number }[]
   specifications: { id: string; key: string; label: string; value: string; category: string }[]
+  features: string[]
   pricing?: {
     basePrice: number
     discountPrice?: number
@@ -97,6 +98,8 @@ interface VehicleFormState {
   status: string
   featured: boolean
   images: VehicleImageFormData[]
+  features: string[]
+  specifications: { key: string; label: string; value: string; category: string }[]
 }
 
 const VEHICLE_CATEGORIES = [
@@ -140,8 +143,21 @@ const createInitialFormState = (): VehicleFormState => ({
   color: '',
   status: 'AVAILABLE',
   featured: false,
-  images: []
+  images: [],
+  features: [],
+  specifications: []
 })
+
+const SPEC_CATEGORIES = [
+  { value: 'ENGINE', label: 'المحرك والأداء' },
+  { value: 'PERFORMANCE', label: 'الأداء' },
+  { value: 'SAFETY', label: 'الأمان' },
+  { value: 'INTERIOR', label: 'المقصورة الداخلية' },
+  { value: 'EXTERIOR', label: 'المظهر الخارجي' },
+  { value: 'INFOTAINMENT', label: 'الترفيه والتكنولوجيا' },
+  { value: 'DIMENSIONS', label: 'الأبعاد' },
+  { value: 'COMFORT', label: 'الراحة' }
+]
 
 const VEHICLE_STATUSES = [
   { value: 'AVAILABLE', label: 'متاح', color: 'bg-green-100 text-green-800' },
@@ -162,7 +178,7 @@ export default function AdminVehiclesPage() {
   const [sortOrder, setSortOrder] = useState('desc')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  
+
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -175,6 +191,10 @@ export default function AdminVehiclesPage() {
   const [imageUploadLoading, setImageUploadLoading] = useState({ create: false, edit: false })
   const createUploadInputRef = useRef<HTMLInputElement | null>(null)
   const editUploadInputRef = useRef<HTMLInputElement | null>(null)
+
+  // New states for Features and Specifications
+  const [featureInput, setFeatureInput] = useState('')
+  const [specInput, setSpecInput] = useState({ key: '', label: '', value: '', category: 'ENGINE' })
 
   const normalizeFormImages = (images: VehicleImageFormData[] = []) => {
     if (!Array.isArray(images) || images.length === 0) {
@@ -326,13 +346,15 @@ export default function AdminVehiclesPage() {
 
     return {
       ...rest,
+      features: formData.features,
+      specifications: formData.specifications,
       images: normalized.length
         ? normalized.map((image, index) => ({
-            imageUrl: image.imageUrl,
-            altText: image.altText,
-            isPrimary: image.isPrimary ?? index === 0,
-            order: index
-          }))
+          imageUrl: image.imageUrl,
+          altText: image.altText,
+          isPrimary: image.isPrimary ?? index === 0,
+          order: index
+        }))
         : undefined
     }
   }
@@ -442,6 +464,113 @@ export default function AdminVehiclesPage() {
     </div>
   )
 
+  const handleAddFeature = () => {
+    if (!featureInput.trim()) return
+    setFormData(prev => ({
+      ...prev,
+      features: [...prev.features, featureInput.trim()]
+    }))
+    setFeatureInput('')
+  }
+
+  const handleRemoveFeature = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      features: prev.features.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleAddSpecification = () => {
+    if (!specInput.key || !specInput.value) {
+      toast.error('يرجى ملء الحقول المطلوبة (المفتاح والقيمة)')
+      return
+    }
+    setFormData(prev => ({
+      ...prev,
+      specifications: [...prev.specifications, { ...specInput, id: Math.random().toString(36).substr(2, 9) }]
+    }))
+    setSpecInput(prev => ({ ...prev, key: '', label: '', value: '' }))
+  }
+
+  const handleRemoveSpecification = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      specifications: prev.specifications.filter((_, i) => i !== index)
+    }))
+  }
+
+  const renderFeatureManager = () => (
+    <div className="space-y-3">
+      <Label>المزايا (Features)</Label>
+      <div className="flex gap-2">
+        <Input
+          placeholder="أدخل ميزة جديدة (مثال: نظام صوتي JBL)"
+          value={featureInput}
+          onChange={(e) => setFeatureInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFeature())}
+        />
+        <Button type="button" onClick={handleAddFeature}>إضافة</Button>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-2">
+        {formData.features.map((feature, index) => (
+          <Badge key={index} variant="secondary" className="flex items-center gap-1">
+            {feature}
+            <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => handleRemoveFeature(index)} />
+          </Badge>
+        ))}
+      </div>
+    </div>
+  )
+
+  const renderSpecificationManager = () => (
+    <div className="space-y-3">
+      <Label>المواصفات الفنية</Label>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end bg-gray-50 p-3 rounded-lg border">
+        <div className="space-y-1">
+          <Label className="text-xs">التصنيف</Label>
+          <Select value={specInput.category} onValueChange={(val) => setSpecInput(prev => ({ ...prev, category: val }))}>
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SPEC_CATEGORIES.map(cat => (
+                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">المفتاح (Key)</Label>
+          <Input className="h-8" value={specInput.key} onChange={(e) => setSpecInput(prev => ({ ...prev, key: e.target.value }))} placeholder="engine_capacity" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">التسمية (Label)</Label>
+          <Input className="h-8" value={specInput.label} onChange={(e) => setSpecInput(prev => ({ ...prev, label: e.target.value }))} placeholder="سعة المحرك" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">القيمة</Label>
+          <Input className="h-8" value={specInput.value} onChange={(e) => setSpecInput(prev => ({ ...prev, value: e.target.value }))} placeholder="1.6 لتر" />
+        </div>
+        <Button type="button" size="sm" onClick={handleAddSpecification}>إضافة</Button>
+      </div>
+
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {formData.specifications.map((spec, index) => (
+          <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-white text-sm">
+            <div className="flex items-center gap-3">
+              <Badge variant="outline">{SPEC_CATEGORIES.find(c => c.value === spec.category)?.label || spec.category}</Badge>
+              <span className="font-medium">{spec.label}</span>
+              <span className="text-muted-foreground">{spec.value}</span>
+            </div>
+            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveSpecification(index)}>
+              <X className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
   // Fetch vehicles
   const fetchVehicles = async () => {
     try {
@@ -455,32 +584,32 @@ export default function AdminVehiclesPage() {
         sortBy,
         sortOrder
       })
-      
+
       const response = await fetch(`/api/admin/vehicles?${params}`)
       if (!response.ok) throw new Error('فشل في جلب المركبات')
-      
+
       const data = await response.json()
-      
+
       // Ensure vehicles is an array and has proper structure
       const vehiclesData = Array.isArray(data.vehicles) ? data.vehicles.map(vehicle => ({
         ...vehicle,
         stockQuantity: typeof vehicle.stockQuantity === 'number' ? vehicle.stockQuantity : 0,
         images: Array.isArray(vehicle.images)
           ? [...vehicle.images]
-              .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-              .map((image, index) => ({
-                ...image,
-                altText: image.altText ?? null,
-                order: typeof image.order === 'number' ? image.order : index
-              }))
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map((image, index) => ({
+              ...image,
+              altText: image.altText ?? null,
+              order: typeof image.order === 'number' ? image.order : index
+            }))
           : [],
         specifications: Array.isArray(vehicle.specifications) ? vehicle.specifications : [],
         _count: vehicle._count || { testDriveBookings: 0, serviceBookings: 0 }
       })) : []
-      
+
       setVehicles(vehiclesData)
       setTotalPages(data.pagination?.totalPages || 1)
-      
+
       // Calculate stats
       const vehicleStats: VehicleStats = {
         total: vehiclesData.length,
@@ -495,7 +624,7 @@ export default function AdminVehiclesPage() {
         }, 0)
       }
       setStats(vehicleStats)
-      
+
     } catch (error) {
       console.error('Error fetching vehicles:', error)
       toast.error(error instanceof Error ? error.message : 'فشل في جلب المركبات')
@@ -541,12 +670,12 @@ export default function AdminVehiclesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      
+
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'فشل في إنشاء المركبة')
       }
-      
+
       toast.success('تم إنشاء المركبة بنجاح')
       handleCreateDialogChange(false)
       fetchVehicles()
@@ -559,7 +688,7 @@ export default function AdminVehiclesPage() {
   // Update vehicle
   const handleUpdateVehicle = async () => {
     if (!selectedVehicle) return
-    
+
     try {
       // Validate required fields
       if (!formData.model.trim()) {
@@ -586,12 +715,12 @@ export default function AdminVehiclesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      
+
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'فشل في تحديث المركبة')
       }
-      
+
       toast.success('تم تحديث المركبة بنجاح')
       handleEditDialogChange(false)
       fetchVehicles()
@@ -604,17 +733,17 @@ export default function AdminVehiclesPage() {
   // Delete vehicle
   const handleDeleteVehicle = async () => {
     if (!selectedVehicle) return
-    
+
     try {
       const response = await fetch(`/api/admin/vehicles/${selectedVehicle.id}`, {
         method: 'DELETE'
       })
-      
+
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'فشل في حذف المركبة')
       }
-      
+
       toast.success('تم حذف المركبة بنجاح')
       setIsDeleteDialogOpen(false)
       setSelectedVehicle(null)
@@ -665,7 +794,16 @@ export default function AdminVehiclesPage() {
       color: vehicle.color || '',
       status: vehicle.status || 'AVAILABLE',
       featured: vehicle.featured || false,
-      images: mappedImages
+      images: mappedImages,
+      features: Array.isArray(vehicle.features) ? vehicle.features : [],
+      specifications: Array.isArray(vehicle.specifications)
+        ? vehicle.specifications.map(spec => ({
+          key: spec.key,
+          label: spec.label,
+          value: spec.value,
+          category: spec.category
+        }))
+        : []
     })
     setImageInputs(prev => ({ ...prev, edit: '' }))
     setIsEditDialogOpen(true)
@@ -774,7 +912,7 @@ export default function AdminVehiclesPage() {
                 <div key={item.label} className="rounded-2xl bg-white/10 p-4 shadow-inner shadow-blue-900/30">
                   <div className="flex items-center justify-between text-sm text-blue-50/80">
                     <span>{item.label}</span>
-                    <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}> 
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}>
                       <Icon className="h-4 w-4 text-white" />
                     </span>
                   </div>
@@ -1283,6 +1421,12 @@ export default function AdminVehiclesPage() {
             <div className="space-y-4 border-t pt-4">
               {renderImageManager('create')}
             </div>
+            <div className="space-y-4 border-t pt-4">
+              {renderFeatureManager()}
+            </div>
+            <div className="space-y-4 border-t pt-4">
+              {renderSpecificationManager()}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => handleCreateDialogChange(false)}>
@@ -1476,6 +1620,12 @@ export default function AdminVehiclesPage() {
             <div className="space-y-4 border-t pt-4">
               {renderImageManager('edit')}
             </div>
+            <div className="space-y-4 border-t pt-4">
+              {renderFeatureManager()}
+            </div>
+            <div className="space-y-4 border-t pt-4">
+              {renderSpecificationManager()}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => handleEditDialogChange(false)}>
@@ -1502,8 +1652,8 @@ export default function AdminVehiclesPage() {
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-12 bg-gray-200 rounded-lg overflow-hidden">
                   {selectedVehicle.images && selectedVehicle.images.length > 0 ? (
-                    <img 
-                      src={selectedVehicle.images[0].imageUrl} 
+                    <img
+                      src={selectedVehicle.images[0].imageUrl}
                       alt={`${selectedVehicle.make} ${selectedVehicle.model}`}
                       className="w-full h-full object-cover"
                     />

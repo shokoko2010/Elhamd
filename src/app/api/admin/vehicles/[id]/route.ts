@@ -16,6 +16,13 @@ const imageInputSchema = z.object({
   order: z.number().int().min(0).optional()
 })
 
+const specificationInputSchema = z.object({
+  key: z.string().min(1, 'المفتاح مطلوب'),
+  label: z.string().min(1, 'التسمية مطلوبة'),
+  value: z.string().min(1, 'القيمة مطلوبة'),
+  category: z.string().min(1, 'الفئة مطلوبة')
+})
+
 const updateVehicleSchema = z.object({
   make: z.string().min(1, 'الماركة مطلوبة').optional(),
   model: z.string().min(1, 'الموديل مطلوب').optional(),
@@ -32,10 +39,12 @@ const updateVehicleSchema = z.object({
   color: z.string().optional(),
   status: z.nativeEnum(VehicleStatus).optional(),
   featured: z.boolean().optional(),
-  images: z.array(imageInputSchema).optional()
+  features: z.array(z.string()).optional(),
+  images: z.array(imageInputSchema).optional(),
+  specifications: z.array(specificationInputSchema).optional()
 })
 
-type UpdateVehicleFields = Omit<z.infer<typeof updateVehicleSchema>, 'images'>
+type UpdateVehicleFields = Omit<z.infer<typeof updateVehicleSchema>, 'images' | 'specifications'>
 
 const sanitizeVehiclePayload = (payload: UpdateVehicleFields) => {
   const data: Record<string, unknown> = { ...payload }
@@ -111,7 +120,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
-    
+
     // Check if user has required role or permissions
     const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
     const hasAccess =
@@ -123,7 +132,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
       userPermissions.includes(PERMISSIONS.DELETE_VEHICLES) ||
       userPermissions.includes(PERMISSIONS.CREATE_VEHICLES) ||
       userPermissions.includes(PERMISSIONS.VIEW_VEHICLES)
-    
+
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
@@ -173,7 +182,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
-    
+
     // Check if user has required role or permissions
     const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
     const hasAccess =
@@ -185,7 +194,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       userPermissions.includes(PERMISSIONS.DELETE_VEHICLES) ||
       userPermissions.includes(PERMISSIONS.CREATE_VEHICLES) ||
       userPermissions.includes(PERMISSIONS.VIEW_VEHICLES)
-    
+
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
@@ -207,7 +216,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 
     // Validate input
     const validatedData = updateVehicleSchema.parse(body)
-    const { images: imagePayload, ...vehiclePayload } = validatedData
+    const { images: imagePayload, specifications: specificationsPayload, ...vehiclePayload } = validatedData
     const sanitizedData = sanitizeVehiclePayload(vehiclePayload)
     const normalizedImages = normalizeImagePayload(imagePayload)
 
@@ -279,28 +288,28 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 
       updateData.pricing = existingPricing
         ? {
-            update: {
-              basePrice,
-              taxes,
-              fees,
-              totalPrice,
-              hasDiscount,
-              discountPrice,
-              discountPercentage
-            }
+          update: {
+            basePrice,
+            taxes,
+            fees,
+            totalPrice,
+            hasDiscount,
+            discountPrice,
+            discountPercentage
           }
+        }
         : {
-            create: {
-              basePrice,
-              taxes,
-              fees,
-              totalPrice,
-              currency: 'EGP',
-              hasDiscount,
-              discountPrice,
-              discountPercentage
-            }
+          create: {
+            basePrice,
+            taxes,
+            fees,
+            totalPrice,
+            currency: 'EGP',
+            hasDiscount,
+            discountPrice,
+            discountPercentage
           }
+        }
     }
 
     // Update vehicle
@@ -332,7 +341,26 @@ export async function PUT(request: NextRequest, context: RouteParams) {
           }))
         })
       }
+    }
 
+    if (specificationsPayload !== undefined) {
+      await db.vehicleSpecification.deleteMany({ where: { vehicleId: id } })
+
+      if (specificationsPayload.length) {
+        await db.vehicleSpecification.createMany({
+          data: specificationsPayload.map(spec => ({
+            vehicleId: id,
+            key: spec.key,
+            label: spec.label,
+            value: spec.value,
+            category: spec.category
+          }))
+        })
+      }
+    }
+
+    // Refetch if relations were updated
+    if (imagePayload !== undefined || specificationsPayload !== undefined) {
       vehicle = await db.vehicle.findUnique({
         where: { id },
         include: {
@@ -346,14 +374,14 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     return NextResponse.json(vehicle)
   } catch (error) {
     console.error('Error updating vehicle:', error)
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'بيانات غير صالحة', details: error.issues },
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json(
       { error: 'فشل في تحديث المركبة' },
       { status: 500 }
@@ -370,14 +398,14 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     if (!user) {
       return NextResponse.json({ error: 'غير مصرح لك - يرجى تسجيل الدخول' }, { status: 401 })
     }
-    
+
     // Check if user has required role or permissions
     const userPermissions = Array.isArray(user.permissions) ? user.permissions : []
     const hasAccess =
       user.role === UserRole.ADMIN ||
       user.role === UserRole.SUPER_ADMIN ||
       userPermissions.includes(PERMISSIONS.DELETE_VEHICLES)
-    
+
     if (!hasAccess) {
       return NextResponse.json({ error: 'غير مصرح لك - صلاحيات غير كافية' }, { status: 403 })
     }
@@ -399,9 +427,9 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     }
 
     // Check if vehicle has active bookings
-    const hasActiveBookings = vehicle.testDriveBookings.some(booking => 
+    const hasActiveBookings = vehicle.testDriveBookings.some(booking =>
       ['PENDING', 'CONFIRMED'].includes(booking.status)
-    ) || vehicle.serviceBookings.some(booking => 
+    ) || vehicle.serviceBookings.some(booking =>
       ['PENDING', 'CONFIRMED'].includes(booking.status)
     )
 
