@@ -180,11 +180,23 @@ export default function VehicleDetailsPage() {
 
   const featureList = useMemo(() => {
     if (!vehicle) return [] as string[]
-    if (vehicle.features && vehicle.features.length > 0) return vehicle.features
+
+    const features = [...(vehicle.features || [])]
+
+    // Add non-standard specs to features list
     if (vehicle.specifications && vehicle.specifications.length > 0) {
-      return vehicle.specifications.slice(0, 6).map((spec) => `${spec.label}: ${spec.value}`)
+      // Get all keys defined in the template
+      const templateKeys = new Set(VEHICLE_SPEC_TEMPLATE.flatMap(g => g.items.map(i => i.key)))
+
+      // Find specs that are NOT in the template
+      const otherSpecs = vehicle.specifications.filter(s => !templateKeys.has(s.key))
+
+      otherSpecs.forEach(spec => {
+        features.push(`${spec.label}: ${spec.value}`)
+      })
     }
-    return [] as string[]
+
+    return Array.from(new Set(features))
   }, [vehicle])
 
   const specificationList = vehicle?.specifications ?? []
@@ -375,7 +387,7 @@ export default function VehicleDetailsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {featureList.map((feature, i) => (
                           <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 hover:bg-blue-50/50 transition-colors">
-                            <div className="mt-0.5 bg-white p-1.5 rounded-full shadow-sm text-blue-600">
+                            <div className="mt-0.5 bg-white p-1.5 rounded-full shadow-sm text-[#0A1A3F]">
                               <CheckCircle2 className="h-4 w-4" />
                             </div>
                             <span className="text-gray-700 font-medium">{feature}</span>
@@ -513,13 +525,6 @@ function SpecsDisplay({ specs }: { specs: VehicleSpecification[] }) {
         groups.push({ title: templateGroup.category, items: matched })
       }
     })
-
-    // 2. Others
-    const usedKeys = new Set(groups.flatMap(g => g.items.map(i => i.key)))
-    const others = specs.filter(s => !usedKeys.has(s.key))
-    if (others.length > 0) {
-      groups.push({ title: "مواصفات أخرى", items: others })
-    }
 
     return groups
   }, [specs])

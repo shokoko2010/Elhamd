@@ -103,7 +103,7 @@ export default function VehiclesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20">
+    <div className="min-h-screen bg-[#F8F9FA] pb-20 pt-16 md:pt-20">
       {/* Search Header */}
       <div className="bg-white border-b sticky top-0 z-30 shadow-sm backdrop-blur-md bg-white/90">
         <div className="container mx-auto px-4 py-4">
