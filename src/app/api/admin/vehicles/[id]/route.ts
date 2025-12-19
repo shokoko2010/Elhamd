@@ -5,7 +5,7 @@ interface RouteParams {
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-server'
-import { Prisma, UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType } from '@prisma/client'
+import { Prisma, UserRole, VehicleStatus, VehicleCategory, FuelType, TransmissionType, VehicleSpecCategory } from '@prisma/client'
 import { z } from 'zod'
 import { PERMISSIONS } from '@/lib/permissions'
 
@@ -20,7 +20,7 @@ const specificationInputSchema = z.object({
   key: z.string().min(1, 'المفتاح مطلوب'),
   label: z.string().min(1, 'التسمية مطلوبة'),
   value: z.string().min(1, 'القيمة مطلوبة'),
-  category: z.string().min(1, 'الفئة مطلوبة')
+  category: z.nativeEnum(VehicleSpecCategory, { errorMap: () => ({ message: 'فئة المواصفة غير صالحة' }) })
 })
 
 const updateVehicleSchema = z.object({
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   } catch (error) {
     console.error('Error fetching vehicle:', error)
     return NextResponse.json(
-      { error: 'فشل في جلب المركبة' },
+      { error: `فشل في جلب المركبة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}` },
       { status: 500 }
     )
   }
@@ -353,7 +353,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
             key: spec.key,
             label: spec.label,
             value: spec.value,
-            category: spec.category
+            category: spec.category as VehicleSpecCategory
           }))
         })
       }
@@ -383,7 +383,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     return NextResponse.json(
-      { error: 'فشل في تحديث المركبة' },
+      { error: `فشل في تحديث المركبة: ${error instanceof Error ? error.message : String(error)}` },
       { status: 500 }
     )
   }
