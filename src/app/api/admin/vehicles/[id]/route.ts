@@ -216,7 +216,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
 
     // Validate input
     const validatedData = updateVehicleSchema.parse(body)
-    const { images: imagePayload, specifications: specificationsPayload, ...vehiclePayload } = validatedData
+    const { images: imagePayload, specifications: specificationsPayload, features: featuresPayload, ...vehiclePayload } = validatedData
     const sanitizedData = sanitizeVehiclePayload(vehiclePayload)
     const normalizedImages = normalizeImagePayload(imagePayload)
 
@@ -343,12 +343,27 @@ export async function PUT(request: NextRequest, context: RouteParams) {
       }
     }
 
-    if (specificationsPayload !== undefined) {
+    // Handle Specifications and Features
+    const allSpecs = [...(specificationsPayload || [])]
+
+    // Merge features into specifications if present
+    if (featuresPayload && featuresPayload.length > 0) {
+      featuresPayload.forEach((feature, index) => {
+        allSpecs.push({
+          key: `feature_${Date.now()}_${index}`,
+          label: 'ميزة',
+          value: feature,
+          category: VehicleSpecCategory.TECHNOLOGY
+        })
+      })
+    }
+
+    if (specificationsPayload !== undefined || featuresPayload !== undefined) {
       await db.vehicleSpecification.deleteMany({ where: { vehicleId: id } })
 
-      if (specificationsPayload.length) {
+      if (allSpecs.length > 0) {
         await db.vehicleSpecification.createMany({
-          data: specificationsPayload.map(spec => ({
+          data: allSpecs.map(spec => ({
             vehicleId: id,
             key: spec.key,
             label: spec.label,
@@ -360,7 +375,7 @@ export async function PUT(request: NextRequest, context: RouteParams) {
     }
 
     // Refetch if relations were updated
-    if (imagePayload !== undefined || specificationsPayload !== undefined) {
+    if (imagePayload !== undefined || specificationsPayload !== undefined || featuresPayload !== undefined) {
       vehicle = await db.vehicle.findUnique({
         where: { id },
         include: {
