@@ -69,25 +69,10 @@ export default function ConsultationPage() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-orange-500/10 blur-[100px]" />
       </div>
 
-      {/* Navigation Header */}
-      <header className="relative z-50 bg-white/5 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 text-white hover:text-blue-200 transition-colors group">
-              <div className="bg-white/10 p-2 rounded-full group-hover:bg-white/20 transition-colors">
-                <ArrowLeft className="h-5 w-5" />
-              </div>
-              <span className="font-medium">العودة للرئيسية</span>
-            </Link>
-            <div className="text-white text-xl font-bold tracking-tight">
-              الحمد للسيارات
-            </div>
-          </div>
-        </div>
-      </header>
+
 
       {/* Main Content */}
-      <main className="relative z-10 min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
+      <main className="relative z-10 min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12 pt-24">
         <div className="max-w-5xl mx-auto w-full">
           {/* Hero Section */}
           <div className="text-center mb-16 space-y-6">

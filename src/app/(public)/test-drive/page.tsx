@@ -13,13 +13,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Calendar as CalendarIcon, 
-  Car, 
-  Clock, 
-  User, 
-  Mail, 
-  Phone, 
+import {
+  Calendar as CalendarIcon,
+  Car,
+  Clock,
+  User,
+  Mail,
+  Phone,
   MapPin,
   CheckCircle,
   AlertCircle
@@ -103,7 +103,7 @@ export default function TestDrivePage() {
     onSubmit: async (data) => {
       setLoading(true)
       setSubmitError('')
-      
+
       try {
         const response = await fetch('/api/bookings/test-drive', {
           method: 'POST',
@@ -184,7 +184,7 @@ export default function TestDrivePage() {
           setAvailableTimeSlots([])
         }
       }
-      
+
       fetchTimeSlots()
     }
   }, [selectedDate, selectedVehicle])
@@ -219,7 +219,7 @@ export default function TestDrivePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       await formValidation.handleSubmit(e)
     } catch (error) {
@@ -280,7 +280,7 @@ export default function TestDrivePage() {
           <div className="max-w-xl mx-auto">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
-                <CardTitle className="text-2xl font-bold">يجب تسجيل الدخول لحجز تجربة قيادة</CardTitle>
+                <CardTitle className="text-2xl font-bold text-[#0A1A3F]">يجب تسجيل الدخول لحجز تجربة قيادة</CardTitle>
                 <CardDescription className="text-gray-600">
                   يرجى تسجيل الدخول للوصول إلى جميع موديلات السيارات المتاحة للحجز.
                 </CardDescription>
@@ -313,7 +313,7 @@ export default function TestDrivePage() {
         <div className="container mx-auto px-4 py-12">
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4">حجز تجربة قيادة</h1>
-            <p className="text-xl text-blue-100">
+            <p className="text-xl text-blue-100/90">
               جرب بنفسك سيارتك المفضلة من تاتا
             </p>
           </div>
@@ -327,14 +327,12 @@ export default function TestDrivePage() {
             <div className="flex items-center justify-center flex-wrap gap-2 sm:gap-0">
               {[1, 2, 3, 4, 5].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step >= stepNumber ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
                     {stepNumber}
                   </div>
-                  <span className={`ml-1 sm:ml-2 text-xs sm:text-sm ${
-                    step >= stepNumber ? 'text-blue-600 font-medium' : 'text-gray-500'
-                  }`}>
+                  <span className={`ml-1 sm:ml-2 text-xs sm:text-sm ${step >= stepNumber ? 'text-blue-600 font-medium' : 'text-gray-500'
+                    }`}>
                     {stepNumber === 1 && 'المركبة'}
                     {stepNumber === 2 && 'التاريخ'}
                     {stepNumber === 3 && 'الوقت'}
@@ -342,9 +340,8 @@ export default function TestDrivePage() {
                     {stepNumber === 5 && 'تأكيد'}
                   </span>
                   {stepNumber < 5 && (
-                    <div className={`w-8 sm:w-16 h-1 mx-1 sm:mx-4 ${
-                      step > stepNumber ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}></div>
+                    <div className={`w-8 sm:w-16 h-1 mx-1 sm:mx-4 ${step > stepNumber ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}></div>
                   )}
                 </div>
               ))}
@@ -355,12 +352,12 @@ export default function TestDrivePage() {
             <Card>
               <CardContent className="text-center py-12">
                 <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-4">تم حجز تجربة القيادة بنجاح!</h2>
+                <h2 className="text-2xl font-bold mb-4 text-[#0A1A3F]">تم حجز تجربة القيادة بنجاح!</h2>
                 <p className="text-gray-600 mb-6">
                   شكراً لحجزك تجربة قيادة مع شركة الحمد للسيارات. لقد أرسلنا بريداً إلكترونياً للتأكيد يحتوي على جميع التفاصيل.
                 </p>
                 <div className="bg-gray-50 rounded-lg p-6 mb-6 text-right">
-                  <h3 className="font-semibold mb-2">تفاصيل الحجز:</h3>
+                  <h3 className="font-semibold mb-2 text-[#0A1A3F]">تفاصيل الحجز:</h3>
                   <p><strong>المركبة:</strong> {selectedVehicle?.make} {selectedVehicle?.model}</p>
                   <p><strong>التاريخ:</strong> {selectedDate && format(selectedDate, 'PPP')}</p>
                   <p><strong>الوقت:</strong> {selectedTimeSlot}</p>
@@ -379,14 +376,13 @@ export default function TestDrivePage() {
                 {/* Step 1: Vehicle Selection */}
                 {step === 1 && (
                   <div>
-                    <h2 className="text-2xl font-bold mb-6">اختر مركبة</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-[#0A1A3F]">اختر مركبة</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {ensureArray(vehicles).map((vehicle) => (
-                        <Card 
-                          key={vehicle.id} 
-                          className={`cursor-pointer transition-all hover:shadow-md ${
-                            selectedVehicle?.id === vehicle.id ? 'ring-2 ring-blue-500' : ''
-                          }`}
+                      {(ensureArray(vehicles) as Vehicle[]).map((vehicle) => (
+                        <Card
+                          key={vehicle.id}
+                          className={`cursor-pointer transition-all hover:shadow-md ${selectedVehicle?.id === vehicle.id ? 'ring-2 ring-blue-500' : ''
+                            }`}
                           onClick={() => handleVehicleSelect(vehicle)}
                         >
                           <CardContent className="p-4">
@@ -421,7 +417,7 @@ export default function TestDrivePage() {
                 {/* Step 2: Date Selection */}
                 {step === 2 && selectedVehicle && (
                   <div>
-                    <h2 className="text-2xl font-bold mb-6">اختر التاريخ</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-[#0A1A3F]">اختر التاريخ</h2>
                     <div className="mb-6">
                       <Card>
                         <CardContent className="p-4">
@@ -473,7 +469,7 @@ export default function TestDrivePage() {
                 {/* Step 3: Time Slot Selection */}
                 {step === 3 && selectedDate && (
                   <div>
-                    <h2 className="text-2xl font-bold mb-6">اختر الوقت</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-[#0A1A3F]">اختر الوقت</h2>
                     <div className="mb-6">
                       <Card>
                         <CardContent className="p-4">
@@ -504,7 +500,7 @@ export default function TestDrivePage() {
                       </Card>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {ensureArray(availableTimeSlots).map((slot) => (
+                      {(ensureArray(availableTimeSlots) as TimeSlot[]).map((slot) => (
                         <Button
                           key={slot.time}
                           variant={selectedTimeSlot === slot.time ? "default" : "outline"}
@@ -526,7 +522,7 @@ export default function TestDrivePage() {
                 {/* Step 4: Customer Information */}
                 {step === 4 && (
                   <div>
-                    <h2 className="text-2xl font-bold mb-6">معلوماتك</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-[#0A1A3F]">معلوماتك</h2>
                     <div className="mb-6">
                       <Card>
                         <CardContent className="p-4">
