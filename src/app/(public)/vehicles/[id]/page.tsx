@@ -21,13 +21,17 @@ import {
   MapPin,
   DollarSign,
   Wrench,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Info
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { VEHICLE_SPEC_TEMPLATE } from '@/lib/vehicle-specs'
+import { cn } from '@/lib/utils'
 
 interface VehicleImage {
   id: string
@@ -89,15 +93,17 @@ const FALLBACK_IMAGE: VehicleImage = {
 }
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
-  AVAILABLE: 'bg-green-500',
-  RESERVED: 'bg-yellow-500',
-  SOLD: 'bg-red-500'
+  AVAILABLE: 'bg-green-100 text-green-700 border-green-200',
+  RESERVED: 'bg-amber-100 text-amber-700 border-amber-200',
+  SOLD: 'bg-red-100 text-red-700 border-red-200',
+  MAINTENANCE: 'bg-blue-100 text-blue-700 border-blue-200'
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  AVAILABLE: 'متاحة',
+  AVAILABLE: 'متاحة للبيع',
   RESERVED: 'محجوزة',
-  SOLD: 'مباعة'
+  SOLD: 'تم البيع',
+  MAINTENANCE: 'في الصيانة'
 }
 
 export default function VehicleDetailsPage() {
@@ -125,9 +131,9 @@ export default function VehicleDetailsPage() {
 
         if (!response.ok) {
           if (response.status === 404) {
-            setError('المركبة المطلوبة غير متاحة حالياً. يرجى استعراض المركبات المتاحة أو التواصل مع فريق المبيعات.')
+            setError('المركبة المطلوبة غير متاحة حالياً.')
           } else {
-            setError('فشل في تحميل بيانات المركبة. حاول مرة أخرى لاحقاً أو قم بتحديث الصفحة.')
+            setError('فشل في تحميل بيانات المركبة.')
           }
           setVehicle(null)
           return
@@ -155,13 +161,9 @@ export default function VehicleDetailsPage() {
         })
         setSelectedImageIndex(0)
       } catch (err) {
-        if ((err as Error).name === 'AbortError') {
-          return
-        }
-
+        if ((err as Error).name === 'AbortError') return
         console.error('Error loading vehicle details:', err)
-        setError('حدث خطأ غير متوقع أثناء تحميل بيانات المركبة. يرجى المحاولة مرة أخرى لاحقاً.')
-        setVehicle(null)
+        setError('حدث خطأ غير متوقع أثناء تحميل بيانات المركبة.')
       } finally {
         setLoading(false)
       }
@@ -171,381 +173,375 @@ export default function VehicleDetailsPage() {
       loadVehicleDetails(vehicleIdentifier)
     } else {
       setLoading(false)
-      setVehicle(null)
-      setError('لم يتم تحديد المركبة المطلوبة.')
     }
 
     return () => controller.abort()
   }, [vehicleIdentifier])
 
   const featureList = useMemo(() => {
-    if (!vehicle) {
-      return [] as string[]
-    }
-
-    if (vehicle.features && vehicle.features.length > 0) {
-      return vehicle.features
-    }
-
+    if (!vehicle) return [] as string[]
+    if (vehicle.features && vehicle.features.length > 0) return vehicle.features
     if (vehicle.specifications && vehicle.specifications.length > 0) {
       return vehicle.specifications.slice(0, 6).map((spec) => `${spec.label}: ${spec.value}`)
     }
-
     return [] as string[]
   }, [vehicle])
 
   const specificationList = vehicle?.specifications ?? []
   const priceToDisplay = vehicle?.pricing?.totalPrice ?? vehicle?.price ?? 0
   const currencyToDisplay = vehicle?.pricing?.currency ?? 'EGP'
-  const statusClass = vehicle ? STATUS_BADGE_CLASSES[vehicle.status] ?? 'bg-blue-600' : 'bg-blue-600'
+  const statusClass = vehicle ? STATUS_BADGE_CLASSES[vehicle.status] ?? 'bg-gray-100 text-gray-800' : ''
   const statusLabel = vehicle ? STATUS_LABELS[vehicle.status] ?? vehicle.status : ''
   const imageCount = vehicle?.images?.length ?? 0
-  const safeImageIndex = imageCount > 0 ? Math.min(selectedImageIndex, imageCount - 1) : 0
-  const currentImage = vehicle && imageCount > 0 ? vehicle.images[safeImageIndex] : FALLBACK_IMAGE
+  const currentImage = vehicle && imageCount > 0 ? vehicle.images[selectedImageIndex] : FALLBACK_IMAGE
 
   const formatPrice = (price: number, currency: string) => {
     return new Intl.NumberFormat('ar-EG', {
       style: 'currency',
       currency,
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(price)
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">جاري تحميل بيانات المركبة...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          <p className="text-gray-500 animate-pulse">جاري تحميل تفاصيل المركبة...</p>
         </div>
       </div>
     )
   }
 
-  if (error) {
+  if (error || !vehicle) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">تعذر تحميل بيانات المركبة</h1>
-          <p className="text-gray-600 leading-relaxed">{error}</p>
-          <div className="mt-6 flex flex-wrap gap-3 justify-center">
-            <Button onClick={() => router.back()}>العودة</Button>
-            <Button variant="outline" onClick={() => router.push('/vehicles')}>
-              استعرض جميع المركبات
+      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
+        <div className="bg-red-50 p-6 rounded-full mb-4">
+          <AlertCircle className="h-10 w-10 text-red-500" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">عذراً، حدث خطأ</h1>
+        <p className="text-gray-600 mb-6 max-w-md">{error || 'المركبة غير موجودة'}</p>
+        <Button onClick={() => router.push('/vehicles')} variant="default" size="lg">
+          تصفح جميع المركبات
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FA] pb-12">
+      {/* Breadcrumb & Navigation */}
+      <div className="bg-white border-b sticky top-0 z-30 shadow-sm backdrop-blur-md bg-white/90 supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <nav className="flex items-center gap-2 text-sm text-gray-500 overflow-hidden whitespace-nowrap">
+            <Link href="/" className="hover:text-primary transition-colors">الرئيسية</Link>
+            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+            <Link href="/vehicles" className="hover:text-primary transition-colors">المركبات</Link>
+            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+            <span className="font-medium text-gray-900 truncate">
+              {vehicle.make} {vehicle.model}
+            </span>
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="hidden sm:flex" title="مشاركة">
+              <Share2 className="h-5 w-5 text-gray-600" />
+            </Button>
+            <Button variant="ghost" size="icon" className="hidden sm:flex" title="حفظ في المفضلة">
+              <Heart className="h-5 w-5 text-gray-600" />
             </Button>
           </div>
         </div>
       </div>
-    )
-  }
-
-  if (!vehicle) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Car className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">المركبة غير متاحة</h1>
-          <p className="text-gray-600 mb-4">المركبة التي تبحث عنها غير موجودة أو تم إزالتها.</p>
-          <Button onClick={() => router.push('/vehicles')}>عودة إلى قائمة المركبات</Button>
-        </div>
-      </div>
-    )
-  }
-
-  const seatingInfo = specificationList.find((spec) => /مقعد|seat/i.test(spec.label))?.value
-  const engineInfo = specificationList.find((spec) => /المحرك|engine/i.test(spec.label))?.value
-  const safetyInfo = specificationList.find((spec) => /أمان|safety/i.test(spec.label))?.value
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <nav className="flex items-center space-x-2 space-x-reverse text-sm">
-            <button onClick={() => router.push('/')} className="text-blue-600 hover:text-blue-800">
-              الرئيسية
-            </button>
-            <span className="text-gray-400">/</span>
-            <button onClick={() => router.push('/vehicles')} className="text-blue-600 hover:text-blue-800">
-              المركبات
-            </button>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">
-              {vehicle.make} {vehicle.model} {vehicle.year}
-            </span>
-          </nav>
-        </div>
-      </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div>
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="aspect-video bg-gray-200 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+          {/* MAIN CONTENT COLUMN */}
+          <div className="lg:col-span-8 space-y-8">
+
+            {/* HERRO GALLERY */}
+            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+              <div className="relative aspect-[16/9] bg-gray-100 group">
                 <Image
-                  key={currentImage.id}
                   src={currentImage.imageUrl}
                   alt={currentImage.altText || `${vehicle.make} ${vehicle.model}`}
                   fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                   priority
                 />
-                <Badge className={`absolute top-4 left-4 z-10 ${statusClass}`}>{statusLabel}</Badge>
-              </div>
-
-              {vehicle.images.length > 1 && (
-                <div className="p-4">
-                  <div className="grid grid-cols-5 gap-2">
-                    {vehicle.images.map((image, index) => (
-                      <button
-                        key={image.id}
-                        onClick={() => setSelectedImageIndex(index)}
-                        className={`aspect-video bg-gray-100 rounded overflow-hidden border-2 transition-colors relative ${selectedImageIndex === index ? 'border-blue-500' : 'border-transparent hover:border-gray-300'
-                          }`}
-                      >
-                        <Image
-                          src={image.imageUrl}
-                          alt={image.altText || `${vehicle.make} ${vehicle.model} - صورة ${index + 1}`}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 20vw, 10vw"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {vehicle.make} {vehicle.model}
-                  </h1>
-                  <p className="text-lg text-gray-600">موديل {vehicle.year}</p>
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
-                    <Badge variant="outline">{vehicle.category}</Badge>
-                    <Badge variant="secondary">{vehicle.fuelType}</Badge>
-                    <Badge variant="secondary">{vehicle.transmission}</Badge>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-900">
-                    {formatPrice(priceToDisplay, currencyToDisplay)}
-                  </div>
-                  <div className="text-sm text-gray-600">رقم المخزون: {vehicle.stockNumber}</div>
-                  {vehicle.pricing?.discountPrice && vehicle.pricing.discountPrice < priceToDisplay && (
-                    <div className="text-sm text-green-600 mt-1">
-                      سعر بعد الخصم: {formatPrice(vehicle.pricing.discountPrice, currencyToDisplay)}
-                    </div>
+                <div className="absolute top-4 left-4 flex gap-2">
+                  <Badge className={cn("px-3 py-1 text-sm font-medium border", statusClass)}>
+                    {statusLabel}
+                  </Badge>
+                  {vehicle.featured && (
+                    <Badge className="bg-amber-400 text-amber-900 border-amber-300 font-bold px-3 py-1 shadow-sm">
+                      مميزة
+                    </Badge>
                   )}
                 </div>
               </div>
 
-              {vehicle.description && (
-                <p className="text-gray-700 leading-relaxed mt-6 mb-6">{vehicle.description}</p>
+              {/* Thumbnails */}
+              {vehicle.images.length > 1 && (
+                <div className="flex gap-2 p-4 overflow-x-auto pb-4 scrollbar-hide">
+                  {vehicle.images.map((img, idx) => (
+                    <button
+                      key={img.id}
+                      onClick={() => setSelectedImageIndex(idx)}
+                      className={cn(
+                        "relative w-20 h-14 md:w-24 md:h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
+                        selectedImageIndex === idx ? "border-primary ring-2 ring-primary/20" : "border-transparent opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <Image
+                        src={img.imageUrl}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="100px"
+                      />
+                    </button>
+                  ))}
+                </div>
               )}
+            </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <Fuel className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-600">نوع الوقود</div>
-                    <div className="font-medium">{vehicle.fuelType}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-600">ناقل الحركة</div>
-                    <div className="font-medium">{vehicle.transmission}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Gauge className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-600">العداد</div>
-                    <div className="font-medium">{vehicle.mileage ?? 0} كم</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <div className="text-sm text-gray-600">اللون</div>
-                    <div className="font-medium">{vehicle.color ?? 'غير محدد'}</div>
+            {/* QUICK STATS & DESCRIPTION */}
+            <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+                    {vehicle.make} {vehicle.model} <span className="text-gray-400 font-light">{vehicle.year}</span>
+                  </h1>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-200">
+                      {vehicle.category}
+                    </Badge>
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-200">
+                      {vehicle.stockNumber}
+                    </Badge>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Link href={`/test-drive?vehicle=${vehicle.id}`}>
-                  <Button size="lg" className="flex-1 min-w-[160px]">
-                    <Calendar className="ml-2 h-5 w-5" />
-                    حجز تجربة قيادة
-                  </Button>
-                </Link>
-                <Link href="/maintenance">
-                  <Button size="lg" variant="outline" className="flex-1 min-w-[160px]">
-                    <Wrench className="ml-2 h-5 w-5" />
-                    مركز الخدمة
-                  </Button>
-                </Link>
-                <Link href="/financing">
-                  <Button size="lg" variant="outline" className="flex-1 min-w-[160px]">
-                    <DollarSign className="ml-2 h-5 w-5" />
-                    خيارات التمويل
-                  </Button>
-                </Link>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <StatCard icon={Gauge} label="المسافة" value={vehicle.mileage ? `${(vehicle.mileage / 1000).toFixed(0)}k كم` : 'جديد'} />
+                <StatCard icon={Fuel} label="الوقود" value={vehicle.fuelType} />
+                <StatCard icon={Settings} label="ناقل الحركة" value={vehicle.transmission} />
+                <StatCard icon={MapPin} label="اللون" value={vehicle.color || 'غير محدد'} />
+              </div>
 
-                <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
-                  <DialogTrigger asChild>
-                    <Button size="lg" variant="outline" className="flex-1 min-w-[160px]">
-                      <Phone className="ml-2 h-5 w-5" />
-                      تواصل مع المبيعات
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>طلب معلومات عن المركبة</DialogTitle>
-                      <DialogDescription>
-                        أرسل لنا استفسارك بخصوص {vehicle.make} {vehicle.model}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <ContactForm vehicle={vehicle} onSuccess={() => setShowContactDialog(false)} />
-                  </DialogContent>
-                </Dialog>
-
-                <Button size="lg" variant="outline" className="min-w-[56px]">
-                  <Heart className="h-5 w-5" />
-                </Button>
-
-                <Button size="lg" variant="outline" className="min-w-[56px]">
-                  <Share2 className="h-5 w-5" />
-                </Button>
+              {/* Description */}
+              <div className="prose prose-lg max-w-none text-gray-600 leading-relaxed">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Info className="h-5 w-5 text-primary" />
+                  عن المركبة
+                </h3>
+                {vehicle.description ? (
+                  <p>{vehicle.description}</p>
+                ) : (
+                  <p className="text-gray-400 italic">لا يوجد وصف متاح لهذه المركبة.</p>
+                )}
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="mt-8">
-          <Tabs defaultValue="specifications" className="w-full">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="specifications">المواصفات الفنية</TabsTrigger>
-              <TabsTrigger value="features">المزايا</TabsTrigger>
-              <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
-            </TabsList>
+            {/* TABS: SPECS & FEATURES */}
+            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden min-h-[400px]">
+              <Tabs defaultValue="specs" className="w-full">
+                <div className="border-b bg-gray-50/50 px-6 pt-4">
+                  <TabsList className="bg-transparent space-x-reverse space-x-6 h-auto p-0">
+                    <StyledTabTrigger value="specs">المواصفات الفنية</StyledTabTrigger>
+                    <StyledTabTrigger value="features">المزايا والتجهيزات</StyledTabTrigger>
+                  </TabsList>
+                </div>
 
-            <TabsContent value="specifications" className="mt-6">
-              <div className="space-y-6">
-                {VEHICLE_SPEC_TEMPLATE.map((group, index) => {
-                  const groupSpecs = group.items.map(item => {
-                    const val = specificationList.find(s => s.key === item.key)?.value;
-                    return val ? { label: item.label, value: val } : null;
-                  }).filter(Boolean);
+                <div className="p-6 md:p-8">
+                  <TabsContent value="specs" className="mt-0 space-y-8 animate-in fade-in-50 duration-300">
+                    {specificationList.length === 0 ? (
+                      <EmptyState message="لا توجد مواصفات فنية مسجلة لهذه المركبة." />
+                    ) : (
+                      <SpecsDisplay specs={specificationList} />
+                    )}
+                  </TabsContent>
 
-                  if (groupSpecs.length === 0) return null;
-
-                  return (
-                    <Card key={index}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">{group.category}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                          {groupSpecs.map((spec, i) => (
-                            <div key={i} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
-                              <span className="font-medium text-gray-700">{spec!.label}</span>
-                              <span className="text-gray-900 font-semibold text-left" dir="ltr">{spec!.value}</span>
+                  <TabsContent value="features" className="mt-0 animate-in fade-in-50 duration-300">
+                    {featureList.length === 0 ? (
+                      <EmptyState message="لا توجد مزايا اضافية مسجلة." />
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {featureList.map((feature, i) => (
+                          <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 hover:bg-blue-50/50 transition-colors">
+                            <div className="mt-0.5 bg-white p-1.5 rounded-full shadow-sm text-blue-600">
+                              <CheckCircle2 className="h-4 w-4" />
                             </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-
-                {/* Catch-all for specs not in the template */}
-                {specificationList.some(s => !VEHICLE_SPEC_TEMPLATE.some(g => g.items.some(i => i.key === s.key))) && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">مواصفات أخرى</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                        {specificationList.filter(s => !VEHICLE_SPEC_TEMPLATE.some(g => g.items.some(i => i.key === s.key))).map((spec, i) => (
-                          <div key={i} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
-                            <span className="font-medium text-gray-700">{spec.label}</span>
-                            <span className="text-gray-900 font-semibold text-left">{spec.value}</span>
+                            <span className="text-gray-700 font-medium">{feature}</span>
                           </div>
                         ))}
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                    )}
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </div>
 
-                {specificationList.length === 0 && (
-                  <Card>
-                    <CardContent className="pt-6">
-                      <p className="text-gray-500 text-center">لا تتوفر مواصفات تفصيلية لهذه المركبة حالياً.</p>
-                    </CardContent>
-                  </Card>
+          </div>
+
+          {/* SIDEBAR COLUMN (Sticky) */}
+          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+            {/* Price & Action Card */}
+            <Card className="border-0 shadow-lg ring-1 ring-gray-200 overflow-hidden">
+              <div className="bg-primary/5 p-6 text-center border-b border-primary/10">
+                <p className="text-gray-500 text-sm mb-1 font-medium">السعر المطلوب</p>
+                <div className="text-4xl font-extrabold text-primary tracking-tight">
+                  {formatPrice(priceToDisplay, currencyToDisplay)}
+                </div>
+                {vehicle.pricing?.hasDiscount && (
+                  <div className="mt-2 inline-flex items-center gap-2 bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">
+                    خصم {vehicle.pricing.discountPercentage}% لفترة محدودة
+                  </div>
                 )}
               </div>
-            </TabsContent>
 
-            <TabsContent value="features" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>المزايا والتجهيزات</CardTitle>
-                  <CardDescription>أبرز ما يميز هذه المركبة عن غيرها</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {featureList.length === 0 ? (
-                    <p className="text-gray-500">سيتم تحديث المزايا قريباً. يرجى التواصل مع المبيعات لمعرفة التفاصيل.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {featureList.map((feature, index) => (
-                        <div key={`${feature}-${index}`} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                          <Shield className="h-5 w-5 text-blue-600" />
-                          <span className="text-sm text-gray-700">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <CardContent className="p-6 space-y-4">
+                <Button size="lg" className="w-full text-lg h-12 shadow-md shadow-primary/20" onClick={() => setShowContactDialog(true)}>
+                  <Phone className="h-5 w-5 ml-2" />
+                  تواصل معنا الآن
+                </Button>
+                <Link href={`/test-drive?vehicle=${vehicle.id}`} className="block">
+                  <Button size="lg" variant="outline" className="w-full h-12 border-2 hover:bg-gray-50">
+                    <Calendar className="h-5 w-5 ml-2" />
+                    حجز تجربة قيادة
+                  </Button>
+                </Link>
 
-            <TabsContent value="overview" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>نظرة شاملة</CardTitle>
-                  <CardDescription>ملخص سريع لأبرز مميزات المركبة</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-lg max-w-none text-right">
-                    <p className="text-gray-700 mb-4 leading-relaxed">
-                      تجمع {vehicle.make} {vehicle.model} {vehicle.year} بين الأداء القوي والتقنيات الحديثة والتصميم العملي الذي يناسب
-                      طرق وشوارع مصر. صُممت هذه المركبة لتقدم تجربة قيادة مريحة وآمنة مع تكاليف تشغيل اقتصادية.
-                    </p>
-                    <p className="text-gray-700 mb-4">أهم النقاط:</p>
-                    <ul className="list-disc space-y-2 pr-6 text-gray-700">
-                      <li>{engineInfo || 'محرك موثوق يوفر توازناً مثالياً بين القوة والكفاءة.'}</li>
-                      <li>{safetyInfo || 'أنظمة أمان متطورة تضمن رحلة مطمئنة لجميع الركاب.'}</li>
-                      <li>{seatingInfo || 'مقصورة رحبة ومريحة تلبي احتياجات العائلة والعمل.'}</li>
-                      <li>خدمة ما بعد البيع متميزة ودعم فني معتمد من تاتا موتورز.</li>
-                    </ul>
+                <div className="pt-4 mt-2 border-t space-y-3">
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <Shield className="h-4 w-4 text-green-600" />
+                    <span>ضمان شامل لمدة 3 سنوات</span>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <Wrench className="h-4 w-4 text-blue-600" />
+                    <span>خدمة صيانة مجانية (أول 10,000 كم)</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Agent/Branch Info Placeholder (Optional) */}
+            <div className="bg-white rounded-xl shadow-sm border p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                <Car className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">معرض الحمد للسيارات</p>
+                <p className="text-xs text-gray-500">الموزع المعتمد لسيارات تاتا</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
+
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>طلب معلومات عن المركبة</DialogTitle>
+            <DialogDescription>
+              أرسل لنا استفسارك بخصوص {vehicle.make} {vehicle.model}
+            </DialogDescription>
+          </DialogHeader>
+          <ContactForm vehicle={vehicle} onSuccess={() => setShowContactDialog(false)} />
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------------
+// HELPER COMPONENTS
+// ----------------------------------------------------------------------
+
+function StatCard({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
+  return (
+    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col items-center text-center gap-2 hover:bg-blue-50 hover:border-blue-100 transition-colors group">
+      <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-xs text-gray-400 mb-1">{label}</p>
+        <p className="font-bold text-gray-900 line-clamp-1">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function StyledTabTrigger({ value, children }: { value: string, children: React.ReactNode }) {
+  return (
+    <TabsTrigger
+      value={value}
+      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none px-4 pb-3 pt-2 font-bold text-gray-500 hover:text-gray-800 transition-all text-base"
+    >
+      {children}
+    </TabsTrigger>
+  )
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-lg dashed border-2 border-gray-200">
+      <div className="bg-gray-100 p-3 rounded-full mb-3">
+        <Info className="h-6 w-6 text-gray-400" />
+      </div>
+      <p className="text-gray-500 font-medium">{message}</p>
+    </div>
+  )
+}
+
+function SpecsDisplay({ specs }: { specs: VehicleSpecification[] }) {
+  // Use Template to grouping
+  const grouped = useMemo(() => {
+    const groups: { title: string, items: VehicleSpecification[] }[] = []
+
+    // 1. Template Groups
+    VEHICLE_SPEC_TEMPLATE.forEach(templateGroup => {
+      const matched = specs.filter(s => templateGroup.items.some(ti => ti.key === s.key))
+      if (matched.length > 0) {
+        groups.push({ title: templateGroup.category, items: matched })
+      }
+    })
+
+    // 2. Others
+    const usedKeys = new Set(groups.flatMap(g => g.items.map(i => i.key)))
+    const others = specs.filter(s => !usedKeys.has(s.key))
+    if (others.length > 0) {
+      groups.push({ title: "مواصفات أخرى", items: others })
+    }
+
+    return groups
+  }, [specs])
+
+  return (
+    <div className="space-y-8">
+      {grouped.map((group, idx) => (
+        <div key={idx} className="bg-gray-50/50 rounded-xl p-6 border border-gray-100">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200 flex items-center gap-2">
+            <div className="w-1 h-6 bg-primary rounded-full"></div>
+            {group.title}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+            {group.items.map((spec, i) => (
+              <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100/50 last:border-0 hover:bg-gray-100/50 px-2 rounded-lg transition-colors">
+                <span className="text-gray-500 font-medium">{spec.label}</span>
+                <span className="text-gray-900 font-bold text-left" dir="ltr">{spec.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -566,7 +562,7 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-right">
-      <div>
+      <div className="space-y-1">
         <Label htmlFor="name">الاسم الكامل</Label>
         <Input
           id="name"
@@ -574,9 +570,10 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
           required
           placeholder="أدخل اسمك"
+          className="bg-gray-50"
         />
       </div>
-      <div>
+      <div className="space-y-1">
         <Label htmlFor="email">البريد الإلكتروني</Label>
         <Input
           id="email"
@@ -585,9 +582,10 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
           required
           placeholder="name@example.com"
+          className="bg-gray-50"
         />
       </div>
-      <div>
+      <div className="space-y-1">
         <Label htmlFor="phone">رقم الهاتف</Label>
         <Input
           id="phone"
@@ -595,9 +593,10 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
           required
           placeholder="مثال: 01012345678"
+          className="bg-gray-50"
         />
       </div>
-      <div>
+      <div className="space-y-1">
         <Label htmlFor="message">الرسالة</Label>
         <Textarea
           id="message"
@@ -605,11 +604,11 @@ function ContactForm({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess: () =
           onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
           placeholder={`أرغب في معرفة المزيد عن ${vehicle.make} ${vehicle.model}...`}
           required
-          className="min-h-[120px]"
+          className="min-h-[120px] bg-gray-50"
         />
       </div>
-      <Button type="submit" className="w-full">
-        إرسال الرسالة
+      <Button type="submit" className="w-full text-lg h-12">
+        إرسال الطلب
       </Button>
     </form>
   )
