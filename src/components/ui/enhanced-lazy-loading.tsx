@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import Image from 'next/image'
+import NextImage from 'next/image'
 
 interface EnhancedLazyImageProps {
   src: string
@@ -60,7 +60,7 @@ export function EnhancedLazyImage({
   const [isIntersecting, setIsIntersecting] = useState(priority || eagerLoad)
   const [retryAttempt, setRetryAttempt] = useState(0)
   const [imageQuality, setImageQuality] = useState(quality)
-  
+
   const imgRef = useRef<HTMLImageElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -98,10 +98,10 @@ export function EnhancedLazyImage({
   // Adaptive quality based on device and connection
   const getAdaptiveQuality = useCallback(() => {
     if (typeof window === 'undefined') return quality
-    
+
     // Lower quality for mobile devices
     if (isMobile) return Math.max(quality - 15, 30)
-    
+
     // Check connection type if available
     const connection = (navigator as any).connection
     if (connection) {
@@ -112,7 +112,7 @@ export function EnhancedLazyImage({
         return Math.max(quality - 10, 40)
       }
     }
-    
+
     return quality
   }, [quality, isMobile])
 
@@ -122,7 +122,7 @@ export function EnhancedLazyImage({
     if (mobileOptimized && typeof window !== 'undefined') {
       setImageQuality(window.innerWidth < 768 ? 60 : quality)
     }
-    
+
     if (priority || eagerLoad) {
       setIsIntersecting(true)
       return
@@ -183,11 +183,11 @@ export function EnhancedLazyImage({
               resolve()
             }
             img.onerror = reject
-            
+
             // Set adaptive quality
             const adaptiveQuality = getAdaptiveQuality()
             setImageQuality(adaptiveQuality)
-            
+
             // Add cache-busting parameter for better caching control
             const cacheBuster = `?v=${Date.now()}`
             img.src = src + cacheBuster
@@ -214,7 +214,7 @@ export function EnhancedLazyImage({
         onLoad?.()
       } catch (error) {
         console.error('Failed to load image:', error)
-        
+
         if (retryAttempt < retryCount) {
           setRetryAttempt(prev => prev + 1)
           // Exponential backoff
@@ -301,10 +301,10 @@ export function EnhancedLazyImage({
           <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
       )}
-      
+
       {/* Main Image */}
-      <Image {...imageProps} alt={imageProps.alt || ''} />
-      
+      <NextImage {...imageProps} alt={imageProps.alt || ''} />
+
       {/* Error fallback */}
       {hasError && (
         <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
@@ -431,12 +431,12 @@ export function EnhancedLazySection({
         if (!triggerOnce || !hasTriggered.current) {
           setIsVisible(true)
           hasTriggered.current = true
-          
+
           // Cache the visible state
           setCachedState({ visible: true, timestamp: Date.now() })
-          
+
           onIntersection?.()
-          
+
           if (triggerOnce) {
             observerRef.current?.disconnect()
           }
@@ -502,14 +502,14 @@ export function EnhancedLazySection({
   useEffect(() => {
     if (isVisible && !hasError) {
       setIsLoading(true)
-      
+
       try {
         // Simulate content validation
         if (ref.current) {
           // Check if children are valid
-          const hasValidContent = ref.current.children.length > 0 || 
-                                ref.current.textContent?.trim().length > 0
-          
+          const hasValidContent = ref.current.children.length > 0 ||
+            ref.current.textContent?.trim().length > 0
+
           if (!hasValidContent && retryAttempt < retryCount) {
             // Retry loading
             setRetryAttempt(prev => prev + 1)
@@ -519,17 +519,17 @@ export function EnhancedLazySection({
             }, backoffTime)
             return
           }
-          
+
           if (!hasValidContent) {
             setHasError(true)
             onError?.()
           }
         }
-        
+
         setIsLoading(false)
       } catch (error) {
         console.error('EnhancedLazySection error:', error)
-        
+
         if (retryAttempt < retryCount) {
           setRetryAttempt(prev => prev + 1)
           const backoffTime = Math.pow(2, retryAttempt) * 500
@@ -602,8 +602,8 @@ export function EnhancedLazySection({
   }
 
   return (
-    <div 
-      ref={ref} 
+    <div
+      ref={ref}
       className={`relative ${className}`}
       data-priority={priority}
       data-cache-key={cacheKey}
@@ -642,7 +642,7 @@ export function LazyComponent({
     try {
       setIsLoading(true)
       setHasError(false)
-      
+
       const loadedModule = await loader()
       setComponent(() => loadedModule.default)
       setIsLoading(false)
@@ -684,7 +684,7 @@ export function LazyComponent({
         loadComponent()
         element.removeEventListener('mouseenter', handleMouseEnter)
       }
-      
+
       element.addEventListener('mouseenter', handleMouseEnter)
       return () => element.removeEventListener('mouseenter', handleMouseEnter)
     }
@@ -733,7 +733,7 @@ export function useLazyLoadingPerformance() {
     const handleImageLoad = (event: Event) => {
       const img = event.target as HTMLImageElement
       const loadTime = performance.now() - (img as any).loadStartTime
-      
+
       setMetrics(prev => ({
         ...prev,
         loadedImages: prev.loadedImages + 1,
